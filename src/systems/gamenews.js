@@ -54,9 +54,9 @@ module.exports = async (client, config) => {
         const embed = new EmbedBuilder()
           .setTitle(latestNews.title)
           .setURL(latestNews.link)
-          .setDescription(latestNews.contentSnippet || "New")
+          .setDescription(latestNews.contentSnippet || "Nova notícia disponível")
           .setColor(0xe60012)
-          .setFooter({ text: "Polygon" })
+          .setFooter({ text: "IGN - PC Games" })
           .setTimestamp(new Date(latestNews.pubDate));
 
         if (latestNews.enclosure?.url) {
@@ -68,7 +68,7 @@ module.exports = async (client, config) => {
 
         // Log usando logger.js
         if (channel.guild) {
-          logger(channel.guild, "Game News", `News: **${latestNews.title}**`);
+          logger(channel.guild, "Game News", `Nova notícia enviada: **${latestNews.title}**`);
         }
 
       } catch (err) {
