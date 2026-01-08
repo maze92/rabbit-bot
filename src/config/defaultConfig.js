@@ -32,7 +32,7 @@ module.exports = {
         name: "IGN_PC",                                      // Nome do feed
         feed: "https://www.gamespot.com/feeds/reviews",           // URL RSS
         channelId: "1431959790174736446"                             // Substituir pelo ID do canal do Discord
-      }
+      },
       {
         name: "IGN_PC",                                      // Nome do feed
         feed: "https://www.gamespot.com/feeds/game-news",           // URL RSS
