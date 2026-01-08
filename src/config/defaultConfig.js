@@ -29,17 +29,17 @@ module.exports = {
     interval: 1 * 60 * 1000,       // Intervalo de checagem em milissegundos (30 minutos)
     sources: [
       {
-        name: "GameSpot",                                      // Nome do feed
+        name: "GameSpot/Reviews",                                      // Nome do feed
         feed: "https://www.gamespot.com/feeds/reviews",           // URL RSS
         channelId: "1431959790174736446"                             // Substituir pelo ID do canal do Discord
       },
       {
-        name: "GameSpot",                                      // Nome do feed
+        name: "GameSpot/News",                                      // Nome do feed
         feed: "https://www.gamespot.com/feeds/game-news",           // URL RSS
         channelId: "1458675935854465219"                             // Substituir pelo ID do canal do Discord
       },
       {
-        name: "GameSpot",                                      // Nome do feed
+        name: "GameSpot/NewGames",                                      // Nome do feed
         feed: "https://www.gamespot.com/feeds/new-games",           // URL RSS
         channelId: "1449609850446286911"                             // Substituir pelo ID do canal do Discord
       }
