@@ -12,15 +12,19 @@ const parser = new Parser();
  * @returns {boolean} true se for nova
  */
 async function isNewNews(source, link) {
+  // Verificar no banco de dados se o link da última notícia já foi registrado
   const record = await GameNews.findOne({ source });
 
   if (!record) {
+    // Se não houver registro, cria um novo com o link atual
     await GameNews.create({ source, lastLink: link });
     return true;
   }
 
+  // Se a última notícia armazenada for o mesmo link, retorna false (não é nova)
   if (record.lastLink === link) return false;
 
+  // Se for uma notícia nova, atualiza o link e salva no banco
   record.lastLink = link;
   await record.save();
   return true;
@@ -74,7 +78,7 @@ module.exports = async (client, config) => {
 
         // Log para o servidor
         if (channel.guild) {
-          logger(channel.guild, "Game News", `Nova notícia: **${latestNews.title}**`);
+          logger(channel.guild, "Game News", `New: **${latestNews.title}**`);
         }
 
       } catch (err) {
@@ -83,4 +87,3 @@ module.exports = async (client, config) => {
     }
   }, config.gameNews.interval); // Intervalo de checagem, em milissegundos
 };
-
