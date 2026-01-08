@@ -28,7 +28,7 @@ module.exports = {
   // ==============================
   gameNews: {
     enabled: true,                  // Ativa ou desativa o sistema
-    interval: 30 * 60 * 1000,       // Intervalo de checagem em milissegundos (30 minutos)
+    interval: 2 * 60 * 1000,       // Intervalo de checagem em milissegundos (30 minutos)
     sources: [
       {
         name: "IGN_PC",                                      // Nome do feed
