@@ -7,26 +7,28 @@ const parser = new Parser();
 
 /**
  * Verifica se a notícia é nova
- * @param {string} source - Nome do feed
+ * @param {string} source - Nome do feed (ex: "Polygon_PC")
  * @param {string} link - Link da notícia
  * @returns {boolean} true se for nova
  */
 async function isNewNews(source, link) {
-  // Verificar no banco de dados se o link da última notícia já foi registrado
+  // Verificar se o feed já existe no banco
   const record = await GameNews.findOne({ source });
 
   if (!record) {
-    // Se não houver registro, cria um novo com o link atual
+    // Se o feed não existe, cria um novo registro
     await GameNews.create({ source, lastLink: link });
-    return true;
+    return true;  // É uma notícia nova
   }
 
-  // Se a última notícia armazenada for o mesmo link, retorna false (não é nova)
-  if (record.lastLink === link) return false;
+  // Se o link da última notícia for o mesmo, significa que é repetido
+  if (record.lastLink === link) {
+    return false;  // Não é nova, pois já foi processada
+  }
 
-  // Se for uma notícia nova, atualiza o link e salva no banco
+  // Caso contrário, é uma notícia nova, então atualiza o link
   record.lastLink = link;
-  await record.save();
+  await record.save();  // Atualiza o banco de dados
   return true;
 }
 
@@ -36,7 +38,7 @@ async function isNewNews(source, link) {
  * @param {Object} config - Configurações do defaultConfig.js
  */
 module.exports = async (client, config) => {
-  if (!config.gameNews?.enabled) return;
+  if (!config.gameNews?.enabled) return;  // Verifica se o sistema de notícias está habilitado
 
   // Rodar a cada intervalo definido
   setInterval(async () => {
@@ -44,14 +46,14 @@ module.exports = async (client, config) => {
       try {
         // Parse o feed RSS
         const parsedFeed = await parser.parseURL(feed.feed);
-        if (!parsedFeed.items.length) continue; // Se o feed não tiver itens, continuar com o próximo
+        if (!parsedFeed.items.length) continue;  // Se não tiver itens no feed, pula
 
         const latestNews = parsedFeed.items[0];  // Pega a última notícia
-        if (!latestNews || !latestNews.link) continue; // Se não tiver link, pula
+        if (!latestNews || !latestNews.link) continue;  // Se não tiver link, pula
 
-        // Verificar se é uma notícia nova
+        // Verificar se a notícia é nova
         const isNew = await isNewNews(feed.name, latestNews.link);
-        if (!isNew) continue; // Se não for nova, pula
+        if (!isNew) continue;  // Se a notícia não for nova, pula
 
         // Pega o canal do Discord para enviar a notícia
         const channel = await client.channels.fetch(feed.channelId);
@@ -85,5 +87,5 @@ module.exports = async (client, config) => {
         console.error(`[GameNews] Erro ao processar o feed ${feed.name}:`, err.message);
       }
     }
-  }, config.gameNews.interval); // Intervalo de checagem, em milissegundos
+  }, config.gameNews.interval);  // Intervalo de checagem, em milissegundos
 };
