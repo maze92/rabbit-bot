@@ -6,28 +6,42 @@ const logger = require("./logger");
 const parser = new Parser();
 
 /**
+ * Função que normaliza a URL, removendo parâmetros extras
+ * @param {string} url - URL do feed
+ * @returns {string} URL normalizada
+ */
+function normalizeUrl(url) {
+  // Remove parâmetros de URL desnecessários
+  const urlObj = new URL(url);
+  urlObj.searchParams.sort();  // Ordena os parâmetros de consulta para garantir uma comparação consistente
+  return urlObj.toString();
+}
+
+/**
  * Verifica se a notícia é nova
  * @param {string} source - Nome do feed (ex: "Polygon_PC")
  * @param {string} link - Link da notícia
  * @returns {boolean} true se for nova
  */
 async function isNewNews(source, link) {
+  const normalizedLink = normalizeUrl(link);  // Normaliza o link
+
   // Verificar se o feed já existe no banco
   const record = await GameNews.findOne({ source });
 
   if (!record) {
     // Se o feed não existe, cria um novo registro
-    await GameNews.create({ source, lastLink: link });
+    await GameNews.create({ source, lastLink: normalizedLink });
     return true;  // É uma notícia nova
   }
 
   // Se o link da última notícia for o mesmo, significa que é repetido
-  if (record.lastLink === link) {
+  if (record.lastLink === normalizedLink) {
     return false;  // Não é nova, pois já foi processada
   }
 
   // Caso contrário, é uma notícia nova, então atualiza o link
-  record.lastLink = link;
+  record.lastLink = normalizedLink;
   await record.save();  // Atualiza o banco de dados
   return true;
 }
