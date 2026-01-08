@@ -30,7 +30,7 @@ module.exports = {
     sources: [
       {
         name: "IGN_PC",                                      // Nome do feed
-        feed: "https://www.gamespot.com/feeds/news",           // URL RSS
+        feed: "https://www.gamespot.com/feeds/game-news",           // URL RSS
         channelId: "1431959790174736446"                             // Substituir pelo ID do canal do Discord
       }
       // Podemos adicionar mais feeds aqui futuramente
