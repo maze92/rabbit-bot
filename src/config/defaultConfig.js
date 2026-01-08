@@ -33,7 +33,7 @@ module.exports = {
       {
         name: "IGN_PC",                                      // Nome do feed
         feed: "https://feeds.ign.com/ign/pc-all",           // URL RSS
-        channelId: "ID_DO_CANAL"                             // Substituir pelo ID do canal do Discord
+        channelId: "1431959790174736446"                             // Substituir pelo ID do canal do Discord
       }
       // Podemos adicionar mais feeds aqui futuramente
     ]
