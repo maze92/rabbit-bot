@@ -4,19 +4,21 @@
   "description": "Discord bot with dashboard, ready for Railway deployment",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "NODE_ENV=production node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["discord", "bot", "dashboard", "nodejs", "railway"],
   "author": "Filipe Ferreira",
   "license": "ISC",
   "dependencies": {
-    "@types/node": "^22.13.11",
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "mongoose": "^9.1.2",
     "node-fetch": "^3.3.2",
     "rss-parser": "^3.13.0"
+  },
+  "config": {
+    "production": true
   }
 }
