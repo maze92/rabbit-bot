@@ -1,29 +1,43 @@
-// src/systems/commands.js
+const fs = require('fs');
+const path = require('path');
 const config = require('../config/defaultConfig');
 
+const commands = new Map();
+
+// Carregar todos os comandos
+const commandFiles = fs.readdirSync(path.join(__dirname, '../commands')).filter(f => f.endsWith('.js'));
+for (const file of commandFiles) {
+  const command = require(`../commands/${file}`);
+  commands.set(command.name, command);
+}
+
 module.exports = async (message, client) => {
-  // Ignorar mensagens de bots ou DMs
-  if (!message.guild || message.author.bot) return;
+  if (!message.content.startsWith(config.prefix)) return;
 
-  const prefix = config.prefix || '!';
-
-  if (!message.content.startsWith(prefix)) return;
-
-  const args = message.content.slice(prefix.length).trim().split(/ +/);
+  const args = message.content.slice(config.prefix.length).trim().split(/\s+/);
   const commandName = args.shift().toLowerCase();
 
-  const command = client.commands.get(commandName);
+  const command = commands.get(commandName);
   if (!command) return;
 
-  // Verifica permissões do utilizador
-  if (command.permissions && !message.member.permissions.has(command.permissions)) {
-    return message.reply('❌ You do not have permission to use this command.');
+  // ==============================
+  // Verificação de permissões por cargo
+  // ==============================
+  if (command.allowedRoles) {
+    const hasRole = message.member.roles.cache.some(role =>
+      command.allowedRoles.includes(role.id)
+    );
+
+    if (!hasRole) {
+      return message.reply("❌ You don't have permission to use this command.");
+    }
   }
 
+  // Executar o comando
   try {
-    await command.execute(message, args, client);
+    await command.execute(message, client, args);
   } catch (err) {
-    console.error(err);
-    message.reply('❌ There was an error executing this command.');
+    console.error(`Error executing command ${commandName}:`, err);
+    message.reply('⚠️ There was an error executing that command.');
   }
 };
