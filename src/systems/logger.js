@@ -8,11 +8,12 @@ const config = require('../config/defaultConfig');
  * @param {User} user - Usuário afetado
  * @param {User} executor - Quem realizou a ação (pode ser o mesmo do user)
  * @param {string} description - Descrição adicional
+ * @param {Guild} guild - Guild onde o log será enviado (opcional)
  */
-module.exports = async function logger(client, title, user, executor, description) {
-  if (!user?.guild) return;
+module.exports = async function logger(client, title, user, executor, description, guild) {
+  guild = guild || user?.guild;
+  if (!guild) return;
 
-  const guild = user.guild;
   const logChannelName = config.logChannelName || 'log-bot';
   const logChannel = guild.channels.cache.find(ch => ch.name === logChannelName);
 
