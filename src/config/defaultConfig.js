@@ -5,12 +5,14 @@ module.exports = {
   prefix: '!', // Prefixo configurável
 
   // ==============================
-  // Moderação
+  // Moderação automática
   // ==============================
-  maxWarnings: 3,
-  muteDuration: 10 * 60 * 1000, // 10 minutos
-  logChannelName: 'log-bot',
+  maxWarnings: 3,                   // Quantidade máxima de warns antes de mute
+  muteDuration: 10 * 60 * 1000,     // 10 minutos em milissegundos
+  logChannelName: 'log-bot',        // Canal de logs
   language: 'en',
+
+  // Palavras proibidas
   bannedWords: {
     en: [
       'fuck','shit','bitch','asshole','dick','bastard','slut','whore',
@@ -31,7 +33,7 @@ module.exports = {
   // ==============================
   gameNews: {
     enabled: true,                  // Ativa ou desativa o sistema
-    interval: 30 * 60 * 1000,       // Intervalo de checagem em milissegundos (30 minutos)
+    interval: 30 * 60 * 1000,       // Checagem a cada 30 minutos
     sources: [
       {
         name: "GameSpot/Reviews",
