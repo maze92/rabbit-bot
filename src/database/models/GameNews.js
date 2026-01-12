@@ -13,8 +13,5 @@ const gameNewsSchema = new Schema({
   }
 }, { timestamps: true }); // Adiciona campos automáticos 'createdAt' e 'updatedAt'
 
-// Índice único em 'source' para garantir unicidade
-gameNewsSchema.index({ source: 1 }, { unique: true });
-
 // Exporta o modelo para uso em gamenews.js
 module.exports = model('GameNews', gameNewsSchema);
