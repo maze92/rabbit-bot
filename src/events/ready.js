@@ -1,7 +1,7 @@
 let started = false;
 
 module.exports = (client) => {
-  client.once('ready', async () => {
+  client.once('clientReady', async () => { // <- mudado de 'ready' para 'clientReady'
     console.log(`✅ ${client.user.tag} is online!`);
 
     if (started) return;
