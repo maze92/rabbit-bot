@@ -4,7 +4,7 @@ const config = require('../config/defaultConfig');
 
 const commands = new Map();
 
-// Carregar todos os comandos
+// Carregar comandos do /commands
 const commandFiles = fs.readdirSync(path.join(__dirname, '../commands')).filter(f => f.endsWith('.js'));
 for (const file of commandFiles) {
   const command = require(`../commands/${file}`);
@@ -16,7 +16,6 @@ module.exports = async (message, client) => {
 
   const args = message.content.slice(config.prefix.length).trim().split(/\s+/);
   const commandName = args.shift().toLowerCase();
-
   const command = commands.get(commandName);
   if (!command) return;
 
@@ -28,12 +27,10 @@ module.exports = async (message, client) => {
       command.allowedRoles.includes(role.id)
     );
 
-    if (!hasRole) {
-      return message.reply("❌ You don't have permission to use this command.");
-    }
+    if (!hasRole) return message.reply("❌ You don't have permission to use this command.");
   }
 
-  // Executar o comando
+  // Executar comando
   try {
     await command.execute(message, client, args);
   } catch (err) {
