@@ -10,26 +10,30 @@ const client = require('./bot');
 // ==============================
 client.commands = new Map();
 
-// Carregar comandos do /src/commands
+// Caminho correto para a pasta de comandos
+const commandPath = path.join(__dirname, 'commands');
+
+// Ler todos os ficheiros JS dentro de /commands
 const commandFiles = fs
-  .readdirSync(path.join(__dirname, 'src', 'commands'))
+  .readdirSync(commandPath)
   .filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-  const command = require(path.join(__dirname, 'src', 'commands', file));
+  const command = require(path.join(commandPath, file));
   client.commands.set(command.name, command);
-  console.log(`Loaded command: ${command.name}`);
+  console.log(`✅ Loaded command: ${command.name}`);
 }
 
 // ==============================
 // Eventos
 // ==============================
+// ready, messageCreate e guildMemberAdd
 require('./events/ready')(client);
 require('./events/messageCreate')(client);
 require('./events/guildMemberAdd')(client);
 
 // ==============================
-// Login
+// Login do bot
 // ==============================
 client.login(process.env.TOKEN);
 
@@ -40,6 +44,6 @@ const app = require('./dashboard');
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Dashboard running on port ${PORT} 🚀`);
+  console.log(`🚀 Dashboard running on port ${PORT}`);
 });
 
