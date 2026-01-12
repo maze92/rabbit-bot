@@ -3,13 +3,24 @@ const commands = require('../systems/commands');
 
 module.exports = (client) => {
   client.on('messageCreate', async (message) => {
-    // Ignorar mensagens de bots ou DMs
+    // ==============================
+    // Ignorar bots e mensagens fora de guilda
+    // ==============================
     if (!message.guild || message.author.bot) return;
 
-    // 1️⃣ Primeiro, automod
-    await autoModeration(message);
+    try {
+      // ==============================
+      // 1️⃣ Primeiro: AutoMod
+      // ==============================
+      await autoModeration(message, client);
 
-    // 2️⃣ Depois, comandos
-    await commands(message, client);
+      // ==============================
+      // 2️⃣ Depois: Comandos
+      // ==============================
+      await commands(message, client);
+
+    } catch (err) {
+      console.error(`[messageCreate] Error handling message from ${message.author.tag}:`, err);
+    }
   });
 };
