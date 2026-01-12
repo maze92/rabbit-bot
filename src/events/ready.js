@@ -7,13 +7,18 @@ module.exports = (client) => {
     if (started) return;
     started = true;
 
-    // Iniciar sistema de notícias automáticas
-    const gameNews = require('../systems/gamenews');
-    const config = require('../config/defaultConfig');
-
-    if (config.gameNews.enabled) {
-      gameNews(client, config);
-      console.log('📰 Game News system started.');
+    // ==============================
+    // Sistema de notícias automáticas (opcional)
+    // ==============================
+    try {
+      const config = require('../config/defaultConfig');
+      if (config.gameNews?.enabled) {
+        const gameNews = require('../systems/gamenews');
+        gameNews(client, config);
+        console.log('📰 Game News system started.');
+      }
+    } catch (err) {
+      console.error('[ready] Error starting Game News system:', err);
     }
   });
 };
