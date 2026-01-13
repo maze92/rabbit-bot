@@ -2,47 +2,37 @@ const { EmbedBuilder } = require('discord.js');
 const config = require('../config/defaultConfig');
 
 /**
- * Logger centralizado
- * @param {Client} client
- * @param {string} title
- * @param {User|null} user
- * @param {User|null} executor
- * @param {string} description
- * @param {Guild|null} guild
+ * Envia logs para o canal de moderação/logs
+ * @param {Client} client - Discord client
+ * @param {string} title - Título do log
+ * @param {User|null} user - Usuário afetado (pode ser null)
+ * @param {User|null} executor - Quem realizou a ação (pode ser null)
+ * @param {string} description - Descrição detalhada
+ * @param {Guild} guild - Guilda onde enviar o log (opcional)
  */
-module.exports = async function logger(
-  client,
-  title,
-  user = null,
-  executor = null,
-  description = '',
-  guild = null
-) {
-  try {
-    if (!guild && executor?.guild) guild = executor.guild;
-    if (!guild && user?.guild) guild = user.guild;
-    if (!guild) return;
+module.exports = async function logger(client, title, user, executor, description, guild) {
+  // Tenta obter a guilda do executor ou do usuário, se não for passada
+  guild = guild || executor?.guild || user?.guild;
+  if (!guild) return;
 
-    const logChannelName = config.logChannelName || 'log-bot';
-    const logChannel = guild.channels.cache.find(
-      ch => ch.name === logChannelName
-    );
+  const logChannelName = config.logChannelName || 'log-bot';
+  const logChannel = guild.channels.cache.find(ch => ch.name === logChannelName);
 
-    if (!logChannel) return;
+  if (!logChannel) return;
 
-    let desc = '';
-    if (user) desc += `👤 **User:** ${user.tag}\n`;
-    if (executor) desc += `🛠️ **Executor:** ${executor.tag}\n`;
-    if (description) desc += `\n${description}`;
+  // Criar embed
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setColor('Blue')
+    .setTimestamp();
 
-    const embed = new EmbedBuilder()
-      .setTitle(title)
-      .setDescription(desc)
-      .setColor(0x5865f2)
-      .setTimestamp();
+  let desc = '';
+  if (user) desc += `👤 **User:** ${user.tag}\n`;
+  if (executor) desc += `🛠️ **Executor:** ${executor.tag}\n`;
+  if (description) desc += description;
 
-    await logChannel.send({ embeds: [embed] });
-  } catch (err) {
-    console.error('[LOGGER ERROR]', err);
-  }
+  embed.setDescription(desc);
+
+  // Enviar embed para o canal de log
+  logChannel.send({ embeds: [embed] }).catch(() => null);
 };
