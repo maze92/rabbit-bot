@@ -11,6 +11,8 @@ module.exports = {
   ],
 
   async execute(message, client, args) {
+    if (!message.guild) return;
+
     if (!message.guild.members.me.permissions.has('ManageMessages')) {
       return message.reply('❌ I do not have permission to manage messages.');
     }
@@ -35,5 +37,23 @@ module.exports = {
       const reply = await message.channel.send(
         `🧹 Deleted **${userMessages.size}** messages from **${user.user.tag}**.`
       );
-      setTimeo
 
+      setTimeout(() => reply.delete().catch(() => {}), 5000);
+
+      await logger(
+        client,
+        'Purge User',
+        user.user,
+        message.author,
+        `Amount: ${userMessages.size}`,
+        message.guild
+      );
+
+    } catch (err) {
+      console.error('[purgeuser]', err);
+      message.reply(
+        '❌ Could not delete some messages (older than 14 days).'
+      );
+    }
+  }
+};
