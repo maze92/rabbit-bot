@@ -24,16 +24,22 @@ module.exports = async function logger(
   const logChannel = guild.channels.cache.find(
     ch => ch.name === logChannelName
   );
-
   if (!logChannel) return;
+
+  let desc = '';
+  if (user) desc += `👤 **User:** ${user.tag}\n`;
+  if (executor) desc += `🛠️ **Executor:** ${executor.tag}\n`;
+  if (description) desc += `${description}`;
 
   const embed = new EmbedBuilder()
     .setTitle(title)
     .setColor('Blue')
+    .setDescription(desc)
     .setTimestamp();
 
-  let desc = '';
-
-  if (user) desc += `👤 **User:** ${user.tag}\n`;
-  if (executor) desc += `🛠️ **Executor:** ${executor.tag}\n`;
-  if (description) desc += `\
+  try {
+    await logChannel.send({ embeds: [embed] });
+  } catch (err) {
+    console.error('[logger] Failed to send log:', err);
+  }
+};
