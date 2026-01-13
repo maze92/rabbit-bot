@@ -56,13 +56,16 @@ module.exports = async function autoModeration(message, client) {
     content: `⚠️ ${message.author}, inappropriate language is not allowed.\n**Warning:** ${user.warnings}/${maxWarnings}`
   }).catch(() => null);
 
+  // ==============================
   // Log centralizado via logger.js
+  // ==============================
   await logger(
     client,
     'Automatic Warn',
     message.author,
     message.author,
-    `Word: ${foundWord}\nWarnings: ${user.warnings}/${maxWarnings}`
+    `Word: ${foundWord}\nWarnings: ${user.warnings}/${maxWarnings}`,
+    message.guild // <- passar a guild explicitamente
   );
 
   // Aplicar mute se excedeu warns
@@ -83,7 +86,8 @@ module.exports = async function autoModeration(message, client) {
           'Automatic Mute',
           message.author,
           message.author,
-          `Duration: ${muteDuration / 60000} minutes`
+          `Duration: ${muteDuration / 60000} minutes`,
+          message.guild // <- também passar a guild
         );
 
         // Reset warnings após mute
