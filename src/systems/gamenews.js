@@ -1,35 +1,31 @@
-const Parser = require("rss-parser");
-const { EmbedBuilder } = require("discord.js");
-const GameNews = require("../database/models/GameNews");
-const logger = require("./logger");
+const Parser = require('rss-parser');
+const crypto = require('crypto');
+const { EmbedBuilder } = require('discord.js');
+const GameNews = require('../database/models/GameNews');
+const logger = require('./logger');
 
-const parser = new Parser();
+const parser = new Parser({ timeout: 15000 });
 
-// Normaliza a URL para evitar duplicatas causadas por parâmetros extras
-function normalizeUrl(url) {
-  try {
-    const urlObj = new URL(url);
-    const params = new URLSearchParams(urlObj.search);
-    urlObj.search = params.toString();
-    return urlObj.toString();
-  } catch {
-    return url; // Retorna a URL original se não for possível normalizar
-  }
+function generateHash(item) {
+  return crypto
+    .createHash('sha256')
+    .update(`${item.title}-${item.link}`)
+    .digest('hex');
 }
 
-// Verifica se a notícia já foi enviada
-async function isNewNews(feedName, link) {
-  const normalizedLink = normalizeUrl(link);
+async function isNewNews(feedName, item) {
+  const hash = generateHash(item);
 
   let record = await GameNews.findOne({ source: feedName });
+
   if (!record) {
-    await GameNews.create({ source: feedName, lastLink: normalizedLink });
+    await GameNews.create({ source: feedName, lastHash: hash });
     return true;
   }
 
-  if (record.lastLink === normalizedLink) return false;
+  if (record.lastHash === hash) return false;
 
-  record.lastLink = normalizedLink;
+  record.lastHash = hash;
   await record.save();
   return true;
 }
@@ -37,16 +33,26 @@ async function isNewNews(feedName, link) {
 module.exports = async (client, config) => {
   if (!config.gameNews?.enabled) return;
 
-  console.log("[GameNews] Automatic news system started.");
+  console.log('[GameNews] System started');
 
   setInterval(async () => {
     for (const feed of config.gameNews.sources) {
       try {
-        const parsedFeed = await parser.parseURL(feed.feed);
-        const latestNews = parsedFeed.items?.[0];
-        if (!latestNews?.link) continue;
+        const parsed = await parser.parseURL(feed.feed);
 
-        if (!await isNewNews(feed.name, latestNews.link)) continue;
+        if (!parsed.items?.length) {
+          console.log(`[GameNews] No items for ${feed.name}`);
+          continue;
+        }
+
+        const item = parsed.items[0];
+        if (!item?.title || !item?.link) continue;
+
+        const isNew = await isNewNews(feed.name, item);
+        if (!isNew) {
+          console.log(`[GameNews] Duplicate ignored: ${item.title}`);
+          continue;
+        }
 
         const channel = await client.channels.fetch(feed.channelId).catch(() => null);
         if (!channel) {
@@ -55,27 +61,30 @@ module.exports = async (client, config) => {
         }
 
         const embed = new EmbedBuilder()
-          .setTitle(latestNews.title)
-          .setURL(latestNews.link)
-          .setDescription(latestNews.contentSnippet || "No description available")
+          .setTitle(item.title)
+          .setURL(item.link)
+          .setDescription(item.contentSnippet || 'No description available')
           .setColor(0xe60012)
           .setFooter({ text: feed.name })
-          .setTimestamp(new Date(latestNews.pubDate));
+          .setTimestamp(new Date(item.pubDate || Date.now()));
 
-        if (latestNews.enclosure?.url) embed.setThumbnail(latestNews.enclosure.url);
+        if (item.enclosure?.url) embed.setThumbnail(item.enclosure.url);
 
         await channel.send({ embeds: [embed] });
 
-        // Log centralizado
-        if (channel.guild) {
-          await logger(client, "Game News", channel.guild.me.user, channel.guild.me.user, `New news sent: **${latestNews.title}**`);
-        }
+        await logger(
+          client,
+          'Game News',
+          channel.guild.members.me.user,
+          channel.guild.members.me.user,
+          `New article sent: **${item.title}**`
+        );
 
-        console.log(`[GameNews] Sent news for ${feed.name}: ${latestNews.title}`);
+        console.log(`[GameNews] Sent: ${item.title}`);
+
       } catch (err) {
-        console.error(`[GameNews] Error processing feed ${feed.name}:`, err.message);
+        console.error(`[GameNews] Error (${feed.name}):`, err.message);
       }
     }
   }, config.gameNews.interval);
 };
-
