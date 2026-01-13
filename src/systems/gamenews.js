@@ -15,7 +15,6 @@ function generateHash(item) {
 
 async function isNewNews(feedName, item) {
   const hash = generateHash(item);
-
   let record = await GameNews.findOne({ source: feedName });
 
   if (!record) {
@@ -39,26 +38,15 @@ module.exports = async (client, config) => {
     for (const feed of config.gameNews.sources) {
       try {
         const parsed = await parser.parseURL(feed.feed);
-
-        if (!parsed.items?.length) {
-          console.log(`[GameNews] No items for ${feed.name}`);
-          continue;
-        }
+        if (!parsed.items?.length) continue;
 
         const item = parsed.items[0];
         if (!item?.title || !item?.link) continue;
 
-        const isNew = await isNewNews(feed.name, item);
-        if (!isNew) {
-          console.log(`[GameNews] Duplicate ignored: ${item.title}`);
-          continue;
-        }
+        if (!await isNewNews(feed.name, item)) continue;
 
         const channel = await client.channels.fetch(feed.channelId).catch(() => null);
-        if (!channel) {
-          console.warn(`[GameNews] Channel not found: ${feed.channelId}`);
-          continue;
-        }
+        if (!channel) continue;
 
         const embed = new EmbedBuilder()
           .setTitle(item.title)
@@ -72,19 +60,19 @@ module.exports = async (client, config) => {
 
         await channel.send({ embeds: [embed] });
 
+        // 🔴 LOG DA NEWS
         await logger(
           client,
-          '📰 Game News',
-          null,
-          null,
-          `New article sent:\n**${item.title}**`,
+          'Game News Posted',
+          client.user,
+          client.user,
+          `Source: **${feed.name}**\nTitle: **${item.title}**`,
           channel.guild
         );
 
         console.log(`[GameNews] Sent: ${item.title}`);
-
       } catch (err) {
-        console.error(`[GameNews] Error (${feed.name}):`, err.message);
+        console.error(`[GameNews ERROR - ${feed.name}]`, err.message);
       }
     }
   }, config.gameNews.interval);
