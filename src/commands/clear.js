@@ -11,37 +11,38 @@ module.exports = {
   ],
 
   async execute(message, client, args) {
-    // Verifica permissão do bot
+    if (!message.guild) return;
+
     if (!message.guild.members.me.permissions.has('ManageMessages')) {
       return message.reply('❌ I do not have permission to manage messages.');
     }
 
-    const amount = parseInt(args[0]);
+    const amount = parseInt(args[0], 10);
     if (!amount || amount < 1 || amount > 100) {
       return message.reply(`❌ Usage: ${config.prefix}clear 1-100`);
     }
 
     try {
-      const deletedMessages = await message.channel.bulkDelete(amount, true);
+      const deleted = await message.channel.bulkDelete(amount, true);
 
       const reply = await message.reply(
-        `🧹 Deleted **${deletedMessages.size}** messages.`
+        `🧹 Deleted ${deleted.size} messages.`
       );
-      setTimeout(() => reply.delete().catch(() => null), 5000);
+      setTimeout(() => reply.delete().catch(() => {}), 5000);
 
-      // ✅ Log centralizado (CORRETO)
       await logger(
         client,
-        '🧹 Clear Messages',
+        'Clear Messages',
         message.author,
         message.author,
-        `Amount: **${deletedMessages.size}**\nChannel: ${message.channel}`,
+        `Amount: ${deleted.size}`,
         message.guild
       );
-
     } catch (err) {
-      console.error(err);
-      message.reply('❌ Could not delete some messages (older than 14 days or hierarchy issue).');
+      console.error('[clear]', err);
+      message.reply(
+        '❌ Could not delete some messages (older than 14 days).'
+      );
     }
   }
 };
