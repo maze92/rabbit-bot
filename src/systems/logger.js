@@ -1,9 +1,9 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('../config/defaultConfig');
 
-// Cache de logs para dashboard
+// Cache de logs para o dashboard
 const logCache = [];
-module.exports.logCache = logCache;
+const MAX_CACHE = 100; // Últimos 100 logs
 
 /**
  * Logger centralizado
@@ -11,38 +11,43 @@ module.exports.logCache = logCache;
  * @param {string} title - Título do log
  * @param {User|null} user - Usuário afetado
  * @param {User|null} executor - Executor da ação
- * @param {string} description - Descrição detalhada
- * @param {Guild} guild - Guild opcional (usado se o user não tiver guild)
+ * @param {string} description - Descrição adicional
+ * @param {Guild} guild - Guilda (opcional)
  */
-module.exports = async function logger(client, title, user, executor, description, guild) {
+async function logger(client, title, user, executor, description, guild) {
   guild = guild || user?.guild;
   if (!guild) return;
 
-  // Enviar para canal de logs
-  const logChannel = guild.channels.cache.find(ch => ch.name === (config.logChannelName || 'log-bot'));
-  if (logChannel) {
-    const embed = new EmbedBuilder()
-      .setTitle(title)
-      .setColor('Blue')
-      .setDescription(
-        `👤 **User:** ${user?.tag || 'N/A'}\n` +
-        `🛠️ **Executor:** ${executor?.tag || 'N/A'}\n` +
-        `${description}`
-      )
-      .setTimestamp();
+  const logChannelName = config.logChannelName || 'log-bot';
+  const logChannel = guild.channels.cache.find(ch => ch.name === logChannelName);
 
-    logChannel.send({ embeds: [embed] }).catch(() => null);
-  }
+  if (!logChannel) return;
 
-  // Adicionar ao cache do dashboard
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setColor('Blue')
+    .setTimestamp();
+
+  let desc = '';
+  if (user) desc += `👤 **User:** ${user.tag}\n`;
+  if (executor) desc += `🛠️ **Executor:** ${executor.tag}\n`;
+  if (description) desc += description;
+
+  embed.setDescription(desc);
+
+  logChannel.send({ embeds: [embed] }).catch(() => null);
+
+  // Armazena no cache para dashboard
   logCache.push({
+    time: new Date(),
     title,
     user: user?.tag || null,
     executor: executor?.tag || null,
-    description,
-    time: new Date()
+    description: description || ''
   });
 
-  // Manter apenas os últimos 100 logs
-  if (logCache.length > 100) logCache.shift();
-};
+  if (logCache.length > MAX_CACHE) logCache.shift();
+}
+
+module.exports = logger;
+module.exports.logCache = logCache; // Exporta cache para o dashboard
