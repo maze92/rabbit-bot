@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ozark Bot Dashboard</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  body { font-family: sans-serif; background: #1e1e1e; color: #eee; padding: 20px; }
+  h1 { color: #e60012; }
+  input, select { padding: 5px; margin: 5px; background: #333; color: #eee; border: none; }
+  .log { border-bottom: 1px solid #333; padding: 10px; margin-bottom: 5px; border-radius: 5px; }
+  .title { font-weight: bold; }
+  .desc { margin-left: 10px; display: block; }
+</style>
+</head>
+<body>
+  <h1>Ozark Bot Dashboard</h1>
+
+  <div>
+    <input type="text" id="searchUser" placeholder="Pesquisar por usuário...">
+    <select id="filterType">
+      <option value="">Todos os tipos</option>
+      <option value="warn">Aviso</option>
+      <option value="mute">Mute</option>
+      <option value="clear">Mensagens</option>
+      <option value="game news">Notícias</option>
+    </select>
+  </div>
+
+  <div id="logs"></div>
+
+  <script>
+    const socket = io();
+    const logsContainer = document.getElementById('logs');
+    const searchInput = document.getElementById('searchUser');
+    const filterSelect = document.getElementById('filterType');
+
+    let allLogs = [];
+
+    function renderLogs(logs) {
+      logsContainer.innerHTML = '';
+      logs.slice().reverse().forEach(log => {
+        const div = document.createElement('div');
+        div.classList.add('log');
+
+        const color = getColor(log.title);
+        div.style.borderLeft = `5px solid ${color}`;
+
+        div.innerHTML = `
+          <span class="title">${log.title}</span> 
+          <span class="desc">${log.description}</span>
+          <small>👤 User: ${log.user || 'N/A'} | 🛠 Executor: ${log.executor || 'N/A'} | ⏰ ${new Date(log.time).toLocaleString()}</small>
+        `;
+        logsContainer.appendChild(div);
+      });
+    }
+
+    function getColor(title) {
+      title = title.toLowerCase();
+      if (title.includes('warn')) return '#ffcc00';
+      if (title.includes('mute')) return '#ff6600';
+      if (title.includes('clear') || title.includes('purge')) return '#00ccff';
+      if (title.includes('game news')) return '#e60012';
+      return '#00ff00';
+    }
+
+    function filterLogs() {
+      const search = searchInput.value.toLowerCase();
+      const type = filterSelect.value.toLowerCase();
+
+      const filtered = allLogs.filter(log => {
+        const matchesUser = log.user?.toLowerCase().includes(search) || log.executor?.toLowerCase().includes(search);
+        const matchesType = type ? log.title.toLowerCase().includes(type) : true;
+        return matchesUser && matchesType;
+      });
+      renderLogs(filtered);
+    }
+
+    // Receber logs via Socket.IO
+    socket.on('logs', logs => {
+      allLogs = logs;
+      filterLogs();
+    });
+
+    // Filtragem em tempo real
+    searchInput.addEventListener('input', filterLogs);
+    filterSelect.addEventListener('change', filterLogs);
+
+    // Atualização automática a cada 5 segundos
+    setInterval(() => {
+      socket.emit('requestLogs');
+    }, 5000);
+  </script>
+</body>
+</html>
