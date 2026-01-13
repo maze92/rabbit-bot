@@ -20,9 +20,13 @@ require('./events/messageCreate')(client);
 require('./events/guildMemberAdd')(client);
 
 // Dashboard
-const dashboard = require('./dashboard');
-const PORT = process.env.PORT || 8080;
-dashboard.listen(PORT, () => console.log(`🚀 Dashboard running on port ${PORT}`));
+const { server } = require('./dashboard');
+
+// Porta da dashboard
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+  console.log(`🚀 Dashboard rodando na porta ${PORT}`);
 
 // Login Discord
 client.login(process.env.TOKEN);
