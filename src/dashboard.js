@@ -1,34 +1,45 @@
+// src/dashboard.js
 const express = require('express');
 const http = require('http');
-const { logCache } = require('./systems/logger');
+const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-
-const { Server } = require('socket.io');
 const io = new Server(server);
 
-// Tornar acessível para o logger enviar logs em tempo real
-module.exports.io = io;
+// Servir arquivos estáticos
+app.use(express.static(path.join(__dirname, '../public')));
 
-// Servir ficheiros estáticos (HTML, CSS, JS)
-app.use(express.static('public'));
-
-// Endpoint simples para verificar se o bot está online
-app.get('/status', (req, res) => {
-  res.json({ status: 'online' });
+// Rota de teste
+app.get('/health', (req, res) => {
+  res.send('Bot is running ✅');
 });
 
-// Conexão Socket.IO
+// Socket.io: comunicação em tempo real
 io.on('connection', (socket) => {
-  // Enviar logs atuais ao cliente
-  socket.emit('logs', logCache);
+  console.log('🔌 Novo cliente conectado à dashboard');
 
-  // Solicitação de logs atualizados
-  socket.on('requestLogs', () => {
-    socket.emit('logs', logCache);
+  // Exemplo de envio de mensagem de teste
+  socket.emit('message', { content: 'Bem-vindo à dashboard!' });
+
+  socket.on('disconnect', () => {
+    console.log('❌ Cliente desconectado da dashboard');
   });
 });
 
-module.exports = server;
+/**
+ * Envia dados do bot para todos os clientes conectados
+ * @param {string} eventName - Nome do evento
+ * @param {any} data - Dados a enviar
+ */
+function sendToDashboard(eventName, data) {
+  io.emit(eventName, data);
+}
 
+// Exporta app e função para uso no index.js
+module.exports = {
+  app,
+  server,
+  sendToDashboard
+};
