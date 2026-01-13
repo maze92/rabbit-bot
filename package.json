@@ -4,7 +4,7 @@
   "description": "Discord bot with dashboard, ready for Railway deployment",
   "main": "src/index.js",
   "scripts": {
-    "start": "NODE_ENV=production node src/index.js",
+    "start": "npm install --omit=dev && NODE_ENV=production node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["discord", "bot", "dashboard", "nodejs", "railway"],
