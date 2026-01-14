@@ -4,7 +4,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
-// Express app
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -17,49 +16,29 @@ app.get('/health', (req, res) => {
   res.send('Bot is running ✅');
 });
 
-// Logs em memória (temporário)
-let logs = [];
-
-// Socket.io connection
+// Socket.io: comunicação em tempo real
 io.on('connection', (socket) => {
-  console.log('🔌 New client connected to the dashboard');
+  console.log('🔌 New client connected to dashboard');
 
-  // Envia todos os logs ao conectar
-  socket.emit('logs', logs);
-
-  socket.on('requestLogs', () => {
-    socket.emit('logs', logs);
-  });
+  // Envia status inicial do bot
+  socket.emit('botStatus', { online: true });
 
   socket.on('disconnect', () => {
-    console.log('❌ Client disconnected from the dashboard');
+    console.log('❌ Client disconnected from dashboard');
   });
 });
 
 /**
- * Envia um log para todos os clientes e salva na memória
- * @param {Object} log - { title, user, executor, description, time }
+ * Envia dados do bot para todos os clientes conectados
+ * @param {string} eventName - Nome do evento
+ * @param {any} data - Dados a enviar
  */
-function sendToDashboard(title, user, executor, description) {
-  const logEntry = {
-    title,
-    user: user?.tag || null,
-    executor: executor?.tag || null,
-    description,
-    time: Date.now()
-  };
-
-  // Adiciona à memória (últimos 100 logs)
-  logs.push(logEntry);
-  if (logs.length > 100) logs.shift();
-
-  io.emit('logs', logs);
+function sendToDashboard(eventName, data) {
+  io.emit(eventName, data);
 }
 
-// Exporta app, server e função de envio de logs
 module.exports = {
   app,
   server,
   sendToDashboard
 };
-
