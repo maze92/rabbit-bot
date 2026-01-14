@@ -1,12 +1,13 @@
-// src/index.js
+// ------------------------------
+// Carregamento de dependências
+// ------------------------------
 require('dotenv').config();            // Carrega variáveis de ambiente do .env
 require('./database/connect');         // Conexão ao MongoDB
 
 const path = require('path');
 const fs = require('fs');
-
 const client = require('./bot');       // Instância do Discord Client
-const dashboard = require('./dashboard'); // Dashboard do bot (HTTP + Socket.io)
+const dashboard = require('./dashboard'); // Dashboard (HTTP + Socket.io)
 const config = require('./config/defaultConfig');
 
 // ------------------------------
@@ -25,7 +26,7 @@ for (const file of commandFiles) {
 }
 
 // ------------------------------
-// Eventos
+// Carregar Eventos
 // ------------------------------
 require('./events/ready')(client);          // Evento ready
 require('./events/messageCreate')(client);  // Evento messageCreate
@@ -45,16 +46,26 @@ dashboard.server.listen(PORT, () => {
 });
 
 // ------------------------------
-// Sistema Game News
+// Sistema de Game News
 // ------------------------------
 const gameNews = require('./systems/gamenews');
 gameNews(client, config).catch(err => {
-  console.error('[GameNews] Erro ao iniciar o sistema:', err);
+  console.error('[GameNews] Error starting system:', err);
 });
 
 // ------------------------------
-// Health Check (Rota para verificar se o bot está online)
+// Health Check (Rota para monitorar se o bot está online)
 // ------------------------------
 dashboard.app.get('/health', (req, res) => {
   res.send('Bot is running ✅');
 });
+
+// ------------------------------
+// Exemplo de integração: enviar logs de eventos para o dashboard
+// ------------------------------
+// Se quiseres enviar eventos custom para o dashboard, podes fazer algo assim:
+// const logger = require('./systems/logger');
+// client.on('messageCreate', async (message) => {
+//   await logger(client, 'Message Received', message.author, message.author, message.content, message.guild);
+// });
+
