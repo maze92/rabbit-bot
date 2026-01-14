@@ -4,14 +4,9 @@ const { EmbedBuilder } = require('discord.js');
 const GameNews = require('../database/models/GameNews');
 const logger = require('./logger');
 
-const parser = new Parser({ timeout: 15000 }); // Timeout de 15s para o RSS
+const parser = new Parser({ timeout: 15000 }); // Timeout de 15s
 
-/**
- * Gera um hash único para cada notícia
- * Evita que a mesma notícia seja enviada várias vezes
- * @param {Object} item - Item do RSS
- * @returns {string} hash
- */
+// Gera hash único para cada notícia
 function generateHash(item) {
   return crypto
     .createHash('sha256')
@@ -19,46 +14,32 @@ function generateHash(item) {
     .digest('hex');
 }
 
-/**
- * Verifica se a notícia é nova
- * @param {string} feedName - Nome do feed (ex: GameSpot)
- * @param {Object} item - Item do RSS
- * @returns {Promise<boolean>} true se for nova
- */
+// Verifica se notícia é nova
 async function isNewNews(feedName, item) {
   const hash = generateHash(item);
-
   let record = await GameNews.findOne({ source: feedName });
 
   if (!record) {
-    // Cria registro se não existir
     await GameNews.create({ source: feedName, lastHash: hash });
     return true;
   }
 
   if (record.lastHash === hash) return false;
 
-  // Atualiza hash da última notícia
   record.lastHash = hash;
   await record.save();
   return true;
 }
 
-/**
- * Sistema automático de notícias
- * @param {Client} client - Cliente Discord
- * @param {Object} config - Configurações do bot
- */
 module.exports = async (client, config) => {
   if (!config.gameNews?.enabled) return;
 
-  console.log('[GameNews] Sistema de notícias iniciado');
+  console.log('[GameNews] News system started');
 
   setInterval(async () => {
     for (const feed of config.gameNews.sources) {
       try {
         const parsed = await parser.parseURL(feed.feed);
-
         if (!parsed.items?.length) continue;
 
         const item = parsed.items[0];
@@ -66,45 +47,37 @@ module.exports = async (client, config) => {
 
         const isNew = await isNewNews(feed.name, item);
         if (!isNew) {
-          console.log(`[GameNews] Notícia duplicada ignorada: ${item.title}`);
+          console.log(`[GameNews] Duplicate news skipped: ${item.title}`);
           continue;
         }
 
-        // Pega o canal onde a notícia será enviada
         const channel = await client.channels.fetch(feed.channelId).catch(() => null);
-        if (!channel) {
-          console.warn(`[GameNews] Canal não encontrado: ${feed.channelId}`);
-          continue;
-        }
+        if (!channel) continue;
 
-        // Cria o embed da notícia
         const embed = new EmbedBuilder()
           .setTitle(item.title)
           .setURL(item.link)
-          .setDescription(item.contentSnippet || 'Sem descrição disponível')
+          .setDescription(item.contentSnippet || 'No description available')
           .setColor(0xe60012)
           .setFooter({ text: feed.name })
           .setTimestamp(new Date(item.pubDate || Date.now()));
 
         if (item.enclosure?.url) embed.setThumbnail(item.enclosure.url);
 
-        // Envia a notícia no canal do feed
         await channel.send({ embeds: [embed] });
 
-        // 🔹 Log centralizado no log-bot
         await logger(
           client,
           'Game News',
-          channel.guild.members.me.user, // usuário "afectado"
-          channel.guild.members.me.user, // executor
-          `Nova notícia enviada: **${item.title}**`,
+          channel.guild.members.me.user,
+          channel.guild.members.me.user,
+          `New news sent: **${item.title}**`,
           channel.guild
         );
 
-        console.log(`[GameNews] Enviada notícia: ${item.title}`);
-
+        console.log(`[GameNews] Sent news: ${item.title}`);
       } catch (err) {
-        console.error(`[GameNews] Erro ao processar feed ${feed.name}:`, err.message);
+        console.error(`[GameNews] Error processing feed ${feed.name}:`, err.message);
       }
     }
   }, config.gameNews.interval);
