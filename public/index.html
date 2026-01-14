@@ -16,13 +16,12 @@
 </head>
 <body>
   <h1>Ozark Bot Dashboard</h1>
-  <h2>Bot Status: <span id="botStatus">Unknown</span></h2>
 
   <div>
-    <input type="text" id="searchUser" placeholder="Search by user...">
+    <input type="text" id="searchUser" placeholder="Search user...">
     <select id="filterType">
       <option value="">All types</option>
-      <option value="warn">Warning</option>
+      <option value="warn">Warn</option>
       <option value="mute">Mute</option>
       <option value="clear">Messages</option>
       <option value="game news">Game News</option>
@@ -36,20 +35,8 @@
     const logsContainer = document.getElementById('logs');
     const searchInput = document.getElementById('searchUser');
     const filterSelect = document.getElementById('filterType');
-    const botStatusSpan = document.getElementById('botStatus');
 
     let allLogs = [];
-
-    // Atualiza status do bot
-    socket.on('botStatus', data => {
-      if (data.online) {
-        botStatusSpan.textContent = 'ONLINE ✅';
-        botStatusSpan.style.color = '#00ff00';
-      } else {
-        botStatusSpan.textContent = 'OFFLINE ❌';
-        botStatusSpan.style.color = '#ff0000';
-      }
-    });
 
     function renderLogs(logs) {
       logsContainer.innerHTML = '';
@@ -81,7 +68,6 @@
     function filterLogs() {
       const search = searchInput.value.toLowerCase();
       const type = filterSelect.value.toLowerCase();
-
       const filtered = allLogs.filter(log => {
         const matchesUser = log.user?.toLowerCase().includes(search) || log.executor?.toLowerCase().includes(search);
         const matchesType = type ? log.title.toLowerCase().includes(type) : true;
@@ -90,7 +76,6 @@
       renderLogs(filtered);
     }
 
-    // Receber logs via Socket.IO
     socket.on('logs', logs => {
       allLogs = logs;
       filterLogs();
@@ -99,10 +84,11 @@
     searchInput.addEventListener('input', filterLogs);
     filterSelect.addEventListener('change', filterLogs);
 
-    // Atualização automática a cada 5 segundos
+    // Atualização automática a cada 5s
     setInterval(() => {
       socket.emit('requestLogs');
     }, 5000);
   </script>
 </body>
 </html>
+
