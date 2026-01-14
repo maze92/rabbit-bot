@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const User = require('../database/models/User');
 const config = require('../config/defaultConfig');
-const logger = require('./logger'); // Logger centralizado
+const logger = require('./logger');
 
 // Configurações
 const bannedWords = [
@@ -11,11 +11,6 @@ const bannedWords = [
 const maxWarnings = config.maxWarnings || 3;
 const muteDuration = config.muteDuration || 10 * 60 * 1000; // 10 minutos
 
-/**
- * Função principal de moderação automática
- * @param {Message} message - Mensagem recebida
- * @param {Client} client - Cliente do Discord
- */
 module.exports = async function autoModeration(message, client) {
   if (!message || !message.content || message.author.bot || !message.guild) return;
 
@@ -23,21 +18,21 @@ module.exports = async function autoModeration(message, client) {
   if (message._automodHandled) return;
   message._automodHandled = true;
 
-  // Limpa a mensagem (remove links, emojis customizados e pontuação)
+  // Limpar conteúdo da mensagem
   const cleanContent = message.content
     .replace(/https?:\/\/\S+/gi, '')            // remove links
     .replace(/<:[a-zA-Z0-9_]+:[0-9]+>/g, '')   // remove emojis custom
     .replace(/[.,!?;:'"(){}[\]]/g, '')         // remove pontuação
     .toLowerCase();
 
-  // Verifica se existe palavra proibida
+  // Verifica palavras proibidas
   const foundWord = bannedWords.find(word => cleanContent.includes(word.toLowerCase()));
   if (!foundWord) return;
 
-  // Apaga mensagem ofensiva
+  // Apagar mensagem ofensiva
   await message.delete().catch(() => null);
 
-  // DB: obtém ou cria o registro do usuário
+  // DB: obter ou criar utilizador
   let user = await User.findOne({
     userId: message.author.id,
     guildId: message.guild.id
@@ -52,16 +47,16 @@ module.exports = async function autoModeration(message, client) {
     });
   }
 
-  // Incrementa o número de avisos
+  // Incrementar warn
   user.warnings += 1;
   await user.save();
 
-  // Envia aviso ao usuário
+  // Aviso ao usuário
   await message.channel.send({
     content: `⚠️ ${message.author}, inappropriate language is not allowed.\n**Warning:** ${user.warnings}/${maxWarnings}`
   }).catch(() => null);
 
-  // Log centralizado no canal de logs
+  // Log centralizado via logger.js
   await logger(
     client,
     'Automatic Warn',
@@ -71,7 +66,7 @@ module.exports = async function autoModeration(message, client) {
     message.guild
   );
 
-  // Aplica mute se excedeu warnings
+  // Aplicar mute se excedeu warns
   if (user.warnings >= maxWarnings) {
     if (message.member?.moderatable) {
       try {
@@ -93,7 +88,7 @@ module.exports = async function autoModeration(message, client) {
           message.guild
         );
 
-        // Reseta warnings após mute
+        // Reset warnings após mute
         user.warnings = 0;
         await user.save();
       } catch (err) {
