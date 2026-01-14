@@ -4,7 +4,8 @@
   "description": "Discord bot with dashboard, ready for Railway deployment",
   "main": "src/index.js",
   "scripts": {
-    "start": "npm install --omit=dev && NODE_ENV=production node src/index.js",
+    "prestart": "npm install --omit=dev",
+    "start": "pm2-runtime ecosystem.config.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["discord", "bot", "dashboard", "nodejs", "railway"],
