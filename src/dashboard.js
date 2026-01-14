@@ -7,7 +7,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Servir arquivos estáticos da pasta public
+let logs = [];
+
+// Static files
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Health check
@@ -15,24 +17,30 @@ app.get('/health', (req, res) => {
   res.send('Bot is running ✅');
 });
 
-// Socket.IO: comunicação em tempo real
-io.on('connection', (socket) => {
-  console.log('🔌 New client connected to dashboard');
+// Socket.io
+io.on('connection', socket => {
+  console.log('🔌 Dashboard client connected');
 
-  socket.emit('message', { content: 'Welcome to Ozark Bot Dashboard!' });
+  socket.emit('logs', logs);
+
+  socket.on('requestLogs', () => {
+    socket.emit('logs', logs);
+  });
 
   socket.on('disconnect', () => {
-    console.log('❌ Client disconnected from dashboard');
+    console.log('❌ Dashboard client disconnected');
   });
 });
 
 /**
- * Envia eventos do bot para todos os clientes conectados
- * @param {string} eventName - Nome do evento
- * @param {any} data - Dados a enviar
+ * Send events to dashboard
  */
-function sendToDashboard(eventName, data) {
-  io.emit(eventName, data);
+function sendToDashboard(event, data) {
+  if (event === 'log') {
+    logs.push(data);
+    if (logs.length > 200) logs.shift();
+    io.emit('logs', logs);
+  }
 }
 
 module.exports = {
