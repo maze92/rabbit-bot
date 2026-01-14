@@ -1,23 +1,28 @@
 const autoModeration = require('../systems/autoModeration');
-const antiSpam = require('../systems/antiSpam');
-const commands = require('../systems/commands');
 
-module.exports = (client) => {
-  client.on('messageCreate', async (message) => {
+module.exports = client => {
+  client.on('messageCreate', async message => {
     if (!message.guild || message.author.bot) return;
 
-    try {
-      // 1️⃣ AutoMod (palavras, warns, etc)
-      await autoModeration(message, client);
+    const prefix = '!';
 
-      // 2️⃣ Anti-Spam global
-      await antiSpam(message, client);
+    // Commands
+    if (message.content.startsWith(prefix)) {
+      const args = message.content.slice(prefix.length).trim().split(/ +/);
+      const commandName = args.shift().toLowerCase();
 
-      // 3️⃣ Comandos
-      await commands(message, client);
+      const command = client.commands.get(commandName);
+      if (!command) return;
 
-    } catch (err) {
-      console.error('[messageCreate] Error:', err);
+      try {
+        await command.execute(message, args, client);
+      } catch (err) {
+        console.error(`[Command Error] ${commandName}:`, err);
+      }
+      return;
     }
+
+    // Auto moderation
+    await autoModeration(message, client);
   });
 };
