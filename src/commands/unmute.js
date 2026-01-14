@@ -1,38 +1,30 @@
 const logger = require('../systems/logger');
-const config = require('../config/defaultConfig');
 
 module.exports = {
   name: 'unmute',
-  description: 'Remove timeout from a user',
+  description: 'Unmute a muted user',
   allowedRoles: [
     '1385619241235120177',
     '1385619241235120174',
     '1385619241235120173'
   ],
 
-  async execute(message) {
-    const member = message.mentions.members.first();
-    if (!member) {
-      return message.reply(`❌ Usage: ${config.prefix}unmute @user`);
+  async execute(message, client, args) {
+    const user = message.mentions.members.first();
+    if (!user) return message.reply('❌ Please mention a user.');
+
+    if (!user.isCommunicationDisabled()) {
+      return message.reply(`⚠️ ${user.user.tag} is not muted.`);
     }
 
-    if (!member.isCommunicationDisabled()) {
-      return message.reply('ℹ️ This user is not muted.');
+    try {
+      await user.timeout(null, 'Unmute by moderator');
+      await message.channel.send(`✅ ${user.user.tag} has been unmuted.`);
+      await logger(client, 'Unmute', user, message.author, 'User unmuted', message.guild);
+    } catch (err) {
+      console.error('[Unmute] Error:', err);
+      await message.channel.send(`❌ Failed to unmute ${user.user.tag}.`);
     }
-
-    await member.timeout(null);
-
-    await message.channel.send(
-      `🔊 **${member.user.tag}** has been unmuted.`
-    );
-
-    await logger(
-      message.client,
-      'Unmute',
-      member.user,
-      message.author,
-      'Timeout removed',
-      message.guild
-    );
   }
 };
+
