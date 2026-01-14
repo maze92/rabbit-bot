@@ -1,13 +1,12 @@
-// ------------------------------
-// Carregamento de dependências
-// ------------------------------
+// src/index.js
 require('dotenv').config();            // Carrega variáveis de ambiente do .env
 require('./database/connect');         // Conexão ao MongoDB
 
 const path = require('path');
 const fs = require('fs');
-const client = require('./bot');       // Instância do Discord Client
-const dashboard = require('./dashboard'); // Dashboard (HTTP + Socket.io)
+
+const client = require('./bot');        // Instância do Discord Client
+const dashboard = require('./dashboard'); // Dashboard do bot (HTTP + Socket.io)
 const config = require('./config/defaultConfig');
 
 // ------------------------------
@@ -45,27 +44,34 @@ dashboard.server.listen(PORT, () => {
   console.log(`🚀 Dashboard running on port ${PORT}`);
 });
 
+// Notifica dashboard que o bot está online
+dashboard.sendToDashboard('botStatus', { online: true });
+
 // ------------------------------
-// Sistema de Game News
+// Sistema Game News
 // ------------------------------
 const gameNews = require('./systems/gamenews');
 gameNews(client, config).catch(err => {
-  console.error('[GameNews] Error starting system:', err);
+  console.error('[GameNews] Erro ao iniciar o sistema:', err);
 });
 
 // ------------------------------
-// Health Check (Rota para monitorar se o bot está online)
+// Health Check (Rota para verificar se o bot está online)
 // ------------------------------
 dashboard.app.get('/health', (req, res) => {
   res.send('Bot is running ✅');
 });
 
 // ------------------------------
-// Exemplo de integração: enviar logs de eventos para o dashboard
+// Auto-Recovery
 // ------------------------------
-// Se quiseres enviar eventos custom para o dashboard, podes fazer algo assim:
-// const logger = require('./systems/logger');
-// client.on('messageCreate', async (message) => {
-//   await logger(client, 'Message Received', message.author, message.author, message.content, message.guild);
-// });
+process.on('uncaughtException', err => {
+  console.error('[CRASH] Uncaught Exception:', err);
+  dashboard.sendToDashboard('botStatus', { online: false });
+  process.exit(1); // PM2 irá reiniciar
+});
 
+process.on('unhandledRejection', err => {
+  console.error('[CRASH] Unhandled Rejection:', err);
+  dashboard.sendToDashboard('botStatus', { online: false });
+});
