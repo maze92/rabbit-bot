@@ -33,14 +33,19 @@ io.on('connection', socket => {
 });
 
 /**
- * Send events to dashboard
+ * Envia logs para o dashboard
  */
 function sendToDashboard(event, data) {
-  if (event === 'log') {
-    logs.push(data);
-    if (logs.length > 200) logs.shift();
-    io.emit('logs', logs);
-  }
+  if (event !== 'log') return;
+
+  logs.push({
+    ...data,
+    timestamp: new Date().toISOString()
+  });
+
+  if (logs.length > 200) logs.shift();
+
+  io.emit('logs', logs);
 }
 
 module.exports = {
