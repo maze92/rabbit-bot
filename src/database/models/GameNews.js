@@ -2,30 +2,15 @@
 const { Schema, model } = require('mongoose');
 
 /**
- * Guarda estado por feed:
- * - source: nome do feed
+ * Estado por feed RSS:
  * - lastHash: compatibilidade antiga
- * - lastHashes: histórico para dedupe melhor (últimos N)
+ * - lastHashes: histórico (dedupe melhor)
  */
 const gameNewsSchema = new Schema({
-  source: {
-    type: String,
-    required: true,
-    unique: true
-  },
+  source: { type: String, required: true, unique: true },
 
-  // compatibilidade (antigo)
-  lastHash: {
-    type: String,
-    default: null
-  },
-
-  // novo: histórico dos últimos hashes (dedupe melhor)
-  lastHashes: {
-    type: [String],
-    default: []
-  }
-
+  lastHash: { type: String, default: null },
+  lastHashes: { type: [String], default: [] }
 }, { timestamps: true });
 
 module.exports = model('GameNews', gameNewsSchema);
