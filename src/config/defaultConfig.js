@@ -5,7 +5,7 @@
  * - moderação (AutoMod)
  * - logs
  * - cooldowns
- * - anti-spam / anti-raid
+ * - anti-spam / flood
  * - RSS GameNews
  * - dashboard
  */
@@ -19,12 +19,14 @@ module.exports = {
   // ==============================
   // Configurações gerais
   // ==============================
-  language: 'en',            // Idioma principal (futuro uso)
-  logChannelName: 'log-bot', // Canal onde os logs são enviados
+  language: 'en',             // Idioma principal (futuro uso)
+  logChannelName: 'log-bot',  // Canal onde os logs são enviados
 
   /**
    * Cargos autorizados (staff)
-   * ✅ Recomendado: usar isto em TODOS os comandos em vez de repetir IDs em cada ficheiro
+   * ✅ Recomendado: usar isto em TODOS os comandos
+   * - Evita repetir IDs em cada comando
+   * - Se mudares IDs, mudas aqui só uma vez
    */
   staffRoles: [
     '1385619241235120177',
@@ -39,10 +41,25 @@ module.exports = {
   muteDuration: 10 * 60 * 1000,   // Duração do timeout automático (10 minutos)
 
   /**
+   * Se true:
+   * - Admins NÃO são moderados pelo AutoMod (bypass)
+   * Se false:
+   * - Admins também entram no AutoMod (apagar/warn/mute)
+   *
+   * NOTA:
+   * Mesmo com bypass false, se o admin tiver role acima do bot, o Discord impede ações.
+   */
+  autoModBypassAdmins: true,
+
+  /**
    * Palavras proibidas
    * - Separadas por idioma
    * - O sistema ignora maiúsculas/minúsculas
    * - Links e símbolos são removidos antes da verificação
+   *
+   * NOTA:
+   * O AutoMod que combinámos suporta frases com espaços
+   * (ex: "filho da puta") e leet básico.
    */
   bannedWords: {
     en: [
@@ -75,29 +92,38 @@ module.exports = {
   // ==============================
   antiSpam: {
     enabled: true,
-  
+
     // Janela para contar mensagens (ms)
     interval: 7000,
-  
+
     // Máximo de mensagens permitidas dentro da janela
     maxMessages: 6,
-  
+
     // Timeout aplicado quando detetar spam (ms)
     muteDuration: 60 * 1000, // 1 minuto
-  
-    // Evita punir o mesmo user em loop (ms)
+
+    /**
+     * Cooldown depois de agir num user (ms)
+     * - Evita punir o mesmo user em loop
+     * - Útil quando o user continua a spammar após o mute
+     */
     actionCooldown: 60 * 1000, // 1 minuto
-  
+
     // Se true, admins não são afetados
     bypassAdmins: true,
-  
-    // Roles que ignoram AntiSpam (opcional)
+
+    /**
+     * Roles que ignoram AntiSpam (opcional)
+     * - Coloca IDs aqui se quiseres que certos cargos ignorem o sistema
+     */
     bypassRoles: [
-      // '1385619241235120174',
-      // '1385619241235120173'
+      // '1385619241235120174'
     ],
-  
-    // Enviar msg no canal quando muta (opcional)
+
+    /**
+     * Se true, envia mensagem no canal quando aplica mute por spam
+     * (Pode ser chato em canais muito ativos)
+     */
     sendMessage: true
   },
 
@@ -107,6 +133,7 @@ module.exports = {
   dashboard: {
     /**
      * Quantos logs manter em memória para mostrar no dashboard
+     * (usado no src/dashboard.js)
      */
     maxLogs: 200
   },
