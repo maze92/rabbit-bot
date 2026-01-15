@@ -86,6 +86,7 @@ module.exports = {
   dashboard: {
     enabled: true,
     maxLogs: 200,
+    maxDbLogs: 1000,
     requireAuth: true
   },
 
