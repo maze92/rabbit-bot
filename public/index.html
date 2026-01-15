@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,20 +18,37 @@
   <h1>Ozark Bot Dashboard</h1>
 
   <div>
-    <input type="text" id="searchUser" placeholder="Search user...">
+    <input type="text" id="searchUser" placeholder="Search by user/executor...">
     <select id="filterType">
       <option value="">All types</option>
       <option value="warn">Warn</option>
       <option value="mute">Mute</option>
-      <option value="clear">Messages</option>
+      <option value="clear">Clear</option>
       <option value="game news">Game News</option>
+      <option value="anti-spam">Anti-Spam</option>
     </select>
   </div>
 
   <div id="logs"></div>
 
   <script>
-    const socket = io();
+    // ------------------------------------------------------------
+    // Dashboard auth token
+    // Abre o dashboard assim:
+    // https://teuapp.railway.app/?token=TEU_DASHBOARD_TOKEN
+    // ------------------------------------------------------------
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+
+    if (!token) {
+      document.body.innerHTML = '<h2 style="color:#ffcc00;">Missing token</h2><p>Add <b>?token=YOUR_TOKEN</b> in the URL.</p>';
+      throw new Error('Missing token');
+    }
+
+    const socket = io({
+      auth: { token }
+    });
+
     const logsContainer = document.getElementById('logs');
     const searchInput = document.getElementById('searchUser');
     const filterSelect = document.getElementById('filterType');
@@ -44,51 +61,79 @@
         const div = document.createElement('div');
         div.classList.add('log');
 
-        const color = getColor(log.title);
+        const color = getColor(log.title || '');
         div.style.borderLeft = `5px solid ${color}`;
 
+        const userTag = log.user?.tag || 'N/A';
+        const execTag = log.executor?.tag || 'N/A';
+        const time = log.time ? new Date(log.time).toLocaleString() : '';
+
         div.innerHTML = `
-          <span class="title">${log.title}</span> 
-          <span class="desc">${log.description}</span>
-          <small>👤 User: ${log.user || 'N/A'} | 🛠 Executor: ${log.executor || 'N/A'} | ⏰ ${new Date(log.time).toLocaleString()}</small>
+          <span class="title">${escapeHtml(log.title || 'Log')}</span> 
+          <span class="desc">${escapeHtml(log.description || '')}</span>
+          <small>👤 User: ${escapeHtml(userTag)} | 🛠 Executor: ${escapeHtml(execTag)} | ⏰ ${escapeHtml(time)}</small>
         `;
         logsContainer.appendChild(div);
       });
     }
 
     function getColor(title) {
-      title = title.toLowerCase();
+      title = String(title).toLowerCase();
       if (title.includes('warn')) return '#ffcc00';
       if (title.includes('mute')) return '#ff6600';
       if (title.includes('clear') || title.includes('purge')) return '#00ccff';
       if (title.includes('game news')) return '#e60012';
+      if (title.includes('anti-spam')) return '#cc00ff';
       return '#00ff00';
     }
 
     function filterLogs() {
       const search = searchInput.value.toLowerCase();
       const type = filterSelect.value.toLowerCase();
+
       const filtered = allLogs.filter(log => {
-        const matchesUser = log.user?.toLowerCase().includes(search) || log.executor?.toLowerCase().includes(search);
-        const matchesType = type ? log.title.toLowerCase().includes(type) : true;
+        const u = log.user?.tag?.toLowerCase() || '';
+        const e = log.executor?.tag?.toLowerCase() || '';
+        const matchesUser = u.includes(search) || e.includes(search);
+
+        const t = (log.title || '').toLowerCase();
+        const matchesType = type ? t.includes(type) : true;
+
         return matchesUser && matchesType;
       });
+
       renderLogs(filtered);
     }
 
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    socket.on('connect', () => {
+      socket.emit('requestLogs');
+    });
+
+    socket.on('connect_error', (err) => {
+      document.body.innerHTML = '<h2 style="color:#ff6666;">Unauthorized</h2><p>Invalid token.</p>';
+      console.error(err);
+    });
+
     socket.on('logs', logs => {
-      allLogs = logs;
+      allLogs = Array.isArray(logs) ? logs : [];
       filterLogs();
     });
 
     searchInput.addEventListener('input', filterLogs);
     filterSelect.addEventListener('change', filterLogs);
 
-    // Atualização automática a cada 5s
     setInterval(() => {
       socket.emit('requestLogs');
     }, 5000);
   </script>
 </body>
 </html>
-
