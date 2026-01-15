@@ -21,13 +21,6 @@ module.exports = {
       env: {
         NODE_ENV: 'production'
       },
-
-      // (Opcional) logs — no Railway normalmente não precisas disto,
-      // mas não estraga desde que a pasta exista.
-      error_file: 'logs/err.log',
-      out_file: 'logs/out.log',
-      merge_logs: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss'
     }
   ]
 };
