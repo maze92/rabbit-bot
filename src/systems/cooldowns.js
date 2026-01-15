@@ -1,17 +1,20 @@
 // src/systems/cooldowns.js
 // ============================================================
 // Sistema de cooldowns (anti-spam de comandos)
-// - Controla quantas vezes um utilizador pode usar um comando
+//
+// Objetivo:
+// - Controlar quantas vezes um utilizador pode usar um comando
 // - Cooldowns configuráveis no defaultConfig.js
-// - Retorna:
-//    - null -> pode executar
-//    - "X.X" -> bloqueado, devolve segundos restantes (string)
+//
+// Retorno:
+// - null  -> pode executar
+// - "X.X" -> bloqueado, devolve segundos restantes (string)
 // ============================================================
 
 const config = require('../config/defaultConfig');
 
-// Estrutura:
-// cooldowns: Map<commandName, Map<userId, timestampMs>>
+// Estrutura interna:
+// cooldowns: Map<commandName, Map<userId, lastUsedTimestampMs>>
 const cooldowns = new Map();
 
 /**
@@ -21,22 +24,44 @@ const cooldowns = new Map();
  * @returns {string|null} - null se pode executar, ou string com segundos restantes (ex: "2.4")
  */
 module.exports = function checkCooldown(commandName, userId) {
+  // ------------------------------
+  // Validações mínimas (segurança)
+  // ------------------------------
+  if (!commandName || !userId) return null;
+
   const now = Date.now();
 
-  // Cooldown específico por comando ou fallback para default
-  const commandCooldown =
-    config.cooldowns?.[commandName] ??
-    config.cooldowns?.default ??
-    3000; // fallback seguro (3s) caso config não tenha nada
+  // Normalizar nome do comando (evita casos como "Mute" vs "mute")
+  const cmd = String(commandName).toLowerCase();
 
-  // Garante Map para esse comando
-  if (!cooldowns.has(commandName)) {
-    cooldowns.set(commandName, new Map());
+  // ------------------------------
+  // Determinar cooldown do comando
+  // - tenta config.cooldowns[cmd]
+  // - fallback: config.cooldowns.default
+  // - fallback final: 3000ms (3s)
+  // ------------------------------
+  let commandCooldown =
+    config.cooldowns?.[cmd] ??
+    config.cooldowns?.default ??
+    3000;
+
+  // Garantir que é um número válido
+  if (typeof commandCooldown !== 'number' || Number.isNaN(commandCooldown) || commandCooldown < 0) {
+    commandCooldown = 3000;
   }
 
-  const timestamps = cooldowns.get(commandName);
+  // ------------------------------
+  // Garantir Map para este comando
+  // ------------------------------
+  if (!cooldowns.has(cmd)) {
+    cooldowns.set(cmd, new Map());
+  }
 
-  // Se já existe timestamp, verifica expiração
+  const timestamps = cooldowns.get(cmd);
+
+  // ------------------------------
+  // Se já existe timestamp, verificar expiração
+  // ------------------------------
   if (timestamps.has(userId)) {
     const lastUsed = timestamps.get(userId);
     const expiration = lastUsed + commandCooldown;
@@ -47,11 +72,16 @@ module.exports = function checkCooldown(commandName, userId) {
     }
   }
 
-  // Marca como usado agora
+  // ------------------------------
+  // Registar uso e agendar limpeza
+  // ------------------------------
   timestamps.set(userId, now);
 
-  // Remove automaticamente o registo depois do cooldown
-  setTimeout(() => timestamps.delete(userId), commandCooldown);
+  // Remove automaticamente o registo após o cooldown
+  setTimeout(() => {
+    // Segurança: pode já ter sido limpo manualmente
+    timestamps.delete(userId);
+  }, commandCooldown);
 
   return null; // pode executar
 };
