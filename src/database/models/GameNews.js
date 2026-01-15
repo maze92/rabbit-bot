@@ -3,9 +3,11 @@ const { Schema, model } = require('mongoose');
 
 /**
  * Esquema para armazenar estado do sistema GameNews por feed
- * Agora suporta:
+ *
+ * Suporta:
  * - dedupe real (lista de hashes recentes)
  * - backoff (pausa feed após erros seguidos)
+ * - lastSentAt (último envio bem-sucedido desse feed)
  */
 const gameNewsSchema = new Schema(
   {
@@ -17,9 +19,8 @@ const gameNewsSchema = new Schema(
     },
 
     /**
-     * Lista de hashes das últimas notícias enviadas para este feed
-     * - Serve para dedupe real (evita repetidos mesmo com reordenação do RSS)
-     * - Mantemos apenas os últimos N (ex: 10-20)
+     * Lista dos hashes mais recentes já enviados
+     * (dedupe real, evita repetidos mesmo com reordenação do RSS)
      */
     lastHashes: {
       type: [String],
@@ -28,7 +29,7 @@ const gameNewsSchema = new Schema(
 
     /**
      * Contador de erros consecutivos do feed
-     * - Se atingir o limite, ativamos pausa/backoff
+     * - quando atinge o limite, ativamos pausa/backoff
      */
     failCount: {
       type: Number,
@@ -36,10 +37,19 @@ const gameNewsSchema = new Schema(
     },
 
     /**
-     * Se definido, o feed fica “pausado” até esta data
+     * Feed pausado até esta data/hora
      * - usado para backoff quando o feed falha muitas vezes
      */
     pausedUntil: {
+      type: Date,
+      default: null
+    },
+
+    /**
+     * Última vez que enviámos uma notícia com sucesso deste feed
+     * - útil para métricas, debugging e regras extra
+     */
+    lastSentAt: {
       type: Date,
       default: null
     }
@@ -48,3 +58,4 @@ const gameNewsSchema = new Schema(
 );
 
 module.exports = model('GameNews', gameNewsSchema);
+
