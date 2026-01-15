@@ -1,4 +1,4 @@
-// src/systems/automod.js
+// src/systems/automoderation.js
 
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const User = require('../database/models/User');
