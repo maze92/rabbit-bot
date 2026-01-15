@@ -11,12 +11,6 @@ const config = require('../config/defaultConfig');
  * - m (minutos)
  * - h (horas)
  * - d (dias)
- *
- * Exemplos:
- * - 30s -> 30000
- * - 10m -> 600000
- * - 1h  -> 3600000
- * - 2d  -> 172800000
  */
 function parseDuration(input) {
   if (!input || typeof input !== 'string') return null;
@@ -40,6 +34,7 @@ function parseDuration(input) {
 
 /**
  * Formata ms para texto curto (ex: 600000 -> "10m")
+ * (apenas para mensagens/logs)
  */
 function formatDuration(ms) {
   const sec = Math.floor(ms / 1000);
@@ -55,7 +50,9 @@ function formatDuration(ms) {
 
 module.exports = {
   name: 'mute',
-  description: 'Mute a user (timeout) with optional duration and reason',
+  description: 'Timeout (mute) a user with optional duration and reason',
+
+  // Cargos autorizados (checado no messageCreate; aqui é redundância segura)
   allowedRoles: [
     '1385619241235120177',
     '1385619241235120174',
@@ -64,8 +61,8 @@ module.exports = {
 
   /**
    * Uso:
-   * - !mute @user 10m razão...
-   * - !mute @user razão...
+   * - !mute @user 10m reason...
+   * - !mute @user reason...
    */
   async execute(message, args, client) {
     try {
@@ -73,85 +70,111 @@ module.exports = {
       // Validações básicas
       // ------------------------------
       if (!message.guild) return;
-      if (!message.member) return;
 
-      // ------------------------------
-      // Verificar permissões do BOT
-      // - Timeout (mute) exige ModerateMembers
-      // ------------------------------
+      const executorMember = message.member;
       const botMember = message.guild.members.me;
-      if (!botMember) return message.reply('❌ Bot member not found.');
 
-      const perms = message.channel.permissionsFor(botMember);
-      if (!perms?.has(PermissionsBitField.Flags.ModerateMembers)) {
+      if (!executorMember || !botMember) {
+        return message.reply('❌ Could not resolve members (executor/bot).');
+      }
+
+      // ------------------------------
+      // Permissões do bot
+      // - Timeout exige "Moderate Members"
+      // ------------------------------
+      const botPerms = message.channel.permissionsFor(botMember);
+      if (!botPerms?.has(PermissionsBitField.Flags.ModerateMembers)) {
         return message.reply('❌ I do not have permission to timeout members (Moderate Members).');
       }
 
       // ------------------------------
-      // Alvo (utilizador)
+      // Utilizador alvo
       // ------------------------------
-      const target = message.mentions.members.first();
-      if (!target) {
+      const targetMember = message.mentions.members.first();
+      if (!targetMember) {
         return message.reply(`❌ Usage: ${config.prefix}mute @user [10m/1h/2d] [reason...]`);
       }
 
-      // Não permitir mutar bots (opcional, mas recomendado)
-      if (target.user.bot) {
+      // Não mutar bots (boa prática)
+      if (targetMember.user.bot) {
         return message.reply('⚠️ You cannot mute a bot.');
       }
 
-      // ------------------------------
-      // Hierarquia (Discord)
-      // - Não dá para moderar quem tem cargo >= bot
-      // - Nem quem tem cargo >= executor (para evitar abuso)
-      // ------------------------------
-      if (target.roles.highest.position >= botMember.roles.highest.position) {
-        return message.reply('❌ I cannot mute this user (their role is higher/equal to my highest role).');
+      // Opcional: evitar “re-mute” (podes remover se não quiseres)
+      if (targetMember.isCommunicationDisabled()) {
+        return message.reply(`⚠️ **${targetMember.user.tag}** is already muted.`);
       }
 
-      if (target.roles.highest.position >= message.member.roles.highest.position) {
-        return message.reply('❌ You cannot mute this user (their role is higher/equal to yours).');
+      // ------------------------------
+      // Proteções de hierarquia
+      // ------------------------------
+      // Bot não pode moderar alguém com cargo >= ao dele
+      if (targetMember.roles.highest.position >= botMember.roles.highest.position) {
+        return message.reply('❌ I cannot mute this user (their role is higher or equal to my highest role).');
       }
+
+      // Executor não pode moderar alguém com cargo >= ao dele (anti-abuso)
+      if (targetMember.roles.highest.position >= executorMember.roles.highest.position) {
+        return message.reply('❌ You cannot mute this user (their role is higher or equal to yours).');
+      }
+
+      // Opcional: se o alvo for admin, bloqueia (evita confusões)
+      if (targetMember.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply('❌ You cannot mute an Administrator.');
+      }
+
+      // ------------------------------
+      // Normalizar args (remover mention)
+      // - args normalmente vem assim: ["<@id>", "10m", "reason..."]
+      // - removemos tudo que seja mention/id do target
+      // ------------------------------
+      const cleanedArgs = args.filter(a => {
+        const isMention = a.includes(`<@${targetMember.id}>`) || a.includes(`<@!${targetMember.id}>`);
+        const isRawId = a === targetMember.id;
+        return !isMention && !isRawId;
+      });
 
       // ------------------------------
       // Duração e motivo
       // ------------------------------
-      // args inclui tudo após o comando (sem o prefix)
-      // exemplo: ["@user", "10m", "spamming", "links"]
-      // porém o mention já foi consumido pelo Discord, então args[0] normalmente é "10m" ou "razão"
-      const possibleDuration = args[0];
-      const durationMs = parseDuration(possibleDuration) || config.muteDuration || 10 * 60 * 1000;
+      // Se o primeiro argumento for duração válida, usa-a
+      const possibleDuration = cleanedArgs[0];
+      const parsed = parseDuration(possibleDuration);
 
-      // Se args[0] era duração válida, motivo começa em args[1]; senão começa em args[0]
-      const reasonStartIndex = parseDuration(possibleDuration) ? 1 : 0;
-      const reason = args.slice(reasonStartIndex).join(' ').trim() || 'No reason provided';
+      const durationMs =
+        parsed ||
+        config.muteDuration ||
+        10 * 60 * 1000;
 
-      // Limite do Discord para timeout (28 dias)
+      // Motivo começa depois da duração (se existir), senão começa no primeiro arg
+      const reasonStartIndex = parsed ? 1 : 0;
+      const reason = cleanedArgs.slice(reasonStartIndex).join(' ').trim() || 'No reason provided';
+
+      // Limite do Discord para timeout: 28 dias
       const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
       if (durationMs > MAX_TIMEOUT_MS) {
         return message.reply('❌ Timeout duration cannot exceed 28 days.');
       }
 
       // ------------------------------
-      // Aplicar timeout (mute)
+      // Aplicar timeout
       // ------------------------------
-      await target.timeout(durationMs, `Muted by ${message.author.tag}: ${reason}`);
+      await targetMember.timeout(durationMs, `Muted by ${message.author.tag}: ${reason}`);
 
-      // Feedback no canal
       await message.channel.send(
-        `🔇 **${target.user.tag}** has been muted for **${formatDuration(durationMs)}**.\n📝 Reason: **${reason}**`
+        `🔇 **${targetMember.user.tag}** has been muted for **${formatDuration(durationMs)}**.\n📝 Reason: **${reason}**`
       ).catch(() => null);
 
       // ------------------------------
-      // Log no log-bot + dashboard
+      // Log no Discord + Dashboard (via logger centralizado)
       // ------------------------------
       await logger(
         client,
         'Manual Mute',
-        target.user,
-        message.author,
+        targetMember.user,     // user afetado (User do Discord)
+        message.author,        // executor
         `Duration: **${formatDuration(durationMs)}**\nReason: **${reason}**`,
-        message.guild
+        message.guild          // guild obrigatória para garantir log
       );
 
     } catch (err) {
