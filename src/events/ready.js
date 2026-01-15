@@ -1,24 +1,42 @@
+/**
+ * Evento ready (clientReady)
+ * Executado UMA vez quando o bot está totalmente online
+ */
+
 let started = false;
 
-module.exports = (client) => {
-  client.once('clientReady', async () => { // <- mudado de 'ready' para 'clientReady'
-    console.log(`✅ ${client.user.tag} is online!`);
+module.exports = client => {
+  client.once('clientReady', async () => {
 
+    // Evita execução duplicada (segurança extra)
     if (started) return;
     started = true;
 
-    // ==============================
-    // Sistema de notícias automáticas (opcional)
-    // ==============================
+    // ------------------------------
+    // Bot online
+    // ------------------------------
+    console.log(`✅ ${client.user.tag} is online!`);
+
+    // ------------------------------
+    // Status / Presence do bot
+    // ------------------------------
     try {
-      const config = require('../config/defaultConfig');
-      if (config.gameNews?.enabled) {
-        const gameNews = require('../systems/gamenews');
-        gameNews(client, config);
-        console.log('📰 Game News system started.');
-      }
+      await client.user.setPresence({
+        activities: [
+          {
+            name: 'moderating the server',
+            type: 3 // WATCHING
+          }
+        ],
+        status: 'online'
+      });
     } catch (err) {
-      console.error('[ready] Error starting Game News system:', err);
+      console.error('[ready] Error setting presence:', err);
     }
+
+    // NOTA IMPORTANTE:
+    // ❌ NÃO iniciar GameNews aqui
+    // ✅ GameNews é iniciado no index.js
   });
 };
+
