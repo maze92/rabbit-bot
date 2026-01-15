@@ -15,6 +15,12 @@
  * - Envia no máximo 1 notícia por feed e por intervalo (evita spam)
  * - Em caso de várias novas notícias, envia sempre a mais antiga das novas
  *   (para manter ordem e ir "apanhando" gradualmente sem spammar)
+ *
+ * Melhorias nesta versão:
+ * - Run imediato no arranque (não espera pelo primeiro intervalo)
+ * - Sanitiza + limita descrição (evita embeds gigantes / HTML feio)
+ * - Normaliza links
+ * - Logs de erro mais claros (inclui URL do feed)
  * ============================================================
  */
 
@@ -25,10 +31,51 @@ const { EmbedBuilder } = require('discord.js');
 const GameNews = require('../database/models/GameNews'); // ✅ (confirmado por ti)
 const logger = require('./logger');
 
+// Parser RSS com timeout
 const parser = new Parser({ timeout: 15000 }); // 15s timeout
 
 let started = false;   // evita iniciar 2x
 let isRunning = false; // evita overlap entre ciclos
+
+/**
+ * Remove HTML simples e limita tamanho de texto para embeds.
+ * @param {string} input
+ * @param {number} maxLen
+ */
+function sanitizeText(input, maxLen = 350) {
+  const raw = String(input || '')
+    // remove tags HTML comuns
+    .replace(/<\/?[^>]+(>|$)/g, '')
+    // normaliza espaços
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!raw) return 'No description available.';
+
+  // Limite para ficar “limpo” no embed
+  if (raw.length > maxLen) return raw.slice(0, maxLen - 3) + '...';
+  return raw;
+}
+
+/**
+ * Normaliza link (garante http/https quando possível).
+ * @param {string} link
+ */
+function normalizeLink(link) {
+  if (!link) return null;
+  const s = String(link).trim();
+  if (!s) return null;
+
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+
+  // alguns feeds dão //domain/path
+  if (s.startsWith('//')) return `https:${s}`;
+
+  // se vier só domain/path, tentamos https
+  if (s.includes('.') && !s.startsWith('mailto:')) return `https://${s}`;
+
+  return null;
+}
 
 /**
  * Gera um hash estável para um item de RSS.
@@ -105,13 +152,21 @@ function getNewItemsSinceLast(items, lastHash) {
 async function sendOneNewsAndUpdate({ client, feed, channel, record, item }) {
   const hash = generateHash(item);
 
+  const title = sanitizeText(item.title || 'New article', 240);
+  const url = normalizeLink(item.link);
+
+  // Escolhe descrição: snippet > content > fallback
+  const description = sanitizeText(item.contentSnippet || item.content || 'No description available.', 350);
+
   const embed = new EmbedBuilder()
-    .setTitle(item.title || 'New article')
-    .setURL(item.link || null)
-    .setDescription(item.contentSnippet || item.content || 'No description available.')
+    .setTitle(title)
     .setColor(0xe60012)
     .setFooter({ text: feed.name })
-    .setTimestamp(getItemDate(item));
+    .setTimestamp(getItemDate(item))
+    .setDescription(description);
+
+  // Só mete URL se for válida
+  if (url) embed.setURL(url);
 
   // Thumbnail se existir
   if (item.enclosure?.url) {
@@ -130,11 +185,78 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item }) {
     'Game News',
     null,               // user afetado (não se aplica)
     client.user,        // executor = bot
-    `Sent: **${feed.name}** -> **${item.title || 'Untitled'}**`,
+    `Sent: **${feed.name}** -> **${title}**`,
     channel.guild
   );
 
-  console.log(`[GameNews] Sent: ${feed.name} -> ${item.title}`);
+  console.log(`[GameNews] Sent: ${feed.name} -> ${title}`);
+}
+
+/**
+ * Um ciclo completo:
+ * - percorre todos os feeds
+ * - manda 1 notícia por feed se houver novidades
+ */
+async function runCycle(client, config) {
+  for (const feed of config.gameNews.sources || []) {
+    try {
+      if (!feed?.feed || !feed?.channelId || !feed?.name) continue;
+
+      // 1) Parse do RSS
+      let parsed;
+      try {
+        parsed = await parser.parseURL(feed.feed);
+      } catch (err) {
+        console.error(`[GameNews] RSS parse error (${feed.name}) URL=${feed.feed}:`, err?.message || err);
+        continue;
+      }
+
+      const items = parsed?.items || [];
+      if (items.length === 0) continue;
+
+      // 2) Canal Discord
+      const channel = await client.channels.fetch(feed.channelId).catch(() => null);
+      if (!channel) {
+        console.warn(`[GameNews] Channel not found: ${feed.channelId} (${feed.name})`);
+        continue;
+      }
+
+      // 3) DB record do feed
+      const record = await getOrCreateFeedRecord(feed.name);
+
+      // 4) Descobrir itens novos desde o lastHash
+      const newItems = getNewItemsSinceLast(items, record.lastHash);
+
+      if (newItems.length === 0) {
+        // Sem novidades
+        continue;
+      }
+
+      /**
+       * IMPORTANTE:
+       * newItems vem do mais novo para o mais antigo (porque o feed vem assim).
+       * Para não spammar e manter ordem:
+       * - enviamos apenas 1 por intervalo
+       * - enviamos o MAIS ANTIGO entre os novos (último da lista)
+       */
+      const itemToSend = newItems[newItems.length - 1];
+
+      // Proteção: item inválido
+      if (!itemToSend?.title && !itemToSend?.link) continue;
+
+      // 5) Enviar e atualizar
+      await sendOneNewsAndUpdate({
+        client,
+        feed,
+        channel,
+        record,
+        item: itemToSend
+      });
+
+    } catch (err) {
+      console.error(`[GameNews] Error processing feed ${feed?.name}:`, err?.message || err);
+    }
+  }
 }
 
 /**
@@ -152,71 +274,32 @@ module.exports = async function gameNewsSystem(client, config) {
     started = true;
 
     const intervalMs = Number(config.gameNews.interval ?? 30 * 60 * 1000);
-    const safeInterval = Number.isFinite(intervalMs) && intervalMs >= 10_000
-      ? intervalMs
-      : 30 * 60 * 1000;
+    const safeInterval =
+      Number.isFinite(intervalMs) && intervalMs >= 10_000
+        ? intervalMs
+        : 30 * 60 * 1000;
 
     console.log('[GameNews] News system started');
 
+    // ------------------------------
+    // Run imediato no arranque
+    // ------------------------------
+    if (!isRunning) {
+      isRunning = true;
+      runCycle(client, config)
+        .catch((err) => console.error('[GameNews] Startup cycle error:', err?.message || err))
+        .finally(() => { isRunning = false; });
+    }
+
+    // ------------------------------
+    // Loop de verificação periódica
+    // ------------------------------
     setInterval(async () => {
-      // Evita overlaps (um ciclo ainda está a correr)
       if (isRunning) return;
       isRunning = true;
 
       try {
-        for (const feed of config.gameNews.sources || []) {
-          try {
-            // 1) Parse do RSS
-            const parsed = await parser.parseURL(feed.feed);
-            const items = parsed?.items || [];
-            if (items.length === 0) continue;
-
-            // 2) Canal Discord
-            const channel = await client.channels.fetch(feed.channelId).catch(() => null);
-            if (!channel) {
-              console.warn(`[GameNews] Channel not found: ${feed.channelId} (${feed.name})`);
-              continue;
-            }
-
-            // 3) DB record do feed
-            const record = await getOrCreateFeedRecord(feed.name);
-
-            // 4) Descobrir itens novos desde o lastHash
-            const newItems = getNewItemsSinceLast(items, record.lastHash);
-
-            if (newItems.length === 0) {
-              // Sem novidades
-              continue;
-            }
-
-            /**
-             * IMPORTANTE:
-             * newItems vem do mais novo para o mais antigo (porque o feed vem assim).
-             * Para não spammar e manter ordem:
-             * - enviamos apenas 1 por intervalo
-             * - enviamos o MAIS ANTIGO entre os novos (último da lista)
-             * Assim, se aparecerem 3 de uma vez, ele vai enviando 1 de cada vez a cada ciclo.
-             */
-            const itemToSend = newItems[newItems.length - 1];
-
-            // 5) Enviar e atualizar
-            if (!itemToSend?.title || !itemToSend?.link) {
-              // Se vier malformado, ignoramos
-              continue;
-            }
-
-            await sendOneNewsAndUpdate({
-              client,
-              feed,
-              channel,
-              record,
-              item: itemToSend
-            });
-
-          } catch (err) {
-            console.error(`[GameNews] Error processing feed ${feed?.name}:`, err?.message || err);
-          }
-        }
+        await runCycle(client, config);
       } finally {
         isRunning = false;
       }
