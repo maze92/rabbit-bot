@@ -95,9 +95,17 @@ module.exports = {
   // ==============================
   gameNews: {
     enabled: true,
-    interval: 30 * 60 * 1000,
-    hashHistorySize: 10,
-
+    interval: 30 * 60 * 1000, // 30 min
+  
+    // ✅ quantos hashes manter por feed (dedupe real)
+    keepHashes: 10, // podes subir para 20 se quiseres
+  
+    // ✅ backoff por feed quando falha muitas vezes
+    backoff: {
+      maxFails: 3,               // 3 erros seguidos
+      pauseMs: 30 * 60 * 1000    // 30 minutos
+    },
+  
     sources: [
       {
         name: 'GameSpot/Reviews',
