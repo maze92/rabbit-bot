@@ -71,30 +71,6 @@ module.exports = {
   },
 
   // ==============================
-  // Anti-Spam (mensagens normais)
-  // ==============================
-  antiSpam: {
-    enabled: true,
-
-    /**
-     * Intervalo de janela (ms)
-     * Ex: 6000ms → conta as mensagens nos últimos 6 segundos
-     */
-    interval: 6000,
-
-    /**
-     * Quantidade máxima de mensagens dentro da janela
-     * Ex: 6 mensagens em 6 segundos → timeout
-     */
-    maxMessages: 6,
-
-    /**
-     * Duração do timeout ao detetar spam
-     */
-    muteDuration: 2 * 60 * 1000, // 2 minutos
-  },
-
-  // ==============================
   // Anti-Spam / Flood protection
   // ==============================
   antiSpam: {
@@ -123,33 +99,6 @@ module.exports = {
   
     // Enviar msg no canal quando muta (opcional)
     sendMessage: true
-  },
-
-  // ==============================
-  // Anti-Raid (entradas em massa)
-  // ==============================
-  antiRaid: {
-    enabled: true,
-
-    /**
-     * Janela de tempo para contar joins (ms)
-     */
-    interval: 60 * 1000, // 60s
-
-    /**
-     * Joins máximos na janela antes de ativar a proteção
-     */
-    maxJoins: 5,
-
-    /**
-     * Timeout aplicado a contas de confiança baixa quando há raid
-     */
-    muteDuration: 60 * 60 * 1000, // 1 hora
-
-    /**
-     * Confiança mínima para não ser afetado durante raid
-     */
-    minTrustToBypass: 40
   },
 
   // ==============================
