@@ -1,54 +1,54 @@
 // src/systems/commands.js
 // ============================================================
-// Sistema centralizado de comandos (prefixados)
+// Handler centralizado de comandos prefixados
+//
 // Faz:
-// - Carrega comandos da pasta /src/commands (uma vez)
-// - Interpreta mensagens com prefix (ex: !clear, !mute)
-// - Aplica cooldown (anti-spam) por utilizador e por comando
-// - Aplica permissões por cargos (allowedRoles) e/ou config.staffRoles
-// - Executa o comando com assinatura padrão: execute(message, args, client)
+// - Detecta comandos com prefixo (ex: !clear, !mute)
+// - Usa APENAS os comandos já carregados no client.commands (index.js)
+// - Aplica cooldown por comando e por utilizador (cooldowns.js)
+// - Aplica permissões por cargos (allowedRoles) com bypass Admin
+// - Faz whitelist: apenas clear/warn/mute/unmute (evita comandos “antigos”)
+// - Executa com assinatura padrão: execute(message, args, client)
+//
+// NOTA IMPORTANTE:
+// - Este ficheiro NÃO deve carregar comandos do disco.
+// - O carregamento deve acontecer apenas no src/index.js
 // ============================================================
 
-const fs = require('fs');
-const path = require('path');
+const { PermissionsBitField } = require('discord.js');
 const config = require('../config/defaultConfig');
 const checkCooldown = require('./cooldowns');
 
-// Map interno de comandos (carregado uma vez ao iniciar o bot)
-const commands = new Map();
+// Apenas estes comandos ficam ativos (como combinámos)
+const ALLOWED_COMMANDS = new Set(['clear', 'warn', 'mute', 'unmute']);
 
-// ------------------------------------------------------------
-// Carregar comandos do /src/commands
-// Nota: __dirname aqui é /src/systems, por isso ../commands aponta para /src/commands
-// ------------------------------------------------------------
-const commandsDir = path.join(__dirname, '../commands');
+/**
+ * Verifica se o membro pode executar um comando com base em roles/permissões
+ * @param {GuildMember} member
+ * @param {string[]} allowedRoles
+ * @returns {boolean}
+ */
+function canUseCommand(member, allowedRoles) {
+  if (!member) return false;
 
-let commandFiles = [];
-try {
-  commandFiles = fs.readdirSync(commandsDir).filter((f) => f.endsWith('.js'));
-} catch (err) {
-  console.error('[commands] Failed to read commands directory:', err);
-}
-
-for (const file of commandFiles) {
-  const filePath = path.join(commandsDir, file);
-
-  // require() com path absoluto evita problemas de path em Railway
-  const command = require(filePath);
-
-  // Validação mínima do "formato" do comando
-  if (!command?.name || typeof command.execute !== 'function') {
-    console.warn(`[commands] Skipped invalid command file: ${file}`);
-    continue;
+  // Admin bypass
+  if (member.permissions?.has(PermissionsBitField.Flags.Administrator)) {
+    return true;
   }
 
-  commands.set(command.name.toLowerCase(), command);
+  if (!Array.isArray(allowedRoles) || allowedRoles.length === 0) {
+    // Se não existir allowedRoles no comando, então não bloqueia por roles
+    return true;
+  }
+
+  // Caso exista allowedRoles, tem de ter pelo menos um desses cargos
+  return member.roles.cache.some((role) => allowedRoles.includes(role.id));
 }
 
 /**
  * Handler principal de comandos
- * @param {Message} message - Mensagem do Discord
- * @param {Client} client - Client do Discord.js
+ * @param {Message} message
+ * @param {Client} client
  */
 module.exports = async function commandsHandler(message, client) {
   try {
@@ -56,11 +56,11 @@ module.exports = async function commandsHandler(message, client) {
     // Validações básicas
     // ------------------------------------------------------------
     if (!message?.content) return;
-    if (!message.guild) return;           // Ignora DMs
-    if (message.author?.bot) return;      // Ignora bots
+    if (!message.guild) return;          // Ignora DMs
+    if (message.author?.bot) return;     // Ignora bots
 
     // ------------------------------------------------------------
-    // Partials: por vezes a mensagem chega incompleta
+    // Partials: às vezes a mensagem chega incompleta
     // ------------------------------------------------------------
     if (message.partial) {
       try {
@@ -72,6 +72,23 @@ module.exports = async function commandsHandler(message, client) {
 
     const prefix = config.prefix || '!';
     if (!message.content.startsWith(prefix)) return;
+
+    // Evita executar com apenas "!"
+    if (message.content.trim() === prefix) return;
+
+    // ------------------------------------------------------------
+    // Garantir member para checks de roles/perms
+    // ------------------------------------------------------------
+    if (!message.member) {
+      try {
+        await message.guild.members.fetch(message.author.id);
+      } catch {
+        await message
+          .reply('❌ I could not verify your roles. Please try again.')
+          .catch(() => null);
+        return;
+      }
+    }
 
     // ------------------------------------------------------------
     // Parse do comando e argumentos
@@ -85,75 +102,44 @@ module.exports = async function commandsHandler(message, client) {
     const commandName = (args.shift() || '').toLowerCase();
     if (!commandName) return;
 
-    const command = commands.get(commandName);
+    // ------------------------------------------------------------
+    // Whitelist: só estes comandos podem executar
+    // ------------------------------------------------------------
+    if (!ALLOWED_COMMANDS.has(commandName)) {
+      return; // silencioso por segurança
+    }
+
+    // ------------------------------------------------------------
+    // Buscar comando do Map carregado no index.js
+    // ------------------------------------------------------------
+    const command = client.commands?.get(commandName);
     if (!command) return;
 
     // ------------------------------------------------------------
-    // (Opcional) Whitelist de comandos
-    // Se quiseres forçar apenas certos comandos, ativa abaixo.
-    // ------------------------------------------------------------
-    // const allowedCommands = new Set(['clear', 'warn', 'mute', 'unmute']);
-    // if (!allowedCommands.has(commandName)) return;
-
-    // ------------------------------------------------------------
-    // Garantir member (necessário para roles/permissões)
-    // ------------------------------------------------------------
-    if (!message.member) {
-      try {
-        await message.guild.members.fetch(message.author.id);
-      } catch {
-        // Se falhar, não conseguimos validar roles -> por segurança bloqueamos
-        return message.reply('❌ I could not verify your roles. Please try again.').catch(() => null);
-      }
-    }
-
-    // ------------------------------------------------------------
-    // Cooldown por comando (configurável no defaultConfig.js)
-    // - usa config.cooldowns[commandName] ou config.cooldowns.default
+    // Cooldown por comando (config.cooldowns)
     // ------------------------------------------------------------
     const remaining = checkCooldown(commandName, message.author.id);
     if (remaining) {
-      return message
+      await message
         .reply(`⏳ Please slow down. Try again in **${remaining}s**.`)
         .catch(() => null);
+      return;
     }
 
     // ------------------------------------------------------------
-    // Permissões por cargos
-    //
-    // Regras:
-    // 1) Se o comando tiver "allowedRoles", usa essas.
-    // 2) Se NÃO tiver allowedRoles, mas existir config.staffRoles,
-    //    então comandos "sensíveis" podem exigir staffRoles (opcional).
-    //
-    // Nota:
-    // - Eu deixo o comportamento padrão como:
-    //   ✅ se o comando define allowedRoles -> aplica
-    //   ✅ se não define -> não bloqueia
-    //
-    // Se quiseres que TODOS os comandos exijam staffRoles,
-    // diz-me e eu ajusto.
+    // Permissões por roles (allowedRoles) + Admin bypass
     // ------------------------------------------------------------
-    const allowedRoles = Array.isArray(command.allowedRoles) ? command.allowedRoles : null;
-
-    if (allowedRoles && allowedRoles.length > 0) {
-      const hasAllowedRole = message.member.roles.cache.some((role) =>
-        allowedRoles.includes(role.id)
-      );
-
-      if (!hasAllowedRole) {
-        return message
-          .reply("❌ You do not have permission to use this command.")
-          .catch(() => null);
-      }
+    if (!canUseCommand(message.member, command.allowedRoles)) {
+      await message
+        .reply("❌ You don't have permission to use this command.")
+        .catch(() => null);
+      return;
     }
 
     // ------------------------------------------------------------
-    // Executar comando
-    // Assinatura padrão: execute(message, args, client)
+    // Executar comando (assinatura padrão)
     // ------------------------------------------------------------
     await command.execute(message, args, client);
-
   } catch (err) {
     console.error('[commands] Critical error:', err);
     await message.reply('⚠️ Error executing command.').catch(() => null);
