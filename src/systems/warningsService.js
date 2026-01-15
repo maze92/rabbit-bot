@@ -1,9 +1,9 @@
 // src/systems/warningsService.js
 // ============================================================
-// Service de warnings
-// - Centraliza get/create do User
-// - addWarning / resetWarnings
-// - Evita duplicação entre AutoMod e comandos !warn
+// Service de warnings (User model)
+// - getOrCreate
+// - addWarning
+// - resetWarnings
 // ============================================================
 
 const User = require('../database/models/User');
@@ -35,8 +35,4 @@ async function resetWarnings(guildId, userId) {
   return u;
 }
 
-module.exports = {
-  getOrCreateUser,
-  addWarning,
-  resetWarnings
-};
+module.exports = { getOrCreateUser, addWarning, resetWarnings };
