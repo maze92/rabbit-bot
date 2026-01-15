@@ -1,47 +1,37 @@
 // src/dashboard.js
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
-// ------------------------------
-// Configuração do Express e HTTP
-// ------------------------------
+const config = require('./config/defaultConfig');
+
 const app = express();
 const server = http.createServer(app);
-
-// Inicializa Socket.IO para comunicação em tempo real
 const io = new Server(server);
 
-// ------------------------------
-// Armazena os logs para o dashboard
-// ------------------------------
+// Logs mantidos em memória (para o dashboard)
 let logs = [];
 
-// ------------------------------
-// Servir arquivos estáticos (HTML, CSS, JS do frontend)
-// ------------------------------
+// Quantos logs guardar (configurável)
+const MAX_LOGS = Number(config.dashboard?.maxLogs ?? 200);
+
+// Static files (public)
 app.use(express.static(path.join(__dirname, '../public')));
 
-// ------------------------------
 // Health check
-// Endpoint para verificar se o bot está online
-// ------------------------------
 app.get('/health', (req, res) => {
-  res.send('Bot is running ✅');
+  res.status(200).send('Bot is running ✅');
 });
 
-// ------------------------------
-// Socket.IO: comunicação em tempo real
-// ------------------------------
-io.on('connection', socket => {
+// Socket.io
+io.on('connection', (socket) => {
   console.log('🔌 Dashboard client connected');
 
-  // Envia todos os logs atuais quando um cliente se conecta
+  // Envia os logs atuais ao conectar
   socket.emit('logs', logs);
 
-  // Permite que o frontend solicite logs a qualquer momento
+  // O frontend pode pedir logs (polling)
   socket.on('requestLogs', () => {
     socket.emit('logs', logs);
   });
@@ -51,29 +41,28 @@ io.on('connection', socket => {
   });
 });
 
-// ------------------------------
-// Função para enviar logs para todos os clientes conectados
-// ------------------------------
+/**
+ * Envia logs para o dashboard
+ * @param {string} event - deve ser 'log'
+ * @param {object} data - payload do log
+ */
 function sendToDashboard(event, data) {
-  // Apenas eventos do tipo 'log' serão processados
   if (event !== 'log') return;
 
-  // Adiciona timestamp e armazena no array de logs
-  logs.push({
+  // Garantir timestamp consistente
+  const payload = {
     ...data,
-    timestamp: new Date().toISOString()
-  });
+    time: data?.time || new Date().toISOString()
+  };
 
-  // Mantém o histórico limitado a 200 logs
-  if (logs.length > 200) logs.shift();
+  logs.push(payload);
 
-  // Emite os logs atualizados para todos os clientes conectados
+  // Limitar tamanho do array (evita memory leak)
+  if (logs.length > MAX_LOGS) logs.shift();
+
   io.emit('logs', logs);
 }
 
-// ------------------------------
-// Exporta app, server e função de envio para dashboard
-// ------------------------------
 module.exports = {
   app,
   server,
