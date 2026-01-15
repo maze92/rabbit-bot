@@ -95,6 +95,37 @@ module.exports = {
   },
 
   // ==============================
+  // Anti-Spam / Flood protection
+  // ==============================
+  antiSpam: {
+    enabled: true,
+  
+    // Janela para contar mensagens (ms)
+    interval: 7000,
+  
+    // Máximo de mensagens permitidas dentro da janela
+    maxMessages: 6,
+  
+    // Timeout aplicado quando detetar spam (ms)
+    muteDuration: 60 * 1000, // 1 minuto
+  
+    // Evita punir o mesmo user em loop (ms)
+    actionCooldown: 60 * 1000, // 1 minuto
+  
+    // Se true, admins não são afetados
+    bypassAdmins: true,
+  
+    // Roles que ignoram AntiSpam (opcional)
+    bypassRoles: [
+      // '1385619241235120174',
+      // '1385619241235120173'
+    ],
+  
+    // Enviar msg no canal quando muta (opcional)
+    sendMessage: true
+  },
+
+  // ==============================
   // Anti-Raid (entradas em massa)
   // ==============================
   antiRaid: {
