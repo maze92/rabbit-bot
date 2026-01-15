@@ -4,9 +4,7 @@
   "description": "Discord bot with dashboard, ready for Railway deployment",
   "main": "src/index.js",
   "scripts": {
-    "prestart": "npm install --omit=dev",
-    "start": "pm2-runtime ecosystem.config.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "NODE_ENV=production node src/index.js"
   },
   "keywords": ["discord", "bot", "dashboard", "nodejs", "railway"],
   "author": "Filipe Ferreira",
@@ -18,7 +16,6 @@
     "mongoose": "^9.1.2",
     "node-fetch": "^3.3.2",
     "rss-parser": "^3.13.0",
-    "socket.io": "^4.8.1",
-    "pm2": "^5.3.0"
+    "socket.io": "^4.8.1"
   }
 }
