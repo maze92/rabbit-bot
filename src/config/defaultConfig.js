@@ -50,8 +50,20 @@ module.exports = {
     actionCooldown: 60 * 1000,
     bypassAdmins: true,
     bypassRoles: [],
-    sendMessage: true
-  },
+    sendMessage: true,
+  
+    minLength: 6,
+    ignoreAttachments: true,
+    similarityThreshold: 0.8,
+  
+    channels: {
+      // 'ID_DO_CANAL_MEMES': {
+      //   maxMessages: 10,
+      //   interval: 7000,
+      //   muteDuration: 30 * 1000
+      // }
+    }
+  }
 
   dashboard: {
     enabled: true,
