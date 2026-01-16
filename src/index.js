@@ -1,14 +1,17 @@
 // src/index.js
-// ============================================================
-// Entrypoint principal
-// - carrega env
-// - errorGuard
-// - liga DB
-// - inicia dashboard
-// - carrega eventos
-// - login discord
-// - inicia gamenews no clientReady
-// ============================================================
+
+/**
+ * v.1.0.0.1
+ * ------------------------------------------------------------
+ * Resumo:
+ * - Entrypoint principal da aplicação
+ * - Inicialização do bot, dashboard e sistemas
+ * - Arranque controlado do GameNews após clientReady
+ *
+ * Notas:
+ * - Requer variáveis de ambiente (TOKEN, MONGO_URI)
+ * ------------------------------------------------------------
+ */
 
 require('dotenv').config();
 require('./systems/errorGuard')();
@@ -18,26 +21,26 @@ const client = require('./bot');
 const dashboard = require('./dashboard');
 const config = require('./config/defaultConfig');
 
-// ✅ novo: módulo de estado para /health
+// módulo de estado para /health
 const status = require('./systems/status');
 
-// Eventos (1 vez)
+// eventos (1 vez)
 require('./events/ready')(client);
 require('./events/messageCreate')(client);
 require('./events/guildMemberAdd')(client);
 
-// ✅ Marca discordReady quando o cliente do Discord emite "ready"
+// marca discordReady quando o cliente do Discord emite "ready"
 client.once('clientReady', async () => {
   status.setDiscordReady(true);
 });
 
-// Dashboard server (Railway precisa de porta aberta)
+// dashboard server (Railway precisa de porta aberta)
 const PORT = process.env.PORT || 3000;
 dashboard.server.listen(PORT, () => {
   console.log(`🚀 Dashboard running on port ${PORT}`);
 });
 
-// Login
+// login
 if (!process.env.TOKEN) {
   console.error('❌ Missing TOKEN in environment');
   process.exit(1);
@@ -59,7 +62,7 @@ client.once('clientReady', async () => {
       await gameNews(client, config);
       console.log('📰 Game News system started.');
 
-      // ✅ marca que o sistema de GameNews está ativo (Ponto 5)
+      // marca que o sistema de GameNews está ativo (Ponto 5)
       status.setGameNewsRunning(true);
     }
   } catch (err) {
