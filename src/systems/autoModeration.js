@@ -33,14 +33,8 @@ function getEffectiveMaxWarnings(baseMaxWarnings, trustCfg, trustValue) {
   let effective = baseMaxWarnings;
 
   if (t <= trustCfg.lowThreshold) {
-    effective = Math.max(
-      1,
-      baseMaxWarnings - trustCfg.lowTrustWarningsPenalty
-    );
+    effective = Math.max(1, baseMaxWarnings - trustCfg.lowTrustWarningsPenalty);
   }
-
-  // (opcional futuro) Para trust alta podias dar +1 aviso:
-  // if (t >= trustCfg.highThreshold) effective = baseMaxWarnings + 1;
 
   return effective;
 }
@@ -81,6 +75,47 @@ function minutesFromMs(ms) {
   return Math.max(1, Math.round(ms / 60000));
 }
 
+/**
+ * Padrão de texto (UX) para punições
+ * - Mantém consistência entre AutoMod e comandos manuais (!warn/!mute)
+ * - Evita textos diferentes para o mesmo tipo de ação
+ */
+function buildWarnChannelMessage({ userMention, warnings, maxWarnings, trustText }) {
+  return (
+    `⚠️ ${userMention}, you received a **WARN**.\n` +
+    `📝 Reason: **Inappropriate language**\n` +
+    `📌 Warnings: **${warnings}/${maxWarnings}**` +
+    (trustText ? `\n${trustText}` : '')
+  );
+}
+
+function buildWarnDMMessage({ guildName, reason, warnings, maxWarnings, trustText }) {
+  return (
+    `⚠️ You received a **WARN** in **${guildName}**.\n` +
+    `📝 Reason: **${reason}**\n` +
+    `📌 Warnings: **${warnings}/${maxWarnings}**` +
+    (trustText ? `\n${trustText}` : '')
+  );
+}
+
+function buildMuteChannelMessage({ userMention, minutes, reason, trustText }) {
+  return (
+    `🔇 ${userMention} has been **muted**.\n` +
+    `⏱️ Duration: **${minutes} minutes**\n` +
+    `📝 Reason: **${reason}**` +
+    (trustText ? `\n${trustText}` : '')
+  );
+}
+
+function buildMuteDMMessage({ guildName, minutes, reason, trustText }) {
+  return (
+    `🔇 You were **muted** in **${guildName}**.\n` +
+    `⏱️ Duration: **${minutes} minutes**\n` +
+    `📝 Reason: **${reason}**` +
+    (trustText ? `\n${trustText}` : '')
+  );
+}
+
 module.exports = async function autoModeration(message, client) {
   try {
     if (!message?.guild) return;
@@ -110,10 +145,10 @@ module.exports = async function autoModeration(message, client) {
     ];
 
     const baseMaxWarnings = config.maxWarnings ?? 3;
-    const baseMuteDuration = config.muteDuration ?? (10 * 60 * 1000); // 10 min
+    const baseMuteDuration = config.muteDuration ?? (10 * 60 * 1000);
 
     const cleanContent = message.content
-      .replace(/https?:\/\/\S+/gi, '') 
+      .replace(/https?:\/\/\S+/gi, '')
       .replace(/<:[a-zA-Z0-9_]+:[0-9]+>/g, '')
       .replace(/[^\w\s]/g, '')
       .toLowerCase();
@@ -146,6 +181,13 @@ module.exports = async function autoModeration(message, client) {
       ? dbUser.trust
       : trustCfg.base;
 
+    const effectiveMaxWarnings = getEffectiveMaxWarnings(
+      baseMaxWarnings,
+      trustCfg,
+      currentTrust
+    );
+
+    // Regista infração WARN
     await infractionsService.create({
       guild,
       user: message.author,
@@ -155,32 +197,32 @@ module.exports = async function autoModeration(message, client) {
       duration: null
     }).catch(() => null);
 
-    const effectiveMaxWarnings = getEffectiveMaxWarnings(
-      baseMaxWarnings,
-      trustCfg,
-      currentTrust
-    );
+    const trustLine = trustCfg.enabled ? `🔐 Trust: **${currentTrust}/${trustCfg.max}**` : '';
 
-
+    // Mensagem no canal (padrão UX)
     await message.channel.send({
-      content:
-        `⚠️ ${message.author}, inappropriate language is not allowed.\n` +
-        `**Warning:** ${dbUser.warnings}/${effectiveMaxWarnings}\n` +
-        (trustCfg.enabled
-          ? `🔐 **Trust:** ${currentTrust}/${trustCfg.max}\n`
-          : '')
+      content: buildWarnChannelMessage({
+        userMention: `${message.author}`,
+        warnings: dbUser.warnings,
+        maxWarnings: effectiveMaxWarnings,
+        trustText: trustLine || ''
+      })
     }).catch(() => null);
 
+    // DM (padrão UX)
     if (config.notifications?.dmOnWarn) {
-      const dmText =
-        `⚠️ You received an **automatic WARN** on the server **${guild.name}**.\n` +
-        `📝 Reason: **Inappropriate language** (detected word: "${foundWord}")\n` +
-        `📌 Warnings: **${dbUser.warnings}/${effectiveMaxWarnings}**` +
-        (trustCfg.enabled ? `\n🔐 Trust: **${currentTrust}/${trustCfg.max}**` : '');
+      const dmText = buildWarnDMMessage({
+        guildName: guild.name,
+        reason: `Inappropriate language (detected: "${foundWord}")`,
+        warnings: dbUser.warnings,
+        maxWarnings: effectiveMaxWarnings,
+        trustText: trustLine || ''
+      });
 
       await trySendDM(message.author, dmText);
     }
 
+    // Log
     await logger(
       client,
       'Automatic Warn',
@@ -207,6 +249,7 @@ module.exports = async function autoModeration(message, client) {
 
     await message.member.timeout(effectiveMute, 'AutoMod: exceeded warning limit');
 
+    // Regista infração MUTE
     await infractionsService.create({
       guild,
       user: message.author,
@@ -216,6 +259,7 @@ module.exports = async function autoModeration(message, client) {
       duration: effectiveMute
     }).catch(() => null);
 
+    // Penalização extra de trust por MUTE (centralizada no warningsService)
     let afterMuteUser = dbUser;
     try {
       afterMuteUser = await warningsService.applyMutePenalty(guild.id, message.author.id);
@@ -226,28 +270,38 @@ module.exports = async function autoModeration(message, client) {
       ? afterMuteUser.trust
       : currentTrust;
 
+    const mins = minutesFromMs(effectiveMute);
+    const trustAfterLine = trustCfg.enabled ? `🔐 Trust: **${trustAfterMute}/${trustCfg.max}**` : '';
+
+    // Mensagem no canal (padrão UX)
     await message.channel.send(
-      `🔇 ${message.author} has been muted for **${Math.round(effectiveMute / 60000)} minutes** due to repeated infractions.`
+      buildMuteChannelMessage({
+        userMention: `${message.author}`,
+        minutes: mins,
+        reason: 'Exceeded the warning limit',
+        trustText: trustAfterLine || ''
+      })
     ).catch(() => null);
 
+    // DM (padrão UX)
     if (config.notifications?.dmOnMute) {
-      const mins = minutesFromMs(effectiveMute);
-
-      const dmText =
-        `🔇 You were **automatically muted** on the server **${guild.name}**.\n` +
-        `⏱️ Duration: **${mins} minutes**\n` +
-        `📝 Reason: **Exceeded the warning limit**` +
-        (trustCfg.enabled ? `\n🔐 Trust: **${trustAfterMute}/${trustCfg.max}**` : '');
+      const dmText = buildMuteDMMessage({
+        guildName: guild.name,
+        minutes: mins,
+        reason: 'Exceeded the warning limit',
+        trustText: trustAfterLine || ''
+      });
 
       await trySendDM(message.author, dmText);
     }
 
+    // Log
     await logger(
       client,
       'Automatic Mute',
       message.author,
       client.user,
-      `Duration: **${Math.round(effectiveMute / 60000)} minutes**\n` +
+      `Duration: **${mins} minutes**\n` +
       (trustCfg.enabled ? `Trust after mute: **${trustAfterMute}/${trustCfg.max}**` : ''),
       guild
     );
