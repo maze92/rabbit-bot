@@ -1,9 +1,4 @@
 // src/systems/errorGuard.js
-// ============================================================
-// ErrorGuard
-// - logs de unhandledRejection / uncaughtException / warning
-// - evita listeners duplicados
-// ============================================================
 
 let initialized = false;
 
