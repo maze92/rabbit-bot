@@ -10,6 +10,10 @@
 // - Atualiza TRUST do utilizador (warningsService.applyMutePenalty)
 // - Regista log no canal log-bot + Dashboard
 //
+// UX Upgrade (Ponto 3.1):
+// ✅ Tenta enviar DM ao utilizador quando é mutado manualmente
+//    controlado por config.notifications.dmOnMute = true
+//
 // Regras importantes:
 // - Staff-only (config.staffRoles) OU Administrator
 // - Respeita hierarquia (executor vs alvo + bot vs alvo)
@@ -92,6 +96,18 @@ function stripTargetFromArgs(args, targetId) {
     const isRawId = s === targetId;
     return !isMention && !isRawId;
   });
+}
+
+/**
+ * Tenta enviar DM ao utilizador (não deixa o comando falhar se der erro).
+ */
+async function trySendDM(user, content) {
+  try {
+    if (!user || !content) return;
+    await user.send({ content }).catch(() => null);
+  } catch {
+    // ignorar falhas de DM (user com DMs fechadas, etc.)
+  }
 }
 
 module.exports = {
@@ -247,6 +263,21 @@ module.exports = {
         }
       } catch (e) {
         console.error('[mute] warningsService error:', e);
+      }
+
+      // ------------------------------
+      // ✅ DM ao utilizador (Ponto 3.1)
+      // ------------------------------
+      if (config.notifications?.dmOnMute) {
+        const trustText = dbUser?.trust != null ? `\n🔐 Trust: **${dbUser.trust}**` : '';
+
+        const dmText =
+          `🔇 You have been temporarily **muted** on the server. **${guild.name}**.\n` +
+          `⏰ Duration: **${formatDuration(durationMs)}**\n` +
+          `📝 Reason: **${reason}**` +
+          trustText;
+
+        await trySendDM(target.user, dmText);
       }
 
       // ------------------------------
