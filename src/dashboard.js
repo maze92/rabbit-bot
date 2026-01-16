@@ -6,8 +6,8 @@ const { Server } = require('socket.io');
 const path = require('path');
 
 const status = require('./systems/status');
-
 const config = require('./config/defaultConfig');
+
 let DashboardLog = null;
 let GameNewsModel = null;
 
@@ -72,11 +72,15 @@ app.get('/health', (req, res) => {
   try {
     const s = status.getStatus();
 
+    const discordReady = Boolean(s.discordReady);
+    const mongoConnected = Boolean(s.mongoConnected);
+    const gameNewsRunning = Boolean(s.gameNewsRunning);
+
     const payload = {
-      ok: true,
-      discordReady: Boolean(s.discordReady),
-      mongoConnected: Boolean(s.mongoConnected),
-      gameNewsRunning: Boolean(s.gameNewsRunning),
+      ok: discordReady && mongoConnected,
+      discordReady,
+      mongoConnected,
+      gameNewsRunning,
       uptimeSeconds: Math.floor(process.uptime())
     };
 
