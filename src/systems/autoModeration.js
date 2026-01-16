@@ -1,30 +1,18 @@
 // src/systems/autoModeration.js
-// ============================================================
-// AutoMod 2.0 (com Trust Score)
-// ------------------------------------------------------------
-// Faz:
-// - deteta banned words
-// - apaga mensagem (se o bot tiver ManageMessages)
-// - adiciona warning (warningsService)
-// - cria infração WARN (infractionsService)
-// - aplica timeout (MUTE) se atingir maxWarnings
-// - ajusta trust score do utilizador via warningsService
-//
-// UX Upgrade (Ponto 3.1):
-// ✅ Tenta enviar DM ao utilizador quando recebe WARN/MUTE
-//    (toggle em config.notifications.dmOnWarn/dmOnMute)
-//
-// Regras recomendadas (config.trust ou defaults):
-// - WARN  → trust -= 5
-// - MUTE  → trust -= 15
-// - a cada X dias sem infração → trust regenera (+1/dia até máximo)
-// - trust < 10  → menos tolerância (menos avisos antes do mute, mute mais longo)
-// - trust > 60  → pode ser usado para suavizar castigos leves (no futuro)
-//
-// NOTA IMPORTANTE:
-// - Quem altera trust é o warningsService (addWarning/applyMutePenalty).
-//   Aqui no AutoMod só LÊMOS o trust para decidir severidade.
-// ============================================================
+
+/**
+ * v.1.0.0.1
+ * ------------------------------------------------------------
+ * Resumo:
+ * - Implementação do sistema AutoMod com Trust Score
+ * - Deteção de linguagem proibida, warns e mutes automáticos
+ * - Integração com warningsService, infractionsService e logger
+ *
+ * Notas:
+ * - Trust é sempre gerido pelo warningsService
+ * - Inclui envio opcional de DM ao utilizador (config.notifications)
+ * ------------------------------------------------------------
+ */
 
 const { PermissionsBitField } = require('discord.js');
 const config = require('../config/defaultConfig');
@@ -33,14 +21,7 @@ const logger = require('./logger');
 const warningsService = require('./warningsService');
 const infractionsService = require('./infractionsService');
 
-// ------------------------------------------------------------
-// Helpers de Trust (apenas leitura / interpretação)
-// ------------------------------------------------------------
-
-/**
- * Lê config.trust com defaults seguros.
- * Aqui só precisamos dos limiares e multiplicadores (não mexemos no trust).
- */
+// * helpers de Trust (apenas leitura / interpretação)
 function getTrustConfig() {
   const cfg = config.trust || {};
 
@@ -60,10 +41,7 @@ function getTrustConfig() {
   };
 }
 
-/**
- * Calcula quantos avisos podem ser dados até ao mute,
- * ajustando pela trust (menos tolerância se trust muito baixa).
- */
+// * calcula quantos avisos podem ser dados até ao mute ajustando pela trust (menos tolerância se trust muito baixa)
 function getEffectiveMaxWarnings(baseMaxWarnings, trustCfg, trustValue) {
   if (!trustCfg.enabled) return baseMaxWarnings;
 
@@ -78,15 +56,13 @@ function getEffectiveMaxWarnings(baseMaxWarnings, trustCfg, trustValue) {
     );
   }
 
-  // (Opcional futuro) Para trust alta podias dar +1 aviso:
+  // (opcional futuro) Para trust alta podias dar +1 aviso:
   // if (t >= trustCfg.highThreshold) effective = baseMaxWarnings + 1;
 
   return effective;
 }
 
-/**
- * Ajusta duração do mute conforme trust (sem alterar trust).
- */
+// *Ajusta duração do mute conforme trust (sem alterar trust).
 function getEffectiveMuteDuration(baseMs, trustCfg, trustValue) {
   if (!trustCfg.enabled) return baseMs;
 
@@ -110,14 +86,7 @@ function getEffectiveMuteDuration(baseMs, trustCfg, trustValue) {
   return duration;
 }
 
-// ------------------------------------------------------------
-// Helpers UX: DM ao utilizador (Ponto 3.1)
-// ------------------------------------------------------------
-
-/**
- * Tenta enviar DM ao user (sem crashar se DMs estiverem fechadas).
- * - Respeita config.notifications
- */
+// * tenta enviar DM ao user (sem crashar se DMs estiverem fechadas)
 async function trySendDM(user, content) {
   try {
     if (!user) return;
@@ -128,22 +97,15 @@ async function trySendDM(user, content) {
   }
 }
 
-/**
- * Formata minutos de forma simples para mensagens
- */
+// * formata minutos de forma simples para mensagens
 function minutesFromMs(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return 0;
   return Math.max(1, Math.round(ms / 60000));
 }
 
-// ============================================================
-// Handler principal do AutoMod
-// ============================================================
+// * handler principal do AutoMod
 module.exports = async function autoModeration(message, client) {
   try {
-    // --------------------------------------------------------
-    // Validações básicas
-    // --------------------------------------------------------
     if (!message?.guild) return;
     if (!message?.content) return;
     if (message.author?.bot) return;
@@ -159,21 +121,17 @@ module.exports = async function autoModeration(message, client) {
 
     const trustCfg = getTrustConfig();
 
-    // --------------------------------------------------------
-    // Bypass: Administradores
-    // --------------------------------------------------------
+    // bypass: Administradores
     if (message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
       return;
     }
 
-    // Hierarquia: user com cargo >= ao bot não pode ser moderado
+    // hierarquia: user com cargo >= ao bot não pode ser moderado
     if (message.member.roles.highest.position >= botMember.roles.highest.position) {
       return;
     }
 
-    // --------------------------------------------------------
-    // Preparar lista de banned words
-    // --------------------------------------------------------
+    // preparar lista de banned words
     const bannedWords = [
       ...(config.bannedWords?.pt || []),
       ...(config.bannedWords?.en || [])
@@ -182,18 +140,14 @@ module.exports = async function autoModeration(message, client) {
     const baseMaxWarnings = config.maxWarnings ?? 3;
     const baseMuteDuration = config.muteDuration ?? (10 * 60 * 1000); // 10 min
 
-    // --------------------------------------------------------
-    // Normalizar conteúdo da mensagem
-    // --------------------------------------------------------
+    // normalizar conteúdo da mensagem
     const cleanContent = message.content
       .replace(/https?:\/\/\S+/gi, '')             // remove links
       .replace(/<:[a-zA-Z0-9_]+:[0-9]+>/g, '')     // emojis custom
       .replace(/[^\w\s]/g, '')                     // pontuação
       .toLowerCase();
 
-    // --------------------------------------------------------
-    // Detetar banned words com suporte a variações tipo "leet"
-    // --------------------------------------------------------
+    // detetar banned words com suporte a variações tipo "leet"
     const foundWord = bannedWords.find(word => {
       const pattern = String(word)
         .replace(/a/gi, '[a4@]')
@@ -208,35 +162,24 @@ module.exports = async function autoModeration(message, client) {
 
     if (!foundWord) return;
 
-    // --------------------------------------------------------
-    // Permissões do bot
-    // --------------------------------------------------------
+    // permissões do bot
     const perms = message.channel.permissionsFor(botMember);
     const canDelete = perms?.has(PermissionsBitField.Flags.ManageMessages);
     const canTimeout = perms?.has(PermissionsBitField.Flags.ModerateMembers);
 
-    // Apagar mensagem ofensiva (se possível)
+    // apagar mensagem ofensiva (se possível)
     if (canDelete) {
       await message.delete().catch(() => null);
     }
 
-    // --------------------------------------------------------
     // +1 warning via warningsService
-    // --------------------------------------------------------
-    // IMPORTANTE:
-    // - warningsService.addWarning já:
-    //   * garante existência do user
-    //   * faz regeneração de trust
-    //   * aplica penalização de WARN
     const dbUser = await warningsService.addWarning(guild.id, message.author.id, 1);
 
     const currentTrust = Number.isFinite(dbUser.trust)
       ? dbUser.trust
       : trustCfg.base;
 
-    // --------------------------------------------------------
-    // Criar infração WARN
-    // --------------------------------------------------------
+    // criar infração WARN
     await infractionsService.create({
       guild,
       user: message.author,
@@ -246,18 +189,14 @@ module.exports = async function autoModeration(message, client) {
       duration: null
     }).catch(() => null);
 
-    // --------------------------------------------------------
-    // Calcular nº de warnings até mute, ajustado pela trust
-    // --------------------------------------------------------
+    // calcular nº de warnings até mute, ajustado pela trust
     const effectiveMaxWarnings = getEffectiveMaxWarnings(
       baseMaxWarnings,
       trustCfg,
       currentTrust
     );
 
-    // --------------------------------------------------------
-    // Aviso no canal
-    // --------------------------------------------------------
+    // aviso no canal
     await message.channel.send({
       content:
         `⚠️ ${message.author}, inappropriate language is not allowed.\n` +
@@ -267,9 +206,7 @@ module.exports = async function autoModeration(message, client) {
           : '')
     }).catch(() => null);
 
-    // --------------------------------------------------------
-    // ✅ DM ao utilizador (WARN) - Ponto 3.1
-    // --------------------------------------------------------
+    // DM ao utilizador (WARN)
     if (config.notifications?.dmOnWarn) {
       const dmText =
         `⚠️ You received an **automatic WARN** on the server **${guild.name}**.\n` +
@@ -280,9 +217,7 @@ module.exports = async function autoModeration(message, client) {
       await trySendDM(message.author, dmText);
     }
 
-    // --------------------------------------------------------
-    // Log do WARN automático
-    // --------------------------------------------------------
+    // log do WARN automático
     await logger(
       client,
       'Automatic Warn',
@@ -295,16 +230,12 @@ module.exports = async function autoModeration(message, client) {
       guild
     );
 
-    // --------------------------------------------------------
-    // Ainda não atingiu limite para mute? Então termina aqui.
-    // --------------------------------------------------------
+    // ainda não atingiu limite para mute? então termina aqui
     if (dbUser.warnings < effectiveMaxWarnings) {
       return;
     }
 
-    // --------------------------------------------------------
-    // Timeout automático (MUTE) se atingiu ou ultrapassou limite
-    // --------------------------------------------------------
+    // timeout automático (MUTE) se atingiu ou ultrapassou limite
     if (!canTimeout || !message.member.moderatable) return;
 
     // duração do mute ajustada pela trust
@@ -342,9 +273,7 @@ module.exports = async function autoModeration(message, client) {
       `🔇 ${message.author} has been muted for **${Math.round(effectiveMute / 60000)} minutes** due to repeated infractions.`
     ).catch(() => null);
 
-    // --------------------------------------------------------
-    // ✅ DM ao utilizador (MUTE) - Ponto 3.1
-    // --------------------------------------------------------
+    // DM ao utilizador (MUTE)
     if (config.notifications?.dmOnMute) {
       const mins = minutesFromMs(effectiveMute);
 
