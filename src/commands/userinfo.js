@@ -7,7 +7,7 @@
 // - Data de criação da conta
 // - Data de entrada no servidor
 // - Número de warnings (User model)
-// - Trust Score + nível de risco (baseado em config.trust)
+// - Trust Score + nível de risco (APENAS para staff)
 // ------------------------------------------------------------
 // Uso:
 // - !userinfo              → mostra info do autor da mensagem
@@ -15,14 +15,14 @@
 // - !userinfo 1234567890   → tenta buscar pelo ID
 // ============================================================
 
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 
 const config = require('../config/defaultConfig');
 const warningsService = require('../systems/warningsService');
 const Infraction = require('../database/models/Infraction'); // opcional: estatísticas
 
 // ------------------------------------------------------------
-// Helpers de Trust (mesma filosofia que no AutoMod / AntiSpam)
+// Helpers de Trust (mesma filosofia que no AutoMod / warningsService)
 // ------------------------------------------------------------
 function getTrustConfig() {
   const cfg = config.trust || {};
@@ -48,6 +48,23 @@ function getTrustLabel(trust, trustCfg) {
   if (t <= trustCfg.lowThreshold) return 'High risk';
   if (t >= trustCfg.highThreshold) return 'Low risk';
   return 'Medium risk';
+}
+
+/**
+ * Verifica se o membro é staff (Admin ou role em config.staffRoles)
+ */
+function isStaff(member) {
+  if (!member) return false;
+
+  // Admin bypass
+  if (member.permissions?.has(PermissionsBitField.Flags.Administrator)) {
+    return true;
+  }
+
+  const staffRoles = Array.isArray(config.staffRoles) ? config.staffRoles : [];
+  if (!staffRoles.length) return false;
+
+  return member.roles?.cache?.some((r) => staffRoles.includes(r.id));
 }
 
 /**
@@ -80,7 +97,7 @@ async function resolveTarget(message, args) {
 
 module.exports = {
   name: 'userinfo',
-  description: 'Shows information about a user, including warnings and trust score',
+  description: 'Shows information about a user, including warnings and trust score (trust visible to staff only)',
 
   /**
    * Execução do comando
@@ -94,6 +111,7 @@ module.exports = {
 
       const guild = message.guild;
       const trustCfg = getTrustConfig();
+      const requesterIsStaff = isStaff(message.member);
 
       // --------------------------------------------------------
       // Resolver alvo (user)
@@ -107,7 +125,7 @@ module.exports = {
 
       // --------------------------------------------------------
       // Carregar dados do User model (warnings + trust)
-      // --------------------------------------------------------
+// --------------------------------------------------------
       const dbUser = await warningsService.getOrCreateUser(guild.id, user.id);
 
       const warnings = dbUser.warnings ?? 0;
@@ -130,8 +148,31 @@ module.exports = {
       // --------------------------------------------------------
       // Datas / formato
       // --------------------------------------------------------
-      const createdAt = user.createdAt ? `<t:${Math.floor(user.createdAt.getTime() / 1000)}:F>` : 'Unknown';
-      const joinedAt = member.joinedAt ? `<t:${Math.floor(member.joinedAt.getTime() / 1000)}:F>` : 'Unknown';
+      const createdAt = user.createdAt
+        ? `<t:${Math.floor(user.createdAt.getTime() / 1000)}:F>`
+        : 'Unknown';
+
+      const joinedAt = member.joinedAt
+        ? `<t:${Math.floor(member.joinedAt.getTime() / 1000)}:F>`
+        : 'Unknown';
+
+      // --------------------------------------------------------
+      // Campo de Trust: staff vê tudo, resto vê texto neutro
+      // --------------------------------------------------------
+      let trustFieldValue = 'Trust system is currently **disabled**.';
+      if (trustCfg.enabled) {
+        if (requesterIsStaff) {
+          // Staff → vê trust real + label
+          trustFieldValue =
+            `Trust: **${trustValue}/${trustCfg.max}**\n` +
+            `Risk level: **${trustLabel}**`;
+        } else {
+          // Utilizador normal → não expomos trust numérico
+          trustFieldValue =
+            'Trust Score is **internal** and only visible to staff.\n' +
+            'Moderation decisions may be stricter for repeat offenders.';
+        }
+      }
 
       // --------------------------------------------------------
       // Montar embed
@@ -153,15 +194,14 @@ module.exports = {
           },
           {
             name: '⚠️ Warnings',
-            value: `**${warnings}** / **${config.maxWarnings ?? 3}** (AutoMod base)\n` +
-                   `Infractions registered: **${infractionsCount}**`,
+            value:
+              `**${warnings}** / **${config.maxWarnings ?? 3}** (AutoMod base)\n` +
+              `Infractions registered: **${infractionsCount}**`,
             inline: false
           },
           {
             name: '🔐 Trust Score',
-            value: trustCfg.enabled
-              ? `Trust: **${trustValue}/${trustCfg.max}**\nRisk level: **${trustLabel}**`
-              : 'Trust system is currently **disabled**.',
+            value: trustFieldValue,
             inline: false
           }
         )
@@ -172,7 +212,9 @@ module.exports = {
 
     } catch (err) {
       console.error('[userinfo] Error:', err);
-      await message.reply('❌ An unexpected error occurred while fetching user info.').catch(() => null);
+      await message
+        .reply('❌ An unexpected error occurred while fetching user info.')
+        .catch(() => null);
     }
   }
 };
