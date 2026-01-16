@@ -14,7 +14,6 @@
  * ------------------------------------------------------------
  */
 
-
 const { PermissionsBitField } = require('discord.js');
 const config = require('../config/defaultConfig');
 
