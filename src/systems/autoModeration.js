@@ -10,6 +10,10 @@
 // - aplica timeout (MUTE) se atingir maxWarnings
 // - ajusta trust score do utilizador via warningsService
 //
+// UX Upgrade (Ponto 3.1):
+// ✅ Tenta enviar DM ao utilizador quando recebe WARN/MUTE
+//    (toggle em config.notifications.dmOnWarn/dmOnMute)
+//
 // Regras recomendadas (config.trust ou defaults):
 // - WARN  → trust -= 5
 // - MUTE  → trust -= 15
@@ -104,6 +108,32 @@ function getEffectiveMuteDuration(baseMs, trustCfg, trustValue) {
   if (duration > MAX_MS) duration = MAX_MS;
 
   return duration;
+}
+
+// ------------------------------------------------------------
+// Helpers UX: DM ao utilizador (Ponto 3.1)
+// ------------------------------------------------------------
+
+/**
+ * Tenta enviar DM ao user (sem crashar se DMs estiverem fechadas).
+ * - Respeita config.notifications
+ */
+async function trySendDM(user, content) {
+  try {
+    if (!user) return;
+    if (!content) return;
+    await user.send({ content }).catch(() => null);
+  } catch {
+    // nunca deixar o AutoMod falhar por causa de DM
+  }
+}
+
+/**
+ * Formata minutos de forma simples para mensagens
+ */
+function minutesFromMs(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  return Math.max(1, Math.round(ms / 60000));
 }
 
 // ============================================================
@@ -238,6 +268,19 @@ module.exports = async function autoModeration(message, client) {
     }).catch(() => null);
 
     // --------------------------------------------------------
+    // ✅ DM ao utilizador (WARN) - Ponto 3.1
+    // --------------------------------------------------------
+    if (config.notifications?.dmOnWarn) {
+      const dmText =
+        `⚠️ You received an **automatic WARN** on the server. **${guild.name}**.\n` +
+        `📝 Reason: **Inappropriate language** (detected word: "${foundWord}")\n` +
+        `📌 Warnings: **${dbUser.warnings}/${effectiveMaxWarnings}**` +
+        (trustCfg.enabled ? `\n🔐 Trust: **${currentTrust}/${trustCfg.max}**` : '');
+
+      await trySendDM(message.author, dmText);
+    }
+
+    // --------------------------------------------------------
     // Log do WARN automático
     // --------------------------------------------------------
     await logger(
@@ -283,8 +326,7 @@ module.exports = async function autoModeration(message, client) {
       duration: effectiveMute
     }).catch(() => null);
 
-    // penalização extra de trust por MUTE
-    // (centralizada no warningsService)
+    // penalização extra de trust por MUTE (centralizada no warningsService)
     let afterMuteUser = dbUser;
     try {
       afterMuteUser = await warningsService.applyMutePenalty(guild.id, message.author.id);
@@ -299,6 +341,21 @@ module.exports = async function autoModeration(message, client) {
     await message.channel.send(
       `🔇 ${message.author} has been muted for **${Math.round(effectiveMute / 60000)} minutes** due to repeated infractions.`
     ).catch(() => null);
+
+    // --------------------------------------------------------
+    // ✅ DM ao utilizador (MUTE) - Ponto 3.1
+    // --------------------------------------------------------
+    if (config.notifications?.dmOnMute) {
+      const mins = minutesFromMs(effectiveMute);
+
+      const dmText =
+        `🔇 You were **automatically mutated** on the server **${guild.name}**.\n` +
+        `⏱️ Duration: **${mins} minutes**\n` +
+        `📝 Reason: **Excedeste o limite de warnings**\n` +
+        (trustCfg.enabled ? `🔐 Trust: **${trustAfterMute}/${trustCfg.max}**` : '');
+
+      await trySendDM(message.author, dmText);
+    }
 
     await logger(
       client,
