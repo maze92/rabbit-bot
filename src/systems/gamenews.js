@@ -16,11 +16,18 @@
  *
  * Dashboard:
  * ✅ Emite status por feed para o dashboard (socket event: gamenews_status)
+ *
+ * Novas melhorias:
+ * ✅ generateHash agora normaliza o link (remove query strings dinâmicas)
+ *    → evita que o mesmo artigo conte como "novo" por causa de tracking (?ftag=...)
+ * ✅ Itens SEM descrição (contentSnippet/content) NÃO são enviados para o Discord,
+ *    mas o hash é guardado para não serem reprocessados em loop.
  * ============================================================
  */
 
 const Parser = require('rss-parser');
 const crypto = require('crypto');
+const { URL } = require('url'); // para normalizar links
 const { EmbedBuilder } = require('discord.js');
 
 const GameNews = require('../database/models/GameNews');
@@ -50,7 +57,7 @@ function randInt(min, max) {
 
 /**
  * Jitter helper:
- * - given base ms and +/- jitterMs, returns base +/- random
+ * - dado baseMs e +/- jitterMs, devolve base +/- random
  */
 function withJitter(baseMs, jitterMs) {
   const j = Math.max(0, Number(jitterMs || 0));
@@ -59,13 +66,38 @@ function withJitter(baseMs, jitterMs) {
 }
 
 /**
+ * Normaliza link:
+ * - remove query string e fragmentos (#)
+ * - fica só: protocolo + host + pathname
+ *
+ * Ex:
+ *  https://www.gamespot.com/reviews/foo/?ftag=XYZ&utm=123
+ *  -> https://www.gamespot.com/reviews/foo/
+ */
+function normalizeLink(rawLink) {
+  if (!rawLink || typeof rawLink !== 'string') return null;
+  try {
+    const u = new URL(rawLink);
+    return `${u.protocol}//${u.host}${u.pathname}`;
+  } catch {
+    // se não conseguir parsear, devolve original
+    return rawLink;
+  }
+}
+
+/**
  * Gera hash estável para um item do RSS.
+ * - Usa guid/id se existir
+ * - Caso contrário, usa link normalizado (sem query tracking)
+ * - Fallback extra: title + data
  */
 function generateHash(item) {
+  const normalizedLink = item.link ? normalizeLink(item.link) : null;
+
   const base =
     item.guid ||
     item.id ||
-    item.link ||
+    normalizedLink ||
     `${item.title || ''}-${item.isoDate || item.pubDate || ''}`;
 
   return crypto.createHash('sha256').update(String(base)).digest('hex');
@@ -227,14 +259,47 @@ async function parseWithRetry(url, retryCfg) {
  * - lastHashes (dedupe)
  * - lastSentAt
  * - failCount/pausedUntil
+ *
+ * NOTA IMPORTANTE:
+ * - Se a notícia NÃO tiver descrição (contentSnippet/content vazio),
+ *   NÃO envia embed para o Discord, mas mesmo assim:
+ *   - guarda o hash em lastHashes (para não repetir)
+ *   - limpa failCount/pausedUntil como "sucesso"
  */
 async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN }) {
   const hash = generateHash(item);
 
+  // Descrição "real" (usada no embed)
+  const descriptionRaw = item.contentSnippet || item.content || '';
+  const description = typeof descriptionRaw === 'string' ? descriptionRaw.trim() : '';
+
+  // Se não há descrição → NÃO enviar, mas marcar como visto
+  if (!description) {
+    pushHashAndTrim(record, hash, keepN);
+
+    // Consideramos isto "sucesso": o feed está OK, só este item é fraco
+    record.failCount = 0;
+    if (record.pausedUntil && record.pausedUntil.getTime() <= Date.now()) {
+      record.pausedUntil = null;
+    }
+
+    // lastSentAt opcional: aqui deixo como está (não atualizamos o "último envio visível")
+    await record.save();
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(
+        `[GameNews] Skipped item without description: ${feed.name} -> ${item.title || 'Untitled'}`
+      );
+    }
+
+    return;
+  }
+
+  // Se tem descrição → monta embed normal
   const embed = new EmbedBuilder()
     .setTitle(item.title || 'New article')
     .setURL(item.link || null)
-    .setDescription(item.contentSnippet || item.content || 'No description available.')
+    .setDescription(description)
     .setColor(0xe60012)
     .setFooter({ text: feed.name })
     .setTimestamp(getItemDate(item));
@@ -246,7 +311,7 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
   // atualiza hashes
   pushHashAndTrim(record, hash, keepN);
 
-  // marca último envio
+  // marca último envio "visível"
   record.lastSentAt = new Date();
 
   // sucesso: limpa falhas e pausa expirada
@@ -442,7 +507,7 @@ module.exports = async function gameNewsSystem(client, config) {
               continue;
             }
 
-            // 8) enviar e atualizar DB
+            // 8) enviar (ou ignorar sem descrição) e atualizar DB
             await sendOneNewsAndUpdate({
               client,
               feed,
@@ -472,7 +537,7 @@ module.exports = async function gameNewsSystem(client, config) {
       } finally {
         isRunning = false;
 
-        // ✅ no fim de cada ciclo, emite status atualizado
+        // fim de ciclo → emite status atualizado
         emitStatusToDashboard(config).catch(() => null);
       }
     };
