@@ -58,6 +58,9 @@ client.once('clientReady', async () => {
       const gameNews = require('./systems/gamenews');
       await gameNews(client, config);
       console.log('📰 Game News system started.');
+
+      // ✅ marca que o sistema de GameNews está ativo (Ponto 5)
+      status.setGameNewsRunning(true);
     }
   } catch (err) {
     console.error('[GameNews] Failed to start:', err);
