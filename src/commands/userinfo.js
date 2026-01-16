@@ -33,9 +33,7 @@ function getTrustLabel(trust, trustCfg) {
 function isStaff(member) {
   if (!member) return false;
 
-  if (member.permissions?.has(PermissionsBitField.Flags.Administrator)) {
-    return true;
-  }
+  if (member.permissions?.has(PermissionsBitField.Flags.Administrator)) return true;
 
   const staffRoles = Array.isArray(config.staffRoles) ? config.staffRoles : [];
   if (!staffRoles.length) return false;
@@ -49,41 +47,65 @@ async function resolveTarget(message, args) {
   const byMention = message.mentions.members.first();
   if (byMention) return byMention;
 
-  const raw = args[0];
+  const raw = (args?.[0] || '').trim();
   if (raw) {
-    try {
-      const byId = await guild.members.fetch(raw).catch(() => null);
+    const id = raw.replace(/[<@!>]/g, ''); // permite <@id>, <@!id> e id direto
+    if (/^\d{15,25}$/.test(id)) {
+      const byId = await guild.members.fetch(id).catch(() => null);
       if (byId) return byId;
-    } catch {
-      // ignore
     }
   }
 
-  return message.member;
+  return message.member || null;
 }
 
-function truncate(str, max = 80) {
+function truncate(str, max = 90) {
   const s = String(str || '').trim();
   if (!s) return 'No reason provided';
   if (s.length <= max) return s;
-  return s.slice(0, max - 1) + '…';
+  return s.slice(0, Math.max(0, max - 1)) + '…';
+}
+
+function formatRelativeTime(date) {
+  if (!date) return 'N/A';
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return 'N/A';
+  return `<t:${Math.floor(d.getTime() / 1000)}:R>`;
 }
 
 function formatInfractionLine(inf) {
-  const createdAt = inf?.createdAt ? new Date(inf.createdAt) : null;
-  const ts = createdAt && !Number.isNaN(createdAt.getTime())
-    ? `<t:${Math.floor(createdAt.getTime() / 1000)}:R>`
-    : 'Unknown time';
-
   const type = String(inf?.type || 'UNKNOWN').toUpperCase();
+
   const duration =
     inf?.duration != null && Number.isFinite(Number(inf.duration)) && Number(inf.duration) > 0
       ? ` • ${Math.round(Number(inf.duration) / 60000)}m`
       : '';
 
-  const reason = truncate(inf?.reason || 'No reason provided', 90);
+  const ts = formatRelativeTime(inf?.createdAt);
+  const reason = truncate(inf?.reason || 'No reason provided', 80);
 
   return `• **${type}**${duration} — ${ts}\n  └ ${reason}`;
+}
+
+function joinFieldSafe(lines, maxLen = 1024) {
+  const out = [];
+  let total = 0;
+
+  for (const line of lines) {
+    const s = String(line);
+    const add = (out.length ? 1 : 0) + s.length; // +1 para \n
+    if (total + add > maxLen) break;
+    out.push(s);
+    total += add;
+  }
+
+  if (lines.length > out.length) {
+    // tenta adicionar reticências se couber
+    const ell = '…';
+    if (total + (out.length ? 1 : 0) + ell.length <= maxLen) out.push(ell);
+  }
+
+  return out.join('\n') || 'No recent infractions found.';
 }
 
 module.exports = {
@@ -92,14 +114,14 @@ module.exports = {
 
   async execute(message, args, client) {
     try {
-      if (!message.guild) return;
+      if (!message?.guild) return;
 
       const guild = message.guild;
       const trustCfg = getTrustConfig();
       const requesterIsStaff = isStaff(message.member);
 
       const member = await resolveTarget(message, args);
-      if (!member) {
+      if (!member?.user) {
         return message.reply('❌ I could not resolve that user.').catch(() => null);
       }
 
@@ -107,8 +129,8 @@ module.exports = {
 
       const dbUser = await warningsService.getOrCreateUser(guild.id, user.id);
 
-      const warnings = dbUser.warnings ?? 0;
-      const trustValue = Number.isFinite(dbUser.trust) ? dbUser.trust : trustCfg.base;
+      const warnings = dbUser?.warnings ?? 0;
+      const trustValue = Number.isFinite(dbUser?.trust) ? dbUser.trust : trustCfg.base;
       const trustLabel = getTrustLabel(trustValue, trustCfg);
 
       let infractionsCount = 0;
@@ -121,7 +143,6 @@ module.exports = {
         // ignore
       }
 
-      // ✅ Mini-history (últimas infrações) — apenas staff
       let recentInfractions = [];
       if (requesterIsStaff) {
         try {
@@ -158,16 +179,10 @@ module.exports = {
         }
       }
 
-      // Campo “Recent infractions” (staff-only)
-      let recentFieldValue = 'Staff only.';
+      let recentFieldValue = 'Recent infraction details are **visible to staff only**.';
       if (requesterIsStaff) {
-        if (!recentInfractions.length) {
-          recentFieldValue = 'No recent infractions found.';
-        } else {
-          recentFieldValue = recentInfractions.map(formatInfractionLine).join('\n');
-        }
-      } else {
-        recentFieldValue = 'Recent infraction details are **visible to staff only**.';
+        const lines = (recentInfractions || []).map(formatInfractionLine);
+        recentFieldValue = joinFieldSafe(lines, 1024);
       }
 
       const embed = new EmbedBuilder()
@@ -224,7 +239,9 @@ module.exports = {
       if (requesterIsStaff && recentInfractions.length) {
         descLines.push(
           `Recent infractions (last ${Math.min(5, recentInfractions.length)}):`,
-          ...recentInfractions.map((i) => `- ${String(i.type || 'UNKNOWN').toUpperCase()}: ${truncate(i.reason, 80)}`)
+          ...recentInfractions.map(
+            (i) => `- ${String(i.type || 'UNKNOWN').toUpperCase()}: ${truncate(i.reason, 80)}`
+          )
         );
       }
 
@@ -236,7 +253,6 @@ module.exports = {
         descLines.join('\n'),
         guild
       );
-
     } catch (err) {
       console.error('[userinfo] Error:', err);
       await message
