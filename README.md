@@ -92,4 +92,18 @@ O objetivo do projeto é oferecer uma base **robusta, extensível e profissional
 ---
 
 ## ⚙️ Configuração
-Todas as opções estão centralizadas em:
+Todas as opções estão centralizadas em: src/config/defaultConfig.js
+Inclui:
+- Moderação
+- Trust Score
+- Anti-spam
+- GameNews
+- Dashboard
+- Cooldowns
+
+---
+
+## 📌 Estado do Projeto
+✔️ Estável  
+✔️ Modular  
+✔️ Pronto para expansão futura (tickets, appeals, levels, etc.)
