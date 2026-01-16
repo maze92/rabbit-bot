@@ -9,25 +9,28 @@ module.exports = (client) => {
   client.on('messageCreate', async (message) => {
     try {
       if (!message) return;
-      if (!message.guild) return;
-      if (!message.content) return;
-      if (message.author?.bot) return;
 
       if (message.partial) {
-        try { await message.fetch(); } catch { return; }
+        try {
+          await message.fetch();
+        } catch {
+          return;
+        }
       }
+
+      if (!message.guild) return;
+      if (!message.author || message.author.bot) return;
+      if (!message.content) return;
 
       const prefix = config.prefix || '!';
       const isCommand = message.content.startsWith(prefix);
 
-      if (isCommand) {
-        await commandsHandler(message, client);
-        return;
-      }
-
-      await autoModeration(message, client);
       await antiSpam(message, client);
+      await autoModeration(message, client);
 
+      if (!isCommand) return;
+
+      await commandsHandler(message, client);
     } catch (err) {
       console.error('[messageCreate] Critical error:', err);
     }
