@@ -58,4 +58,3 @@ const gameNewsSchema = new Schema(
 );
 
 module.exports = model('GameNews', gameNewsSchema);
-
