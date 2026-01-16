@@ -1,15 +1,24 @@
-// src/systems/gamenews.js
 /**
+ * src/systems/gamenews.js
  * ============================================================
  * Sistema de Game News (RSS)
  *
+ * O que faz:
  * - Lê feeds RSS configurados no defaultConfig.js
- * - Dedupe real guardando os últimos N hashes por feed
- * - Backoff por feed quando há erros consecutivos
- * - lastSentAt por feed
- * - Não envia notícias muito antigas (ex: > 7 dias)
- * - Retry com jitter para reduzir falhas transitórias
- * - Painel no Dashboard: gamenews_status (por feed)
+ * - Dedupe real com lastHashes (últimos N hashes por feed)
+ * - Backoff por feed (pausa após X falhas consecutivas)
+ * - Guarda lastSentAt por feed (último envio bem sucedido)
+ *
+ * Micro-upgrades:
+ * ✅ Não envia notícia muito antiga (ex: > 7 dias)
+ * ✅ Retry com jitter em falhas de RSS (reduz erros transitórios)
+ * ✅ Jitter no agendamento (não bate sempre ao mesmo tempo)
+ *
+ * Proteções:
+ * - started: evita iniciar 2x (duplicar timers)
+ * - isRunning: evita overlaps (um ciclo não começa se o anterior ainda corre)
+ * - 1 notícia por feed por ciclo (evita spam)
+ * - envia o MAIS ANTIGO entre os novos (para manter ordem sem spammar)
  * ============================================================
  */
 
@@ -17,25 +26,34 @@ const Parser = require('rss-parser');
 const crypto = require('crypto');
 const { EmbedBuilder } = require('discord.js');
 
-const GameNews = require('../database/models/GameNews'); // ✅ nome/case correto
+const GameNews = require('../database/models/GameNews');
 const logger = require('./logger');
-const dashboard = require('../dashboard');
 
 const parser = new Parser({ timeout: 15000 });
 
-let started = false;    // evita iniciar 2x
-let isRunning = false;  // evita overlap entre ciclos
+let started = false;
+let isRunning = false;
 
+/**
+ * Sleep helper
+ */
 function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Random int between [min, max]
+ */
 function randInt(min, max) {
   const a = Math.ceil(min);
   const b = Math.floor(max);
   return Math.floor(Math.random() * (b - a + 1)) + a;
 }
 
+/**
+ * Jitter helper:
+ * - given base ms and +/- jitterMs, returns base +/- random
+ */
 function withJitter(baseMs, jitterMs) {
   const j = Math.max(0, Number(jitterMs || 0));
   if (!j) return baseMs;
@@ -43,7 +61,7 @@ function withJitter(baseMs, jitterMs) {
 }
 
 /**
- * Hash estável para dedupe
+ * Gera hash estável para um item do RSS.
  */
 function generateHash(item) {
   const base =
@@ -56,7 +74,7 @@ function generateHash(item) {
 }
 
 /**
- * Data do item para embed + validação de idade
+ * Normaliza data do item (para timestamp do embed).
  */
 function getItemDate(item) {
   const d = item.isoDate || item.pubDate;
@@ -66,7 +84,8 @@ function getItemDate(item) {
 }
 
 /**
- * Bloqueia notícias muito antigas (por ex. > 7 dias)
+ * Verifica se a notícia é "muito antiga" com base em maxAgeDays
+ * - Se não tiver data válida no item, consideramos "não antiga" (para não bloquear)
  */
 function isItemTooOld(item, maxAgeDays) {
   const days = Number(maxAgeDays);
@@ -77,11 +96,12 @@ function isItemTooOld(item, maxAgeDays) {
 
   const ageMs = Date.now() - itemDate.getTime();
   const maxMs = days * 24 * 60 * 60 * 1000;
+
   return ageMs > maxMs;
 }
 
 /**
- * DB: obter/criar record do feed
+ * Busca ou cria record do feed na DB.
  */
 async function getOrCreateFeedRecord(feedName) {
   let record = await GameNews.findOne({ source: feedName });
@@ -100,45 +120,49 @@ async function getOrCreateFeedRecord(feedName) {
   return record;
 }
 
+/**
+ * Feed pausado por backoff?
+ */
 function isFeedPaused(record) {
   if (!record?.pausedUntil) return false;
   return record.pausedUntil.getTime() > Date.now();
 }
 
 /**
- * Backoff por feed:
- * - se falhar X vezes seguidas => pausa por Y ms
+ * Regista falha + aplica backoff se atingir limite.
  */
-async function registerFeedFailure(record, cfg) {
-  const maxFails = Number(cfg?.gameNews?.backoff?.maxFails ?? 3);
-  const pauseMs = Number(cfg?.gameNews?.backoff?.pauseMs ?? 30 * 60 * 1000);
+async function registerFeedFailure(record, config) {
+  const maxFails = Number(config?.gameNews?.backoff?.maxFails ?? 3);
+  const pauseMs = Number(config?.gameNews?.backoff?.pauseMs ?? 30 * 60 * 1000);
 
   record.failCount = (record.failCount || 0) + 1;
 
   if (record.failCount >= maxFails) {
     record.pausedUntil = new Date(Date.now() + pauseMs);
-    record.failCount = 0; // reseta quando pausa
+    record.failCount = 0; // reseta ao pausar
   }
-
-  await record.save();
-}
-
-async function registerFeedSuccess(record) {
-  // limpa pausa expirada
-  if (record.pausedUntil && record.pausedUntil.getTime() <= Date.now()) {
-    record.pausedUntil = null;
-  }
-
-  // reseta falhas
-  if (record.failCount && record.failCount !== 0) record.failCount = 0;
 
   await record.save();
 }
 
 /**
- * Dedupe real:
- * - se lastHashes vazio => envia só a mais recente (não spamma no primeiro arranque)
- * - senão => devolve todos os itens cujo hash não está em lastHashes
+ * Sucesso -> reseta failCount (e limpa pausa expirada)
+ */
+async function registerFeedSuccess(record) {
+  if (record.pausedUntil && record.pausedUntil.getTime() <= Date.now()) {
+    record.pausedUntil = null;
+  }
+
+  if (record.failCount && record.failCount !== 0) {
+    record.failCount = 0;
+  }
+
+  await record.save();
+}
+
+/**
+ * Dedupe real: devolve apenas itens cujo hash NÃO está em lastHashes.
+ * Se lastHashes vazio, devolve apenas o item mais recente (evita spam no primeiro arranque).
  */
 function getNewItemsByHashes(items, lastHashes) {
   if (!Array.isArray(items) || items.length === 0) return [];
@@ -155,45 +179,27 @@ function getNewItemsByHashes(items, lastHashes) {
 }
 
 /**
- * Guarda hash e mantém só os últimos N
+ * Adiciona hash e corta para manter apenas os últimos N.
  */
 function pushHashAndTrim(record, hash, keepN) {
   if (!Array.isArray(record.lastHashes)) record.lastHashes = [];
 
-  // remover duplicado se existir
+  // remove duplicado se existir
   record.lastHashes = record.lastHashes.filter((h) => h !== hash);
 
-  // adicionar no fim
   record.lastHashes.push(hash);
 
-  // cortar para os últimos N
   if (record.lastHashes.length > keepN) {
     record.lastHashes = record.lastHashes.slice(record.lastHashes.length - keepN);
   }
 }
 
 /**
- * Envia estado do feed para o dashboard
- */
-function broadcastFeedStatus(record, feed) {
-  if (!dashboard?.sendToDashboard) return;
-
-  dashboard.sendToDashboard('gamenews_status', {
-    source: feed?.name || record.source,
-    feedUrl: feed?.feed || null,
-    channelId: feed?.channelId || null,
-    lastSentAt: record.lastSentAt || null,
-    pausedUntil: record.pausedUntil || null,
-    failCount: record.failCount || 0,
-    lastHashesCount: Array.isArray(record.lastHashes) ? record.lastHashes.length : 0
-  });
-}
-
-/**
- * Parse RSS com retry + jitter
+ * Parse do RSS com retry + jitter.
+ * - Faz retries pequenos (ex: 2 tentativas) antes de considerar falha e contar no backoff
  */
 async function parseWithRetry(url, retryCfg) {
-  const attempts = Number(retryCfg?.attempts ?? 2);
+  const attempts = Number(retryCfg?.attempts ?? 2); // total tentativas (2 = tenta 2x)
   const baseDelayMs = Number(retryCfg?.baseDelayMs ?? 1200);
   const jitterMs = Number(retryCfg?.jitterMs ?? 800);
 
@@ -208,8 +214,11 @@ async function parseWithRetry(url, retryCfg) {
       return await parser.parseURL(url);
     } catch (err) {
       lastErr = err;
+
+      // se ainda há tentativas, espera um bocadinho com jitter
       if (i < safeAttempts) {
-        await sleep(withJitter(safeBase * i, safeJitter));
+        const waitMs = withJitter(safeBase * i, safeJitter);
+        await sleep(waitMs);
       }
     }
   }
@@ -218,7 +227,10 @@ async function parseWithRetry(url, retryCfg) {
 }
 
 /**
- * Envia 1 notícia e atualiza DB
+ * Envia 1 notícia e atualiza DB:
+ * - lastHashes (dedupe)
+ * - lastSentAt
+ * - failCount/pausedUntil
  */
 async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN }) {
   const hash = generateHash(item);
@@ -235,13 +247,13 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
 
   await channel.send({ embeds: [embed] });
 
-  // dedupe
+  // atualiza hashes
   pushHashAndTrim(record, hash, keepN);
 
-  // lastSentAt
+  // marca último envio
   record.lastSentAt = new Date();
 
-  // reset backoff
+  // sucesso: limpa falhas e pausa expirada
   record.failCount = 0;
   if (record.pausedUntil && record.pausedUntil.getTime() <= Date.now()) {
     record.pausedUntil = null;
@@ -259,13 +271,11 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
   );
 
   console.log(`[GameNews] Sent: ${feed.name} -> ${item.title}`);
-
-  // dashboard status
-  broadcastFeedStatus(record, feed);
 }
 
 /**
- * MAIN
+ * Função principal.
+ * Chamar UMA vez (no index.js após clientReady).
  */
 module.exports = async function gameNewsSystem(client, config) {
   try {
@@ -277,39 +287,52 @@ module.exports = async function gameNewsSystem(client, config) {
     }
     started = true;
 
-    // configs (com defaults seguros)
-    const intervalMs = Number(config.gameNews.interval ?? 30 * 60 * 1000);
-    const safeInterval = Number.isFinite(intervalMs) && intervalMs >= 10_000 ? intervalMs : 30 * 60 * 1000;
+    // intervalo base global
+    const baseIntervalMs = Number(config.gameNews.interval ?? 30 * 60 * 1000);
+    const safeBaseInterval =
+      Number.isFinite(baseIntervalMs) && baseIntervalMs >= 10_000 ? baseIntervalMs : 30 * 60 * 1000;
 
-    const keepHashes = Number(config.gameNews.keepHashes ?? 10);
-    const safeKeep = Number.isFinite(keepHashes) && keepHashes >= 5 && keepHashes <= 50 ? keepHashes : 10;
-
-    const maxAgeDays = Number(config.gameNews.maxAgeDays ?? 7);
-    const safeMaxAgeDays = Number.isFinite(maxAgeDays) && maxAgeDays >= 1 && maxAgeDays <= 365 ? maxAgeDays : 7;
-
-    const retryCfg = config.gameNews.retry || { attempts: 2, baseDelayMs: 1200, jitterMs: 800 };
-
-    const globalJitterMs = Number(config.gameNews.jitterMs ?? 20_000);
+    // jitter global do ciclo (para não bater sempre ao mesmo tempo)
+    const globalJitterMs = Number(config.gameNews.jitterMs ?? 20_000); // default 20s
     const safeGlobalJitter = Number.isFinite(globalJitterMs) && globalJitterMs >= 0 ? globalJitterMs : 20_000;
 
-    const perFeedJitterMs = Number(config.gameNews.perFeedJitterMs ?? 1500);
-    const safePerFeedJitter = Number.isFinite(perFeedJitterMs) && perFeedJitterMs >= 0 ? perFeedJitterMs : 1500;
+    // quantos hashes manter por feed
+    const keepHashes = Number(config.gameNews.keepHashes ?? 10);
+    const safeKeep =
+      Number.isFinite(keepHashes) && keepHashes >= 5 && keepHashes <= 50 ? keepHashes : 10;
+
+    // idade máxima (dias)
+    const maxAgeDays = Number(config.gameNews.maxAgeDays ?? 7);
+    const safeMaxAgeDays =
+      Number.isFinite(maxAgeDays) && maxAgeDays >= 1 && maxAgeDays <= 365 ? maxAgeDays : 7;
+
+    // retry config
+    const retryCfg = config.gameNews.retry || { attempts: 2, baseDelayMs: 1200, jitterMs: 800 };
 
     console.log('[GameNews] News system started');
 
-    // scheduler com jitter (em vez de setInterval fixo)
-    const loopOnce = async () => {
+    // loop agendado "recursivo" com jitter (em vez de setInterval fixo)
+    const runLoop = async () => {
+      // evita overlaps
       if (isRunning) return;
       isRunning = true;
 
       try {
         const feeds = Array.isArray(config.gameNews.sources) ? config.gameNews.sources : [];
+        if (feeds.length === 0) return;
+
         for (const feed of feeds) {
-          await sleep(withJitter(250, safePerFeedJitter));
-
           const feedName = feed?.name || 'UnknownFeed';
-          let record;
 
+          // jitter por feed (opcional): espalha chamadas dentro do mesmo ciclo
+          const perFeedJitterMs = Number(config.gameNews.perFeedJitterMs ?? 1500);
+          const safePerFeedJitter = Number.isFinite(perFeedJitterMs) && perFeedJitterMs >= 0 ? perFeedJitterMs : 1500;
+
+          // pequeno delay com jitter entre feeds (evita bursts)
+          await sleep(withJitter(300, safePerFeedJitter));
+
+          // 1) record DB do feed
+          let record = null;
           try {
             record = await getOrCreateFeedRecord(feedName);
           } catch (err) {
@@ -317,57 +340,60 @@ module.exports = async function gameNewsSystem(client, config) {
             continue;
           }
 
-          // se pausado, envia status e skip
+          // 2) backoff: se feed estiver pausado, ignora
           if (isFeedPaused(record)) {
-            broadcastFeedStatus(record, feed);
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[GameNews] Feed paused: ${feedName} until ${record.pausedUntil.toISOString()}`);
+            }
             continue;
           }
 
           try {
-            // parse com retry
+            // 3) parse do RSS (com retry + jitter)
             const parsed = await parseWithRetry(feed.feed, retryCfg);
             const items = parsed?.items || [];
             if (items.length === 0) {
               await registerFeedSuccess(record).catch(() => null);
-              broadcastFeedStatus(record, feed);
               continue;
             }
 
-            // canal
+            // 4) canal Discord
             const channel = await client.channels.fetch(feed.channelId).catch(() => null);
             if (!channel) {
               console.warn(`[GameNews] Channel not found: ${feed.channelId} (${feedName})`);
               await registerFeedSuccess(record).catch(() => null);
-              broadcastFeedStatus(record, feed);
               continue;
             }
 
-            // dedupe
+            // 5) dedupe por lastHashes
             const newItems = getNewItemsByHashes(items, record.lastHashes);
             if (newItems.length === 0) {
               await registerFeedSuccess(record).catch(() => null);
-              broadcastFeedStatus(record, feed);
               continue;
             }
 
-            // escolhe o MAIS ANTIGO entre os novos (para manter ordem e evitar spam)
+            // 6) escolher o MAIS ANTIGO entre os novos para manter ordem e não spammar
             const itemToSend = newItems[newItems.length - 1];
 
-            // validação mínima
+            // item malformado: não conta como falha
             if (!itemToSend?.title || !itemToSend?.link) {
               await registerFeedSuccess(record).catch(() => null);
-              broadcastFeedStatus(record, feed);
               continue;
             }
 
-            // não enviar se for antigo demais
+            // 7) bloquear notícia muito antiga
             if (isItemTooOld(itemToSend, safeMaxAgeDays)) {
+              // Marca hash mesmo assim? NÃO.
+              // Motivo: se o feed só tiver coisas antigas, não queremos “fixar” hashes e mascarar.
+              // Só ignoramos silenciosamente.
+              if (process.env.NODE_ENV !== 'production') {
+                console.log(`[GameNews] Skipped old item (${feedName}): ${itemToSend.title}`);
+              }
               await registerFeedSuccess(record).catch(() => null);
-              broadcastFeedStatus(record, feed);
               continue;
             }
 
-            // envia só 1 por feed por ciclo
+            // 8) enviar e atualizar DB
             await sendOneNewsAndUpdate({
               client,
               feed,
@@ -376,12 +402,20 @@ module.exports = async function gameNewsSystem(client, config) {
               item: itemToSend,
               keepN: safeKeep
             });
+
           } catch (err) {
             console.error(`[GameNews] Error processing feed ${feedName}:`, err?.message || err);
 
+            // conta falha + backoff
             try {
               await registerFeedFailure(record, config);
-              broadcastFeedStatus(record, feed);
+
+              // se entrou em pausa, loga
+              if (record.pausedUntil && record.pausedUntil.getTime() > Date.now()) {
+                console.warn(
+                  `[GameNews] Feed "${feedName}" paused until ${record.pausedUntil.toISOString()} (backoff).`
+                );
+              }
             } catch (e) {
               console.error(`[GameNews] Failed updating failure/backoff for ${feedName}:`, e?.message || e);
             }
@@ -392,12 +426,20 @@ module.exports = async function gameNewsSystem(client, config) {
       }
     };
 
-    const schedule = async () => {
-      await loopOnce().catch(() => null);
-      setTimeout(schedule, withJitter(safeInterval, safeGlobalJitter)).unref?.();
+    // Scheduler com jitter global
+    const scheduleNext = async () => {
+      // corre um ciclo
+      await runLoop().catch(() => null);
+
+      // agenda próximo com jitter global
+      const nextInMs = withJitter(safeBaseInterval, safeGlobalJitter);
+      setTimeout(scheduleNext, nextInMs).unref?.();
     };
 
-    setTimeout(schedule, withJitter(1500, Math.min(5000, safeGlobalJitter))).unref?.();
+    // primeira corrida ligeiramente "espalhada"
+    const firstDelay = withJitter(1500, Math.min(5000, safeGlobalJitter));
+    setTimeout(scheduleNext, firstDelay).unref?.();
+
   } catch (err) {
     console.error('[GameNews] Critical error starting system:', err);
   }
