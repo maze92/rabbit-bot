@@ -75,11 +75,6 @@ function minutesFromMs(ms) {
   return Math.max(1, Math.round(ms / 60000));
 }
 
-/**
- * Padrão de texto (UX) para punições
- * - Mantém consistência entre AutoMod e comandos manuais (!warn/!mute)
- * - Evita textos diferentes para o mesmo tipo de ação
- */
 function buildWarnChannelMessage({ userMention, warnings, maxWarnings, trustText }) {
   return (
     `⚠️ ${userMention}, you received a **WARN**.\n` +
@@ -187,7 +182,6 @@ module.exports = async function autoModeration(message, client) {
       currentTrust
     );
 
-    // Regista infração WARN
     await infractionsService.create({
       guild,
       user: message.author,
@@ -199,7 +193,6 @@ module.exports = async function autoModeration(message, client) {
 
     const trustLine = trustCfg.enabled ? `🔐 Trust: **${currentTrust}/${trustCfg.max}**` : '';
 
-    // Mensagem no canal (padrão UX)
     await message.channel.send({
       content: buildWarnChannelMessage({
         userMention: `${message.author}`,
@@ -209,7 +202,6 @@ module.exports = async function autoModeration(message, client) {
       })
     }).catch(() => null);
 
-    // DM (padrão UX)
     if (config.notifications?.dmOnWarn) {
       const dmText = buildWarnDMMessage({
         guildName: guild.name,
@@ -222,7 +214,6 @@ module.exports = async function autoModeration(message, client) {
       await trySendDM(message.author, dmText);
     }
 
-    // Log
     await logger(
       client,
       'Automatic Warn',
@@ -249,7 +240,6 @@ module.exports = async function autoModeration(message, client) {
 
     await message.member.timeout(effectiveMute, 'AutoMod: exceeded warning limit');
 
-    // Regista infração MUTE
     await infractionsService.create({
       guild,
       user: message.author,
@@ -259,7 +249,6 @@ module.exports = async function autoModeration(message, client) {
       duration: effectiveMute
     }).catch(() => null);
 
-    // Penalização extra de trust por MUTE (centralizada no warningsService)
     let afterMuteUser = dbUser;
     try {
       afterMuteUser = await warningsService.applyMutePenalty(guild.id, message.author.id);
@@ -273,7 +262,6 @@ module.exports = async function autoModeration(message, client) {
     const mins = minutesFromMs(effectiveMute);
     const trustAfterLine = trustCfg.enabled ? `🔐 Trust: **${trustAfterMute}/${trustCfg.max}**` : '';
 
-    // Mensagem no canal (padrão UX)
     await message.channel.send(
       buildMuteChannelMessage({
         userMention: `${message.author}`,
@@ -283,7 +271,6 @@ module.exports = async function autoModeration(message, client) {
       })
     ).catch(() => null);
 
-    // DM (padrão UX)
     if (config.notifications?.dmOnMute) {
       const dmText = buildMuteDMMessage({
         guildName: guild.name,
@@ -295,7 +282,6 @@ module.exports = async function autoModeration(message, client) {
       await trySendDM(message.author, dmText);
     }
 
-    // Log
     await logger(
       client,
       'Automatic Mute',
