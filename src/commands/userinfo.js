@@ -55,10 +55,35 @@ async function resolveTarget(message, args) {
       const byId = await guild.members.fetch(raw).catch(() => null);
       if (byId) return byId;
     } catch {
+      // ignore
     }
   }
 
   return message.member;
+}
+
+function truncate(str, max = 80) {
+  const s = String(str || '').trim();
+  if (!s) return 'No reason provided';
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1) + '…';
+}
+
+function formatInfractionLine(inf) {
+  const createdAt = inf?.createdAt ? new Date(inf.createdAt) : null;
+  const ts = createdAt && !Number.isNaN(createdAt.getTime())
+    ? `<t:${Math.floor(createdAt.getTime() / 1000)}:R>`
+    : 'Unknown time';
+
+  const type = String(inf?.type || 'UNKNOWN').toUpperCase();
+  const duration =
+    inf?.duration != null && Number.isFinite(Number(inf.duration)) && Number(inf.duration) > 0
+      ? ` • ${Math.round(Number(inf.duration) / 60000)}m`
+      : '';
+
+  const reason = truncate(inf?.reason || 'No reason provided', 90);
+
+  return `• **${type}**${duration} — ${ts}\n  └ ${reason}`;
 }
 
 module.exports = {
@@ -93,6 +118,23 @@ module.exports = {
           userId: user.id
         });
       } catch {
+        // ignore
+      }
+
+      // ✅ Mini-history (últimas infrações) — apenas staff
+      let recentInfractions = [];
+      if (requesterIsStaff) {
+        try {
+          recentInfractions = await Infraction.find({
+            guildId: guild.id,
+            userId: user.id
+          })
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .lean();
+        } catch {
+          recentInfractions = [];
+        }
       }
 
       const createdAt = user.createdAt
@@ -114,6 +156,18 @@ module.exports = {
             'Trust Score is **internal** and only visible to staff.\n' +
             'Moderation decisions may be stricter for repeat offenders.';
         }
+      }
+
+      // Campo “Recent infractions” (staff-only)
+      let recentFieldValue = 'Staff only.';
+      if (requesterIsStaff) {
+        if (!recentInfractions.length) {
+          recentFieldValue = 'No recent infractions found.';
+        } else {
+          recentFieldValue = recentInfractions.map(formatInfractionLine).join('\n');
+        }
+      } else {
+        recentFieldValue = 'Recent infraction details are **visible to staff only**.';
       }
 
       const embed = new EmbedBuilder()
@@ -142,6 +196,11 @@ module.exports = {
             name: '🔐 Trust Score',
             value: trustFieldValue,
             inline: false
+          },
+          {
+            name: '🧾 Recent infractions (last 5)',
+            value: recentFieldValue,
+            inline: false
           }
         )
         .setFooter({ text: `Requested by ${message.author.tag}` })
@@ -162,11 +221,18 @@ module.exports = {
         );
       }
 
+      if (requesterIsStaff && recentInfractions.length) {
+        descLines.push(
+          `Recent infractions (last ${Math.min(5, recentInfractions.length)}):`,
+          ...recentInfractions.map((i) => `- ${String(i.type || 'UNKNOWN').toUpperCase()}: ${truncate(i.reason, 80)}`)
+        );
+      }
+
       await logger(
         client,
         'User Info',
-        user,                 
-        message.author,       
+        user,
+        message.author,
         descLines.join('\n'),
         guild
       );
