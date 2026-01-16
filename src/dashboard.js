@@ -89,10 +89,36 @@ function requireDashboardAuth(req, res, next) {
 app.use(express.static(path.join(__dirname, '../public')));
 
 /**
- * Health check simples
+ * Health check detalhado (Ponto 5)
+ * ----------------------------------------------------------
+ * Devolve um pequeno JSON com o estado do sistema:
+ * - ok: se o processo está vivo
+ * - discordReady: se o cliente do Discord já está pronto
+ * - mongoConnected: flag simples do estado da DB
+ * - gameNewsRunning: se o sistema de GameNews está ativo
+ * - uptimeSeconds: uptime do processo em segundos
+ * ----------------------------------------------------------
  */
 app.get('/health', (req, res) => {
-  res.status(200).send('Bot is running ✅');
+  try {
+    const s = status.getStatus();
+
+    const payload = {
+      ok: true,
+      discordReady: Boolean(s.discordReady),
+      mongoConnected: Boolean(s.mongoConnected),
+      gameNewsRunning: Boolean(s.gameNewsRunning),
+      uptimeSeconds: Math.floor(process.uptime())
+    };
+
+    return res.status(200).json(payload);
+  } catch (err) {
+    console.error('[Dashboard] /health error:', err);
+    return res.status(500).json({
+      ok: false,
+      error: 'Health check failed'
+    });
+  }
 });
 
 /**
