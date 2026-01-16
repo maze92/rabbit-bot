@@ -18,6 +18,9 @@ const client = require('./bot');
 const dashboard = require('./dashboard');
 const config = require('./config/defaultConfig');
 
+// ✅ novo: módulo de estado para /health
+const status = require('./systems/status');
+
 // Eventos (1 vez)
 require('./events/ready')(client);
 require('./events/messageCreate')(client);
