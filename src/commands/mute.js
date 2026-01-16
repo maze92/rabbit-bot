@@ -1,25 +1,18 @@
 // src/commands/mute.js
-// ============================================================
-// Comando: !mute
-//
-// Faz:
-// - Aplica timeout (mute) a um utilizador
-// - Duração opcional (10m, 1h, 2d...)
-// - Reason opcional
-// - Cria infração MUTE no Mongo (Infraction)
-// - Atualiza TRUST do utilizador (warningsService.applyMutePenalty)
-// - Regista log no canal log-bot + Dashboard
-//
-// UX Upgrade (Ponto 3.1):
-// ✅ Tenta enviar DM ao utilizador quando é mutado manualmente
-//    controlado por config.notifications.dmOnMute = true
-//
-// Regras importantes:
-// - Staff-only (config.staffRoles) OU Administrator
-// - Respeita hierarquia (executor vs alvo + bot vs alvo)
-// - Não permite mutar bots (por segurança)
-// - Timeout máximo: 28 dias (limite Discord)
-// ============================================================
+
+/**
+ * v.1.0.0.1
+ * ------------------------------------------------------------
+ * Resumo:
+ * - Implementação do comando manual !mute (timeout)
+ * - Suporte a duração customizada (s/m/h/d)
+ * - Atualiza trust e cria infração MUTE
+ *
+ * Notas:
+ * - Timeout máximo de 28 dias (limite Discord)
+ * - Integra com warningsService e logger
+ * ------------------------------------------------------------
+ */
 
 const { PermissionsBitField } = require('discord.js');
 
