@@ -41,6 +41,50 @@ function decorateTitle(title) {
   return t || 'Log';
 }
 
+/**
+ * Adiciona label de risco ao texto de Trust no description:
+ * - Trust: **8/100** → Trust: **8/100** (High risk)
+ * - Trust after mute: **72/100** → ... (Low risk)
+ */
+function decorateDescriptionWithTrustLabel(description) {
+  if (!description) return description;
+
+  const trustCfg = config.trust || {};
+  if (trustCfg.enabled === false) return description;
+
+  const lowThreshold = trustCfg.lowThreshold ?? 10;
+  const highThreshold = trustCfg.highThreshold ?? 60;
+  const maxDefault = trustCfg.max ?? 100;
+
+  // evita duplicar se já tiver algum (High/Medium/Low risk)
+  if (
+    description.includes('(High risk)') ||
+    description.includes('(Medium risk)') ||
+    description.includes('(Low risk)')
+  ) {
+    return description;
+  }
+
+  // Match tanto "Trust:" como "Trust after mute:"
+  const regex = /(Trust(?: after mute)?):\s*\*\*(\d+)(?:\/(\d+))?\*\*/i;
+  const match = description.match(regex);
+  if (!match) return description;
+
+  const labelPrefix = match[1];
+  const value = Number(match[2]);
+  const max = match[3] ? Number(match[3]) : maxDefault;
+
+  if (!Number.isFinite(value)) return description;
+
+  let riskLabel = 'Medium risk';
+  if (value <= lowThreshold) riskLabel = 'High risk';
+  else if (value >= highThreshold) riskLabel = 'Low risk';
+
+  const replacement = `${labelPrefix}: **${value}/${max}** (${riskLabel})`;
+
+  return description.replace(regex, replacement);
+}
+
 module.exports = async function logger(client, title, user, executor, description, guild) {
   try {
     const resolvedGuild = resolveGuild(guild, user, executor);
@@ -54,10 +98,14 @@ module.exports = async function logger(client, title, user, executor, descriptio
     const nExec = normalizeActor(executor);
     const finalTitle = decorateTitle(title);
 
+    const decoratedDescription = description
+      ? decorateDescriptionWithTrustLabel(description)
+      : '';
+
     let desc = '';
     if (nUser?.tag) desc += `👤 **User:** ${nUser.tag}\n`;
     if (nExec?.tag) desc += `🛠️ **Executor:** ${nExec.tag}\n`;
-    if (description) desc += `${description}`;
+    if (decoratedDescription) desc += `${decoratedDescription}`;
 
     const embed = new EmbedBuilder()
       .setTitle(finalTitle || 'Log')
@@ -74,7 +122,7 @@ module.exports = async function logger(client, title, user, executor, descriptio
         title: finalTitle || 'Log',
         user: nUser,
         executor: nExec,
-        description: description || '',
+        description: decoratedDescription || '',
         guild: { id: resolvedGuild.id, name: resolvedGuild.name },
         time: new Date().toISOString()
       });
