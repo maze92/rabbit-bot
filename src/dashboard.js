@@ -6,18 +6,26 @@ const path = require('path');
 
 const config = require('./config/defaultConfig');
 let DashboardLog = null;
+let GameNewsModel = null;
 
-// Tenta carregar o model (pode falhar se o ficheiro não existir)
+// Tenta carregar o model DashboardLog (pode falhar se o ficheiro não existir)
 try {
   DashboardLog = require('./database/models/DashboardLog');
 } catch (e) {
   console.warn('[Dashboard] DashboardLog model not loaded (did you create src/database/models/DashboardLog.js?)');
 }
 
+// Tenta carregar o model GameNews (para status por feed)
+try {
+  GameNewsModel = require('./database/models/GameNews');
+} catch (e) {
+  console.warn('[Dashboard] GameNews model not loaded (did you create src/database/models/GameNews.js?)');
+}
+
 const app = express();
 const server = http.createServer(app);
 
-// Socket.IO com CORS mais permissivo (Railway/Browser)
+// Socket.IO com CORS permissivo (Railway/Browser)
 const io = new Server(server, {
   cors: {
     origin: '*',
@@ -29,9 +37,8 @@ const io = new Server(server, {
 const MAX_MEMORY_LOGS = config.dashboard?.maxLogs ?? 200;
 let logsCache = [];
 
-// Estado de GameNews por feed (para painel "GameNews Status")
-// key: source (ex: "GameSpot/News") -> value: objeto de status
-let gameNewsStatus = {};
+// Cache em memória para GameNews status
+let gameNewsStatusCache = []; // array de feeds
 
 /**
  * ------------------------------
@@ -89,17 +96,7 @@ app.get('/health', (req, res) => {
 /**
  * ------------------------------
  * API: GET /api/logs
- * - retorna logs do Mongo (se existir)
- * - filtros:
- *   - search: procura em title/description/user.tag/executor.tag
- *   - type: filtra por title (contains)
- *   - guildId: filtra por guild.id
- * - paginação:
- *   - page (1..)
- *   - limit (max 200)
- *
- * Auth:
- * - se DASHBOARD_TOKEN existir: obrigatório
+ * (igual ao que tinhas)
  * ------------------------------
  */
 app.get('/api/logs', requireDashboardAuth, async (req, res) => {
@@ -183,17 +180,57 @@ app.get('/api/logs', requireDashboardAuth, async (req, res) => {
 
 /**
  * ------------------------------
- * (Opcional) API: GET /api/gamenews-status
- * - devolve snapshot do estado dos feeds GameNews
+ * API: GET /api/gamenews-status
+ * - devolve o status por feed (a partir do Mongo)
+ * - requer token se DASHBOARD_TOKEN existir
  * ------------------------------
  */
-app.get('/api/gamenews-status', requireDashboardAuth, (req, res) => {
-  const list = Object.values(gameNewsStatus || {});
-  res.json({
-    ok: true,
-    total: list.length,
-    items: list
-  });
+app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
+  try {
+    // Se não existir o model, devolve cache em memória
+    if (!GameNewsModel) {
+      return res.json({
+        ok: true,
+        source: 'memory',
+        items: Array.isArray(gameNewsStatusCache) ? gameNewsStatusCache : []
+      });
+    }
+
+    const sources = Array.isArray(config?.gameNews?.sources) ? config.gameNews.sources : [];
+
+    // busca docs do Mongo (apenas dos feeds configurados)
+    const names = sources.map(s => s?.name).filter(Boolean);
+    const docs = await GameNewsModel.find({ source: { $in: names } }).lean();
+
+    const map = new Map();
+    for (const d of docs) map.set(d.source, d);
+
+    const items = sources.map((s) => {
+      const d = map.get(s.name);
+      return {
+        source: s.name,
+        feedName: s.name,
+        feedUrl: s.feed,
+        channelId: s.channelId,
+
+        failCount: d?.failCount ?? 0,
+        pausedUntil: d?.pausedUntil ?? null,
+        lastSentAt: d?.lastSentAt ?? null,
+        lastHashesCount: Array.isArray(d?.lastHashes) ? d.lastHashes.length : 0,
+
+        updatedAt: d?.updatedAt ?? null
+      };
+    });
+
+    return res.json({
+      ok: true,
+      source: 'mongo',
+      items
+    });
+  } catch (err) {
+    console.error('[Dashboard] /api/gamenews-status error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
+  }
 });
 
 /**
@@ -215,18 +252,18 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log('🔌 Dashboard client connected');
 
-  // Envia cache em memória (logs)
+  // 1) Envia cache de logs em memória
   socket.emit('logs', logsCache);
 
-  // Envia estado atual de GameNews
-  socket.emit('gamenews_status', Object.values(gameNewsStatus || {}));
+  // 2) Envia cache de status GameNews (se existir)
+  socket.emit('gamenews_status', Array.isArray(gameNewsStatusCache) ? gameNewsStatusCache : []);
 
   socket.on('requestLogs', () => {
     socket.emit('logs', logsCache);
   });
 
   socket.on('requestGameNewsStatus', () => {
-    socket.emit('gamenews_status', Object.values(gameNewsStatus || {}));
+    socket.emit('gamenews_status', Array.isArray(gameNewsStatusCache) ? gameNewsStatusCache : []);
   });
 
   socket.on('disconnect', () => {
@@ -236,14 +273,13 @@ io.on('connection', (socket) => {
 
 /**
  * ------------------------------
- * Persistência no Mongo + Cache
+ * Persistência no Mongo + Cache (LOGS)
  * ------------------------------
  */
 async function saveLogToMongo(data) {
   if (!DashboardLog) return null;
 
   try {
-    // Sanitiza (garante campos)
     const doc = await DashboardLog.create({
       title: data.title || 'Log',
       user: data.user || null,
@@ -280,8 +316,7 @@ async function saveLogToMongo(data) {
 }
 
 /**
- * Carrega cache inicial do Mongo (últimos X)
- * - para quando a dashboard abrir, já ter histórico imediato via socket emit
+ * Carrega cache inicial do Mongo (últimos X logs)
  */
 async function loadInitialCacheFromMongo() {
   if (!DashboardLog) return;
@@ -293,7 +328,6 @@ async function loadInitialCacheFromMongo() {
       .limit(limit)
       .lean();
 
-    // cache em memória deve estar do mais antigo -> mais recente
     logsCache = items.reverse().map((x) => ({
       title: x.title,
       user: x.user,
@@ -309,19 +343,17 @@ async function loadInitialCacheFromMongo() {
   }
 }
 
-// tenta carregar cache (não bloqueia boot)
+// tenta carregar cache de logs (não bloqueia boot)
 loadInitialCacheFromMongo().catch(() => null);
 
 /**
  * ------------------------------
- * Função pública: sendToDashboard
- * - Mantém compatibilidade com o logger
- * - Agora também aceita:
- *   - 'gamenews_status' para painel de GameNews
+ * Função pública: sendToDashboard(event, data)
+ * - Mantém compatibilidade com o teu logger (event='log')
+ * - Suporta também event='gamenews_status'
  * ------------------------------
  */
 function sendToDashboard(event, data) {
-  // ---------------- LOGS ----------------
   if (event === 'log') {
     const payload = {
       ...data,
@@ -341,34 +373,15 @@ function sendToDashboard(event, data) {
     return;
   }
 
-  // ------------- GameNews Status -------------
+  // ✅ GameNews status (não persiste aqui — já está no Mongo no model GameNews)
   if (event === 'gamenews_status') {
-    if (!data || !data.source) return;
+    const arr = Array.isArray(data) ? data : [];
+    gameNewsStatusCache = arr;
 
-    // normaliza timestamps para strings ISO (mais fácil no frontend)
-    const status = {
-      source: data.source,
-      feedName: data.feedName || data.source,
-      feedUrl: data.feedUrl || null,
-      channelId: data.channelId || null,
-      failCount: data.failCount ?? 0,
-      pausedUntil: data.pausedUntil ? new Date(data.pausedUntil).toISOString() : null,
-      lastSentAt: data.lastSentAt ? new Date(data.lastSentAt).toISOString() : null,
-      lastHashesCount: data.lastHashesCount ?? 0,
-      paused: Boolean(data.paused),
-      updatedAt: data.updatedAt ? new Date(data.updatedAt).toISOString() : new Date().toISOString()
-    };
-
-    // guarda na cache em memória (1 por source)
-    gameNewsStatus[status.source] = status;
-
-    // emite lista completa para todos os clientes
-    io.emit('gamenews_status', Object.values(gameNewsStatus));
-
+    // emite para todos os clientes
+    io.emit('gamenews_status', gameNewsStatusCache);
     return;
   }
-
-  // outros tipos de evento podem ser ignorados por enquanto
 }
 
 module.exports = {
