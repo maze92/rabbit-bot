@@ -1,95 +1,39 @@
-# Ozark Discord Bot
+## v1.0.0.1
 
-Ozark é um bot de Discord focado em **moderação automática**, **gestão de infrações**, **sistema de Trust Score**, **RSS Game News** e **dashboard web em tempo real**.
-
-O objetivo do projeto é oferecer uma base **robusta, extensível e profissional**, adequada tanto para servidores pequenos como para comunidades maiores.
-
----
-
-## 🚀 Funcionalidades Principais
-
-### 🛡️ Moderação Automática (AutoMod)
-- Deteção de palavras proibidas (PT / EN)
-- Normalização de texto (leet, símbolos, links, emojis)
-- Apagamento automático de mensagens ofensivas
-- Sistema de **warnings progressivos**
-- Timeout automático ao atingir o limite
-- Severidade ajustada por **Trust Score**
-- Notificação por **DM** ao utilizador (configurável)
-
----
-
-### 🔐 Trust Score System
-- Cada utilizador possui um Trust Score persistente
-- Penalizações automáticas:
-  - WARN → reduz trust
-  - MUTE → penalização maior
-- Regeneração automática de trust ao longo do tempo
-- Trust influencia:
-  - Nº de avisos tolerados
-  - Duração do mute
-- Sistema centralizado (`warningsService`)
-
----
-
-### 🧑‍⚖️ Comandos de Staff
-- `!warn` – aviso manual com trust + logs
-- `!mute` / `!unmute` – timeout manual com hierarquia segura
-- `!clear` – limpeza de mensagens
-- `!userinfo` – info do utilizador (trust visível apenas para staff)
-- Cooldowns por comando e utilizador
-
----
-
-### 🚫 Anti-Spam / Flood Protection
-- Deteção de spam por frequência de mensagens
-- Timeout automático
-- Cooldown de ações para evitar loops
-- Bypass por roles ou administradores
-- Logs automáticos
-
----
-
-### 📰 Game News (RSS)
-- Sistema RSS modular (GameSpot)
-- Um feed → um canal
-- Dedupe real via hashes persistentes
-- Bloqueio de notícias antigas
-- Retry com jitter
-- Backoff automático por feed
-- Persistência de estado no MongoDB
-
----
-
-### 📊 Dashboard Web (Tempo Real)
-- Logs em tempo real via Socket.IO
-- Persistência de logs no MongoDB
-- Painel **GameNews Status**:
-  - Estado do feed (OK / Paused)
-  - Última notícia enviada
-  - Nº de falhas
-  - Nº de hashes guardados
-- API protegida por token (opcional)
-- Interface simples e leve
-
----
-
-### ❤️ Health & Estabilidade
+### Added
+- Sistema completo de **AutoMod 2.0** com Trust Score
+- Sistema centralizado de utilizadores (`warningsService`)
+- Trust Score persistente com penalização e regeneração
+- Timeout automático ajustado por trust
+- Notificações por DM em WARN e MUTE (configurável)
+- Sistema Anti-Spam com timeout automático
+- RSS Game News com:
+  - Dedupe real por hash
+  - Retry + jitter
+  - Backoff por feed
+  - Persistência no MongoDB
+- Dashboard Web com:
+  - Logs em tempo real
+  - Persistência em MongoDB
+  - Painel GameNews Status
 - Endpoint `/health` com estado do sistema
-- MongoDB connection guard
-- ErrorGuard global
-- Proteção contra crashes por falhas externas
+
+### Changed
+- Arquitetura de moderação centralizada
+- Logger unificado para Discord + Dashboard
+- Commands handler com cooldowns globais
+- Melhor gestão de hierarquia e permissões
+
+### Improved
+- UX para staff (logs mais claros e consistentes)
+- Proteção contra loops e spam
+- Normalização avançada de mensagens no AutoMod
+- Separação clara entre lógica de leitura e escrita de trust
+
+### Fixed
+- Duplicação de RSS em feeds problemáticos
+- Execuções repetidas de comandos
+- Crashes silenciosos em falhas externas (RSS, DMs, DB)
 
 ---
 
-## 🧱 Stack Técnica
-- Node.js
-- discord.js v14+
-- MongoDB (Mongoose)
-- Express + Socket.IO
-- Railway ready
-
----
-
-## ⚙️ Configuração
-Todas as opções estão centralizadas em:
