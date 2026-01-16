@@ -1,10 +1,7 @@
 // src/events/guildMemberAdd.js
+
 const User = require('../database/models/User');
 
-/**
- * Ao entrar um membro:
- * - cria registo no DB se não existir
- */
 module.exports = (client) => {
   client.on('guildMemberAdd', async (member) => {
     try {
