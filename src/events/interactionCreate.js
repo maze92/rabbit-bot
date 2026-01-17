@@ -1,6 +1,5 @@
 // src/events/interactionCreate.js
 
-const { MessageFlags } = require('discord.js');
 const config = require('../config/defaultConfig');
 const { t } = require('../systems/i18n');
 
@@ -28,7 +27,7 @@ module.exports = (client) => {
     } catch (err) {
       console.error('[interactionCreate] Error:', err);
       try {
-        const payload = { content: t('common.unexpectedError'), flags: MessageFlags.Ephemeral };
+        const payload = { content: t('common.unexpectedError'), flags: 64 }; // 64 = Ephemeral
         if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
         else await interaction.reply(payload);
       } catch {
