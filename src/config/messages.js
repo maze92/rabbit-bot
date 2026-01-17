@@ -9,6 +9,14 @@ module.exports = {
       noReason: 'No reason provided'
     },
 
+    clear: {
+      noPerm: '❌ I do not have permission to manage messages in this channel.',
+      tooOldOrNoPerm:
+        '⚠️ I could not delete messages. They may be too old (14+ days) or I lack permissions.',
+      success: ({ count }) => `🧹 Cleared **${count}** messages.`,
+      invalidAmount: ({ min, max }) => `❌ Amount must be between ${min} and ${max}.`
+    },
+
     warn: {
       cannotWarnSelf: '❌ You cannot warn yourself.',
       cannotWarnBot: '❌ You cannot warn the bot.',
