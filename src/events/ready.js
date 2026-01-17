@@ -16,6 +16,10 @@ module.exports = (client) => {
     }
   };
 
+  client.once('ready', () => {
+    client.emit('clientReady');
+  });
+
   client.once('clientReady', async () => {
     if (started) return;
     started = true;
