@@ -90,10 +90,10 @@ module.exports = {
       const reason = cleanedArgs.join(' ').trim() || t('common.noReason');
 
       const dbUser = await warningsService.addWarning(guild.id, target.id, 1);
-
       const baseMaxWarnings = config.maxWarnings ?? 3;
 
-      await infractionsService
+      // Cria a infração com Case ID (se o sistema estiver ativo)
+      const inf = await infractionsService
         .create({
           guild,
           user: target.user,
@@ -127,18 +127,23 @@ module.exports = {
         );
       }
 
-      // Trust stays internal: only in logs
-      await logger(
-        client,
-        'Manual Warn',
-        target.user,
-        message.author,
+      // Trust fica interno (apenas em logs). Aqui também colocamos o Case ID, se existir.
+      const casePrefix = inf?.caseId ? `Case: **#${inf.caseId}**\n` : '';
+      const description =
+        casePrefix +
         t('log.actions.manualWarn', null, {
           reason,
           warnings: dbUser.warnings,
           maxWarnings: baseMaxWarnings,
           trust: dbUser.trust ?? 'N/A'
-        }),
+        });
+
+      await logger(
+        client,
+        'Manual Warn',
+        target.user,
+        message.author,
+        description,
         guild
       );
     } catch (err) {
