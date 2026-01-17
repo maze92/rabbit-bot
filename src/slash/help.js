@@ -1,5 +1,6 @@
 // src/slash/help.js
 
+const { MessageFlags } = require('discord.js');
 const config = require('../config/defaultConfig');
 const { t } = require('../systems/i18n');
 
@@ -29,11 +30,23 @@ module.exports = async function helpSlash(_client, interaction) {
 
     lines.push(t('help.footer', null, prefix));
 
-    await interaction.reply({ content: lines.join('\n'), ephemeral: true }).catch(() => null);
+    await interaction
+      .reply({
+        content: lines.join('\n'),
+        flags: MessageFlags.Ephemeral
+      })
+      .catch(() => null);
   } catch (err) {
     console.error('[slash/help] Error:', err);
-    const payload = { content: t('common.unexpectedError'), ephemeral: true };
-    if (interaction.deferred || interaction.replied) return interaction.followUp(payload).catch(() => null);
+
+    const payload = {
+      content: t('common.unexpectedError'),
+      flags: MessageFlags.Ephemeral
+    };
+
+    if (interaction.deferred || interaction.replied) {
+      return interaction.followUp(payload).catch(() => null);
+    }
     return interaction.reply(payload).catch(() => null);
   }
 };
