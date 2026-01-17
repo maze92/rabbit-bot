@@ -15,7 +15,9 @@ module.exports = {
       unexpectedError: '❌ An unexpected error occurred.',
       slowDown: ({ seconds }) => `⏳ Please slow down. Try again in **${seconds}s**.`,
       cannotResolveUser: '❌ I could not resolve that user.',
-      noReason: 'No reason provided'
+      noReason: 'No reason provided',
+      yes: 'Yes',
+      no: 'No'
     },
 
     warn: {
@@ -180,7 +182,9 @@ Warnings: **${warnings}/${maxWarnings}**`,
       unexpectedError: '❌ Ocorreu um erro inesperado.',
       slowDown: ({ seconds }) => `⏳ Vai com calma. Tenta novamente em **${seconds}s**.`,
       cannotResolveUser: '❌ Não consegui identificar esse utilizador.',
-      noReason: 'Sem motivo especificado'
+      noReason: 'Sem motivo especificado',
+      yes: 'Sim',
+      no: 'Não'
     },
 
     warn: {
