@@ -1,6 +1,6 @@
 // src/slash/warn.js
 
-const { PermissionsBitField } = require('discord.js');
+const { PermissionsBitField, MessageFlags } = require('discord.js');
 
 const config = require('../config/defaultConfig');
 const logger = require('../systems/logger');
@@ -18,6 +18,13 @@ async function trySendDM(user, content) {
   }
 }
 
+// Helper opcional: resposta "ephemeral" moderna
+function replyEphemeral(interaction, content) {
+  return interaction
+    .reply({ content, flags: MessageFlags.Ephemeral })
+    .catch(() => null);
+}
+
 module.exports = async function warnSlash(client, interaction) {
   try {
     if (!interaction?.guild) return;
@@ -26,38 +33,38 @@ module.exports = async function warnSlash(client, interaction) {
     const executor = interaction.member;
     const botMember = guild.members.me;
     if (!executor || !botMember) {
-      return interaction.reply({ content: t('common.unexpectedError'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('common.unexpectedError'));
     }
 
     if (!isStaff(executor)) {
-      return interaction.reply({ content: t('common.noPermission'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('common.noPermission'));
     }
 
     const targetUser = interaction.options.getUser('user', true);
     const target = await guild.members.fetch(targetUser.id).catch(() => null);
     if (!target) {
-      return interaction.reply({ content: t('common.cannotResolveUser'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('common.cannotResolveUser'));
     }
 
     if (target.id === interaction.user.id) {
-      return interaction.reply({ content: t('warn.cannotWarnSelf'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('warn.cannotWarnSelf'));
     }
 
     if (target.id === client.user.id) {
-      return interaction.reply({ content: t('warn.cannotWarnBot'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('warn.cannotWarnBot'));
     }
 
     if (target.roles.highest.position >= botMember.roles.highest.position) {
-      return interaction.reply({ content: t('warn.roleHierarchyBot'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('warn.roleHierarchyBot'));
     }
 
     const executorIsAdmin = executor.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!executorIsAdmin && target.roles.highest.position >= executor.roles.highest.position) {
-      return interaction.reply({ content: t('warn.roleHierarchyUser'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('warn.roleHierarchyUser'));
     }
 
     if (!executorIsAdmin && target.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return interaction.reply({ content: t('warn.cannotWarnAdmin'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('warn.cannotWarnAdmin'));
     }
 
     const reason = (interaction.options.getString('reason') || '').trim() || t('common.noReason');
@@ -75,15 +82,17 @@ module.exports = async function warnSlash(client, interaction) {
       })
       .catch(() => null);
 
-    await interaction.reply({
-      content: t('warn.channelConfirm', null, {
-        userMention: `${target}`,
-        warnings: dbUser.warnings,
-        maxWarnings: baseMaxWarnings,
-        reason
-      }),
-      ephemeral: false
-    }).catch(() => null);
+    await interaction
+      .reply({
+        content: t('warn.channelConfirm', null, {
+          userMention: `${target}`,
+          warnings: dbUser.warnings,
+          maxWarnings: baseMaxWarnings,
+          reason
+        }),
+        ephemeral: false // isto não gera warning
+      })
+      .catch(() => null);
 
     if (config.notifications?.dmOnWarn) {
       await trySendDM(
@@ -112,8 +121,12 @@ module.exports = async function warnSlash(client, interaction) {
     );
   } catch (err) {
     console.error('[slash/warn] Error:', err);
-    const payload = { content: t('common.unexpectedError'), ephemeral: true };
-    if (interaction.deferred || interaction.replied) return interaction.followUp(payload).catch(() => null);
+
+    const payload = { content: t('common.unexpectedError'), flags: MessageFlags.Ephemeral };
+
+    if (interaction.deferred || interaction.replied) {
+      return interaction.followUp(payload).catch(() => null);
+    }
     return interaction.reply(payload).catch(() => null);
   }
 };
