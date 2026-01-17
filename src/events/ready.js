@@ -16,16 +16,17 @@ module.exports = (client) => {
     }
   };
 
-  // Quando o Discord disser que o bot está pronto,
-  // disparamos o teu evento interno "clientReady"
+  // Evento oficial da Discord API
   client.once('ready', () => {
     try {
+      // Disparamos o teu evento interno, usado pelo resto do código
       client.emit('clientReady');
     } catch (err) {
       console.error('[ready] Failed to emit clientReady:', err);
     }
   });
 
+  // Evento interno usado pelo resto do bot (index.js, gamenews, etc.)
   client.once('clientReady', async () => {
     if (started) return;
     started = true;
