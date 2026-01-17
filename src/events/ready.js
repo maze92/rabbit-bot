@@ -16,8 +16,14 @@ module.exports = (client) => {
     }
   };
 
+  // Quando o Discord disser que o bot está pronto,
+  // disparamos o teu evento interno "clientReady"
   client.once('ready', () => {
-    client.emit('clientReady');
+    try {
+      client.emit('clientReady');
+    } catch (err) {
+      console.error('[ready] Failed to emit clientReady:', err);
+    }
   });
 
   client.once('clientReady', async () => {
