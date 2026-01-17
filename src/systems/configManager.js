@@ -121,6 +121,20 @@ function validateValue(pathStr, value) {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function flattenPatch(obj, prefix = '', out = {}) {
+  if (!isPlainObject(obj)) return out;
+
+  for (const [k, v] of Object.entries(obj)) {
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (isPlainObject(v)) {
+      flattenPatch(v, key, out);
+    } else {
+      out[key] = v;
+    }
+  }
+  return out;
+}
+
 const overridesPath = path.join(__dirname, '../config/overrides.json');
 
 function readOverrides() {
@@ -145,8 +159,18 @@ function getPublicConfig() {
   // Remove sensitive-ish fields even if present.
   delete cloned.staffRoles;
   delete cloned.bannedWords;
+
+  // GameNews feeds contain channel IDs
   if (cloned.gameNews) delete cloned.gameNews.sources;
+
+  // Slash guildId is also sensitive
   if (cloned.slash) delete cloned.slash.guildId;
+
+  // AntiSpam overrides can contain channel IDs / bypassRoles
+  if (cloned.antiSpam) {
+    delete cloned.antiSpam.channels;
+    delete cloned.antiSpam.bypassRoles;
+  }
 
   return cloned;
 }
@@ -168,31 +192,16 @@ function applyPatch(patch) {
   const applied = [];
   const rejected = [];
 
-  for (const [k, v] of Object.entries(patch)) {
-    // Support both flat keys ('trust.lowThreshold') and nested objects.
-    if (isPlainObject(v)) {
-      // If nested object, flatten one level deep
-      for (const [k2, v2] of Object.entries(v)) {
-        const pathStr = `${k}.${k2}`;
-        if (!ALLOWED_PATHS.has(pathStr) || !validateValue(pathStr, v2)) {
-          rejected.push({ path: pathStr });
-          continue;
-        }
-        deepSet(overrides, pathStr, v2);
-        deepSet(config, pathStr, v2);
-        applied.push(pathStr);
-      }
-      continue;
-    }
+  const flat = flattenPatch(patch);
 
-    const pathStr = k;
-    if (!ALLOWED_PATHS.has(pathStr) || !validateValue(pathStr, v)) {
+  for (const [pathStr, value] of Object.entries(flat)) {
+    if (!ALLOWED_PATHS.has(pathStr) || !validateValue(pathStr, value)) {
       rejected.push({ path: pathStr });
       continue;
     }
 
-    deepSet(overrides, pathStr, v);
-    deepSet(config, pathStr, v);
+    deepSet(overrides, pathStr, value);
+    deepSet(config, pathStr, value);
     applied.push(pathStr);
   }
 
