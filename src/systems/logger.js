@@ -3,6 +3,7 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('../config/defaultConfig');
 const dashboard = require('../dashboard');
+const { t } = require('./i18n');
 
 function normalizeActor(actor) {
   if (!actor) return null;
@@ -21,30 +22,31 @@ function resolveGuild(guild, user, executor) {
 }
 
 function decorateTitle(title) {
-  const t = String(title || '').trim();
-  const low = t.toLowerCase();
+  const tTitle = String(title || '').trim();
+  if (!tTitle) return 'Log';
+
+  const low = tTitle.toLowerCase();
 
   if (low.includes('warn')) {
     if (low.includes('automatic') || low.includes('automod') || low.includes('auto')) {
-      return `🤖⚠️ ${t}`;
+      return `🤖⚠️ ${tTitle}`;
     }
-    return `⚠️ ${t}`;
+    return `⚠️ ${tTitle}`;
   }
 
   if (low.includes('mute') || low.includes('timeout')) {
     if (low.includes('automatic') || low.includes('automod') || low.includes('auto')) {
-      return `🤖🔇 ${t}`;
+      return `🤖🔇 ${tTitle}`;
     }
-    return `🔇 ${t}`;
+    return `🔇 ${tTitle}`;
   }
 
-  return t || 'Log';
+  return tTitle;
 }
 
 /**
  * Adiciona label de risco ao texto de Trust no description:
- * - Trust: **8/100** → Trust: **8/100** (High risk)
- * - Trust after mute: **72/100** → ... (Low risk)
+ * - Trust: **8/100** → ... (High risk)
  */
 function decorateDescriptionWithTrustLabel(description) {
   if (!description) return description;
@@ -56,16 +58,17 @@ function decorateDescriptionWithTrustLabel(description) {
   const highThreshold = trustCfg.highThreshold ?? 60;
   const maxDefault = trustCfg.max ?? 100;
 
-  // evita duplicar se já tiver algum (High/Medium/Low risk)
   if (
     description.includes('(High risk)') ||
     description.includes('(Medium risk)') ||
-    description.includes('(Low risk)')
+    description.includes('(Low risk)') ||
+    description.includes('(Risco elevado)') ||
+    description.includes('(Risco médio)') ||
+    description.includes('(Risco baixo)')
   ) {
     return description;
   }
 
-  // Match tanto "Trust:" como "Trust after mute:"
   const regex = /(Trust(?: after mute)?):\s*\*\*(\d+)(?:\/(\d+))?\*\*/i;
   const match = description.match(regex);
   if (!match) return description;
@@ -73,13 +76,13 @@ function decorateDescriptionWithTrustLabel(description) {
   const labelPrefix = match[1];
   const value = Number(match[2]);
   const max = match[3] ? Number(match[3]) : maxDefault;
-
   if (!Number.isFinite(value)) return description;
 
-  let riskLabel = 'Medium risk';
-  if (value <= lowThreshold) riskLabel = 'High risk';
-  else if (value >= highThreshold) riskLabel = 'Low risk';
+  let riskKey = 'medium';
+  if (value <= lowThreshold) riskKey = 'high';
+  else if (value >= highThreshold) riskKey = 'low';
 
+  const riskLabel = t(`log.trustRisk.${riskKey}`);
   const replacement = `${labelPrefix}: **${value}/${max}** (${riskLabel})`;
 
   return description.replace(regex, replacement);
@@ -103,14 +106,23 @@ module.exports = async function logger(client, title, user, executor, descriptio
       : '';
 
     let desc = '';
-    if (nUser?.tag) desc += `👤 **User:** ${nUser.tag}\n`;
-    if (nExec?.tag) desc += `🛠️ **Executor:** ${nExec.tag}\n`;
-    if (decoratedDescription) desc += `${decoratedDescription}`;
+
+    if (nUser?.tag) {
+      desc += `👤 **${t('log.labels.user')}:** ${nUser.tag}\n`;
+    }
+
+    if (nExec?.tag) {
+      desc += `🛠️ **${t('log.labels.executor')}:** ${nExec.tag}\n`;
+    }
+
+    if (decoratedDescription) {
+      desc += decoratedDescription;
+    }
 
     const embed = new EmbedBuilder()
       .setTitle(finalTitle || 'Log')
       .setColor('Blue')
-      .setDescription(desc || 'No description provided.')
+      .setDescription(desc || t('log.noDescription'))
       .setTimestamp(new Date());
 
     if (logChannel) {
