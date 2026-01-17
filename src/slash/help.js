@@ -1,6 +1,5 @@
 // src/slash/help.js
 
-const { MessageFlags } = require('discord.js');
 const config = require('../config/defaultConfig');
 const { t } = require('../systems/i18n');
 
@@ -33,7 +32,7 @@ module.exports = async function helpSlash(_client, interaction) {
     await interaction
       .reply({
         content: lines.join('\n'),
-        flags: MessageFlags.Ephemeral
+        flags: 64 // Ephemeral
       })
       .catch(() => null);
   } catch (err) {
@@ -41,7 +40,7 @@ module.exports = async function helpSlash(_client, interaction) {
 
     const payload = {
       content: t('common.unexpectedError'),
-      flags: MessageFlags.Ephemeral
+      flags: 64
     };
 
     if (interaction.deferred || interaction.replied) {
