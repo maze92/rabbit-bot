@@ -4,7 +4,7 @@ const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 
 const config = require('../config/defaultConfig');
 const warningsService = require('../systems/warningsService');
-const Infraction = require('../database/models/Infraction');
+const infractionsService = require('../systems/infractionsService');
 const logger = require('../systems/logger');
 const { t } = require('../systems/i18n');
 
@@ -78,14 +78,21 @@ function formatInfractionLine(inf) {
   const type = String(inf?.type || 'UNKNOWN').toUpperCase();
 
   const duration =
-    inf?.duration != null && Number.isFinite(Number(inf.duration)) && Number(inf.duration) > 0
+    inf?.duration != null &&
+    Number.isFinite(Number(inf.duration)) &&
+    Number(inf.duration) > 0
       ? ` • ${Math.round(Number(inf.duration) / 60000)}m`
       : '';
 
   const ts = formatRelativeTime(inf?.createdAt);
   const reason = truncate(inf?.reason || t('common.noReason'), 80);
 
-  return `• **${type}**${duration} — ${ts}\n  └ ${reason}`;
+  const casePart =
+    inf?.caseId != null && Number.isFinite(Number(inf.caseId))
+      ? `Case #${inf.caseId} • `
+      : '';
+
+  return `• **${casePart}${type}**${duration} — ${ts}\n  └ ${reason}`;
 }
 
 function joinFieldSafe(lines, maxLen = 1024) {
@@ -101,7 +108,6 @@ function joinFieldSafe(lines, maxLen = 1024) {
   }
 
   if (lines.length > out.length) {
-    // tenta adicionar reticências se couber
     const ell = '…';
     if (total + (out.length ? 1 : 0) + ell.length <= maxLen) out.push(ell);
   }
@@ -111,7 +117,8 @@ function joinFieldSafe(lines, maxLen = 1024) {
 
 module.exports = {
   name: 'userinfo',
-  description: 'Shows information about a user, including warnings and trust score (trust visible to staff only)',
+  description:
+    'Shows information about a user, including warnings and trust score (trust visible to staff only)',
 
   async execute(message, args, client) {
     try {
@@ -134,26 +141,29 @@ module.exports = {
       const trustValue = Number.isFinite(dbUser?.trust) ? dbUser.trust : trustCfg.base;
       const trustLabel = getTrustLabel(trustValue, trustCfg);
 
+      // Total de infrações (todos os tipos) via infractionsService
       let infractionsCount = 0;
       try {
-        infractionsCount = await Infraction.countDocuments({
+        const result = await infractionsService.searchCases({
           guildId: guild.id,
-          userId: user.id
+          userId: user.id,
+          page: 1,
+          limit: 1
         });
+        infractionsCount = result?.total ?? 0;
       } catch {
         // ignore
       }
 
+      // Últimas infrações (com caseId) apenas para staff
       let recentInfractions = [];
       if (requesterIsStaff) {
         try {
-          recentInfractions = await Infraction.find({
-            guildId: guild.id,
-            userId: user.id
-          })
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .lean();
+          recentInfractions = await infractionsService.getRecentInfractions(
+            guild.id,
+            user.id,
+            5
+          );
         } catch {
           recentInfractions = [];
         }
@@ -238,19 +248,10 @@ module.exports = {
         })
       ];
 
-      await logger(
-        client,
-        'User Info',
-        user,
-        message.author,
-        descLines.join('\n'),
-        guild
-      );
+      await logger(client, 'User Info', user, message.author, descLines.join('\n'), guild);
     } catch (err) {
       console.error('[userinfo] Error:', err);
-      await message
-        .reply(t('common.unexpectedError'))
-        .catch(() => null);
+      await message.reply(t('common.unexpectedError')).catch(() => null);
     }
   }
 };
