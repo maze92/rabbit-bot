@@ -39,6 +39,7 @@ async function trySendDM(user, content) {
     if (!content) return;
     await user.send({ content }).catch(() => null);
   } catch {
+    // ignore
   }
 }
 
@@ -82,8 +83,13 @@ module.exports = {
           .catch(() => null);
       }
 
-      const executorIsAdmin = message.member.permissions.has(PermissionsBitField.Flags.Administrator);
-      if (!executorIsAdmin && target.roles.highest.position >= message.member.roles.highest.position) {
+      const executorIsAdmin = message.member.permissions.has(
+        PermissionsBitField.Flags.Administrator
+      );
+      if (
+        !executorIsAdmin &&
+        target.roles.highest.position >= message.member.roles.highest.position
+      ) {
         return message
           .reply('❌ You cannot warn a user with an equal or higher role than yours.')
           .catch(() => null);
@@ -100,44 +106,45 @@ module.exports = {
 
       const dbUser = await warningsService.addWarning(guild.id, target.id, 1);
 
-      await infractionsService.create({
-        guild,
-        user: target.user,
-        moderator: message.author,
-        type: 'WARN',
-        reason,
-        duration: null
-      }).catch(() => null);
+      await infractionsService
+        .create({
+          guild,
+          user: target.user,
+          moderator: message.author,
+          type: 'WARN',
+          reason,
+          duration: null
+        })
+        .catch(() => null);
 
-      const trustTextInline = dbUser?.trust != null ? `\n🔐 Trust: **${dbUser.trust}**` : '';
-
+      // Mensagem pública: não mostra trust
       await message.channel
         .send(
           `⚠️ ${target} has been warned.\n` +
-          `📌 Total warnings: **${dbUser.warnings}**\n` +
-          `📝 Reason: **${reason}**` +
-          trustTextInline
+            `📌 Total warnings: **${dbUser.warnings}**\n` +
+            `📝 Reason: **${reason}**`
         )
         .catch(() => null);
 
+      // DM opcional ao user: também sem trust
       if (config.notifications?.dmOnWarn) {
-        const trustText = dbUser?.trust != null ? `\n🔐 Trust: **${dbUser.trust}**` : '';
-
         const dmText =
           `⚠️ You received a **WARN** in **${guild.name}**.\n` +
           `📝 Reason: **${reason}**\n` +
-          `📌 Total warnings: **${dbUser.warnings}**` +
-          trustText;
+          `📌 Total warnings: **${dbUser.warnings}**`;
 
         await trySendDM(target.user, dmText);
       }
 
+      // Logger interno continua a ver o trust (para staff / log-bot)
       await logger(
         client,
         'Manual Warn',
         target.user,
         message.author,
-        `Reason: **${reason}**\nTotal warnings: **${dbUser.warnings}**\nTrust: **${dbUser.trust ?? 'N/A'}**`,
+        `Reason: **${reason}**\nTotal warnings: **${dbUser.warnings}**\nTrust: **${
+          dbUser.trust ?? 'N/A'
+        }**`,
         guild
       );
     } catch (err) {
