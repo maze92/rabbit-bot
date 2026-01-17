@@ -38,7 +38,10 @@ for (const file of commandFiles) {
   }
 }
 
-const STAFF_ONLY = new Set(['clear', 'warn', 'mute', 'unmute']);
+// Staff-only commands (global gate)
+const STAFF_ONLY = new Set(['warn', 'mute', 'unmute']);
+// NOTE: "clear" is NOT staff-only here, because clear.js already checks ManageMessages permission.
+// If you want "clear" staff-only, add it back: STAFF_ONLY.add('clear');
 
 function isStaff(member) {
   if (!member) return false;
@@ -49,7 +52,10 @@ function isStaff(member) {
   const staffRoles = Array.isArray(config.staffRoles) ? config.staffRoles : [];
   if (staffRoles.length === 0) return false;
 
-  return member.roles.cache.some((role) => staffRoles.includes(role.id));
+  const cache = member.roles?.cache;
+  if (!cache) return false;
+
+  return cache.some((role) => staffRoles.includes(role.id));
 }
 
 module.exports = async function commandsHandler(message, client) {
@@ -79,27 +85,17 @@ module.exports = async function commandsHandler(message, client) {
 
     const command = commands.get(commandName);
     if (!command) {
-      console.log(`[commands] Unknown command: "${commandName}" from ${message.author.tag}`);
+      // silent ignore (optional)
       return;
     }
 
-    console.log(
-      `[commands] Command received: "${commandName}" from ${message.author.tag} (${message.author.id})`
-    );
-
     const remaining = checkCooldown(commandName, message.author.id);
     if (remaining) {
-      console.log(
-        `[commands] Cooldown hit for "${commandName}" by ${message.author.tag}: ${remaining}s left`
-      );
       return message.reply(t('common.slowDown', null, { seconds: remaining })).catch(() => null);
     }
 
     if (STAFF_ONLY.has(commandName)) {
       if (!isStaff(member)) {
-        console.log(
-          `[commands] Denied (no staff) for "${commandName}" by ${message.author.tag}`
-        );
         return message.reply(t('common.noPermission')).catch(() => null);
       }
     }
