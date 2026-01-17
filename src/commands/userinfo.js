@@ -110,7 +110,8 @@ function joinFieldSafe(lines, maxLen = 1024) {
 
 module.exports = {
   name: 'userinfo',
-  description: 'Shows information about a user, including warnings and trust score (trust visible to staff only)',
+  description:
+    'Shows information about a user, including warnings and trust score (trust visible to staff only)',
 
   async execute(message, args, client) {
     try {
@@ -126,6 +127,14 @@ module.exports = {
       }
 
       const user = member.user;
+
+      // Staff pode escolher quantas infrações recentes quer ver:
+      // !userinfo @user 10
+      const limitArg = Number(args?.[1]);
+      const infractionsLimit =
+        requesterIsStaff && Number.isFinite(limitArg)
+          ? Math.min(Math.max(limitArg, 1), 20) // 1–20
+          : 5;
 
       const dbUser = await warningsService.getOrCreateUser(guild.id, user.id);
 
@@ -151,7 +160,7 @@ module.exports = {
             userId: user.id
           })
             .sort({ createdAt: -1 })
-            .limit(5)
+            .limit(infractionsLimit)
             .lean();
         } catch {
           recentInfractions = [];
@@ -170,8 +179,7 @@ module.exports = {
       if (trustCfg.enabled) {
         if (requesterIsStaff) {
           trustFieldValue =
-            `Trust: **${trustValue}/${trustCfg.max}**\n` +
-            `Risk level: **${trustLabel}**`;
+            `Trust: **${trustValue}/${trustCfg.max}**\n` + `Risk level: **${trustLabel}**`;
         } else {
           trustFieldValue =
             'Trust Score is **internal** and only visible to staff.\n' +
@@ -213,7 +221,7 @@ module.exports = {
             inline: false
           },
           {
-            name: '🧾 Recent infractions (last 5)',
+            name: `🧾 Recent infractions (last ${infractionsLimit})`,
             value: recentFieldValue,
             inline: false
           }
@@ -230,34 +238,22 @@ module.exports = {
       ];
 
       if (trustCfg.enabled) {
-        descLines.push(
-          `Trust: **${trustValue}/${trustCfg.max}**`,
-          `Risk level: **${trustLabel}**`
-        );
+        descLines.push(`Trust: **${trustValue}/${trustCfg.max}**`, `Risk level: **${trustLabel}**`);
       }
 
       if (requesterIsStaff && recentInfractions.length) {
         descLines.push(
-          `Recent infractions (last ${Math.min(5, recentInfractions.length)}):`,
+          `Recent infractions (last ${Math.min(infractionsLimit, recentInfractions.length)}):`,
           ...recentInfractions.map(
             (i) => `- ${String(i.type || 'UNKNOWN').toUpperCase()}: ${truncate(i.reason, 80)}`
           )
         );
       }
 
-      await logger(
-        client,
-        'User Info',
-        user,
-        message.author,
-        descLines.join('\n'),
-        guild
-      );
+      await logger(client, 'User Info', user, message.author, descLines.join('\n'), guild);
     } catch (err) {
       console.error('[userinfo] Error:', err);
-      await message
-        .reply('❌ An unexpected error occurred while fetching user info.')
-        .catch(() => null);
+      await message.reply('❌ An unexpected error occurred while fetching user info.').catch(() => null);
     }
   }
 };
