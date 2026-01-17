@@ -22,31 +22,31 @@ function resolveGuild(guild, user, executor) {
 }
 
 function decorateTitle(title) {
-  const tTitle = String(title || '').trim();
-  if (!tTitle) return 'Log';
+  const raw = String(title || '').trim();
+  const low = raw.toLowerCase();
 
-  const low = tTitle.toLowerCase();
+  if (!raw) return 'Log';
 
   if (low.includes('warn')) {
     if (low.includes('automatic') || low.includes('automod') || low.includes('auto')) {
-      return `🤖⚠️ ${tTitle}`;
+      return `🤖⚠️ ${raw}`;
     }
-    return `⚠️ ${tTitle}`;
+    return `⚠️ ${raw}`;
   }
 
   if (low.includes('mute') || low.includes('timeout')) {
     if (low.includes('automatic') || low.includes('automod') || low.includes('auto')) {
-      return `🤖🔇 ${tTitle}`;
+      return `🤖🔇 ${raw}`;
     }
-    return `🔇 ${tTitle}`;
+    return `🔇 ${raw}`;
   }
 
-  return tTitle;
+  return raw || 'Log';
 }
 
 /**
  * Adiciona label de risco ao texto de Trust no description:
- * - Trust: **8/100** → ... (High risk)
+ * - Trust: **8/100** → Trust: **8/100** (High risk / Risco elevado)
  */
 function decorateDescriptionWithTrustLabel(description) {
   if (!description) return description;
@@ -58,6 +58,7 @@ function decorateDescriptionWithTrustLabel(description) {
   const highThreshold = trustCfg.highThreshold ?? 60;
   const maxDefault = trustCfg.max ?? 100;
 
+  // evita duplicar se já tiver algum label
   if (
     description.includes('(High risk)') ||
     description.includes('(Medium risk)') ||
@@ -76,6 +77,7 @@ function decorateDescriptionWithTrustLabel(description) {
   const labelPrefix = match[1];
   const value = Number(match[2]);
   const max = match[3] ? Number(match[3]) : maxDefault;
+
   if (!Number.isFinite(value)) return description;
 
   let riskKey = 'medium';
