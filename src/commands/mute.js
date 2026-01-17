@@ -6,10 +6,10 @@ const config = require('../config/defaultConfig');
 const logger = require('../systems/logger');
 const infractionsService = require('../systems/infractionsService');
 const warningsService = require('../systems/warningsService');
+const { t } = require('../systems/i18n');
 
 function parseDuration(input) {
   if (!input || typeof input !== 'string') return null;
-
   const match = input.trim().toLowerCase().match(/^(\d+)(s|m|h|d)$/);
   if (!match) return null;
 
@@ -91,116 +91,83 @@ module.exports = {
       if (!botMember) return;
 
       if (!isStaff(executor)) {
-        return message
-          .reply("❌ You don't have permission to use this command.")
-          .catch(() => null);
+        return message.reply(t('common.noPermission')).catch(() => null);
       }
 
       const perms = message.channel.permissionsFor(botMember);
       if (!perms?.has(PermissionsBitField.Flags.ModerateMembers)) {
-        return message
-          .reply('❌ I do not have permission to timeout members (Moderate Members).')
-          .catch(() => null);
+        return message.reply(t('mute.missingPerm')).catch(() => null);
       }
 
       const target = message.mentions.members.first();
       if (!target) {
         return message
-          .reply(`❌ Usage: ${config.prefix}mute @user [10m/1h/2d] [reason...]`)
+          .reply(t('common.usage', null, `${config.prefix}mute @user [10m/1h/2d] [reason...]`))
           .catch(() => null);
       }
 
       if (target.id === message.author.id) {
-        return message.reply('❌ You cannot mute yourself.').catch(() => null);
+        return message.reply(t('mute.cannotMuteSelf')).catch(() => null);
       }
 
       if (target.id === client.user.id) {
-        return message.reply('❌ You cannot mute the bot.').catch(() => null);
+        return message.reply(t('mute.cannotMuteBot')).catch(() => null);
       }
 
       if (target.user.bot) {
-        return message.reply('⚠️ You cannot mute a bot.').catch(() => null);
+        return message.reply(t('mute.cannotMuteBots')).catch(() => null);
       }
 
-      if (
-        typeof target.isCommunicationDisabled === 'function' &&
-        target.isCommunicationDisabled()
-      ) {
-        return message
-          .reply(`⚠️ **${target.user.tag}** is already muted.`)
-          .catch(() => null);
+      if (typeof target.isCommunicationDisabled === 'function' && target.isCommunicationDisabled()) {
+        return message.reply(t('mute.alreadyMuted', null, target.user.tag)).catch(() => null);
       }
 
       const executorIsAdmin = executor.permissions.has(PermissionsBitField.Flags.Administrator);
 
       if (target.roles.highest.position >= botMember.roles.highest.position) {
-        return message
-          .reply('❌ I cannot mute this user (their role is higher or equal to my highest role).')
-          .catch(() => null);
+        return message.reply(t('mute.hierarchyBot')).catch(() => null);
       }
 
       if (!executorIsAdmin && target.roles.highest.position >= executor.roles.highest.position) {
-        return message
-          .reply('❌ You cannot mute a user with an equal or higher role than yours.')
-          .catch(() => null);
+        return message.reply(t('mute.hierarchyYou')).catch(() => null);
       }
 
       if (!executorIsAdmin && target.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message
-          .reply('❌ You cannot mute an Administrator.')
-          .catch(() => null);
+        return message.reply(t('mute.cannotMuteAdmin')).catch(() => null);
       }
 
       const cleanedArgs = stripTargetFromArgs(args, target.id);
-
       const possibleDuration = cleanedArgs[0];
       const parsed = parseDuration(possibleDuration);
 
-      const durationMs =
-        parsed ||
-        config.muteDuration ||
-        10 * 60 * 1000;
+      const durationMs = parsed || config.muteDuration || 10 * 60 * 1000;
 
       const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
       if (durationMs > MAX_TIMEOUT_MS) {
-        return message
-          .reply('❌ Timeout duration cannot exceed 28 days.')
-          .catch(() => null);
+        return message.reply(t('mute.tooLong')).catch(() => null);
       }
 
       const reasonStartIndex = parsed ? 1 : 0;
-      const reason =
-        cleanedArgs.slice(reasonStartIndex).join(' ').trim() ||
-        'No reason provided';
+      const reason = cleanedArgs.slice(reasonStartIndex).join(' ').trim() || t('common.noReason');
 
-      await target.timeout(
-        durationMs,
-        `Muted by ${message.author.tag}: ${reason}`
-      );
+      await target.timeout(durationMs, `Muted by ${message.author.tag}: ${reason}`);
 
       let dbUser = null;
       try {
-        if (typeof warningsService.applyMutePenalty === 'function') {
-          dbUser = await warningsService.applyMutePenalty(
-            guild.id,
-            target.id,
-            durationMs // argumento extra é ignorado pela função, mas não faz mal
-          );
-        } else {
-          dbUser = await warningsService.getOrCreateUser(guild.id, target.id);
-        }
+        dbUser = await warningsService.applyMutePenalty(guild.id, target.id);
       } catch (e) {
         console.error('[mute] warningsService error:', e);
       }
 
-      // DM para o user: sem mostrar trust
       if (config.notifications?.dmOnMute) {
-        const dmText =
-          `🔇 You received a **manual MUTE** in **${guild.name}**.\n` +
-          `⏰ Duration: **${formatDuration(durationMs)}**\n` +
-          `📝 Reason: **${reason}**`;
-
-        await trySendDM(target.user, dmText);
+        await trySendDM(
+          target.user,
+          t('mute.mutedDM', null, {
+            guildName: guild.name,
+            duration: formatDuration(durationMs),
+            reason
+          })
+        );
       }
 
       await infractionsService
@@ -214,16 +181,16 @@ module.exports = {
         })
         .catch(() => null);
 
-      // Mensagem pública: sem trust
       await message.channel
         .send(
-          `🔇 **${target.user.tag}** has been muted for **${formatDuration(
-            durationMs
-          )}**.\n` + `📝 Reason: **${reason}**`
+          t('mute.mutedPublic', null, {
+            tag: target.user.tag,
+            duration: formatDuration(durationMs),
+            reason
+          })
         )
         .catch(() => null);
 
-      // Logger interno continua a ver trust
       const trustTextLog = dbUser?.trust != null ? `\nTrust: **${dbUser.trust}**` : '';
 
       await logger(
@@ -236,11 +203,7 @@ module.exports = {
       );
     } catch (err) {
       console.error('[mute] Error:', err);
-      message
-        .reply(
-          '❌ Failed to mute the user. Check my permissions and role hierarchy.'
-        )
-        .catch(() => null);
+      message.reply(t('mute.failedMute')).catch(() => null);
     }
   }
 };
