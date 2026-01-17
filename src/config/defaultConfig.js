@@ -129,5 +129,17 @@ module.exports = {
         channelId: '1460640560778838137'
       }
     ]
+  },
+
+  // Slash Commands
+  slash: {
+    enabled: true,
+
+    // ✅ Recomendo pôr o ID do teu servidor (para registar rápido e evitar cache global)
+    // Se deixares vazio, tenta registar GLOBAL (demora a propagar).
+    guildId: '1385619241235120168',
+
+    // regista automaticamente no arranque
+    registerOnStartup: true
   }
 };
