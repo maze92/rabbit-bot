@@ -2,7 +2,7 @@
 
 module.exports = {
   prefix: '!',
-  language: 'en',
+  language: 'pt',
   logChannelName: 'log-bot',
 
   staffRoles: [
