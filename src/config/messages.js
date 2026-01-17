@@ -62,6 +62,42 @@ module.exports = {
       }
     },
 
+    help: {
+      title: 'Ozark Bot – Help',
+    
+      moderationTitle: 'Moderation Commands',
+      automodTitle: 'AutoMod & Anti-Spam',
+      gameNewsTitle: 'Game News',
+      dashboardTitle: 'Dashboard',
+    
+      moderation: (prefix) => [
+        `• \`${prefix}warn @user [reason]\` – issue a warning to a user`,
+        `• \`${prefix}mute @user [10m/1h/2d] [reason]\` – timeout (mute) a user`,
+        `• \`${prefix}unmute @user\` – remove timeout from a user`,
+        `• \`${prefix}clear <amount>\` – clear messages in the current channel`,
+        `• \`${prefix}userinfo [@user]\` – show info about a user`
+      ],
+    
+      automod: [
+        '• AutoMod: detects banned words, deletes the message, adds a WARN and can auto-mute on repeated infractions.',
+        '• Anti-Spam: detects repeated or similar messages in a short interval and applies an automatic mute.',
+        '• Trust Score: repeat offenders lose trust and are moderated with less tolerance.'
+      ],
+    
+      gameNews: [
+        '• GameNews: fetches RSS feeds (GameSpot) and sends new articles to specific channels.',
+        '• Feeds have automatic backoff and visible status in the dashboard.'
+      ],
+    
+      dashboard: [
+        '• Real-time moderation log and history (MongoDB).',
+        '• GameNews status panel and `/health` endpoint for monitoring.'
+      ],
+    
+      footer: (prefix) =>
+        `For more details about a command, use \`${prefix}command\` followed by the arguments shown above.`
+    },
+
     automod: {
       warnReason: (word) => `Inappropriate language (detected: "${word}")`,
       warnLogReason: (word) => `AutoMod detected banned word: ${word}`,
@@ -125,6 +161,42 @@ module.exports = {
         recent: (n) => `🧾 Infrações recentes (últimas ${n})`,
         summary: 'Resumo por tipo'
       }
+    },
+
+    help: {
+      title: 'Ozark Bot – Ajuda',
+    
+      moderationTitle: 'Comandos de Moderação',
+      automodTitle: 'AutoMod & Anti-Spam',
+      gameNewsTitle: 'Game News',
+      dashboardTitle: 'Dashboard',
+    
+      moderation: (prefix) => [
+        `• \`${prefix}warn @user [motivo]\` – aplicar um aviso a um utilizador`,
+        `• \`${prefix}mute @user [10m/1h/2d] [motivo]\` – silenciar (timeout) um utilizador`,
+        `• \`${prefix}unmute @user\` – remover silêncio de um utilizador`,
+        `• \`${prefix}clear <quantidade>\` – apagar mensagens do canal atual`,
+        `• \`${prefix}userinfo [@user]\` – mostrar informação de um utilizador`
+      ],
+    
+      automod: [
+        '• AutoMod: deteta palavras proibidas, apaga a mensagem, adiciona WARN e pode silenciar automaticamente.',
+        '• Anti-Spam: deteta mensagens repetidas ou semelhantes num curto espaço de tempo.',
+        '• Trust Score: reincidentes perdem trust e são moderados com menos tolerância.'
+      ],
+    
+      gameNews: [
+        '• GameNews: obtém feeds RSS (GameSpot) e envia novos artigos para canais específicos.',
+        '• Feeds têm backoff automático e estado visível no dashboard.'
+      ],
+    
+      dashboard: [
+        '• Log de moderação em tempo real e histórico (MongoDB).',
+        '• Painel de estado do GameNews e endpoint `/health` para monitorização.'
+      ],
+    
+      footer: (prefix) =>
+        `Para mais detalhes sobre um comando, utiliza \`${prefix}comando\` com os argumentos indicados acima.`
     },
 
     automod: {
