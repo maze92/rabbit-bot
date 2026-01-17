@@ -1,62 +1,75 @@
 // src/slash/unmute.js
 
-const { PermissionsBitField } = require('discord.js');
+const { PermissionsBitField, MessageFlags } = require('discord.js');
 
 const logger = require('../systems/logger');
 const warningsService = require('../systems/warningsService');
 const { t } = require('../systems/i18n');
 const { isStaff } = require('./utils');
 
+function replyEphemeral(interaction, content) {
+  return interaction.reply({ content, flags: MessageFlags.Ephemeral }).catch(() => null);
+}
+
 module.exports = async function unmuteSlash(client, interaction) {
   try {
     if (!interaction?.guild) return;
+
     const guild = interaction.guild;
     const executor = interaction.member;
     const botMember = guild.members.me;
+
     if (!executor || !botMember) {
-      return interaction.reply({ content: t('common.unexpectedError'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('common.unexpectedError'));
     }
 
     if (!isStaff(executor)) {
-      return interaction.reply({ content: t('common.noPermission'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('common.noPermission'));
     }
 
     const channelPerms = interaction.channel?.permissionsFor?.(botMember);
     if (!channelPerms?.has(PermissionsBitField.Flags.ModerateMembers)) {
-      return interaction.reply({ content: t('common.missingBotPerm', null, 'Moderate Members'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(
+        interaction,
+        t('common.missingBotPerm', null, 'Moderate Members')
+      );
     }
 
     const targetUser = interaction.options.getUser('user', true);
     const target = await guild.members.fetch(targetUser.id).catch(() => null);
     if (!target) {
-      return interaction.reply({ content: t('common.cannotResolveUser'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('common.cannotResolveUser'));
     }
 
     if (target.id === interaction.user.id) {
-      return interaction.reply({ content: t('unmute.cannotUnmuteSelf'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('unmute.cannotUnmuteSelf'));
     }
 
     if (target.id === client.user.id) {
-      return interaction.reply({ content: t('unmute.cannotUnmuteBot'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('unmute.cannotUnmuteBot'));
     }
 
     const executorIsAdmin = executor.permissions.has(PermissionsBitField.Flags.Administrator);
 
     if (target.roles.highest.position >= botMember.roles.highest.position) {
-      return interaction.reply({ content: t('unmute.roleHierarchyBot'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('unmute.roleHierarchyBot'));
     }
 
     if (!executorIsAdmin && target.roles.highest.position >= executor.roles.highest.position) {
-      return interaction.reply({ content: t('unmute.roleHierarchyUser'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('unmute.roleHierarchyUser'));
     }
 
     if (typeof target.isCommunicationDisabled === 'function' && !target.isCommunicationDisabled()) {
-      return interaction.reply({ content: t('unmute.notMuted', null, { tag: target.user.tag }), ephemeral: true }).catch(() => null);
+      return replyEphemeral(
+        interaction,
+        t('unmute.notMuted', null, { tag: target.user.tag })
+      );
     }
 
     await target.timeout(null, `Unmuted by ${interaction.user.tag}`);
 
-    await interaction.reply({ content: t('unmute.success', null, { tag: target.user.tag }), ephemeral: false }).catch(() => null);
+    // Resposta pública (default)
+    await interaction.reply({ content: t('unmute.success', null, { tag: target.user.tag }) }).catch(() => null);
 
     let dbUser = null;
     try {
@@ -78,9 +91,12 @@ module.exports = async function unmuteSlash(client, interaction) {
     );
   } catch (err) {
     console.error('[slash/unmute] Error:', err);
+
+    const payload = { content: t('unmute.failed'), flags: MessageFlags.Ephemeral };
+
     if (interaction.deferred || interaction.replied) {
-      return interaction.followUp({ content: t('unmute.failed'), ephemeral: true }).catch(() => null);
+      return interaction.followUp(payload).catch(() => null);
     }
-    return interaction.reply({ content: t('unmute.failed'), ephemeral: true }).catch(() => null);
+    return interaction.reply(payload).catch(() => null);
   }
 };
