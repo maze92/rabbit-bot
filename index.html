@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ozark Bot Dashboard</title>
+
+  <script src="/socket.io/socket.io.js"></script>
+
+  <style>
+    body { font-family: sans-serif; background: #1e1e1e; color: #eee; padding: 20px; }
+    h1 { color: #e60012; margin-bottom: 10px; }
+    h2 { margin-top: 18px; margin-bottom: 10px; }
+
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom: 10px; }
+    input, select, button {
+      padding: 8px; background: #333; color: #eee; border: none; border-radius: 6px;
+    }
+    button { cursor: pointer; }
+
+    .log { border-bottom: 1px solid #333; padding: 10px; margin-bottom: 8px; border-radius: 8px; background:#232323; }
+    .title { font-weight: bold; }
+    .desc { margin-left: 10px; display: block; margin-top: 4px; white-space: pre-wrap; }
+    small { display:block; margin-top:6px; color:#aaa; }
+    .hint { color:#aaa; font-size: 12px; margin-top: 4px; }
+
+    .panel {
+      background:#232323;
+      border:1px solid #333;
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .statusGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .statusCard {
+      background:#1f1f1f;
+      border:1px solid #333;
+      border-radius: 10px;
+      padding: 10px;
+      position: relative;
+    }
+
+    .badge {
+      display:inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-left: 8px;
+      background: #333;
+      color: #eee;
+      border: 1px solid #444;
+    }
+
+    .badge.ok { border-color:#1f6f3a; }
+    .badge.paused { border-color:#a46a00; }
+    .badge.fail { border-color:#8b2a2a; }
+
+    .statusTitle {
+      font-weight: 700;
+      margin-bottom: 6px;
+      display:flex;
+      align-items:center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .metaLine {
+      color:#bbb;
+      font-size: 12px;
+      margin-top: 4px;
+      word-break: break-word;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: #ccc;
+    }
+
+    .divider {
+      height: 1px;
+      background: #333;
+      margin: 14px 0;
+      border-radius: 999px;
+    }
+
+    /* Health panel */
+    .health-status-row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content: space-between;
+    }
+    .health-flags {
+      font-size: 12px;
+      color:#ccc;
+      margin-top: 6px;
+    }
+    .health-flag-ok { color:#7bd88f; }
+    .health-flag-bad { color:#ff6b6b; }
+  </style>
+</head>
+<body>
+  <h1>Ozark Bot Dashboard</h1>
+
+  <!-- Painel de saúde do sistema (/health) -->
+  <div class="panel" id="healthPanel">
+    <div class="health-status-row">
+      <div>
+        <h2 style="margin:0;">System Health</h2>
+        <div class="hint" style="margin-top:6px;">
+          Estado geral do bot, uptime e ligações principais.
+        </div>
+      </div>
+      <div>
+        <span class="badge" id="healthBadge">...</span>
+      </div>
+    </div>
+    <div class="health-flags" id="healthFlags">
+      A verificar estado...
+    </div>
+  </div>
+
+  <div class="row">
+    <input type="text" id="searchUser" placeholder="Pesquisar por user/executor..." />
+    <select id="filterType">
+      <option value="">Todos os tipos</option>
+      <option value="warn">Warn</option>
+      <option value="mute">Mute</option>
+      <option value="clear">Clear</option>
+      <option value="game news">Game News</option>
+      <option value="anti-spam">Anti-Spam</option>
+    </select>
+
+    <button id="btnReload">Reload from DB</button>
+    <button id="btnToken">Set Token</button>
+  </div>
+
+  <div class="hint">
+    Se o servidor tiver <b>DASHBOARD_TOKEN</b> definido, precisas de token.
+    O token fica guardado no teu browser (localStorage).
+  </div>
+
+  <!-- ==============================
+       GameNews Status Panel
+       ============================== -->
+  <div class="panel" id="gameNewsPanel">
+    <div class="row" style="justify-content: space-between;">
+      <div>
+        <h2 style="margin:0;">GameNews Status</h2>
+        <div class="hint" style="margin-top:6px;">
+          Mostra estado por feed: <b>lastSentAt</b>, <b>pausedUntil</b>, <b>failCount</b>, <b>lastHashesCount</b>.
+        </div>
+      </div>
+      <div class="row" style="margin:0;">
+        <select id="filterPausedOnly">
+          <option value="0">Todos os feeds</option>
+          <option value="1">Só pausados</option>
+        </select>
+        <button id="btnReloadGameNews">Refresh GameNews Status</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <div class="hint" id="gameNewsSummary">A carregar...</div>
+    </div>
+
+    <div class="statusGrid" id="gameNewsStatus"></div>
+  </div>
+
+  <!-- ==============================
+       Runtime Config Panel
+       ============================== -->
+  <div class="panel" id="configPanel">
+    <div class="row" style="justify-content: space-between;">
+      <div>
+        <h2 style="margin:0;">Runtime Config</h2>
+        <div class="hint" style="margin-top:6px;">
+          Alterações aqui são guardadas em <b>src/config/overrides.json</b> e aplicadas sem reiniciar.
+        </div>
+      </div>
+      <div class="row" style="margin:0;">
+        <button id="btnLoadConfig">Load Config</button>
+        <button id="btnSaveConfig">Save</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <label class="hint">Language</label>
+      <select id="cfgLanguage">
+        <option value="en">en</option>
+        <option value="pt">pt</option>
+      </select>
+
+      <label class="hint">MaxWarnings</label>
+      <input id="cfgMaxWarnings" type="number" min="1" max="20" style="width:110px;" />
+
+      <label class="hint">Default Mute (ms)</label>
+      <input id="cfgMuteDuration" type="number" min="1000" step="1000" style="width:160px;" />
+    </div>
+
+    <div class="row">
+      <label class="hint">AntiSpam enabled</label>
+      <select id="cfgAntiSpamEnabled">
+        <option value="true">true</option>
+        <option value="false">false</option>
+      </select>
+
+      <label class="hint">interval (ms)</label>
+      <input id="cfgAntiSpamInterval" type="number" min="1000" step="500" style="width:140px;" />
+
+      <label class="hint">maxMessages</label>
+      <input id="cfgAntiSpamMax" type="number" min="1" max="50" style="width:110px;" />
+
+      <label class="hint">muteDuration (ms)</label>
+      <input id="cfgAntiSpamMute" type="number" min="1000" step="1000" style="width:160px;" />
+    </div>
+
+    <div class="row">
+      <label class="hint">Trust enabled</label>
+      <select id="cfgTrustEnabled">
+        <option value="true">true</option>
+        <option value="false">false</option>
+      </select>
+
+      <label class="hint">lowThreshold</label>
+      <input id="cfgTrustLow" type="number" min="0" max="100" style="width:120px;" />
+
+      <label class="hint">highThreshold</label>
+      <input id="cfgTrustHigh" type="number" min="0" max="100" style="width:120px;" />
+    </div>
+
+    <div class="row" style="align-items:flex-start;">
+      <div style="flex:1; min-width:280px;">
+        <div class="hint">Banned words (EN) – separados por vírgula</div>
+        <textarea id="cfgBannedEn" rows="3" style="width:100%; padding:8px; background:#333; color:#eee; border:none; border-radius:8px;"></textarea>
+      </div>
+      <div style="flex:1; min-width:280px;">
+        <div class="hint">Banned words (PT) – separados por vírgula</div>
+        <textarea id="cfgBannedPt" rows="3" style="width:100%; padding:8px; background:#333; color:#eee; border:none; border-radius:8px;"></textarea>
+      </div>
+    </div>
+
+    <div class="hint" id="configStatus"></div>
+  </div>
+
+  <!-- ==============================
+       User Inspector + Mod Actions
+       ============================== -->
+  <div class="panel" id="userPanel">
+    <div class="row" style="justify-content: space-between;">
+      <div>
+        <h2 style="margin:0;">User Inspector</h2>
+        <div class="hint" style="margin-top:6px;">
+          Ver warnings/trust/infractions e aplicar ações rápidas (warn/mute/unmute).
+        </div>
+      </div>
+      <div class="row" style="margin:0;">
+        <button id="btnLoadUser">Load User</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <input id="userGuildId" type="text" placeholder="guildId" style="min-width:220px;" />
+      <input id="userId" type="text" placeholder="userId" style="min-width:220px;" />
+      <input id="userLimit" type="number" min="1" max="50" value="20" style="width:90px;" />
+    </div>
+
+    <div class="row">
+      <input id="modReason" type="text" placeholder="reason" style="flex:1; min-width:260px;" />
+      <input id="modDuration" type="text" placeholder="duration (ex: 10m / 1h)" style="min-width:180px;" />
+      <button id="btnWarn">Warn</button>
+      <button id="btnMute">Mute</button>
+      <button id="btnUnmute">Unmute</button>
+    </div>
+
+    <div class="hint" id="userSummary">Sem dados.</div>
+    <div id="userInfractions"></div>
+  </div>
+
+  <h2>Logs</h2>
+  <div id="logs"></div>
+
+  <script>
+    const logsContainer = document.getElementById('logs');
+    const searchInput = document.getElementById('searchUser');
+    const filterSelect = document.getElementById('filterType');
+    const btnReload = document.getElementById('btnReload');
+    const btnToken = document.getElementById('btnToken');
+
+    // GameNews DOM
+    const gameNewsContainer = document.getElementById('gameNewsStatus');
+    const gameNewsSummary = document.getElementById('gameNewsSummary');
+    const btnReloadGameNews = document.getElementById('btnReloadGameNews');
+    const filterPausedOnly = document.getElementById('filterPausedOnly');
+
+    // Health DOM
+    const healthBadge = document.getElementById('healthBadge');
+    const healthFlags = document.getElementById('healthFlags');
+
+    // Config DOM
+    const btnLoadConfig = document.getElementById('btnLoadConfig');
+    const btnSaveConfig = document.getElementById('btnSaveConfig');
+    const cfgLanguage = document.getElementById('cfgLanguage');
+    const cfgMaxWarnings = document.getElementById('cfgMaxWarnings');
+    const cfgMuteDuration = document.getElementById('cfgMuteDuration');
+    const cfgAntiSpamEnabled = document.getElementById('cfgAntiSpamEnabled');
+    const cfgAntiSpamInterval = document.getElementById('cfgAntiSpamInterval');
+    const cfgAntiSpamMax = document.getElementById('cfgAntiSpamMax');
+    const cfgAntiSpamMute = document.getElementById('cfgAntiSpamMute');
+    const cfgTrustEnabled = document.getElementById('cfgTrustEnabled');
+    const cfgTrustLow = document.getElementById('cfgTrustLow');
+    const cfgTrustHigh = document.getElementById('cfgTrustHigh');
+    const cfgBannedEn = document.getElementById('cfgBannedEn');
+    const cfgBannedPt = document.getElementById('cfgBannedPt');
+    const configStatus = document.getElementById('configStatus');
+
+    // User Inspector DOM
+    const btnLoadUser = document.getElementById('btnLoadUser');
+    const userGuildId = document.getElementById('userGuildId');
+    const userId = document.getElementById('userId');
+    const userLimit = document.getElementById('userLimit');
+    const modReason = document.getElementById('modReason');
+    const modDuration = document.getElementById('modDuration');
+    const btnWarn = document.getElementById('btnWarn');
+    const btnMute = document.getElementById('btnMute');
+    const btnUnmute = document.getElementById('btnUnmute');
+    const userSummary = document.getElementById('userSummary');
+    const userInfractions = document.getElementById('userInfractions');
+
+    let allLogs = [];
+    let allFeedsStatus = [];
+
+    function getColor(title) {
+      title = (title || '').toLowerCase();
+      if (title.includes('warn')) return '#ffcc00';
+      if (title.includes('mute')) return '#ff6600';
+      if (title.includes('clear') || title.includes('purge')) return '#00ccff';
+      if (title.includes('game news')) return '#e60012';
+      if (title.includes('anti-spam')) return '#b84dff';
+      return '#00ff00';
+    }
+
+    function renderLogs(logs) {
+      logsContainer.innerHTML = '';
+
+      logs.slice().reverse().forEach(log => {
+        const div = document.createElement('div');
+        div.classList.add('log');
+
+        const color = getColor(log.title);
+        div.style.borderLeft = `5px solid ${color}`;
+
+        const userTag = log.user?.tag || log.user || 'N/A';
+        const execTag = log.executor?.tag || log.executor || 'N/A';
+
+        div.innerHTML = `
+          <span class="title">${log.title || 'Log'}</span>
+          <span class="desc">${log.description || ''}</span>
+          <small>
+            👤 User: ${userTag}
+            | 🛠 Executor: ${execTag}
+            | ⏰ ${new Date(log.time || log.timestamp || Date.now()).toLocaleString()}
+          </small>
+        `;
+        logsContainer.appendChild(div);
+      });
+    }
+
+    function filterLogs() {
+      const search = searchInput.value.toLowerCase();
+      const type = filterSelect.value.toLowerCase();
+
+      const filtered = allLogs.filter(log => {
+        const u = (log.user?.tag || log.user || '').toLowerCase();
+        const e = (log.executor?.tag || log.executor || '').toLowerCase();
+        const t = (log.title || '').toLowerCase();
+
+        const matchesUser = u.includes(search) || e.includes(search);
+        const matchesType = type ? t.includes(type) : true;
+
+        return matchesUser && matchesType;
+      });
+
+      renderLogs(filtered);
+    }
+
+    function getToken() {
+      return localStorage.getItem('DASHBOARD_TOKEN') || '';
+    }
+
+    function setTokenPrompt() {
+      const t = prompt('Enter DASHBOARD_TOKEN:');
+      if (t && t.trim()) {
+        localStorage.setItem('DASHBOARD_TOKEN', t.trim());
+        alert('Token saved! Reloading...');
+        location.reload();
+      }
+    }
+
+    btnToken.addEventListener('click', setTokenPrompt);
+
+    async function loadLogsFromDB() {
+      const token = getToken();
+
+      const headers = {};
+      if (token) {
+        headers['x-dashboard-token'] = token;
+      }
+
+      const url = `/api/logs?page=1&limit=200`;
+      const res = await fetch(url, { headers });
+
+      if (res.status === 401) {
+        alert('Unauthorized. Set DASHBOARD_TOKEN.');
+        return;
+      }
+
+      const json = await res.json();
+      if (!json.ok) {
+        alert('Failed to load logs from DB.');
+        return;
+      }
+
+      allLogs = (json.items || []).map(x => ({
+        title: x.title,
+        user: x.user,
+        executor: x.executor,
+        description: x.description,
+        guild: x.guild,
+        time: x.time || x.createdAt || new Date().toISOString()
+      }));
+
+      filterLogs();
+    }
+
+    btnReload.addEventListener('click', loadLogsFromDB);
+
+    // ==============================
+    // GameNews Status UI helpers
+    // ==============================
+    function safeDateLabel(iso) {
+      if (!iso) return 'N/A';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return 'N/A';
+      return d.toLocaleString();
+    }
+
+    function computePaused(status) {
+      if (status.paused === true) return true;
+      if (!status.pausedUntil) return false;
+      const d = new Date(status.pausedUntil);
+      if (Number.isNaN(d.getTime())) return false;
+      return d.getTime() > Date.now();
+    }
+
+    function renderGameNewsStatus(feeds) {
+      const pausedOnly = filterPausedOnly.value === '1';
+
+      const list = Array.isArray(feeds) ? feeds.slice() : [];
+      const normalized = list.map(f => ({
+        source: f.source || f.feedName || 'UnknownFeed',
+        feedName: f.feedName || f.source || 'UnknownFeed',
+        feedUrl: f.feedUrl || null,
+        channelId: f.channelId || null,
+        failCount: Number(f.failCount ?? 0),
+        pausedUntil: f.pausedUntil || null,
+        lastSentAt: f.lastSentAt || null,
+        lastHashesCount: Number(f.lastHashesCount ?? 0),
+        paused: computePaused(f),
+        updatedAt: f.updatedAt || null
+      }));
+
+      const filtered = pausedOnly ? normalized.filter(x => x.paused) : normalized;
+
+      filtered.sort((a, b) => {
+        if (a.paused !== b.paused) return a.paused ? -1 : 1;
+        if (a.failCount !== b.failCount) return b.failCount - a.failCount;
+        return (a.feedName || '').localeCompare(b.feedName || '');
+      });
+
+      const total = normalized.length;
+      const pausedCount = normalized.filter(x => x.paused).length;
+      const lastUpdate = normalized
+        .map(x => x.updatedAt)
+        .filter(Boolean)
+        .map(x => new Date(x))
+        .filter(d => !Number.isNaN(d.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime())[0];
+
+      gameNewsSummary.innerHTML = `
+        Feeds: <b>${total}</b>
+        | Pausados: <b>${pausedCount}</b>
+        ${lastUpdate ? `| Última atualização: <b>${lastUpdate.toLocaleString()}</b>` : ''}
+      `;
+
+      gameNewsContainer.innerHTML = '';
+
+      if (filtered.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'hint';
+        empty.textContent = pausedOnly
+          ? 'Nenhum feed está pausado neste momento.'
+          : 'Sem dados de status ainda. (O bot precisa enviar gamenews_status pelo socket)';
+        gameNewsContainer.appendChild(empty);
+        return;
+      }
+
+      for (const f of filtered) {
+        const card = document.createElement('div');
+        card.className = 'statusCard';
+
+        const badgeClass = f.paused ? 'paused' : (f.failCount > 0 ? 'fail' : 'ok');
+        const badgeText = f.paused ? 'PAUSED' : (f.failCount > 0 ? 'WARN' : 'OK');
+
+        const pausedUntilLabel = f.pausedUntil ? safeDateLabel(f.pausedUntil) : 'N/A';
+        const lastSentLabel = f.lastSentAt ? safeDateLabel(f.lastSentAt) : 'N/A';
+
+        card.innerHTML = `
+          <div class="statusTitle">
+            ${f.feedName}
+            <span class="badge ${badgeClass}">${badgeText}</span>
+          </div>
+
+          <div class="metaLine">
+            <span class="mono">source:</span> <span class="mono">${f.source}</span>
+          </div>
+
+          ${f.feedUrl ? `
+            <div class="metaLine">
+              <span class="mono">feedUrl:</span> <span class="mono">${f.feedUrl}</span>
+            </div>
+          ` : ''}
+
+          ${f.channelId ? `
+            <div class="metaLine">
+              <span class="mono">channelId:</span> <span class="mono">${f.channelId}</span>
+            </div>
+          ` : ''}
+
+          <div class="metaLine">
+            <span class="mono">failCount:</span> <b>${f.failCount}</b>
+            &nbsp;|&nbsp;
+            <span class="mono">lastHashes:</span> <b>${f.lastHashesCount}</b>
+          </div>
+
+          <div class="metaLine">
+            <span class="mono">lastSentAt:</span> <b>${lastSentLabel}</b>
+          </div>
+
+          <div class="metaLine">
+            <span class="mono">pausedUntil:</span> <b>${pausedUntilLabel}</b>
+          </div>
+        `;
+
+        gameNewsContainer.appendChild(card);
+      }
+    }
+
+    function filterGameNews() {
+      renderGameNewsStatus(allFeedsStatus);
+    }
+
+    async function loadGameNewsStatusFromAPI() {
+      const token = getToken();
+      const headers = {};
+      if (token) headers['x-dashboard-token'] = token;
+
+      const res = await fetch('/api/gamenews-status', { headers });
+
+      if (res.status === 401) {
+        alert('Unauthorized. Set DASHBOARD_TOKEN.');
+        return;
+      }
+
+      const json = await res.json();
+      if (!json.ok) {
+        alert('Failed to load GameNews status.');
+        return;
+      }
+
+      allFeedsStatus = Array.isArray(json.items) ? json.items : [];
+      filterGameNews();
+    }
+
+    btnReloadGameNews.addEventListener('click', loadGameNewsStatusFromAPI);
+    filterPausedOnly.addEventListener('change', filterGameNews);
+
+    // ==============================
+    // Health (/health) helpers
+    // ==============================
+    function formatUptime(seconds) {
+      const s = Number(seconds || 0);
+      if (!Number.isFinite(s) || s < 0) return 'N/A';
+
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+
+      if (d > 0) return `${d}d ${h}h ${m}m`;
+      if (h > 0) return `${h}h ${m}m`;
+      if (m > 0) return `${m}m`;
+      return `${s}s`;
+    }
+
+    async function refreshHealth() {
+      try {
+        const res = await fetch('/health');
+        if (!res.ok) throw new Error('Health not ok');
+
+        const data = await res.json();
+
+        const ok = !!data.ok;
+        healthBadge.textContent = ok ? 'OK' : 'ISSUES';
+        healthBadge.classList.remove('ok', 'fail');
+        healthBadge.classList.add(ok ? 'ok' : 'fail');
+
+        const discordReady = data.discordReady ? 'health-flag-ok' : 'health-flag-bad';
+        const mongoConnected = data.mongoConnected ? 'health-flag-ok' : 'health-flag-bad';
+        const gameNewsRunning = data.gameNewsRunning ? 'health-flag-ok' : 'health-flag-bad';
+
+        healthFlags.innerHTML = `
+          <span class="${discordReady}">Discord: ${data.discordReady ? 'ready' : 'not ready'}</span> |
+          <span class="${mongoConnected}">MongoDB: ${data.mongoConnected ? 'connected' : 'disconnected'}</span> |
+          <span class="${gameNewsRunning}">GameNews: ${data.gameNewsRunning ? 'running' : 'stopped'}</span>
+          <br/>
+          Uptime: <b>${formatUptime(data.uptimeSeconds)}</b>
+        `;
+      } catch (err) {
+        healthBadge.textContent = 'ERROR';
+        healthBadge.classList.remove('ok');
+        healthBadge.classList.add('fail');
+        healthFlags.textContent = 'Falha ao obter /health.';
+        console.warn('Health error:', err);
+      }
+    }
+
+    // ==============================
+    // Config (GET/PATCH)
+    // ==============================
+    function headersWithToken() {
+      const token = getToken();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['x-dashboard-token'] = token;
+      return headers;
+    }
+
+    function setConfigStatus(msg) {
+      configStatus.textContent = msg || '';
+    }
+
+    function fillConfigForm(cfg) {
+      if (!cfg) return;
+      cfgLanguage.value = cfg.language || 'en';
+      cfgMaxWarnings.value = Number(cfg.maxWarnings ?? 3);
+      cfgMuteDuration.value = Number(cfg.muteDuration ?? 600000);
+
+      cfgAntiSpamEnabled.value = String(Boolean(cfg.antiSpam?.enabled));
+      cfgAntiSpamInterval.value = Number(cfg.antiSpam?.interval ?? 7000);
+      cfgAntiSpamMax.value = Number(cfg.antiSpam?.maxMessages ?? 6);
+      cfgAntiSpamMute.value = Number(cfg.antiSpam?.muteDuration ?? 60000);
+
+      cfgTrustEnabled.value = String(Boolean(cfg.trust?.enabled));
+      cfgTrustLow.value = Number(cfg.trust?.lowThreshold ?? 10);
+      cfgTrustHigh.value = Number(cfg.trust?.highThreshold ?? 60);
+
+      const en = Array.isArray(cfg.bannedWords?.en) ? cfg.bannedWords.en : [];
+      const pt = Array.isArray(cfg.bannedWords?.pt) ? cfg.bannedWords.pt : [];
+      cfgBannedEn.value = en.join(', ');
+      cfgBannedPt.value = pt.join(', ');
+    }
+
+    async function loadConfig() {
+      setConfigStatus('Loading...');
+      const res = await fetch('/api/config', { headers: headersWithToken() });
+      if (res.status === 401) {
+        setConfigStatus('Unauthorized. Set DASHBOARD_TOKEN.');
+        return;
+      }
+      const json = await res.json();
+      if (!json.ok) {
+        setConfigStatus('Failed to load config.');
+        return;
+      }
+      fillConfigForm(json.config);
+      setConfigStatus('Loaded.');
+    }
+
+    function parseBanned(text) {
+      return String(text || '')
+        .split(',')
+        .map(x => x.trim())
+        .filter(Boolean)
+        .slice(0, 500);
+    }
+
+    async function saveConfig() {
+      setConfigStatus('Saving...');
+
+      const patch = {
+        language: cfgLanguage.value,
+        maxWarnings: Number(cfgMaxWarnings.value),
+        muteDuration: Number(cfgMuteDuration.value),
+        antiSpam: {
+          enabled: cfgAntiSpamEnabled.value === 'true',
+          interval: Number(cfgAntiSpamInterval.value),
+          maxMessages: Number(cfgAntiSpamMax.value),
+          muteDuration: Number(cfgAntiSpamMute.value)
+        },
+        trust: {
+          enabled: cfgTrustEnabled.value === 'true',
+          lowThreshold: Number(cfgTrustLow.value),
+          highThreshold: Number(cfgTrustHigh.value)
+        },
+        bannedWords: {
+          en: parseBanned(cfgBannedEn.value),
+          pt: parseBanned(cfgBannedPt.value)
+        }
+      };
+
+      const res = await fetch('/api/config', {
+        method: 'PATCH',
+        headers: headersWithToken(),
+        body: JSON.stringify(patch)
+      });
+
+      if (res.status === 401) {
+        setConfigStatus('Unauthorized. Set DASHBOARD_TOKEN.');
+        return;
+      }
+
+      const json = await res.json();
+      if (!json.ok) {
+        setConfigStatus(json.error || 'Failed to save config.');
+        return;
+      }
+
+      fillConfigForm(json.config);
+      setConfigStatus('Saved ✅');
+    }
+
+    btnLoadConfig.addEventListener('click', () => loadConfig().catch(err => setConfigStatus(String(err || 'Error'))));
+    btnSaveConfig.addEventListener('click', () => saveConfig().catch(err => setConfigStatus(String(err || 'Error'))));
+
+    // ==============================
+    // User Inspector + Mod Actions
+    // ==============================
+    function renderInfractions(list) {
+      const arr = Array.isArray(list) ? list : [];
+      userInfractions.innerHTML = '';
+      if (!arr.length) {
+        userInfractions.innerHTML = '<div class="hint">Sem infrações recentes.</div>';
+        return;
+      }
+
+      for (const it of arr) {
+        const div = document.createElement('div');
+        div.className = 'log';
+        div.style.borderLeft = `5px solid ${getColor(it.type)}`;
+        const when = it.createdAt ? new Date(it.createdAt).toLocaleString() : '';
+        div.innerHTML = `
+          <span class="title">${it.type}</span>
+          <span class="desc">${it.reason || ''}</span>
+          <small>⏰ ${when} ${it.duration ? `| ⏳ ${it.duration}ms` : ''}</small>
+        `;
+        userInfractions.appendChild(div);
+      }
+    }
+
+    async function loadUser() {
+      userSummary.textContent = 'A carregar...';
+      const g = userGuildId.value.trim();
+      const u = userId.value.trim();
+      const lim = Math.min(Math.max(parseInt(userLimit.value || '20', 10) || 20, 1), 50);
+      if (!g || !u) {
+        userSummary.textContent = 'guildId e userId são obrigatórios.';
+        return;
+      }
+
+      const res = await fetch(`/api/user?guildId=${encodeURIComponent(g)}&userId=${encodeURIComponent(u)}&limit=${lim}`, {
+        headers: headersWithToken()
+      });
+
+      if (res.status === 401) {
+        userSummary.textContent = 'Unauthorized. Set DASHBOARD_TOKEN.';
+        return;
+      }
+
+      const json = await res.json();
+      if (!json.ok) {
+        userSummary.textContent = json.error || 'Failed to load user.';
+        return;
+      }
+
+      const db = json.user || {};
+      const d = json.discord || null;
+      const counts = json.counts || {};
+      const warns = db.warnings ?? 'N/A';
+      const trust = db.trust ?? 'N/A';
+      const tag = d?.tag || '(not in guild / not cached)';
+      const timed = d?.timedOutUntil ? ` | timeoutUntil: ${new Date(d.timedOutUntil).toLocaleString()}` : '';
+
+      userSummary.innerHTML = `
+        <b>${tag}</b>
+        | warnings: <b>${warns}</b>
+        | trust: <b>${trust}</b>
+        | counts: WARN=${counts.WARN || 0} / MUTE=${counts.MUTE || 0}
+        ${timed}
+      `;
+
+      renderInfractions(json.infractions);
+    }
+
+    async function modAction(path, payload) {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: headersWithToken(),
+        body: JSON.stringify(payload)
+      });
+      if (res.status === 401) throw new Error('Unauthorized');
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Action failed');
+      return json;
+    }
+
+    btnLoadUser.addEventListener('click', () => loadUser().catch(err => userSummary.textContent = String(err || 'Error')));
+
+    btnWarn.addEventListener('click', async () => {
+      try {
+        await modAction('/api/mod/warn', {
+          guildId: userGuildId.value.trim(),
+          userId: userId.value.trim(),
+          reason: modReason.value.trim()
+        });
+        await loadUser();
+      } catch (e) {
+        userSummary.textContent = String(e?.message || e || 'Error');
+      }
+    });
+
+    btnMute.addEventListener('click', async () => {
+      try {
+        await modAction('/api/mod/mute', {
+          guildId: userGuildId.value.trim(),
+          userId: userId.value.trim(),
+          duration: modDuration.value.trim(),
+          reason: modReason.value.trim()
+        });
+        await loadUser();
+      } catch (e) {
+        userSummary.textContent = String(e?.message || e || 'Error');
+      }
+    });
+
+    btnUnmute.addEventListener('click', async () => {
+      try {
+        await modAction('/api/mod/unmute', {
+          guildId: userGuildId.value.trim(),
+          userId: userId.value.trim(),
+          reason: modReason.value.trim()
+        });
+        await loadUser();
+      } catch (e) {
+        userSummary.textContent = String(e?.message || e || 'Error');
+      }
+    });
+
+    // 1) Carregar histórico do Mongo ao abrir
+    loadLogsFromDB().catch(err => {
+      console.error('DB load error:', err);
+    });
+
+    // 2) Tentar buscar status GameNews uma vez ao abrir (API)
+    loadGameNewsStatusFromAPI().catch(err => {
+      console.warn('GameNews status API load error:', err);
+    });
+
+    // 3) Health inicial + intervalo
+    refreshHealth().catch(() => {});
+    setInterval(refreshHealth, 5000);
+
+    // 2) Socket.IO (tempo real)
+    const token = getToken();
+    const socket = io({
+      auth: token ? { token } : {}
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Socket connect error:', err.message);
+    });
+
+    socket.on('logs', (logs) => {
+      allLogs = Array.isArray(logs) ? logs : [];
+      filterLogs();
+    });
+
+    socket.on('gamenews_status', (feeds) => {
+      allFeedsStatus = Array.isArray(feeds) ? feeds : [];
+      filterGameNews();
+    });
+
+    socket.on('config', (cfg) => {
+      try {
+        fillConfigForm(cfg);
+        setConfigStatus('Updated from server.');
+      } catch {
+        // ignore
+      }
+    });
+
+    searchInput.addEventListener('input', filterLogs);
+    filterSelect.addEventListener('change', filterLogs);
+
+    setInterval(() => {
+      socket.emit('requestLogs');
+      socket.emit('requestGameNewsStatus');
+      socket.emit('requestConfig');
+    }, 5000);
+  </script>
+</body>
+</html>
