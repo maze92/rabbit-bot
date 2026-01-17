@@ -1,6 +1,29 @@
 // src/systems/infractionsService.js
 
 const Infraction = require('../database/models/Infraction');
+let CaseCounter = null;
+
+try {
+  CaseCounter = require('../database/models/CaseCounter');
+} catch {
+  // optional
+}
+
+async function allocateCaseId(guildId) {
+  if (!CaseCounter) return null;
+  if (!guildId) return null;
+
+  const doc = await CaseCounter.findOneAndUpdate(
+    { guildId },
+    { $inc: { nextCaseId: 1 } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  ).lean();
+
+  // doc.nextCaseId is the value AFTER increment. Our allocated caseId is (nextCaseId - 1).
+  const next = Number(doc?.nextCaseId);
+  if (!Number.isFinite(next) || next <= 0) return null;
+  return next - 1;
+}
 
 async function create({ guild, user, moderator, type, reason, duration = null }) {
   if (!guild?.id) return null;
@@ -8,7 +31,10 @@ async function create({ guild, user, moderator, type, reason, duration = null })
   if (!moderator?.id) return null;
   if (!type) return null;
 
+  const caseId = await allocateCaseId(guild.id).catch(() => null);
+
   return Infraction.create({
+    caseId,
     guildId: guild.id,
     userId: user.id,
     moderatorId: moderator.id,
@@ -52,8 +78,53 @@ async function countInfractionsByType(guildId, userId) {
   return out;
 }
 
+async function getCase(guildId, caseId) {
+  if (!guildId || !caseId) return null;
+  const n = parseInt(String(caseId), 10);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Infraction.findOne({ guildId, caseId: n }).lean();
+}
+
+async function searchCases({ guildId, q = '', userId = '', type = '', page = 1, limit = 25 }) {
+  if (!guildId) return { total: 0, items: [] };
+
+  const p = Math.max(parseInt(String(page), 10) || 1, 1);
+  const lim = Math.min(Math.max(parseInt(String(limit), 10) || 25, 1), 100);
+
+  const query = { guildId };
+
+  if (userId) query.userId = String(userId).trim();
+  if (type) query.type = { $regex: String(type).trim(), $options: 'i' };
+
+  const text = String(q || '').trim();
+  if (text) {
+    const maybeCase = parseInt(text, 10);
+    if (Number.isFinite(maybeCase) && maybeCase > 0) {
+      query.caseId = maybeCase;
+    } else {
+      query.$or = [
+        { reason: { $regex: text, $options: 'i' } },
+        { type: { $regex: text, $options: 'i' } },
+        { userId: { $regex: text, $options: 'i' } },
+        { moderatorId: { $regex: text, $options: 'i' } }
+      ];
+    }
+  }
+
+  const total = await Infraction.countDocuments(query);
+  const items = await Infraction.find(query)
+    .sort({ createdAt: -1 })
+    .skip((p - 1) * lim)
+    .limit(lim)
+    .lean();
+
+  return { total, items };
+}
+
 module.exports = {
   create,
   getRecentInfractions,
-  countInfractionsByType
+  countInfractionsByType,
+  getCase,
+  searchCases
 };
