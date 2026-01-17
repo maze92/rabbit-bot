@@ -62,14 +62,19 @@ module.exports = {
     log: {
       labels: {
         user: 'User',
-        executor: 'Executor'
+        executor: 'Moderator'
       },
       trustRisk: {
         high: 'High risk',
         medium: 'Medium risk',
         low: 'Low risk'
       },
-      noDescription: 'No description provided.'
+      noDescription: 'No description provided.',
+      messages: {
+        clearLog: ({ count, channelId }) =>
+          `Cleared **${count}** messages in <#${channelId}> (channelId: \`${channelId}\`)`,
+        userUnmuted: (tag) => `User **${tag}** unmuted manually.`
+      }
     }
   },
 
@@ -112,7 +117,7 @@ module.exports = {
       ],
 
       automod: [
-        '• AutoMod: deteta palavras proibidas, apaga a mensagem, adiciona um WARN e pode silenciar automaticamente em reincidência.',
+        '• AutoMod: deteta palavras proibidas, apaga a mensagem, adiciona um WARN e pode silenciar automaticamente em caso de reincidência.',
         '• Anti-Spam: deteta mensagens repetidas/semelhantes num curto intervalo e aplica um mute automático.',
         '• Trust Score: reincidentes perdem confiança e são moderados com menos tolerância (menos avisos / mute mais longo).'
       ],
@@ -134,14 +139,19 @@ module.exports = {
     log: {
       labels: {
         user: 'Utilizador',
-        executor: 'Executor'
+        executor: 'Moderador'
       },
       trustRisk: {
         high: 'Risco elevado',
         medium: 'Risco médio',
         low: 'Risco baixo'
       },
-      noDescription: 'Sem descrição.'
+      noDescription: 'Sem descrição.',
+      messages: {
+        clearLog: ({ count, channelId }) =>
+          `Foram apagadas **${count}** mensagens em <#${channelId}> (ID do canal: \`${channelId}\`).`,
+        userUnmuted: (tag) => `Utilizador **${tag}** removido do silêncio manualmente.`
+      }
     }
   }
 };
