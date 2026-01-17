@@ -63,7 +63,9 @@ module.exports = {
 
       if (target.roles.highest.position >= botMember.roles.highest.position) {
         return message
-          .reply('❌ I cannot unmute this user (their role is higher or equal to my highest role).')
+          .reply(
+            '❌ I cannot unmute this user (their role is higher or equal to my highest role).'
+          )
           .catch(() => null);
       }
 
@@ -101,7 +103,7 @@ module.exports = {
         'Manual Unmute',
         target.user,
         message.author,
-        `User unmuted manually.${warnsText}${trustText}`,
+        t('log.messages.userUnmuted', null, target.user.tag) + warnsText + trustText,
         guild
       );
     } catch (err) {
