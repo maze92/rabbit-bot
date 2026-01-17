@@ -175,7 +175,8 @@ module.exports = {
         );
       }
 
-      await infractionsService
+      // Cria a infração com Case ID (se o sistema estiver ativo)
+      const inf = await infractionsService
         .create({
           guild,
           user: target.user,
@@ -196,17 +197,22 @@ module.exports = {
         )
         .catch(() => null);
 
-      // Trust stays internal: only in logs
+      // Trust fica interno (apenas em logs) + Case ID
+      const casePrefix = inf?.caseId ? `Case: **#${inf.caseId}**\n` : '';
+      const description =
+        casePrefix +
+        t('log.actions.manualMute', null, {
+          duration: formatDuration(durationMs),
+          reason,
+          trust: dbUser?.trust ?? 'N/A'
+        });
+
       await logger(
         client,
         'Manual Mute',
         target.user,
         message.author,
-        t('log.actions.manualMute', null, {
-          duration: formatDuration(durationMs),
-          reason,
-          trust: dbUser?.trust ?? 'N/A'
-        }),
+        description,
         guild
       );
     } catch (err) {
