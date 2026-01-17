@@ -3,6 +3,7 @@
 const { PermissionsBitField } = require('discord.js');
 const config = require('../config/defaultConfig');
 const logger = require('../systems/logger');
+const { t } = require('../systems/i18n');
 
 function parseAmount(raw) {
   const n = parseInt(String(raw || '').trim(), 10);
@@ -35,7 +36,7 @@ module.exports = {
       if (!amount) {
         const prefix = config.prefix || '!';
         return message
-          .reply(`❌ Usage: \`${prefix}clear <1-100>\``)
+          .reply(t('common.usage', null, `${prefix}clear <1-100>`))
           .catch(() => null);
       }
 
@@ -52,7 +53,9 @@ module.exports = {
 
       if (!deleted) {
         return message
-          .reply('⚠️ I could not delete messages. They may be too old (14+ days) or I lack permissions.')
+          .reply(
+            '⚠️ I could not delete messages. They may be too old (14+ days) or I lack permissions.'
+          )
           .catch(() => null);
       }
 
@@ -82,7 +85,7 @@ module.exports = {
     } catch (err) {
       console.error('[clear] Error:', err);
       message
-        .reply('❌ An unexpected error occurred while clearing messages.')
+        .reply(t('common.unexpectedError'))
         .catch(() => null);
     }
   }
