@@ -1,6 +1,6 @@
 // src/slash/mute.js
 
-const { PermissionsBitField } = require('discord.js');
+const { PermissionsBitField, MessageFlags } = require('discord.js');
 
 const config = require('../config/defaultConfig');
 const logger = require('../systems/logger');
@@ -47,6 +47,10 @@ async function trySendDM(user, content) {
   }
 }
 
+function replyEphemeral(interaction, content) {
+  return interaction.reply({ content, flags: MessageFlags.Ephemeral }).catch(() => null);
+}
+
 module.exports = async function muteSlash(client, interaction) {
   try {
     if (!interaction?.guild) return;
@@ -54,122 +58,41 @@ module.exports = async function muteSlash(client, interaction) {
     const guild = interaction.guild;
     const executor = interaction.member;
     const botMember = guild.members.me;
+
     if (!executor || !botMember) {
-      return interaction.reply({ content: t('common.unexpectedError'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('common.unexpectedError'));
     }
 
     if (!isStaff(executor)) {
-      return interaction.reply({ content: t('common.noPermission'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('common.noPermission'));
     }
 
     const channelPerms = interaction.channel?.permissionsFor?.(botMember);
     if (!channelPerms?.has(PermissionsBitField.Flags.ModerateMembers)) {
-      return interaction.reply({ content: t('common.missingBotPerm', null, 'Moderate Members'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(
+        interaction,
+        t('common.missingBotPerm', null, 'Moderate Members')
+      );
     }
 
     const targetUser = interaction.options.getUser('user', true);
     const target = await guild.members.fetch(targetUser.id).catch(() => null);
     if (!target) {
-      return interaction.reply({ content: t('common.cannotResolveUser'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('common.cannotResolveUser'));
     }
 
     if (target.id === interaction.user.id) {
-      return interaction.reply({ content: t('mute.cannotMuteSelf'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('mute.cannotMuteSelf'));
     }
 
     if (target.id === client.user.id) {
-      return interaction.reply({ content: t('mute.cannotMuteBot'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('mute.cannotMuteBot'));
     }
 
     if (target.user.bot) {
-      return interaction.reply({ content: t('mute.cannotMuteBotUser'), ephemeral: true }).catch(() => null);
+      return replyEphemeral(interaction, t('mute.cannotMuteBotUser'));
     }
 
     if (typeof target.isCommunicationDisabled === 'function' && target.isCommunicationDisabled()) {
-      return interaction.reply({ content: t('mute.alreadyMuted', null, { tag: target.user.tag }), ephemeral: true }).catch(() => null);
-    }
-
-    const executorIsAdmin = executor.permissions.has(PermissionsBitField.Flags.Administrator);
-
-    if (target.roles.highest.position >= botMember.roles.highest.position) {
-      return interaction.reply({ content: t('mute.roleHierarchyBot'), ephemeral: true }).catch(() => null);
-    }
-
-    if (!executorIsAdmin && target.roles.highest.position >= executor.roles.highest.position) {
-      return interaction.reply({ content: t('mute.roleHierarchyUser'), ephemeral: true }).catch(() => null);
-    }
-
-    if (!executorIsAdmin && target.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return interaction.reply({ content: t('mute.cannotMuteAdmin'), ephemeral: true }).catch(() => null);
-    }
-
-    const rawDuration = (interaction.options.getString('duration') || '').trim();
-    const parsed = parseDuration(rawDuration);
-    const durationMs = parsed || config.muteDuration || 10 * 60 * 1000;
-
-    const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
-    if (durationMs > MAX_TIMEOUT_MS) {
-      return interaction.reply({ content: t('mute.maxDuration'), ephemeral: true }).catch(() => null);
-    }
-
-    const reason = (interaction.options.getString('reason') || '').trim() || t('common.noReason');
-
-    await target.timeout(durationMs, `Muted by ${interaction.user.tag}: ${reason}`);
-
-    let dbUser = null;
-    try {
-      dbUser = await warningsService.applyMutePenalty(guild.id, target.id);
-    } catch (e) {
-      console.error('[slash/mute] warningsService error:', e);
-    }
-
-    if (config.notifications?.dmOnMute) {
-      await trySendDM(
-        target.user,
-        t('mute.dmText', null, {
-          guildName: guild.name,
-          duration: formatDuration(durationMs),
-          reason
-        })
-      );
-    }
-
-    await infractionsService
-      .create({
-        guild,
-        user: target.user,
-        moderator: interaction.user,
-        type: 'MUTE',
-        reason,
-        duration: durationMs
-      })
-      .catch(() => null);
-
-    await interaction.reply({
-      content: t('mute.channelConfirm', null, {
-        tag: target.user.tag,
-        duration: formatDuration(durationMs),
-        reason
-      }),
-      ephemeral: false
-    }).catch(() => null);
-
-    await logger(
-      client,
-      'Slash Mute',
-      target.user,
-      interaction.user,
-      t('log.actions.manualMute', null, {
-        duration: formatDuration(durationMs),
-        reason,
-        trust: dbUser?.trust ?? 'N/A'
-      }),
-      guild
-    );
-  } catch (err) {
-    console.error('[slash/mute] Error:', err);
-    const payload = { content: t('mute.failed'), ephemeral: true };
-    if (interaction.deferred || interaction.replied) return interaction.followUp(payload).catch(() => null);
-    return interaction.reply(payload).catch(() => null);
-  }
-};
+      return replyEphemeral(
+        interaction,
