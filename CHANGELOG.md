@@ -1,82 +1,116 @@
+
+---
+
+## 3️⃣ `CHANGELOG.md`
+
+```markdown
 # Changelog
 
-Todas as alterações relevantes deste projeto são documentadas neste ficheiro.
+All notable changes to this project will be documented in this file.
 
-O projeto segue **Semantic Versioning** (`MAJOR.MINOR.PATCH`)  
-e boas práticas inspiradas em **Keep a Changelog**.
+The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
----
+## [1.1.0] - 2026-01-19
 
-## [1.0.2] – 2026-01-17
-### Infrastructure, Stability & Compatibility
+### Added
 
-#### Added
-- Sistema global de estado da aplicação (`status service`) para monitorização centralizada:
-  - Estado do Discord (clientReady)
-  - Estado da ligação ao MongoDB
-  - Estado do sistema GameNews
-- Endpoint `/health` para integração com plataformas de deploy e monitorização.
-- Integração total do estado da aplicação no dashboard web.
+- **Maintenance scheduler**:
+  - Periodic cleanup of old infractions (default: older than 180 days).
+  - Periodic cleanup of old dashboard logs (default: older than 60 days).
+  - Interval configurable via `config.maintenance.intervalMs` (default: 6h).
 
-#### Changed
-- Migração definitiva para o evento `clientReady`, garantindo compatibilidade com:
-  - `discord.js` v14.25+
-  - futura versão v15
-- Fluxo de arranque centralizado em `src/index.js`, assegurando ordem correta de:
-  - ligação ao MongoDB
-  - inicialização do Discord
-  - registo de Slash Commands
-  - arranque do GameNews
-- Definição explícita do runtime suportado (`Node.js 20.x`) em `package.json`.
+- **Simple usage metrics** in `status.js`:
+  - `totalCommandsExecuted`
+  - `totalInfractionsCreated`
+  - `autoModActions`
+  - `antiSpamActions`
+  - Exposed via the `/health` dashboard endpoint.
 
-#### Fixed
-- Situações em que Slash Commands ou GameNews não arrancavam corretamente em produção.
-- Estados inconsistentes reportados no dashboard em caso de falha parcial de serviços.
-- Problemas de deploy em plataformas como Railway devido a inicialização prematura.
+- **GuildConfig model**:
+  - Stores per-guild configuration:
+    - `guildId`
+    - `logChannelId`
+    - `staffRoleIds`
+  - New dashboard API endpoints:
+    - `GET /api/guilds/:guildId/config`
+    - `POST /api/guilds/:guildId/config`
 
----
+- **Dashboard actor support**:
+  - New helper `getActorFromRequest(req)` reads:
+    - `actor` field from request body, or
+    - `x-dashboard-actor` header.
+  - Dashboard moderation routes `/api/mod/warn`, `/api/mod/mute`, `/api/mod/unmute`:
+    - Include the actor in log descriptions:
+      - `Executor (dashboard): **<actor>**`
+    - Append the actor to the infraction reason:
+      - e.g. `Spam (dashboard: Maze)`.
 
-## [1.0.1] – 2026-01-15
-### AutoMod Improvements & Code Cleanup
+- **Logger integration with GuildConfig**:
+  - Logger now attempts to use `GuildConfig.logChannelId` as the preferred log channel.
+  - Falls back to `config.logChannelName` when no guild-specific channel is configured.
 
-#### Added
-- AutoMod 2.1 com normalização avançada de texto:
-  - remoção de acentos (PT/EN)
-  - mitigação de bypass por caracteres especiais
-- Respostas de Slash Commands configuradas como **ephemerais** para melhor UX do staff.
+### Changed
 
-#### Changed
-- Limpeza de dependências:
-  - remoção de `node-fetch` (não utilizado).
-- Melhorias gerais de logging e mensagens de erro.
+- **Dashboard CORS behaviour**:
+  - Added support for explicitly configured allowed origins:
+    - `config.dashboard.allowedOrigins`
+    - (Previously: only environment variable based).
+  - In production configuration, `allowedOrigins` is set to:
+    - `['https://ozark-bot-production.up.railway.app']`
+  - Removed generic “no CORS origins configured” warnings once an origin is set.
 
-#### Fixed
-- Casos onde palavras ofensivas com acentos escapavam ao filtro.
-- Pequenos comportamentos inesperados em Node.js 20.
+- **Status module**:
+  - Extended the status payload to include usage metrics.
+  - `/health` now returns a `metrics` object along with `ok`, `discordReady`, `mongoConnected` and `uptimeSeconds`.
 
----
+### Fixed
 
-## [1.0.0] – 2026-01-10
-### Initial Stable Release
+- **Circular dependency warning** between `logger.js` and `dashboard.js`:
+  - Introduced `dashboardBridge.js` to decouple logger from dashboard.
+  - Logger now emits events via the bridge instead of requiring `dashboard` directly.
+  - Dashboard registers its `sendToDashboard` function into the bridge at startup.
 
-#### Added
-- Sistema completo de **Moderação Automática**.
-- Sistema de **Trust Score persistente** por utilizador.
-- Gestão de infrações:
-  - WARN
-  - MUTE / TIMEOUT
-  - UNMUTE
-- Anti-Spam com timeout automático.
-- RSS **Game News** com:
-  - deduplicação real por hash
-  - retry com backoff e jitter
-  - persistência no MongoDB
-- Dashboard web em tempo real (Express + Socket.IO).
-- Comandos de texto e Slash Commands.
+- **Mongoose index warning** in `GuildConfig`:
+  - Removed redundant manual index on `guildId` and rely on `unique: true` in the schema field.
 
 ---
 
-### Versioning Notes
-- `PATCH` → correções e melhorias internas
-- `MINOR` → novas funcionalidades compatíveis
-- `MAJOR` → mudanças incompatíveis ou refactors estruturais
+## [1.0.2] - 2026-01-17
+
+### Added
+
+- Game news system using RSS (`rss-parser`):
+  - Periodic fetch of configured feeds.
+  - Embeds sent to configured Discord channels.
+  - Basic duplicate/age filtering.
+
+- Web dashboard:
+  - Express-based backend with Socket.IO.
+  - Basic logs view and health check.
+  - Token-based authentication using `DASHBOARD_TOKEN`.
+
+- Anti-spam system:
+  - Tracks recent messages per user.
+  - Warns/mutes on repeated spam patterns.
+
+- Auto-moderation:
+  - Integrates with trust and warnings.
+  - Applies automatic actions for repeated violations.
+
+### Changed
+
+- Refactored MongoDB connection logic into `src/database/connect.js`.
+- Improved error handling with `ErrorGuard` (process-level handlers).
+
+### Fixed
+
+- Various minor bugs and inconsistencies in commands and event handlers.
+
+---
+
+## [1.0.0] - Initial Release
+
+- Basic Discord bot skeleton.
+- Core moderation commands (`warn`, `mute`, `unmute`, `clear`, `userinfo`, `help`).
+- Simple logging to a fixed channel name.
+- MongoDB integration for users and infractions.
