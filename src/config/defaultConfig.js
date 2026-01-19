@@ -139,7 +139,7 @@ const baseConfig = {
     maxDbLogs: 1000,
     requireAuth: true,
     // Lista de origens permitidas para o Socket.IO (dashboard). Ex: ['https://painel.exemplo.com']
-    allowedOrigins: []
+    allowedOrigins: ['https://ozark-bot-production.up.railway.app']
   },
 
   gameNews: {
