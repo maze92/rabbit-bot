@@ -162,6 +162,11 @@ const baseConfig = {
     },
     sources: [
       {
+        name: 'GameSpot/Reviews',
+        feed: 'https://www.gamespot.com/feeds/reviews',
+        channelId: '1462753709359497367'
+      },
+      {
         name: 'GameSpot/News',
         feed: 'https://www.gamespot.com/feeds/game-news',
         channelId: '1458675935854465219'
