@@ -1,7 +1,7 @@
 
 ---
 
-## 3️⃣ `CHANGELOG.md`
+## `CHANGELOG.md`
 
 ```markdown
 # Changelog
