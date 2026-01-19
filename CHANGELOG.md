@@ -1,77 +1,82 @@
 # Changelog
 
-All notable changes to **Ozark Bot** are documented in this file.
+Todas as alterações relevantes deste projeto são documentadas neste ficheiro.
 
-The format follows **Keep a Changelog** and **Semantic Versioning** principles.
-
----
-
-## [1.1.0] — 2026‑01‑19
-
-### Added
-
-* Scheduled maintenance system for automatic cleanup:
-
-  * Old infractions pruning (default: 180 days)
-  * Old dashboard logs pruning (default: 60 days)
-* Runtime metrics:
-
-  * Total commands executed
-  * Total infractions created
-  * Auto‑moderation actions
-  * Anti‑spam actions
-* Guild‑specific configuration (`GuildConfig`):
-
-  * Custom log channel per guild
-  * Custom staff role mapping
-* Dashboard API endpoints for per‑guild configuration
-* Actor tracking for dashboard moderation actions
-
-  * Executor identity logged and stored with infractions
-
-### Changed
-
-* Dashboard health endpoint extended with metrics payload
-* Logger enhanced to resolve log channels via guild configuration
-* CORS handling made explicit and production‑safe
-
-### Fixed
-
-* Circular dependency between dashboard and logger
-* Redundant MongoDB index definition in `GuildConfig`
-* Minor stability issues in AutoMod / Anti‑Spam interaction
+O projeto segue **Semantic Versioning** (`MAJOR.MINOR.PATCH`)  
+e boas práticas inspiradas em **Keep a Changelog**.
 
 ---
 
-## [1.0.2] — 2026‑01‑17
+## [1.0.2] – 2026-01-17
+### Infrastructure, Stability & Compatibility
 
-### Added
+#### Added
+- Sistema global de estado da aplicação (`status service`) para monitorização centralizada:
+  - Estado do Discord (clientReady)
+  - Estado da ligação ao MongoDB
+  - Estado do sistema GameNews
+- Endpoint `/health` para integração com plataformas de deploy e monitorização.
+- Integração total do estado da aplicação no dashboard web.
 
-* Game News system using RSS feeds
-* Web dashboard with live logs and health status
-* Anti‑spam detection with escalation logic
-* Trust‑based Auto‑Moderation rules
+#### Changed
+- Migração definitiva para o evento `clientReady`, garantindo compatibilidade com:
+  - `discord.js` v14.25+
+  - futura versão v15
+- Fluxo de arranque centralizado em `src/index.js`, assegurando ordem correta de:
+  - ligação ao MongoDB
+  - inicialização do Discord
+  - registo de Slash Commands
+  - arranque do GameNews
+- Definição explícita do runtime suportado (`Node.js 20.x`) em `package.json`.
 
-### Changed
-
-* Refactored MongoDB connection handling
-* Improved global error handling via ErrorGuard
-
-### Fixed
-
-* Minor command handling edge cases
-* Logging consistency improvements
+#### Fixed
+- Situações em que Slash Commands ou GameNews não arrancavam corretamente em produção.
+- Estados inconsistentes reportados no dashboard em caso de falha parcial de serviços.
+- Problemas de deploy em plataformas como Railway devido a inicialização prematura.
 
 ---
 
-## [1.0.0] — Initial Release
+## [1.0.1] – 2026-01-15
+### AutoMod Improvements & Code Cleanup
 
-* Core Discord moderation commands
-* MongoDB persistence for users and infractions
-* Basic logging system
-* Production‑ready project structure
+#### Added
+- AutoMod 2.1 com normalização avançada de texto:
+  - remoção de acentos (PT/EN)
+  - mitigação de bypass por caracteres especiais
+- Respostas de Slash Commands configuradas como **ephemerais** para melhor UX do staff.
+
+#### Changed
+- Limpeza de dependências:
+  - remoção de `node-fetch` (não utilizado).
+- Melhorias gerais de logging e mensagens de erro.
+
+#### Fixed
+- Casos onde palavras ofensivas com acentos escapavam ao filtro.
+- Pequenos comportamentos inesperados em Node.js 20.
 
 ---
 
-**Note:**
-Future versions will continue to prioritize stability, observability, and clean extensibility.
+## [1.0.0] – 2026-01-10
+### Initial Stable Release
+
+#### Added
+- Sistema completo de **Moderação Automática**.
+- Sistema de **Trust Score persistente** por utilizador.
+- Gestão de infrações:
+  - WARN
+  - MUTE / TIMEOUT
+  - UNMUTE
+- Anti-Spam com timeout automático.
+- RSS **Game News** com:
+  - deduplicação real por hash
+  - retry com backoff e jitter
+  - persistência no MongoDB
+- Dashboard web em tempo real (Express + Socket.IO).
+- Comandos de texto e Slash Commands.
+
+---
+
+### Versioning Notes
+- `PATCH` → correções e melhorias internas
+- `MINOR` → novas funcionalidades compatíveis
+- `MAJOR` → mudanças incompatíveis ou refactors estruturais

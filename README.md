@@ -1,175 +1,85 @@
-# Ozark Bot
+# Ozark Discord Bot
 
-**Ozark Bot** is a production‑ready Discord moderation bot with a real‑time web dashboard, MongoDB persistence, and automated background maintenance. It is designed for reliability, clarity, and easy deployment (Railway‑ready).
+**Ozark** é um bot de Discord focado em **moderação automática**, **gestão de infrações**, **Trust Score**, **RSS Game News** e **dashboard web em tempo real**.
 
-> Built with **Node.js 20**, **discord.js v14**, **Express**, **Socket.IO**, and **MongoDB (Mongoose)**.
-
----
-
-## ✨ Key Capabilities
-
-### Moderation
-
-* Commands: `warn`, `mute`, `unmute`, `clear`, `userinfo`, `help`
-* Slash commands supported per guild
-* Persistent infractions (WARN / MUTE / KICK / BAN)
-* Configurable staff permissions
-
-### Anti‑Spam & Auto‑Moderation
-
-* Burst and duplicate message detection
-* Trust‑based thresholds (dynamic limits per user)
-* Automatic warn/mute escalation
-* Protection against double punishment (AutoMod vs Anti‑Spam)
-
-### Web Dashboard
-
-* Live logs via Socket.IO
-* Health endpoint with runtime status and metrics
-* Token‑protected API
-* Guild‑specific configuration (MongoDB)
-
-### Game News System
-
-* RSS feeds (e.g., GameSpot)
-* Deduplication and age filtering
-* Rich embeds sent to Discord channels
-
-### Reliability & Ops
-
-* MongoDB auto‑reconnect
-* Centralized process error handling (ErrorGuard)
-* Graceful shutdown (SIGINT / SIGTERM)
-* Scheduled maintenance (log & infraction pruning)
+Foi concebido para servir como uma base **robusta, extensível e profissional**, adequada tanto para comunidades pequenas como para servidores de grande dimensão.
 
 ---
 
-## 📊 Observability
+## ✨ Destaques
 
-The `/health` endpoint exposes:
-
-* Discord readiness
-* MongoDB connection state
-* GameNews runtime state
-* Uptime
-* Metrics:
-
-  * `totalCommandsExecuted`
-  * `totalInfractionsCreated`
-  * `autoModActions`
-  * `antiSpamActions`
+- Compatível com `discord.js` **v14.25+** (preparado para v15)
+- AutoMod avançado com normalização de texto (PT / EN)
+- Trust Score persistente e progressivo
+- Dashboard web com monitorização em tempo real
+- Preparado para produção (Railway, Docker, VPS)
 
 ---
 
-## 🧩 Architecture Overview
+## 🚀 Funcionalidades
 
-```
-src/
-├─ index.js              # Entry point
-├─ dashboard.js          # Express + Socket.IO dashboard
-├─ events/               # Discord lifecycle events
-├─ systems/              # Core systems (logger, status, automod, maintenance)
-├─ database/             # Mongo connection & models
-├─ utils/                # Helpers (time, trust, permissions)
-└─ config/               # Central configuration
-```
+### 🛡️ Moderação Automática
+- Deteção de linguagem ofensiva com normalização de:
+  - acentos
+  - símbolos
+  - variações comuns de bypass
+- Warnings progressivos e automáticos
+- Timeout baseado em Trust Score
+- Anti-Spam com cooldown inteligente
+- Exclusões por cargos (staff / admins)
 
----
+### 🧠 Trust Score
+- Score individual persistente por utilizador
+- Penalizações automáticas por infrações
+- Regeneração gradual ao longo do tempo
+- Influência direta em:
+  - número de avisos permitidos
+  - duração dos mutes
 
-## ⚙️ Configuration
+### 📰 Game News (RSS)
+- Leitura de múltiplos feeds RSS
+- Deduplicação real por hash
+- Retry com backoff e jitter
+- Persistência em MongoDB
+- Integração com dashboard e estado da aplicação
 
-Primary configuration file:
+### 📊 Dashboard Web
+- Express + Socket.IO
+- Visualização de:
+  - estado do bot
+  - estado do MongoDB
+  - estado do GameNews
+  - Trust Score e infrações
+- Endpoint `/health` para monitorização externa
+- Autenticação por token (`DASHBOARD_TOKEN`)
 
-```
-src/config/defaultConfig.js
-```
-
-Example (dashboard section):
-
-```js
-dashboard: {
-  enabled: true,
-  maxLogs: 200,
-  maxDbLogs: 1000,
-  requireAuth: true,
-  allowedOrigins: ['https://ozark-bot-production.up.railway.app']
-}
-```
-
-Guild‑specific overrides are stored in MongoDB via the `GuildConfig` model.
-
----
-
-## 🔐 Environment Variables
-
-Required:
-
-* `DISCORD_TOKEN` — Discord bot token
-* `MONGO_URI` — MongoDB connection string
-* `DASHBOARD_TOKEN` — Dashboard API access token
-
-Optional:
-
-* `PORT` — Dashboard port (default: 3000)
-* `NODE_ENV` — `development` | `production`
+### ⚙️ Comandos
+- Comandos de texto (prefixo configurável)
+- Slash Commands (`/warn`, `/mute`, `/unmute`, `/userinfo`, etc.)
+- Respostas ephemerais para ações administrativas
+- Lógica partilhada entre comandos texto e slash
 
 ---
 
-## ▶️ Running Locally
+## 🛠️ Requisitos
 
-```bash
-npm install
-npm run dev
-```
-
-For production:
-
-```bash
-npm start
-```
+- **Node.js 20.x**
+- MongoDB (local ou cloud)
+- Bot criado no Discord Developer Portal com:
+  - Message Content Intent
+  - Guild Members Intent
 
 ---
 
-## 🚀 Deployment (Railway)
+## ⚙️ Configuração
 
-1. Create a Railway project
-2. Upload the flat project (package.json at root)
-3. Configure environment variables
-4. Ensure Node.js `20.x`
-5. Deploy
+### Variáveis de ambiente
 
-Expected startup logs:
+Cria um ficheiro `.env`:
 
-```
-🛡️ ErrorGuard initialized
-🚀 Dashboard running on port 3000
-✅ Bot is online
-🟢 MongoDB connected
-```
+```env
+TOKEN=discord_bot_token
+MONGO_URI=mongodb_connection_string
+DASHBOARD_TOKEN=secure_random_token
+PORT=3000
 
----
-
-## 🧪 Tests
-
-A lightweight test runner is included:
-
-```bash
-npm test
-```
-
-(Currently validates utility helpers and configuration integrity.)
-
----
-
-## 🗺️ Roadmap
-
-* Discord OAuth2 authentication for dashboard
-* Advanced dashboard filters and guild settings UI
-* Extended AutoMod rules (links, caps, emojis)
-* Full i18n support (PT / EN)
-
----
-
-## 📄 License
-
-ISC — free to use, modify, and distribute.
