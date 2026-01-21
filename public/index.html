@@ -1856,7 +1856,6 @@ function setTab(name) {
     // ------------------------------
     
     async function refreshHealth() {
-    async function refreshHealth() {
       try {
         const res = await fetch('/health');
         const data = await res.json();
@@ -1915,6 +1914,7 @@ function setTab(name) {
         }
       }
     }
+    async function runSelfTestUI() {
       try {
         if (!state.guildId) {
           toast(t('select_guild_top'), 'bad');
@@ -1932,7 +1932,7 @@ function setTab(name) {
         const btn = $('btnSelfTest');
         if (btn) {
           btn.disabled = true;
-          btn.textContent = t('selftest_running') || 'A testar...';
+          btn.textContent = t('selftest_running') || 'A executar self-test...';
         }
 
         const body = { guildId: state.guildId, channelId };
