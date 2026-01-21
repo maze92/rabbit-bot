@@ -1711,22 +1711,23 @@ function setTab(name) {
       try { localStorage.setItem('ozark.activeTab', name); } catch {}
     }
     $('tabs').addEventListener('click', (e) => {
-      const t = e.target.closest('.tab');
-      if (!t) return;
-      if (!state.guildId && t.dataset.tab !== 'overview') {
+      const tabEl = e.target.closest('.tab');
+      if (!tabEl) return;
+      if (!state.guildId && tabEl.dataset.tab !== 'overview') {
         toast(t('select_guild_top'), 'bad');
         return;
       }
-      setTab(t.dataset.tab);
+      setTab(tabEl.dataset.tab);
 
       // lazy load
-      if (t.dataset.tab === 'logs') loadLogsPage(1).catch(() => null);
-      if (t.dataset.tab === 'cases') loadCasesPage(1).catch(() => null);
-      if (t.dataset.tab === 'tickets') loadTicketsPage(1).catch(() => null);
+      if (tabEl.dataset.tab === 'logs') loadLogsPage(1).catch(() => null);
+      if (tabEl.dataset.tab === 'cases') loadCasesPage(1).catch(() => null);
+      if (tabEl.dataset.tab === 'tickets') loadTicketsPage(1).catch(() => null);
     });
 
     // ------------------------------
     // Token
+    // ------------------------------
     // ------------------------------
     function setDashboardToken(newToken, opts = { reload: false }) {
       const tokenStr = (newToken || '').trim();
@@ -1830,6 +1831,26 @@ function setTab(name) {
       $('kpiGuilds').textContent = String(state.guilds.length);
     }
 
+
+    async function boot() {
+      try {
+        await loadGuilds().catch(() => null);
+
+        // health + KPIs + timeline overview
+        await refreshHealth().catch(() => null);
+        await loadKpis().catch(() => null);
+        await loadTimeline({ showLoader: false }).catch(() => null);
+
+        // GameNews feeds (se existir secção)
+        if (document.getElementById('feedsConfigBody') && typeof window.loadFeedsConfig === 'function') {
+          await window.loadFeedsConfig().catch(() => null);
+        }
+
+        updateBadges();
+      } catch (e) {
+        console.error('[Dashboard] boot error:', e);
+      }
+    }
     $('guildPicker').addEventListener('change', async () => {
       state.guildId = $('guildPicker').value;
 
