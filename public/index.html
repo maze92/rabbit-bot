@@ -3016,6 +3016,214 @@ $('btnLoadGuildConfig')?.addEventListener('click', loadGuildConfigUI);
     });
 
     // ------------------------------
+
+    // ------------------------------
+    // Tickets (Server-side pagination)
+    // ------------------------------
+    function ticketStatusBadge(status) {
+      const s = String(status || '').toUpperCase();
+      if (s === 'OPEN') return 'warn';
+      if (s === 'CLOSED') return 'ok';
+      return 'info';
+    }
+
+    function updateTicketsPagerUI() {
+      const p = state.tickets.page;
+      const lim = state.tickets.limit;
+      const total = state.tickets.total;
+      const maxPage = Math.max(Math.ceil(total / lim) || 1, 1);
+
+      const pageBadge = $('ticketsPageBadge');
+      const totalBadge = $('ticketsTotalBadge');
+      if (pageBadge) pageBadge.textContent = `Page ${p} / ${maxPage}`;
+      if (totalBadge) totalBadge.textContent = `Total: ${total}`;
+      const prevBtn = $('btnPrevTickets');
+      const nextBtn = $('btnNextTickets');
+      if (prevBtn) prevBtn.disabled = p <= 1;
+      if (nextBtn) nextBtn.disabled = p >= maxPage;
+    }
+
+    function buildTicketsUrl(page) {
+      const gid = selectedGuild();
+      const url = new URL('/api/tickets', window.location.origin);
+      url.searchParams.set('page', String(page || 1));
+      url.searchParams.set('limit', String(state.tickets.limit || 25));
+      if (gid) url.searchParams.set('guildId', gid);
+
+      const userId = ($('ticketsUserId')?.value || '').trim();
+      const statusVal = ($('ticketsStatus')?.value || '').trim().toUpperCase();
+      if (userId) url.searchParams.set('userId', userId);
+      if (statusVal === 'OPEN' || statusVal === 'CLOSED') {
+        url.searchParams.set('status', statusVal);
+      }
+      return url;
+    }
+
+    function renderTickets(items) {
+      const list = $('ticketsList');
+      if (!list) return;
+      list.innerHTML = '';
+
+      if (!items || !items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'card';
+        empty.innerHTML = `<h2>${t('tickets_empty_title') || 'Sem tickets'}</h2>
+          <div class="hint">${t('tickets_empty_hint') || 'Não há tickets para o filtro atual.'}</div>`;
+        list.appendChild(empty);
+        return;
+      }
+
+      for (const tk of items) {
+        const row = document.createElement('div');
+        row.className = 'card row';
+        row.style.alignItems = 'flex-start';
+        row.style.justifyContent = 'space-between';
+
+        const left = document.createElement('div');
+        left.style.display = 'flex';
+        left.style.flexDirection = 'column';
+        left.style.gap = '4px';
+
+        const title = document.createElement('div');
+        title.innerHTML = `
+          <span class="badge ${ticketStatusBadge(tk.status)}">${escHtml(tk.status || 'OPEN')}</span>
+          <span class="mono">#${escHtml(tk.channelId || tk._id || '')}</span>
+        `;
+
+        const meta = document.createElement('div');
+        meta.className = 'hint';
+        const userId = tk.userId || tk.createdById || 'N/A';
+        const created = tk.createdAt ? new Date(tk.createdAt).toLocaleString() : 'N/A';
+        const topic = tk.topic || '';
+        meta.innerHTML = `
+          <div>${t('tickets_user_label') || 'Utilizador'}: <span class="mono">${escHtml(userId)}</span></div>
+          <div>${t('tickets_created_label') || 'Aberto em'}: ${escHtml(created)}</div>
+          ${topic ? `<div>${t('tickets_topic_label') || 'Tópico'}: ${escHtml(topic)}</div>` : ''}
+        `;
+
+        left.appendChild(title);
+        left.appendChild(meta);
+
+        const right = document.createElement('div');
+        right.style.display = 'flex';
+        right.style.flexDirection = 'column';
+        right.style.alignItems = 'flex-end';
+        right.style.gap = '6px';
+
+        if (tk.status === 'OPEN') {
+          const btnClose = document.createElement('button');
+          btnClose.className = 'btn-secondary small';
+          btnClose.textContent = t('tickets_close_button') || 'Fechar ticket';
+          btnClose.addEventListener('click', async () => {
+            const gid = selectedGuild();
+            if (!gid) return;
+            if (!confirm(t('tickets_close_confirm') || 'Fechar este ticket?')) return;
+            try {
+              const res = await fetch(`/api/tickets/${encodeURIComponent(tk._id)}/close`, {
+                method: 'POST',
+                headers: {
+                  ...headers(),
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ guildId: gid })
+              });
+              const json = await res.json().catch(() => ({}));
+              if (!res.ok || !json.ok) {
+                toast(json.error || 'Falha ao fechar ticket.', 'bad');
+                return;
+              }
+              toast(t('tickets_close_ok') || 'Ticket fechado.', 'ok');
+              loadTicketsPage(state.tickets.page).catch(() => null);
+            } catch (err) {
+              console.error('closeTicket error', err);
+              toast('Erro ao fechar ticket.', 'bad');
+            }
+          });
+          right.appendChild(btnClose);
+        }
+
+        const statusLabel = document.createElement('div');
+        const closedAt = tk.closedAt ? new Date(tk.closedAt).toLocaleString() : null;
+        statusLabel.className = 'hint';
+        statusLabel.textContent = closedAt
+          ? (t('tickets_closed_at_label') || 'Fechado em') + ': ' + closedAt
+          : (t('tickets_open_label') || 'Ticket aberto');
+        right.appendChild(statusLabel);
+
+        row.appendChild(left);
+        row.appendChild(right);
+        list.appendChild(row);
+      }
+    }
+
+    async function loadTicketsPage(page) {
+      showLoadingCard('ticketsList');
+      const gid = selectedGuild();
+      if (!gid) {
+        state.tickets.items = [];
+        state.tickets.total = 0;
+        renderTickets([]);
+        updateTicketsPagerUI();
+        return;
+      }
+
+      const url = buildTicketsUrl(page);
+      const res = await fetch(url.toString(), { headers: headers() });
+      if (res.status === 401) {
+        toast(t('toast_unauthorized_set_token'), 'bad');
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        toast(json.error || 'Failed to load tickets.', 'bad');
+        return;
+      }
+
+      state.tickets.page = Number(json.page ?? 1) || 1;
+      state.tickets.limit = Number(json.limit ?? 25) || 25;
+      state.tickets.total = Number(json.total ?? 0) || 0;
+      state.tickets.items = Array.isArray(json.items) ? json.items : [];
+
+      renderTickets(state.tickets.items);
+      updateTicketsPagerUI();
+    }
+
+    $('btnRecarregarTickets')?.addEventListener('click', () => loadTicketsPage(1).catch(() => null));
+    $('ticketsUserId')?.addEventListener('input', () => {
+      clearTimeout(window.__ticketsUserT);
+      window.__ticketsUserT = setTimeout(() => loadTicketsPage(1).catch(() => null), 250);
+    });
+    $('ticketsStatus')?.addEventListener('change', () => loadTicketsPage(1).catch(() => null));
+    $('btnPrevTickets')?.addEventListener('click', () => loadTicketsPage(Math.max(state.tickets.page - 1, 1)).catch(() => null));
+    $('btnNextTickets')?.addEventListener('click', () => loadTicketsPage(state.tickets.page + 1).catch(() => null));
+    $('btnClearTickets')?.addEventListener('click', async () => {
+      const gid = selectedGuild();
+      if (!gid) {
+        toast('Seleciona uma guild primeiro.', 'bad');
+        return;
+      }
+      if (!confirm('Tens a certeza que queres apagar TODOS os tickets deste servidor? Esta ação é permanente.')) return;
+      try {
+        const res = await fetch('/api/tickets/clear', {
+          method: 'POST',
+          headers: {
+            ...headers(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ guildId: gid })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          toast(json.error || 'Falha ao limpar tickets.', 'bad');
+          return;
+        }
+        toast(`Foram removidos ${json.deleted || 0} tickets.`, 'ok');
+        loadTicketsPage(1).catch(() => null);
+      } catch (err) {
+        console.error('btnClearTickets error', err);
+        toast('Erro ao limpar tickets.', 'bad');
+      }
+    });
     // GameNews
     // ------------------------------
     function computePaused(f) {
