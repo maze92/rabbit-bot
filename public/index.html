@@ -1715,16 +1715,18 @@ function setTab(name) {
       const tabEl = e.target.closest('.tab');
       if (!tabEl) return;
       if (!state.guildId && tabEl.dataset.tab !== 'overview') {
-      if (!state.guildId && tabEl.dataset.tab !== 'overview') {
         toast((window.__i18nT || t)('select_guild_top'), 'bad');
         return;
+      }
       setTab(tabEl.dataset.tab);
 
       // lazy load
       if (tabEl.dataset.tab === 'logs') loadLogsPage(1).catch(() => null);
-      if (tabEl.dataset.tab === 'logs') loadLogsPage(1).catch(() => null);
       if (tabEl.dataset.tab === 'cases') loadCasesPage(1).catch(() => null);
-      if (tabEl.dataset.tab === 'tickets' && typeof window.loadTicketsPage === 'function') window.loadTicketsPage(1).catch(() => null);
+      if (tabEl.dataset.tab === 'tickets' && typeof window.loadTicketsPage === 'function') {
+        window.loadTicketsPage(1).catch(() => null);
+      }
+    });
 
     // ------------------------------
     // Token
