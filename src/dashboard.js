@@ -1916,7 +1916,7 @@ app.post('/api/admin/selftest', requireDashboardAuth, express.json(), async (req
 
     // Registar também um log no sistema de logs / dashboard
     try {
-      await logger.logAction(guild, null, null, 'Dashboard self-test', 'Self-test executado a partir da dashboard (sem ações reais em utilizadores).');
+      await logger(_client, 'Dashboard self-test', null, null, 'Dashboard self-test executado a partir da dashboard (sem ações reais em utilizadores).', guild);
     } catch (e) {
       console.error('[Dashboard] Failed to log self-test:', e);
     }

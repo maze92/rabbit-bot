@@ -676,7 +676,7 @@ id="tab-overview">
     </div>
   </div>
 </div>
- class="section" id="tab-logs">
+  <div class="section" id="tab-logs">
 <div class="card" style="margin-bottom: 10px;">
 <div class="row" style="justify-content: space-between; align-items: center;">
 <div>
@@ -1715,16 +1715,16 @@ function setTab(name) {
       const tabEl = e.target.closest('.tab');
       if (!tabEl) return;
       if (!state.guildId && tabEl.dataset.tab !== 'overview') {
-        toast(t('select_guild_top'), 'bad');
+      if (!state.guildId && tabEl.dataset.tab !== 'overview') {
         toast((window.__i18nT || t)('select_guild_top'), 'bad');
-      }
+        return;
       setTab(tabEl.dataset.tab);
 
       // lazy load
       if (tabEl.dataset.tab === 'logs') loadLogsPage(1).catch(() => null);
+      if (tabEl.dataset.tab === 'logs') loadLogsPage(1).catch(() => null);
       if (tabEl.dataset.tab === 'cases') loadCasesPage(1).catch(() => null);
-      if (tabEl.dataset.tab === 'tickets') loadTicketsPage(1).catch(() => null);
-    });
+      if (tabEl.dataset.tab === 'tickets' && typeof window.loadTicketsPage === 'function') window.loadTicketsPage(1).catch(() => null);
 
     // ------------------------------
     // Token
@@ -3187,6 +3187,7 @@ $('btnLoadGuildConfig')?.addEventListener('click', loadGuildConfigUI);
       renderTickets(state.tickets.items);
       updateTicketsPagerUI();
     }
+    window.loadTicketsPage = loadTicketsPage;
 
     $('btnRecarregarTickets')?.addEventListener('click', () => loadTicketsPage(1).catch(() => null));
     $('ticketsUserId')?.addEventListener('input', () => {
