@@ -31,7 +31,6 @@ function t(path, langOverride, value) {
   const root = messages[lang] || messages.en;
 
   const node = getFromPath(root, path);
-  // CORRIGIDO: Mudado de == para === para comparação estrita
   if (node === null || node === undefined) return path;
 
   if (typeof node === 'function') {
