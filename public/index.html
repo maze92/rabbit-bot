@@ -1848,11 +1848,13 @@ function setTab(name) {
         await loadTimeline({ showLoader: false }).catch(() => null);
 
         // GameNews feeds (se existir secção)
+        // GameNews feeds (se existir secção)
         if (document.getElementById('feedsConfigBody') && typeof window.loadFeedsConfig === 'function') {
           await window.loadFeedsConfig().catch(() => null);
         }
 
         updateBadges();
+        state.guildId = $('guildPicker').value || '';
       } catch (e) {
         console.error('[Dashboard] boot error:', e);
       }
@@ -1861,7 +1863,6 @@ function setTab(name) {
       state.guildId = $('guildPicker').value;
 
       // Reset paginations on guild change
-      state.logs.page = 1;
       state.cases.page = 1;
 
       // user tab depends on guild
