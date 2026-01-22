@@ -121,6 +121,483 @@
       border-color: rgba(230,0,18,0.35);
     }
     .btn-primary:hover { background: rgba(230,0,18,0.24); }
+/* ============================================================================
+   CORREÇÕES CSS PARA O DASHBOARD
+   ============================================================================
+   
+   INSTRUÇÕES:
+   1. Abrir public/index.html
+   2. Procurar pela linha que contém: .btn-primary:hover
+   3. ADICIONAR TODO ESTE CSS logo após essa linha
+   
+   ============================================================================
+*/
+
+/* ------------------------------
+   FIX #1: Botões Secundários para Sub-Tabs
+   ------------------------------ */
+.btn-secondary {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border);
+  color: var(--muted);
+  padding: 10px 16px;
+  font-size: 13px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  border-color: rgba(255,255,255,0.12);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* Quando um botão secundário está ativo, parece primário */
+.btn-secondary.btn-primary,
+.btn-primary.btn-secondary {
+  background: rgba(230,0,18,0.18);
+  border-color: rgba(230,0,18,0.35);
+  color: var(--text);
+}
+
+/* ------------------------------
+   FIX #2: Uniformização dos Cards
+   ------------------------------ */
+.card {
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 45px rgba(0,0,0,0.3);
+}
+
+.card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+
+.card h3 {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.card p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+/* ------------------------------
+   FIX #3: Animações Suaves
+   ------------------------------ */
+.section {
+  display: none;
+  opacity: 0;
+}
+
+.section.active {
+  display: block;
+  animation: fadeInUp 0.3s ease forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Sub-panels de configuração */
+.config-subtab-panel {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------
+   FIX #4: Sub-tabs de Configuração
+   ------------------------------ */
+.config-subtab {
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.config-subtab:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--text);
+}
+
+.config-subtab.config-subtab-active {
+  background: rgba(114,182,255,0.12);
+  border-color: rgba(114,182,255,0.35);
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ------------------------------
+   FIX #5: Loading States
+   ------------------------------ */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ------------------------------
+   FIX #6: Empty States
+   ------------------------------ */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+
+.empty-state h2 {
+  font-size: 18px;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.empty-state .hint {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ------------------------------
+   FIX #7: Logs e Cases Items
+   ------------------------------ */
+.logItem, .caseItem {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+
+.logItem:hover, .caseItem:hover {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+  border-color: rgba(255,255,255,0.12);
+  transform: translateX(4px);
+}
+
+.logHead, .caseHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.logTitle, .caseTitle {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.logDesc, .caseDesc {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0;
+  word-break: break-word;
+}
+
+.logMeta, .caseMeta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------
+   FIX #8: Melhor Responsividade
+   ------------------------------ */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .card {
+    grid-column: span 1 !important;
+  }
+  
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .toolbar {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+  
+  .toolbar > * {
+    width: 100%;
+  }
+  
+  .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  
+  .tab {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 12px 10px 30px;
+  }
+  
+  .card {
+    padding: 12px;
+  }
+  
+  .brand h1 {
+    font-size: 16px;
+  }
+  
+  .logo {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ------------------------------
+   FIX #9: Melhor Contraste no Tema Claro
+   ------------------------------ */
+body[data-theme="light"] .card {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+body[data-theme="light"] .card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+body[data-theme="light"] .logItem:hover,
+body[data-theme="light"] .caseItem:hover {
+  background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02));
+}
+
+/* ------------------------------
+   FIX #10: Tooltips e Hints Melhorados
+   ------------------------------ */
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.hint a {
+  color: var(--info);
+  text-decoration: none;
+  border-bottom: 1px dashed currentColor;
+}
+
+.hint a:hover {
+  color: var(--accent);
+  border-bottom-style: solid;
+}
+
+/* ------------------------------
+   FIX #11: Badges Melhorados
+   ------------------------------ */
+.badge {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.badge.ok {
+  box-shadow: 0 2px 8px rgba(61,220,151,0.3);
+}
+
+.badge.warn {
+  box-shadow: 0 2px 8px rgba(245,196,81,0.3);
+}
+
+.badge.bad {
+  box-shadow: 0 2px 8px rgba(255,107,107,0.3);
+}
+
+.badge.info {
+  box-shadow: 0 2px 8px rgba(114,182,255,0.3);
+}
+
+/* ------------------------------
+   FIX #12: Inputs e Selects Melhorados
+   ------------------------------ */
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(114,182,255,0.5);
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 0 0 3px rgba(114,182,255,0.1);
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 0.7;
+}
+
+/* ------------------------------
+   FIX #13: Switch Toggle Melhorado
+   ------------------------------ */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255,255,255,0.1);
+  transition: 0.3s;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--text);
+  transition: 0.3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .slider {
+  background-color: rgba(61,220,151,0.3);
+  border-color: rgba(61,220,151,0.5);
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+  background-color: var(--ok);
+}
+
+input:disabled + .slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ------------------------------
+   FIX #14: Paginação Melhorada
+   ------------------------------ */
+.row button[id^="btnPrev"],
+.row button[id^="btnNext"] {
+  min-width: 80px;
+}
+
+.row button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ------------------------------
+   FIX #15: Scrollbar Personalizada
+   ------------------------------ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) rgba(255,255,255,0.02);
+}
+
+/* ============================================================================
+   FIM DAS CORREÇÕES CSS
+   ============================================================================ */
 
     .tabs {
       display:flex;
@@ -1313,9 +1790,11 @@ id="tab-overview">
 
         gamenews_kpi_feeds: 'Feeds',
         gamenews_kpi_paused: 'Pausados',
+        language_changed: 'Idioma alterado.',
 },
       en: {
         login_title: 'Ozark Dashboard',
+        language_changed: 'Language changed.',
         login_sub: 'Authenticate to access the dashboard.',
         login_hint: 'Enter the OZARK_DASH_JWT. It is stored only in your browser.',
         login_btn: 'Sign in',
@@ -2755,6 +3234,238 @@ $('btnLoadGuildConfig')?.addEventListener('click', loadGuildConfigUI);
 
     $('btnPrevLogs').addEventListener('click', () => loadLogsPage(Math.max(state.logs.page - 1, 1)).catch(() => null));
     $('btnNextLogs').addEventListener('click', () => loadLogsPage(state.logs.page + 1).catch(() => null));
+// ============================================================================
+// CORREÇÕES PARA O DASHBOARD - Adicionar este código ao index.html
+// ============================================================================
+// 
+// INSTRUÇÕES:
+// 1. Abrir public/index.html
+// 2. Procurar pela linha que contém: $('btnNextLogs').addEventListener
+// 3. ADICIONAR TODO ESTE CÓDIGO logo após essa linha
+//
+// ============================================================================
+
+// ------------------------------
+// FIX #1: Moderation Sub-Tabs (Eventos/Casos/Utilizador)
+// ------------------------------
+// PROBLEMA: Os botões existem mas não têm event listeners
+// SOLUÇÃO: Adicionar listeners e lógica de navegação
+
+const modTabButtons = {
+  modTabEvents: 'tab-logs',
+  modTabCases: 'tab-cases',
+  modTabUser: 'tab-user'
+};
+
+Object.keys(modTabButtons).forEach(btnId => {
+  const btn = document.getElementById(btnId);
+  if (btn) {
+    btn.addEventListener('click', () => {
+      // Remove active class from all mod tab buttons
+      Object.keys(modTabButtons).forEach(id => {
+        const b = document.getElementById(id);
+        if (b) {
+          b.classList.remove('btn-primary');
+          b.classList.add('btn-secondary');
+        }
+      });
+      
+      // Add active class to clicked button
+      btn.classList.remove('btn-secondary');
+      btn.classList.add('btn-primary');
+      
+      // Switch to the corresponding main tab
+      const targetTab = modTabButtons[btnId].replace('tab-', '');
+      setTab(targetTab);
+      
+      // Load data for the tab
+      if (targetTab === 'logs') {
+        loadLogsPage(1).catch(() => null);
+      }
+      if (targetTab === 'cases') {
+        loadCasesPage(1).catch(() => null);
+      }
+      // 'user' tab doesn't need data loading - it's a search form
+      
+      console.log(`[Mod Tab] Switched to: ${targetTab}`);
+    });
+  } else {
+    console.warn(`[Mod Tab] Button not found: ${btnId}`);
+  }
+});
+
+// Initialize: make first button active
+const firstModBtn = document.getElementById('modTabEvents');
+if (firstModBtn) {
+  firstModBtn.classList.remove('btn-secondary');
+  firstModBtn.classList.add('btn-primary');
+}
+
+console.log('[Dashboard] Moderation sub-tabs initialized ✅');
+
+// ------------------------------
+// FIX #2: Language Picker Event Listeners
+// ------------------------------
+// PROBLEMA: Os selectores existem mas não fazem nada quando mudas
+// SOLUÇÃO: Adicionar event listeners
+
+const langPicker = document.getElementById('langPicker');
+if (langPicker) {
+  langPicker.addEventListener('change', (e) => {
+    const newLang = e.target.value;
+    console.log(`[Language] Changing to: ${newLang}`);
+    setLang(newLang);
+    toast(t('language_changed') || 'Idioma alterado.', 'ok');
+  });
+  console.log('[Dashboard] Main language picker initialized ✅');
+} else {
+  console.warn('[Dashboard] langPicker not found');
+}
+
+const loginLangPicker = document.getElementById('loginLangPicker');
+if (loginLangPicker) {
+  loginLangPicker.addEventListener('change', (e) => {
+    const newLang = e.target.value;
+    console.log(`[Language] Login screen: changing to: ${newLang}`);
+    setLang(newLang);
+  });
+  console.log('[Dashboard] Login language picker initialized ✅');
+} else {
+  console.warn('[Dashboard] loginLangPicker not found');
+}
+
+// ------------------------------
+// FIX #3: Traduções Faltantes
+// ------------------------------
+// PROBLEMA: A mensagem "language_changed" não existe nas traduções
+// SOLUÇÃO: Adicionar ao objeto I18N (fazer isto manualmente no HTML)
+
+// Em I18N.pt (linha ~1290), adicionar:
+// language_changed: 'Idioma alterado.',
+
+// Em I18N.en (linha ~1405), adicionar:  
+// language_changed: 'Language changed.',
+
+// ------------------------------
+// FIX #4: Better Error Handling
+// ------------------------------
+// Adicionar tratamento de erros melhorado para as funções de load
+
+const originalLoadLogsPage = loadLogsPage;
+window.loadLogsPage = async function(page) {
+  try {
+    if (!state.guildId) {
+      console.warn('[Logs] No guild selected');
+      const list = $('logsList');
+      if (list) {
+        list.innerHTML = `
+          <div class="card">
+            <h2>Seleciona um servidor</h2>
+            <div class="hint">Escolhe um servidor no menu do topo para ver os logs.</div>
+          </div>
+        `;
+      }
+      return;
+    }
+    await originalLoadLogsPage(page);
+  } catch (error) {
+    console.error('[Logs] Error loading page:', error);
+    toast('Erro ao carregar logs. Verifica a consola.', 'bad');
+  }
+};
+
+const originalLoadCasesPage = loadCasesPage;
+window.loadCasesPage = async function(page) {
+  try {
+    if (!state.guildId) {
+      console.warn('[Cases] No guild selected');
+      const list = $('casesList');
+      if (list) {
+        list.innerHTML = `
+          <div class="card">
+            <h2>Seleciona um servidor</h2>
+            <div class="hint">Escolhe um servidor no menu do topo para ver os casos.</div>
+          </div>
+        `;
+      }
+      return;
+    }
+    await originalLoadCasesPage(page);
+  } catch (error) {
+    console.error('[Cases] Error loading page:', error);
+    toast('Erro ao carregar casos. Verifica a consola.', 'bad');
+  }
+};
+
+// ------------------------------
+// FIX #5: Auto-load when guild changes
+// ------------------------------
+// Quando o utilizador muda de servidor, recarregar a tab ativa
+
+const originalOnGuildChange = window.onGuildChange || function() {};
+window.onGuildChange = function(guildId) {
+  originalOnGuildChange(guildId);
+  
+  const activeTab = document.querySelector('.tab.active');
+  if (!activeTab) return;
+  
+  const tabName = activeTab.dataset.tab;
+  console.log(`[Dashboard] Guild changed, reloading tab: ${tabName}`);
+  
+  if (tabName === 'logs') {
+    loadLogsPage(1).catch(() => null);
+  } else if (tabName === 'cases') {
+    loadCasesPage(1).catch(() => null);
+  } else if (tabName === 'tickets') {
+    // Se tiveres função loadTicketsPage, chamar aqui
+  }
+};
+
+// Hook no guild picker
+const guildPicker = document.getElementById('guildPicker');
+if (guildPicker) {
+  const originalGuildListener = guildPicker.onchange;
+  guildPicker.addEventListener('change', (e) => {
+    const newGuildId = e.target.value;
+    state.guildId = newGuildId;
+    
+    // Update badge
+    const guildBadge = $('badgeGuild');
+    if (guildBadge) {
+      const guild = state.guilds.find(g => g.id === newGuildId);
+      if (guild) {
+        guildBadge.textContent = `Servidor: ${guild.name}`;
+      } else {
+        guildBadge.textContent = 'Servidor: Todos';
+      }
+    }
+    
+    // Trigger reload
+    if (window.onGuildChange) {
+      window.onGuildChange(newGuildId);
+    }
+  });
+  console.log('[Dashboard] Guild picker enhanced ✅');
+}
+
+// ------------------------------
+// Initialization Complete
+// ------------------------------
+console.log('');
+console.log('═══════════════════════════════════════════════');
+console.log('  🎉 DASHBOARD FIXES APPLIED SUCCESSFULLY!');
+console.log('═══════════════════════════════════════════════');
+console.log('✅ Moderation sub-tabs fixed');
+console.log('✅ Language pickers fixed');
+console.log('✅ Error handling improved');
+console.log('✅ Auto-reload on guild change added');
+console.log('═══════════════════════════════════════════════');
+console.log('');
+
+// Add a visual indicator that fixes are loaded
+setTimeout(() => {
+  toast('Dashboard melhorado carregado ✓', 'ok');
+}, 1000);
 
     // ------------------------------
     // Cases (Server-side pagination)
