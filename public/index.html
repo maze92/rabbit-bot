@@ -4026,7 +4026,6 @@ async function validateToken(token) {
 
 
 async function bootAfterLogin() {
-async function bootAfterLogin() {
   try {
     await loadGuilds().catch(() => null);
     await refreshHealth().catch(() => null);
