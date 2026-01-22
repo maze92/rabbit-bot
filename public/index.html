@@ -1,0 +1,3812 @@
+<!DOCTYPE html>
+
+<html lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ozark Bot Dashboard</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+    :root {
+      --bg: #0f1115;
+      --panel: #151824;
+      --panel2: #111422;
+      --text: #e7e9ee;
+      --muted: #a3a9b6;
+      --border: rgba(255,255,255,0.08);
+      --accent: #e60012;
+      --ok: #3ddc97;
+      --warn: #f5c451;
+      --bad: #ff6b6b;
+      --info: #72b6ff;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --radius: 14px;
+    }
+
+
+    body[data-theme="light"] {
+      --bg: #f7f8fc;
+      --panel: #ffffff;
+      --panel2: #f3f5fb;
+      --text: #121421;
+      --muted: #5a6275;
+      --border: rgba(18,20,33,0.12);
+      --accent: #e60012;
+      --ok: #0f9d58;
+      --warn: #b26a00;
+      --bad: #d93025;
+      --info: #1967d2;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(230,0,18,0.18), transparent 55%),
+                  radial-gradient(900px 500px at 90% 0%, rgba(114,182,255,0.14), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+    }
+
+    a { color: inherit; }
+
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 22px 18px 40px;
+    }
+
+    .topbar {
+      display:flex;
+      gap: 14px;
+      align-items:center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .brand {
+      display:flex;
+      gap: 12px;
+      align-items:center;
+    }
+    .logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(230,0,18,0.95), rgba(230,0,18,0.25));
+      box-shadow: 0 10px 30px rgba(230,0,18,0.25);
+    }
+    .brand h1 {
+      font-size: 18px;
+      margin: 0;
+      letter-spacing: 0.3px;
+    }
+    .brand .sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .toolbar {
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    input, select, button, textarea {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    textarea { font-family: var(--mono); }
+    input::placeholder { color: rgba(163,169,182,0.7); }
+    button {
+      cursor:pointer;
+      background: rgba(255,255,255,0.08);
+      transition: transform .05s ease, background .15s ease, border-color .15s ease;
+    }
+    button:hover { background: rgba(255,255,255,0.11); }
+    button:active { transform: translateY(1px); }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: rgba(230,0,18,0.18);
+      border-color: rgba(230,0,18,0.35);
+    }
+    .btn-primary:hover { background: rgba(230,0,18,0.24); }
+
+    .tabs {
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 14px 0 18px;
+    }
+    .tab {
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      font-size: 13px;
+      user-select: none;
+    }
+    .tab.active {
+      color: var(--text);
+      border-color: rgba(114,182,255,0.35);
+      background: rgba(114,182,255,0.12);
+    }
+
+    .grid {
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.25);
+    }
+    .card h2 {
+      font-size: 14px;
+      margin: 0 0 10px;
+      color: rgba(231,233,238,0.95);
+      letter-spacing: 0.2px;
+    }
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.35;
+    }
+    .kpi {
+      display:flex;
+      gap: 10px;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+    .kpi .big { font-size: 24px; font-weight: 700; }
+    .kpi .small { font-size: 12px; color: var(--muted); }
+
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .badge.ok { color: var(--ok); border-color: rgba(61,220,151,0.35); background: rgba(61,220,151,0.12); }
+    .badge.warn { color: var(--warn); border-color: rgba(245,196,81,0.35); background: rgba(245,196,81,0.12); }
+    .badge.bad { color: var(--bad); border-color: rgba(255,107,107,0.35); background: rgba(255,107,107,0.12); }
+    .badge.info { color: var(--info); border-color: rgba(114,182,255,0.35); background: rgba(114,182,255,0.12); }
+
+    .row {
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+    .spacer { flex: 1; }
+
+    .mono { font-family: var(--mono); font-size: 12px; color: rgba(231,233,238,0.8); }
+    .muted { color: var(--muted); }
+
+    .section { display:none; }
+    .section.active { display:block; }
+
+    /* Login */
+    .loginScreen {
+      position: fixed;
+      inset: 0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 24px;
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(230,0,18,0.18), transparent 55%),
+                  radial-gradient(900px 500px at 90% 0%, rgba(114,182,255,0.14), transparent 55%),
+                  var(--bg);
+      z-index: 50;
+    }
+    .loginCard {
+      width: min(560px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 6px);
+      padding: 18px;
+      box-shadow: 0 20px 70px rgba(0,0,0,0.35);
+    }
+    .loginTitle {
+      font-size: 18px;
+      font-weight: 750;
+      letter-spacing: .2px;
+    }
+
+
+    /* Logs */
+    .logItem {
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+      margin-bottom: 10px;
+    }
+    .logHead {
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    .logTitle {
+      font-weight: 700;
+      font-size: 13px;
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+    .logDesc { margin-top: 8px; color: rgba(231,233,238,0.9); white-space: pre-wrap; }
+    .logMeta { margin-top: 10px; font-size: 12px; color: var(--muted); }
+
+    /* GameNews cards */
+    .statusGrid {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    /* Modal */
+    
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display:none;
+      align-items: stretch;
+      justify-content: flex-end;
+      padding: 0;
+      z-index: 99;
+    }
+    .overlay.show { display:flex; }
+    .modal {
+      width: min(480px, 100%);
+      height: 100%;
+      margin: 0;
+      border-radius: 0;
+      border-left: 1px solid var(--border);
+      background: rgba(15,17,21,0.98);
+      backdrop-filter: blur(10px);
+      box-shadow: -30px 0 80px rgba(0,0,0,0.65);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+.toast {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 120;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toastItem {
+      border: 1px solid var(--border);
+      background: rgba(15,17,21,0.92);
+      padding: 10px 12px;
+      border-radius: 14px;
+      min-width: 260px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+      font-size: 13px;
+      color: rgba(231,233,238,0.95);
+    }
+
+    @media (max-width: 740px) {
+      .topbar { flex-direction: column; align-items: stretch; }
+      .toolbar { justify-content: flex-start; }
+    }
+  
+    .badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid var(--border); border-radius:999px; font-size:12px; color: var(--muted); background: rgba(255,255,255,0.03); }
+    .badge.ok { color: var(--ok); border-color: rgba(61,220,151,0.35); }
+    .badge.bad { color: var(--bad); border-color: rgba(255,107,107,0.35); }
+    .badge.warn { color: var(--warn); border-color: rgba(245,196,81,0.35); }
+    .kpi { display:flex; gap:10px; flex-wrap:wrap; }
+    .kpi .card { padding: 12px; }
+    .kpi-num { font-size: 22px; font-weight: 800; }
+    .kpi-lbl { font-size: 12px; color: var(--muted); }
+
+
+    .config-subnav .config-subtab {
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 4px 10px;
+      background: transparent;
+      font-size: 12px;
+    }
+    .config-subnav .config-subtab-active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Inputs sizing */
+    input, select, textarea, button {
+      font-size: 14px;
+    }
+    input, select, textarea {
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
+    select {
+      min-height: 40px;
+    }
+
+    /* Disabled tabs (require guild) */
+    .tab.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* Toggle switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+    }
+    .switch input { 
+      opacity: 0;
+      width: 0; height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.14);
+      transition: .2s;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px; width: 20px;
+      left: 3px; top: 50%;
+      transform: translateY(-50%);
+      background: #fff;
+      transition: .2s;
+      border-radius: 50%;
+      opacity: 0.95;
+    }
+    .switch input:checked + .slider {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .switch input:checked + .slider:before {
+      transform: translate(20px, -50%);
+    }
+
+  :root {
+    --card-radius: 16px;
+    --card-bg: rgba(20, 22, 30, 0.9);
+    --card-border: rgba(255, 255, 255, 0.06);
+    --card-padding: 14px;
+    --gap-sm: 6px;
+    --gap-md: 10px;
+    --gap-lg: 16px;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: 0.01em;
+  }
+
+  .card {
+    border-radius: var(--card-radius);
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    padding: var(--card-padding);
+  }
+
+  .card h2 {
+    font-size: 16px;
+    margin: 0 0 6px 0;
+  }
+
+  .card h3 {
+    font-size: 14px;
+    margin: 0 0 4px 0;
+    opacity: 0.9;
+  }
+
+  .grid {
+    gap: var(--gap-lg);
+  }
+
+  .btn-primary {
+    border-radius: 999px;
+    padding: 6px 14px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    font-weight: 500;
+  }
+
+  .btn-secondary {
+    border-radius: 999px;
+    padding: 6px 14px;
+    border: 1px solid rgba(255,255,255,0.24);
+    background: transparent;
+    font-weight: 400;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--gap-lg);
+  }
+
+  .kpi-card {
+    border-radius: var(--card-radius);
+    border: 1px solid var(--card-border);
+    background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,0,0,0.4));
+    padding: 12px;
+  }
+
+  .kpi-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.7;
+  }
+
+  .kpi-value {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  .kpi-sub {
+    font-size: 11px;
+    opacity: 0.75;
+    margin-top: 2px;
+  }
+
+  .health-dot {
+    display: inline-flex;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    margin-right: 6px;
+  }
+  .health-ok { background:#22c55e; }
+  .health-warn { background:#eab308; }
+  .health-bad { background:#ef4444; }
+
+  /* Moderation hub / lists: inbox-style rows */
+  #logsList > div,
+  #casesList > div,
+  #ticketsList > div {
+    border-radius: var(--card-radius);
+    border: 1px solid rgba(255,255,255,0.06);
+    background: radial-gradient(circle at top left, rgba(255,255,255,0.06), rgba(10,10,15,0.9));
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  #logsList > div:hover,
+  #casesList > div:hover,
+  #ticketsList > div:hover {
+    border-color: var(--accent);
+    background: radial-gradient(circle at top left, rgba(255,255,255,0.10), rgba(5,5,10,0.95));
+  }
+  #logsList .badge,
+  #casesList .badge,
+  #ticketsList .badge {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+<!-- Login Screen (shown when no token) -->
+<!--
+    Show login by default so the page never stays blank if JS fails early.
+    The app will hide it after successful login.
+  -->
+<div class="loginScreen" id="loginScreen" style="display:flex;">
+<div class="loginCard">
+<div class="row" style="align-items:center; gap:12px;">
+<div class="logo" style="flex:0 0 38px;"></div>
+<div>
+<div class="loginTitle" data-i18n="login_title">Ozark Dashboard</div>
+<div class="hint" data-i18n="login_sub" style="margin:2px 0 0;">Autentica para aceder ao painel.</div>
+</div>
+<div class="spacer"></div>
+<select id="loginLangPicker" style="min-width: 80px;" title="Idioma">
+<option value="pt">🇵🇹</option>
+<option value="en">🇬🇧</option>
+</select>
+</div>
+<div class="hint" data-i18n="login_hint" style="margin-top: 14px;">
+<span data-i18n="login_hint_creds">Autentica-te com o teu utilizador e password de dashboard.</span>
+</div>
+<div style="margin-top: 12px; display:flex; flex-direction:column; gap:8px;">
+<input id="loginUserInput" placeholder="Utilizador" style="flex:1; min-width: 0;" type="text"/>
+<input id="loginPassInput" placeholder="Password" style="flex:1; min-width: 0;" type="password"/>
+<button class="btn-primary" data-i18n="login_btn" id="btnLogin">Entrar</button>
+</div>
+<div class="hint" id="loginError" style="margin-top:10px; color: var(--bad); display:none;"></div>
+<div class="row" style="margin-top: 14px; align-items:center;">
+<span class="badge info" data-i18n="login_tip_badge">Dica</span>
+<span class="hint" data-i18n="login_tip" style="margin:0;">Se mudares o token, podes fazer logout no topo.</span>
+</div>
+</div>
+</div>
+<div class="app" id="appRoot" style="display:none;">
+<div class="topbar">
+<div class="brand">
+<div class="logo"></div>
+<div>
+<h1>Ozark Bot Dashboard</h1>
+<div class="sub" data-i18n="subline" id="subline">Logs em tempo real • GameNews • Config • Ferramentas</div>
+</div>
+</div>
+<div class="toolbar">
+<select id="guildPicker" title="Servidor">
+<option value="">🌐 Todos os servidores</option>
+</select>
+<button data-i18n="btn_refresh" id="btnRecarregarAll">Atualizar</button>
+<button id="btnTheme" title="Alternar tema">🌙</button>
+<select id="langPicker" style="min-width: 80px;" title="Idioma">
+          <option value="pt">🇵🇹 Português</option>
+          <option value="en">🇬🇧 English</option>
+</select>
+<button data-i18n="btn_logout" id="btnLogout" title="Logout">Logout</button>
+<span class="badge" id="badgeBot">● Bot</span>
+<span class="badge" id="badgeGuild">Servidor: —</span>
+<span class="badge" id="badgeAuth">Auth: —</span>
+</div>
+</div>
+<div class="tabs" id="tabs">
+<div class="tab active" data-i18n="tab_overview" data-tab="overview">Visão geral</div>
+<div class="tab" data-i18n="tab_logs" data-tab="logs">Moderação</div>
+<div class="tab" data-i18n="tab_cases" data-tab="cases">Casos</div>
+<div class="tab" data-i18n="tab_tickets" data-tab="tickets">Tickets</div>
+<div class="tab" data-i18n="tab_gamenews" data-tab="gamenews">GameNews</div>
+<div class="tab" data-i18n="tab_user" data-tab="user">Utilizador</div>
+<div class="tab" data-i18n="tab_config" data-tab="config">Config</div>
+</div>
+<!-- Overview -->
+<div class="section active" 
+id="tab-overview">
+<div class="grid">
+  <div class="card" style="grid-column: span 12;">
+    <div class="row" style="justify-content: space-between; align-items:center;">
+      <div>
+        <h2 data-i18n="session_title">Sessão de dashboard</h2>
+        <div class="hint" data-i18n="session_hint">Informação da sessão atual e ações rápidas de autenticação.</div>
+      </div>
+      <div class="row" style="gap:8px; align-items:center;">
+        <span class="badge" id="sessionBadge">—</span>
+        <button class="btn-secondary" data-i18n="btn_change_token" id="btnChangeToken">Mudar token</button>
+      </div>
+    </div>
+    <div class="hint" data-i18n="session_note" style="margin-top:8px;">Token JWT guardado apenas no teu browser. Usa Logout para remover.</div>
+  </div>
+
+  <div class="card" style="grid-column: span 12;">
+    <div class="row" style="justify-content: space-between; align-items:flex-start; gap:16px;">
+      <div style="flex:2;">
+        <h2 data-i18n="overview_health_title">Saúde do sistema</h2>
+        <div class="hint" data-i18n="overview_health_hint">Estado do bot e ligações principais (/health).</div>
+        <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
+          <div class="row small" id="healthDiscordRow"><span class="health-dot" id="healthDiscordDot"></span><span id="healthDiscord">Discord: ...</span></div>
+          <div class="row small" id="healthMongoRow"><span class="health-dot" id="healthMongoDot"></span><span id="healthMongo">Mongo: ...</span></div>
+          <div class="row small" id="healthGameNewsRow"><span class="health-dot" id="healthGameNewsDot"></span><span id="healthGameNews">GameNews: ...</span></div>
+          <span class="badge info" id="healthUptime">Uptime: ...</span>
+        </div>
+      </div>
+      <div style="flex:3;">
+        <h3 data-i18n="overview_kpis_title">Resumo rápido</h3>
+        <div class="kpi-grid" style="margin-top:6px;">
+          <div class="kpi-card">
+            <div class="kpi-label" data-i18n="overview_kpi_actions_label">Ações de moderação (hoje)</div>
+            <div class="kpi-value" id="kpiActionsToday">0</div>
+            <div class="kpi-sub" id="kpiActionsWeek">0 última semana</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label" data-i18n="overview_kpi_tickets_label">Tickets abertos / fechados</div>
+            <div class="kpi-value" id="kpiTicketsOpen">0</div>
+            <div class="kpi-sub" id="kpiTicketsClosed">0 fechados (24h)</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label" data-i18n="overview_kpi_feeds_label">GameNews</div>
+            <div class="kpi-value" id="kpiFeeds">0</div>
+            <div class="kpi-sub" id="kpiFeedsLast">Último envio: —</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label" data-i18n="overview_kpi_guilds_label">Servidores</div>
+            <div class="kpi-value" id="kpiGuilds">0</div>
+            <div class="kpi-sub" data-i18n="overview_kpi_guilds_sub">Total de guilds ligadas.</div>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="align-items:flex-start; flex-direction:column; gap:6px;">
+        <button class="btn-primary" data-i18n="overview_health_btn" id="btnHealth">Atualizar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="grid-column: span 12;">
+    <div class="row" style="justify-content: space-between; align-items:center;">
+      <div>
+        <h2 data-i18n="selftest_title">Self-test de moderação</h2>
+        <div class="hint" data-i18n="selftest_hint">
+          Executa um teste rápido aos sistemas de moderação e GameNews, sem aplicar punições reais.
+        </div>
+      </div>
+      <div class="row" style="gap:8px; align-items:center;">
+        <button class="btn-secondary" id="btnSelfTest" data-i18n="selftest_button">Executar self-test</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="grid-column: span 12;">
+    <div class="row" style="justify-content: space-between; align-items:center;">
+      <div>
+        <h2 data-i18n="overview_timeline_title">Atividade recente</h2>
+        <div class="hint" data-i18n="overview_timeline_hint">Últimos eventos relevantes do bot e da dashboard.</div>
+      </div>
+      <button class="btn-secondary" id="btnTimelineRefresh" data-i18n="btn_reload">Recarregar</button>
+    </div>
+    <div id="timeline">
+      <!-- Populado via loadTimeline() -->
+    </div>
+  </div>
+</div>
+  <div class="section" id="tab-logs">
+<div class="card" style="margin-bottom: 10px;">
+<div class="row" style="justify-content: space-between; align-items: center;">
+<div>
+<h2 style="margin:0;">Hub de Moderação</h2>
+<div class="hint">Pesquisa de logs, análise de casos e ações sobre utilizadores num só espaço.</div>
+</div>
+</div>
+</div>
+
+<div class="card" style="margin-bottom: 10px;">
+  <div class="row" style="gap:8px;">
+    <button class="btn-secondary" id="modTabEvents">Eventos</button>
+    <button class="btn-secondary" id="modTabCases">Casos</button>
+    <button class="btn-secondary" id="modTabUser">Utilizador</button>
+  </div>
+</div>
+<div class="card">
+<div class="row">
+<input id="logSearch" placeholder="Procurar utilizador/executor/título/descrição" style="flex:1; min-width: 240px;"/>
+<select id="logType">
+<option value="">Todos os tipos</option>
+<option value="warn">Warn</option>
+<option value="mute">Mute</option>
+<option value="unmute">Unmute</option>
+<option value="clear">Clear</option>
+<option value="anti-spam">Anti-Spam</option>
+<option value="game news">Game News</option>
+</select>
+<button id="btnRecarregarLogs">Recarregar</button>
+<button id="btnClearLogs">Limpar logs</button>
+<button class="btn-primary" id="btnExportCsv">Export CSV</button>
+</div>
+<div class="row" style="margin-top: 10px;">
+<button id="btnPrevLogs">Prev</button>
+<span class="badge info" id="logsPageBadge">Page 1</span>
+<button id="btnNextLogs">Next</button>
+<span class="spacer"></span>
+<span class="badge" id="logsTotalBadge">Total: 0</span>
+</div>
+<div class="hint">Tip: usa o selector de guild no topo para filtrar tudo. Pesquisa e tipo são server-side.</div>
+</div>
+<div style="height: 12px;"></div>
+<div id="logsList"></div>
+</div>
+<!-- Cases -->
+<div class="section" id="tab-cases">
+<div class="card">
+<div class="row">
+<input id="casesQ" placeholder="Search caseId / reason / type / userId / moderatorId" style="flex:1; min-width: 260px;"/>
+<input id="casesUserId" placeholder="User ID (optional)" style="width: 240px;"/>
+<select id="casesType" style="width: 180px;">
+<option value="">Todos os tipos</option>
+<option value="WARN">WARN</option>
+<option value="MUTE">MUTE</option>
+<option value="KICK">KICK</option>
+<option value="BAN">BAN</option>
+</select>
+<select id="casesSource" style="width: 180px;">
+<option value="">All sources</option>
+<option value="command">Command</option>
+<option value="slash">Slash</option>
+<option value="dashboard">Dashboard</option>
+<option value="automod">AutoMod</option>
+<option value="antispam">Anti-Spam</option>
+</select>
+<button id="btnRecarregarCases">Recarregar</button>
+</div>
+<div class="row" style="margin-top: 10px;">
+<button id="btnPrevCases">Prev</button>
+<span class="badge info" id="casesPageBadge">Page 1</span>
+<button id="btnNextCases">Next</button>
+<span class="spacer"></span>
+<span class="badge" id="casesTotalBadge">Total: 0</span>
+<button class="btn-danger" id="btnClearCases" style="margin-left:8px;">Limpar cases</button>
+</div>
+<div class="hint">
+          A tab <b>Cases</b> usa infractions com <b>caseId</b>. Precisas selecionar uma guild no topo para pesquisar.
+          Clica num item para ver detalhes.
+        </div>
+</div>
+<div style="height: 12px;"></div>
+<div id="casesList"></div>
+</div>
+<!-- Tickets -->
+<div class="section" id="tab-tickets">
+<div class="card">
+<div class="row">
+<input id="ticketsUserId" placeholder="User ID (optional)" style="width: 240px;"/>
+<select id="ticketsStatus" style="width: 180px;">
+<option value="">All status</option>
+<option value="OPEN">Open</option>
+<option value="CLOSED">Closed</option>
+</select>
+<button id="btnRecarregarTickets" class="btn-secondary" data-i18n="tickets_reload">Atualizar lista</button>
+</div>
+<div class="row" style="margin-top: 10px;">
+<button id="btnPrevTickets" class="btn-secondary small">◀</button>
+<span class="badge info" id="ticketsPageBadge">Page 1</span>
+<button id="btnNextTickets" class="btn-secondary small">▶</button>
+<span class="spacer"></span>
+<span class="badge" id="ticketsTotalBadge">Total: 0</span>
+<button class="btn-danger" id="btnClearTickets" style="margin-left:8px;" data-i18n="tickets_clear">Limpar todos</button>
+</div>
+<div class="hint">
+          A aba <b>Tickets</b> apresenta os pedidos abertos via sistema de tickets do bot. Apenas são listados os servidores onde o bot está presente e tens o acesso devidamente configurado.
+        </div>
+</div>
+<div style="height: 12px;"></div>
+<div id="ticketsList"></div>
+</div>
+<!-- GameNews -->
+<div class="section" id="tab-gamenews">
+<div class="card">
+<div class="row" style="justify-content: space-between;">
+<div>
+<h2 style="margin:0;" data-i18n="gamenews_status_title">Estado do GameNews</h2>
+<div class="hint" data-i18n="gamenews_status_hint">Resumo por feed: última mensagem enviada, pausas, falhas e hashes armazenados.</div>
+</div>
+<div class="row">
+<select id="feedsPausedOnly">
+<option value="0" data-i18n="gamenews_filter_all">Todos os feeds</option>
+<option value="1" data-i18n="gamenews_filter_paused">Apenas pausados</option>
+</select>
+<button id="btnRecarregarFeeds" class="btn-secondary" data-i18n="gamenews_reload">Atualizar</button>
+</div>
+</div>
+<div class="row" style="margin-top: 10px;">
+<span class="badge info" id="feedsSummary">Loading...</span>
+</div>
+</div>
+<div style="height: 12px;"></div>
+<div class="statusGrid" id="feedsGrid"></div>
+<div style="height: 16px;"></div>
+<div class="card">
+<div class="row" style="justify-content: space-between; align-items:center;">
+<div>
+<h2 style="margin:0;">GameNews Feeds &amp; Canais</h2>
+<div class="hint">Define aqui quais os feeds RSS de gaming e para que canal cada um envia. Esta configuração é global.</div>
+</div>
+<div class="row" style="gap:8px;">
+<button id="btnAddFeed" type="button">Adicionar feed</button>
+<button id="btnSaveFeeds" type="button">Guardar feeds</button>
+</div>
+</div>
+<div id="feedsConfigBody" style="margin-top: 10px;"></div>
+</div>
+</div>
+<!-- User -->
+<div class="section" id="tab-user">
+<div class="card">
+<div class="row">
+<input id="userId" placeholder="User ID, @mention ou nome" style="flex:1; min-width:220px;"/>
+<button id="btnLoadUser">Load User</button>
+<div class="spacer"></div>
+<span class="badge" id="userStatus">Nenhum utilizador carregado</span>
+</div>
+<div class="hint">Escolhe o servidor no topo e escreve o User ID, um @mention ou parte do nome. Depois podes fazer ações com confirmação.</div>
+</div>
+<div style="height: 12px;"></div>
+<div class="grid">
+<div class="card" id="userCard" style="grid-column: span 5;">
+<h2>Resumo do utilizador</h2>
+<div class="hint">Seleciona um utilizador para visualizar os detalhes.</div>
+</div>
+<div class="card" id="userInfractionsCard" style="grid-column: span 7;">
+<div class="row" style="justify-content: space-between;">
+<h2 style="margin:0;">Infractions</h2>
+<select id="userInfLimit">
+<option value="10">Last 10</option>
+<option value="20">Last 20</option>
+<option value="50">Last 50</option>
+</select>
+</div>
+<div class="hint" id="userInfHint">Nenhum dado.</div>
+<div id="userInfractions"></div>
+</div>
+</div>
+</div>
+<!-- Config -->
+<div class="section" id="tab-config"><div class="grid"><div class="config-subnav row" style="grid-column: span 12; margin-bottom: 10px; gap:6px; flex-wrap:wrap;"><button class="config-subtab config-subtab-active" data-subtab="general">Geral</button><button class="config-subtab" data-subtab="moderation">Moderação automática</button><button class="config-subtab" data-subtab="tickets">Tickets</button><button class="config-subtab" data-subtab="gamenews">GameNews</button><button class="config-subtab" data-subtab="staff">Staff &amp; acessos</button><button class="config-subtab" data-subtab="advanced">Avançado</button></div><div class="config-subtab-panel" data-subtab-panel="general"><div class="card" style="grid-column: span 12; margin-bottom: 12px;">
+<div class="row" style="justify-content: space-between; align-items: center;">
+<div>
+<h2 style="margin:0;">Definições do Servidor</h2>
+<div class="hint">Escolhe os canais onde o bot vai publicar logs. Isto evita mexer em IDs manualmente.</div>
+</div>
+<div class="row" style="gap: 8px;">
+<button id="btnLoadGuildConfig">Carregar</button>
+<button id="btnTestGuildLogs">Testar logs</button>
+<button class="btn-primary" id="btnSaveGuildConfig">Guardar</button>
+</div>
+</div>
+<div class="grid" style="margin-top: 12px;">
+<div class="card" style="grid-column: span 6; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<h3 style="margin: 0 0 8px 0;">Canal de logs do bot</h3>
+<div class="hint">Eventos de moderação (warn/mute), AutoMod, entradas e saídas de membros, entre outros.</div>
+<select id="selLogChannel" style="width: 100%; margin-top: 10px;"></select>
+<div class="hint" id="logChannelTestStatus" style="margin-top:8px;"></div>
+</div>
+<div class="card" style="grid-column: span 6; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<h3 style="margin: 0 0 8px 0;">Canal de logs do dashboard</h3>
+<div class="hint">Registo de ações feitas na dashboard (warn/mute/unmute e alterações de configuração).</div>
+<select id="selDashboardLogChannel" style="width: 100%; margin-top: 10px;"></select>
+<div class="hint" id="dashLogChannelTestStatus" style="margin-top:8px;"></div>
+</div>
+</div>
+<div class="grid" style="margin-top: 12px;">
+<div class="card" style="grid-column: span 12; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<h3 style="margin: 0 0 8px 0;">Roles de Staff</h3>
+<div class="hint">Quem tiver estas roles pode usar ações sensíveis no painel (warn/mute/unmute) e comandos de moderação.</div>
+<select id="selStaffRoles" multiple="" style="width: 100%; margin-top: 10px; min-height: 130px;"></select>
+<div class="hint" id="staffRolesSummary" style="margin-top:8px;">Nenhuma role de staff definida (serão usados os valores padrão do bot).</div>
+<div class="hint" style="margin-top:4px;">Dica: usa CTRL (Windows) / ⌘ (Mac) para selecionar várias.</div>
+</div>
+</div>
+<div class="hint" id="guildConfigStatus" style="margin-top: 10px;"></div>
+</div></div><div class="config-subtab-panel" data-subtab-panel="moderation" style="display:none;"><div class="card" style="grid-column: span 12;">
+<h2 style="margin:0 0 8px 0;">Funcionalidades do bot</h2>
+<div class="hint">Controla os módulos principais do bot. Estas opções são globais e afetam todos os servidores.</div>
+<div class="featureList" style="margin-top: 12px; display:flex; flex-direction:column; gap:10px;">
+<div class="card" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<div class="row" style="justify-content: space-between; align-items: center;">
+<div>
+<div class="small">Conteúdo</div>
+<h3 style="margin:0;">GameNews</h3>
+<div class="hint">Noticias de jogos via RSS para canais definidos na aba GameNews.</div>
+</div>
+<label class="switch" title="Ativar/Desativar"><input type="checkbox" id="featGameNews"/><span class="slider"></span></label>
+</div>
+</div>
+<div class="card" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<div class="row" style="justify-content: space-between; align-items: center;">
+<div>
+<div class="small">Proteção</div>
+<h3 style="margin:0;">Anti-Spam</h3>
+<div class="hint">Proteção automática contra spam e flood.</div>
+</div>
+<label class="switch" title="Ativar/Desativar"><input type="checkbox" id="featAntiSpam" disabled/><span class="slider"></span></label>
+</div>
+</div>
+<div class="card" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<div class="row" style="justify-content: space-between; align-items: center;">
+<div>
+<div class="small">Reputação</div>
+<h3 style="margin:0;">Trust</h3>
+<div class="hint">Sistema de confiança por utilizador com base em ações de moderação.</div>
+</div>
+<label class="switch" title="Ativar/Desativar"><input type="checkbox" id="featTrust" disabled/><span class="slider"></span></label>
+</div>
+</div>
+<div class="card" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<div class="row" style="justify-content: space-between; align-items: center;">
+<div>
+<div class="small">Interface</div>
+<h3 style="margin:0;">Slash commands</h3>
+<div class="hint">/warn, /mute, /help, /ticket, etc.</div>
+</div>
+<label class="switch" title="Ativar/Desativar"><input type="checkbox" id="featSlash"/><span class="slider"></span></label>
+</div>
+</div>
+<div class="card" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<div class="row" style="justify-content: space-between; align-items: center;">
+<div>
+<div class="small">Moderação</div>
+<h3 style="margin:0;">Logs GameNews</h3>
+<div class="hint">Controla se as publicações GameNews geram logs no canal de logs do bot.</div>
+</div>
+<label class="switch" title="Ativar/Desativar"><input type="checkbox" id="featGameNewsLogs"/><span class="slider"></span></label>
+</div>
+</div>
+<div class="card" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<div class="row" style="justify-content: space-between; align-items: center; flex-wrap:wrap; gap:8px;">
+<div>
+<div class="small">Automação</div>
+<h3 style="margin:0;">Auto-mute</h3>
+<div class="hint">Aplica mute automático quando um utilizador atinge X warns.</div>
+<div class="hint small">Configuração sensível; os valores são apenas informativos.</div>
+</div>
+<div class="row" style="gap:10px; align-items:center; flex-wrap:wrap;">
+<label class="switch" title="Ativar/Desativar"><input type="checkbox" id="featAutoMute" disabled/><span class="slider"></span></label>
+<div class="row" style="gap:6px; align-items:center;">
+<span class="small">Warns</span>
+<input id="autoMuteWarns" disabled min="1" style="width:70px;" type="number">
+</input></div>
+<div class="row" style="gap:6px; align-items:center;">
+<span class="small">Duração (min)</span>
+<input id="autoMuteMinutes" disabled min="1" style="width:90px;" type="number">
+</input></div>
+</div>
+</div>
+</div>
+<div class="card" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<div class="row" style="justify-content: space-between; align-items: center; flex-wrap:wrap; gap:8px;">
+<div>
+<div class="small">Automação</div>
+<h3 style="margin:0;">Auto-kick</h3>
+<div class="hint">Efetua kick automático quando o nº total de infrações chega ao limite.</div>
+</div>
+<div class="row" style="gap:10px; align-items:center; flex-wrap:wrap;">
+<label class="switch" title="Ativar/Desativar"><input type="checkbox" id="featAutoKick"/><span class="slider"></span></label>
+<div class="row" style="gap:6px; align-items:center;">
+<span class="small">Infrações</span>
+<input id="autoKickInfractions" min="1" style="width:90px;" type="number">
+</input></div>
+</div>
+</div>
+</div>
+</div> <!-- end moderation -->
+<div class="config-subtab-panel" data-subtab-panel="tickets" style="display:none;">
+
+</div>
+<div class="hint" id="featStatus" style="margin-top:8px;"></div>
+</div></div><div class="config-subtab-panel" data-subtab-panel="tickets" style="display:none;"><div class="card" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<div class="row" style="justify-content: space-between; align-items: center; flex-wrap:wrap; gap:8px;">
+<div>
+<div class="small">Tickets</div>
+<h3 style="margin:0;">Auto-delete tickets fechados</h3>
+<div class="hint">Apaga automaticamente o canal e o registo do ticket X minutos depois de fechado.</div>
+</div>
+<div class="row" style="gap:10px; align-items:center; flex-wrap:wrap;">
+<label class="switch" title="Ativar/Desativar"><input type="checkbox" id="featTicketsAutoDelete"/><span class="slider"></span></label>
+<div class="row" style="gap:6px; align-items:center;">
+<span class="small">Manter (min)</span>
+<input id="ticketsAutoDeleteDelay" min="1" style="width:90px;" type="number">
+</input></div>
+</div>
+</div>
+</div></div><div class="config-subtab-panel" data-subtab-panel="gamenews" style="display:none;"><div class="card" style="grid-column: span 12; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);"><h2 style="margin:0 0 8px 0;">GameNews</h2><div class="hint">A gestão de feeds e canais é feita na aba GameNews. Aqui podes apenas controlar o módulo (em Moderação automática).</div><div class="row" style="gap:8px; margin-top:10px; align-items:center;"><button class="btn-primary" id="btnGoGameNews" type="button">Abrir GameNews</button></div></div></div><div class="config-subtab-panel" data-subtab-panel="staff" style="display:none;"><div class="card" style="grid-column: span 5; max-width: 420px; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08);">
+<h3 style="margin-top:0;">Utilizadores de Dashboard</h3>
+<div class="hint">Lista de utilizadores que podem aceder ao painel. Usa as caixas para ajustar permissões.</div>
+<div class="mono small" id="dashboardUsersList" style="margin-top:8px; max-height:260px; overflow-y:auto;"></div>
+</div></div><div class="config-subtab-panel" data-subtab-panel="advanced" style="display:none;"><div class="card" style="grid-column: span 6;">
+<div class="row" style="justify-content: space-between;">
+<h2 style="margin:0;" data-i18n="cfg_view_title">Configuração atual (vista simplificada)</h2>
+<button id="btnLoadConfig" class="btn-secondary" data-i18n="cfg_view_load">Carregar</button>
+</div>
+<div class="hint" data-i18n="cfg_view_hint">Vista apenas de leitura com os principais parâmetros. Campos sensíveis (roles, palavras proibidas, feeds, guildId) são omitidos nesta área.</div>
+<textarea id="cfgView" rows="18" spellcheck="false" style="width: 100%; margin-top: 10px;"></textarea>
+</div><div class="card" style="grid-column: span 6;">
+<div class="row" style="justify-content: space-between;">
+<h2 style="margin:0;">Alterar configuração (modo avançado)</h2>
+<button class="btn-primary" id="btnSaveConfig">Save</button>
+</div>
+<div class="hint">Envia um JSON com campos permitidos. Exemplo: <span class="mono">{"trust.lowThreshold":10,"antiSpam.enabled":true}</span></div>
+<textarea id="cfgPatch" rows="18" spellcheck="false" style="width: 100%; margin-top: 10px;"></textarea>
+<div class="hint" id="cfgAllowedHint"></div>
+</div><div class="card" style="grid-column: span 6;">
+<div class="row" style="justify-content: space-between;">
+<h2 style="margin:0;">Histórico de alterações</h2>
+<button id="btnLoadAudit">Recarregar</button>
+</div>
+<div class="hint">Mostra quem alterou a configuração do bot (dashboard), bem como o tipo de ação.</div>
+<div class="hint" id="auditStatus" style="margin-bottom:4px;"></div>
+<div class="mono small" id="auditList" style="max-height:260px; overflow-y:auto; background:rgba(0,0,0,0.25); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.06);"></div>
+</div></div></div></div>
+</div> <!-- end advanced -->
+<!-- Action Modal -->
+<div class="overlay" id="overlay">
+<div class="modal">
+<div class="modalHead">
+<div class="row" style="gap: 10px;">
+<span class="badge info" id="modalType">Action</span>
+<span class="mono" id="modalTarget">target</span>
+</div>
+<button id="modalClose">Close</button>
+</div>
+<div class="modalBody">
+<div class="row">
+<input id="modalReason" placeholder="Reason" style="flex:1; min-width: 260px;">
+<input id="modalDuration" placeholder="Duration (e.g. 10m, 2h, 1d)" style="width: 240px; display:none;"/>
+</input></div>
+<div class="row" id="durationPresets" style="gap:8px; margin-top:10px; display:none;">
+<span class="hint" style="margin-right:6px;">Atalhos:</span>
+<button class="btn" data-dur="10m" type="button">10m</button>
+<button class="btn" data-dur="30m" type="button">30m</button>
+<button class="btn" data-dur="1h" type="button">1h</button>
+<button class="btn" data-dur="6h" type="button">6h</button>
+<button class="btn" data-dur="1d" type="button">1d</button>
+</div>
+<div class="hint">Preview:</div>
+<div class="card" id="modalPreview" style="margin-top: 10px; background: rgba(0,0,0,0.20);"></div>
+</div>
+<div class="modalActions">
+<button id="modalCancel">Cancel</button>
+<button class="btn-primary" id="modalConfirm">Confirm</button>
+</div>
+</div>
+</div>
+<!-- Case Details Modal -->
+<div class="overlay" id="caseOverlay">
+<div class="modal">
+<div class="modalHead">
+<div class="row" style="gap: 10px;">
+<span class="badge info" id="caseBadge">Case</span>
+<span class="mono" id="caseTitle">#-</span>
+</div>
+<button id="caseClose">Close</button>
+</div>
+<div class="modalBody" id="caseBody">
+<div class="hint">Loading…</div>
+</div>
+<div class="modalActions">
+<button id="caseCopy">Copy JSON</button>
+<button class="btn-primary" id="caseClose2">Close</button>
+</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+    // ------------------------------
+    // Lightweight stub so loadTicketsPage is always defined; real implementation comes later.
+    function loadTicketsPage() {
+      return Promise.resolve();
+    }
+
+    // State
+    // ------------------------------
+    const state = {
+      token: localStorage.getItem('OZARK_DASH_JWT') || '',
+      guildId: '',
+      guilds: [],
+      feeds: [],
+      feedConfigs: [],
+      // Channels available for the currently selected guild (for feed/channel selectors)
+      feedChannels: [],
+      config: null,
+      schema: null,
+      user: null,
+
+      // logs pagination
+      logs: {
+        page: 1,
+        limit: 25,
+        total: 0,
+        items: []
+      },
+
+      // cases pagination
+      cases: {
+        page: 1,
+        limit: 25,
+        total: 0,
+        items: []
+      },
+
+      // tickets pagination
+      tickets: {
+        page: 1,
+        limit: 25,
+        total: 0,
+        items: []
+      }
+    };
+
+    // Helpers
+    const $ = (id) => document.getElementById(id);
+
+
+
+
+    let socket = null;
+
+    function initSocket() {
+      try {
+        if (socket) return;
+        if (typeof io === 'undefined') {
+          console.warn('[Dashboard] socket.io client not available');
+          return;
+        }
+        socket = io();
+
+        socket.on('connect', () => {
+          console.log('[Dashboard] Socket connected');
+        });
+
+        socket.on('disconnect', () => {
+          console.warn('[Dashboard] Socket disconnected');
+        });
+
+        socket.on('gamenewsStatus', (payload) => {
+          console.log('[Dashboard] GameNews status:', payload);
+          state.gameNewsStatus = payload;
+        });
+
+        socket.on('configPatch', (payload) => {
+          console.log('[Dashboard] Config patch:', payload);
+        });
+      } catch (e) {
+        console.error('[Dashboard] initSocket error:', e);
+      }
+    }
+    // ------------------------------
+    // Theme
+    // ------------------------------
+    state.theme = localStorage.getItem('OZARK_DASH_THEME') || 'dark';
+    function applyTheme(theme) {
+      const t = (theme === 'light') ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', t);
+      state.theme = t;
+      localStorage.setItem('OZARK_DASH_THEME', t);
+      const btn = $('btnTheme');
+      if (btn) btn.textContent = (t === 'light') ? '☀️' : '🌙';
+    }
+    applyTheme(state.theme);
+    if ($('btnTheme')) {
+      $('btnTheme').addEventListener('click', () => applyTheme(state.theme === 'light' ? 'dark' : 'light'));
+    }
+
+    // ------------------------------
+    
+
+    // ------------------------------
+    // i18n (PT/EN)
+    // ------------------------------
+    state.lang = (localStorage.getItem('OZARK_LANG') || 'pt').toLowerCase();
+
+    const I18N = {
+      pt: {
+        login_title: 'Ozark Dashboard',
+        login_sub: 'Autentica para aceder ao painel.',
+        login_hint: 'Introduz o OZARK_DASH_JWT. Fica guardado apenas no teu browser.',
+        login_btn: 'Entrar',
+        login_token_placeholder: 'OZARK_DASH_JWT',
+        login_tip_badge: 'Dica',
+        login_tip: 'Se mudares o token, podes fazer logout no topo.',
+
+        btn_refresh: 'Atualizar',
+        btn_logout: 'Logout',
+        btn_change_token: 'Mudar token',
+
+        badge_bot_online: '● Bot online',
+        badge_bot_offline: '● Bot offline',
+        badge_server: 'Servidor: {name}',
+        badge_auth_ok: 'Auth: OK',
+        badge_auth_missing: 'Auth: Token em falta',
+        badge_auth_invalid: 'Auth: Token inválido',
+
+        toast_unauthorized_set_token: 'Não autorizado: define o token.',
+        toast_download_failed: 'Falha no download.',
+        toast_token_saved: 'Token guardado.',
+        toast_token_cleared: 'Token removido. Faz login novamente.',
+        toast_paste_token: 'Cola primeiro o token.',
+
+        session_title: 'Sessão de dashboard',
+        session_hint: 'Informação da sessão atual e ações rápidas de autenticação.',
+        session_note: 'O token fica guardado apenas no teu browser. Usa Logout para remover.',
+        session_ok: 'Sessão de dashboard ativa',
+
+        select_guild_top: 'Seleciona um servidor no topo.',
+        select_guild_first: 'Seleciona um servidor primeiro.',
+        no_tickets: 'Sem tickets',
+        select_a_guild: 'Seleciona um servidor',
+
+        page_x_of_y: 'Página {p} / {max}',
+        total_n: 'Total: {n}',
+
+        loading: 'A carregar…',
+        subline: 'Logs em tempo real • GameNews • Config • Ferramentas',
+        tab_overview: 'Visão geral',
+        tab_logs: 'Logs',
+        tab_cases: 'Casos',
+        tab_tickets: 'Tickets',
+        tab_gamenews: 'GameNews',
+        tab_user: 'Utilizador',
+        tab_config: 'Config',
+
+        overview_health_title: 'Saúde do sistema',
+        overview_health_hint: 'Estado do bot e ligações principais (/health).',
+        overview_health_btn: 'Atualizar',
+        health_ok: 'OK',
+        health_issues: 'PROBLEMAS',
+        health_discord_ready: 'Discord: pronto',
+        health_discord_not_ready: 'Discord: não pronto',
+        health_mongo_connected: 'Mongo: ligado',
+        health_mongo_disconnected: 'Mongo: desligado',
+        health_gamenews_running: 'GameNews: a correr',
+        health_gamenews_stopped: 'GameNews: parado',
+        health_uptime: 'Uptime: {value}',
+        health_error: 'ERRO',
+
+        overview_qs_title: 'Estatísticas rápidas',
+        overview_qs_logs_label: 'logs (itens na página)',
+        overview_qs_feeds_label: 'feeds do GameNews',
+        overview_qs_guilds_label: 'guilds',
+        overview_qs_hint: 'Stats em tempo real (socket) + API.',
+
+        overview_summary_title: 'Resumo (últimas 24h)',
+        overview_summary_hint: 'Métricas rápidas de moderação e dashboard.',
+        overview_summary_btn: 'Atualizar',
+        overview_summary_warn_label: 'WARN',
+        overview_summary_mute_label: 'MUTE',
+        overview_summary_unmute_label: 'UNMUTE',
+        overview_summary_dashboard_label: 'Ações no Dashboard',
+
+        overview_timeline_title: 'Timeline recente',
+        overview_timeline_hint: 'Últimos eventos (filtra pelo servidor selecionado).',
+        overview_timeline_filter_all: 'Tudo',
+        overview_timeline_filter_warn: 'Warn',
+        overview_timeline_filter_mute: 'Mute',
+        overview_timeline_filter_unmute: 'Unmute',
+        overview_timeline_filter_dashboard: 'Dashboard',
+        overview_timeline_btn: 'Atualizar',
+
+        overview_cfg_title: 'Config em runtime',
+        overview_cfg_hint: 'Edita em Config (whitelist + overrides.json). Roles/canais/feeds ficam protegidos.',
+
+        nav_overview: 'Visão geral',
+        nav_moderation: 'Moderação',
+        nav_cases: 'Casos',
+        nav_tickets: 'Tickets',
+        nav_gamenews: 'GameNews',
+        nav_user: 'Utilizador',
+        nav_config: 'Config',
+      
+        tickets_reload: 'Atualizar lista',
+        tickets_clear: 'Limpar todos os tickets',
+
+        gamenews_status_title: 'Estado do GameNews',
+        gamenews_status_hint: 'Resumo por feed: última mensagem enviada, pausas, falhas e hashes armazenados.',
+        gamenews_filter_all: 'Todos os feeds',
+        gamenews_filter_paused: 'Apenas feeds em pausa',
+        gamenews_reload: 'Atualizar feeds',
+
+        cfg_view_title: 'Configuração atual (vista simplificada)',
+        cfg_view_load: 'Carregar',
+        cfg_view_hint: 'Vista apenas de leitura com os principais parâmetros. Campos sensíveis (roles, palavras proibidas, feeds, guildId) são omitidos nesta área.',
+
+        selftest_title: 'Self-test de moderação',
+        selftest_hint: 'Executa um teste rápido aos sistemas de moderação e GameNews, sem aplicar punições reais.',
+        selftest_button: 'Executar self-test',
+        selftest_pick_channel: 'Seleciona um canal de logs em Config > Geral > Logs primeiro.',
+        selftest_running: 'A testar...',
+        selftest_ok: 'Self-test enviado para o canal selecionado.',
+        selftest_error: 'Erro ao executar o self-test.',
+
+        gamenews_kpi_feeds: 'Feeds',
+        gamenews_kpi_paused: 'Pausados',
+},
+      en: {
+        login_title: 'Ozark Dashboard',
+        login_sub: 'Authenticate to access the dashboard.',
+        login_hint: 'Enter the OZARK_DASH_JWT. It is stored only in your browser.',
+        login_btn: 'Sign in',
+        login_token_placeholder: 'OZARK_DASH_JWT',
+        login_tip_badge: 'Tip',
+        login_tip: 'If you change the token, you can logout from the top bar.',
+
+        btn_refresh: 'Refresh',
+        btn_logout: 'Logout',
+        btn_change_token: 'Change token',
+
+        badge_bot_online: '● Bot online',
+        badge_bot_offline: '● Bot offline',
+        badge_server: 'Server: {name}',
+        badge_auth_ok: 'Auth: OK',
+        badge_auth_missing: 'Auth: Missing token',
+        badge_auth_invalid: 'Auth: Invalid token',
+
+        toast_unauthorized_set_token: 'Unauthorized: set token.',
+        toast_download_failed: 'Download failed.',
+        toast_token_saved: 'Token saved.',
+        toast_token_cleared: 'Token removed. Please sign in again.',
+        toast_paste_token: 'Paste the token first.',
+
+        session_title: 'Session',
+        session_hint: 'Dashboard authentication and quick actions.',
+        session_note: 'The token is stored only in your browser. Use Logout to remove it.',
+        session_ok: 'Session active',
+
+        select_guild_top: 'Select a server at the top.',
+        select_guild_first: 'Select a server first.',
+        no_tickets: 'No tickets',
+        select_a_guild: 'Select a server',
+
+        page_x_of_y: 'Page {p} / {max}',
+        total_n: 'Total: {n}',
+
+        loading: 'Loading…',
+        subline: 'Real-time logs • GameNews • Config • Tools',
+        tab_overview: 'Overview',
+        tab_logs: 'Logs',
+        tab_cases: 'Cases',
+        tab_tickets: 'Tickets',
+        tab_gamenews: 'GameNews',
+        tab_user: 'User',
+        tab_config: 'Config',
+
+        overview_health_title: 'System health',
+        overview_health_hint: 'Bot status and main connections (/health).',
+        overview_health_btn: 'Refresh',
+        health_ok: 'OK',
+        health_issues: 'ISSUES',
+        health_discord_ready: 'Discord: ready',
+        health_discord_not_ready: 'Discord: not ready',
+        health_mongo_connected: 'Mongo: connected',
+        health_mongo_disconnected: 'Mongo: disconnected',
+        health_gamenews_running: 'GameNews: running',
+        health_gamenews_stopped: 'GameNews: stopped',
+        health_uptime: 'Uptime: {value}',
+        health_error: 'ERROR',
+
+        overview_qs_title: 'Quick stats',
+        overview_qs_logs_label: 'logs (items on page)',
+        overview_qs_feeds_label: 'GameNews feeds',
+        overview_qs_guilds_label: 'guilds',
+        overview_qs_hint: 'Real-time stats (socket) + API.',
+
+        overview_summary_title: 'Summary (last 24h)',
+        overview_summary_hint: 'Quick moderation and dashboard metrics.',
+        overview_summary_btn: 'Refresh',
+        overview_summary_warn_label: 'WARN',
+        overview_summary_mute_label: 'MUTE',
+        overview_summary_unmute_label: 'UNMUTE',
+        overview_summary_dashboard_label: 'Dashboard actions',
+
+        overview_timeline_title: 'Recent timeline',
+        overview_timeline_hint: 'Latest events (filtered by selected server).',
+        overview_timeline_filter_all: 'All',
+        overview_timeline_filter_warn: 'Warn',
+        overview_timeline_filter_mute: 'Mute',
+        overview_timeline_filter_unmute: 'Unmute',
+        overview_timeline_filter_dashboard: 'Dashboard',
+        overview_timeline_btn: 'Refresh',
+
+        overview_cfg_title: 'Runtime config',
+        overview_cfg_hint: 'Edit in Config (whitelist + overrides.json). Roles/channels/feeds stay protected.',
+
+        nav_overview: 'Overview',
+        nav_moderation: 'Moderation',
+        nav_cases: 'Cases',
+        nav_tickets: 'Tickets',
+        nav_gamenews: 'GameNews',
+        nav_user: 'User',
+        nav_config: 'Config',
+      
+      tickets_reload: 'Reload list',
+      tickets_clear: 'Clear all tickets',
+
+      gamenews_status_title: 'GameNews status',
+      gamenews_status_hint: 'Per-feed summary: last send, pauses, failures and stored hashes.',
+      gamenews_filter_all: 'All feeds',
+      gamenews_filter_paused: 'Paused only',
+      gamenews_reload: 'Refresh feeds',
+
+      cfg_view_title: 'Current config (simplified view)',
+      cfg_view_load: 'Load',
+      cfg_view_hint: 'Read-only view with the main parameters. Sensitive fields (roles, banned words, feeds, guildId) are omitted here.',
+
+      selftest_title: 'Moderation self-test',
+      selftest_hint: 'Run a quick diagnostic for moderation and GameNews systems without applying real punishments.',
+      selftest_button: 'Run self-test',
+      selftest_pick_channel: 'Select a log channel in Config > General > Logs first.',
+      selftest_running: 'Running...',
+      selftest_ok: 'Self-test message sent to the selected channel.',
+      selftest_error: 'Error while running the self-test.',
+
+      gamenews_kpi_feeds: 'Feeds',
+      gamenews_kpi_paused: 'Paused',
+}
+    };
+
+    function t(key, vars) {
+      const lang = I18N[state.lang] ? state.lang : 'pt';
+      let s = I18N[lang][key] || I18N.pt[key] || key;
+      if (vars) {
+        for (const [k,v] of Object.entries(vars)) {
+          s = s.replaceAll('{' + k + '}', String(v));
+        }
+      }
+      return s;
+    }
+
+    window.__i18nT = t;
+    function applyI18n() {
+      const lang = I18N[state.lang] ? state.lang : 'pt';
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.getAttribute('data-i18n');
+        if (!k) return;
+        el.textContent = t(k);
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const k = el.getAttribute('data-i18n-placeholder');
+        if (!k) return;
+        el.setAttribute('placeholder', t(k));
+      });
+
+      
+      // Update main navigation labels
+      const navKeys = {
+        overview: 'nav_overview',
+        logs: 'nav_moderation',
+        cases: 'nav_cases',
+        tickets: 'nav_tickets',
+        gamenews: 'nav_gamenews',
+        user: 'nav_user',
+        config: 'nav_config'
+      };
+      document.querySelectorAll('.tab').forEach(el => {
+        const k = navKeys[el.dataset.tab];
+        if (k) el.textContent = t(k);
+      });
+
+const lp = document.getElementById('langPicker');
+      if (lp) lp.value = lang;
+      const llp = document.getElementById('loginLangPicker');
+      if (llp) llp.value = lang;
+
+      // refresh badges texts
+      updateBadges();
+    }
+
+    function setLang(newLang) {
+      const lang = (newLang || 'pt').toLowerCase();
+      state.lang = lang;
+      try { localStorage.setItem('OZARK_LANG', state.lang); } catch {}
+      applyI18n();
+    }
+
+
+
+    // If anything crashes during bootstrap, ensure the user still sees the login screen
+    // instead of a blank grey page.
+    function showFatalDashboardError(err) {
+      try {
+        const ls = document.getElementById('loginScreen');
+        const app = document.getElementById('appRoot');
+        if (app) app.style.display = 'none';
+        if (ls) ls.style.display = 'flex';
+        const box = document.getElementById('loginError');
+        if (box) {
+          const msg = (err && (err.message || String(err))) ? (err.message || String(err)) : 'Unknown error';
+          box.textContent = 'Dashboard error: ' + msg;
+          box.style.display = 'block';
+        }
+      } catch {
+        // last resort: do nothing
+      }
+    }
+
+    window.addEventListener('error', (e) => {
+      showFatalDashboardError(e?.error || e?.message || 'Script error');
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      showFatalDashboardError(e?.reason || 'Unhandled promise rejection');
+    });
+
+    
+    function updateBadges() {
+      const bot = $('badgeBot');
+      const g = $('badgeGuild');
+      const a = $('badgeAuth');
+
+      if (bot) {
+        const ok = state.health ? !!(state.health.discordReady ?? state.health.ok) : false;
+        bot.className = 'badge ' + (ok ? 'ok' : 'bad');
+        bot.textContent = ok ? t('badge_bot_online') : t('badge_bot_offline');
+      }
+
+      if (g) {
+        const name = state.guildMap?.[state.guildId]?.name || '—';
+        g.className = 'badge';
+        g.textContent = t('badge_server', { name });
+      }
+
+      if (a) {
+        const has = !!state.token;
+        a.className = 'badge ' + (has ? 'ok' : 'warn');
+        a.textContent = has ? t('badge_auth_ok') : t('badge_auth_missing');
+      }
+    }
+
+
+    const _toastState = { last: new Map() };
+
+    function toast(msg, kind = 'info', opts = {}) {
+      const key = String(opts.key || msg);
+      const now = Date.now();
+      const last = _toastState.last.get(key) || 0;
+      const dedupeMs = Number.isFinite(opts.dedupeMs) ? opts.dedupeMs : 1800;
+      if (now - last < dedupeMs) return;
+      _toastState.last.set(key, now);
+
+      const node = document.createElement('div');
+      node.className = 'toastItem';
+      node.innerHTML = `<div class="row" style="justify-content: space-between; gap: 10px;">
+        <span>${msg}</span>
+        <span class="badge ${kind === 'ok' ? 'ok' : kind === 'bad' ? 'bad' : kind === 'warn' ? 'warn' : 'info'}">${kind.toUpperCase()}</span>
+      </div>`;
+      $('toast').appendChild(node);
+      setTimeout(() => node.remove(), Number.isFinite(opts.ttlMs) ? opts.ttlMs : 4200);
+    }
+
+    function headers() {
+      const h = {};
+      if (state.token) h['x-dashboard-token'] = state.token;
+      return h;
+    }
+
+    function markUnauthorized() {
+      // token exists but backend refused -> likely invalid token
+      const a = $('badgeAuth');
+      if (a) {
+        a.className = 'badge bad';
+        a.textContent = state.token ? t('badge_auth_invalid') : t('badge_auth_missing');
+      }
+    }
+
+    
+    async function apiGet(url) {
+      const res = await fetch(url, { headers: headers() });
+      if (res.status === 401) {
+        markUnauthorized();
+        throw new Error('UNAUTHORIZED');
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || 'Request failed');
+      return json;
+    }
+
+    async function apiPost(url, body) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { ...headers(), 'content-type': 'application/json' },
+        body: JSON.stringify(body || {})
+      });
+      if (res.status === 401) {
+        markUnauthorized();
+        throw new Error('UNAUTHORIZED');
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || 'Request failed');
+      return json;
+    }
+
+function safeDate(iso) {
+      if (!iso) return 'N/A';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return 'N/A';
+      return d.toLocaleString();
+    }
+
+    function uptimeLabel(seconds) {
+      const s = Number(seconds || 0);
+      if (!Number.isFinite(s) || s < 0) return 'N/A';
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      if (d > 0) return `${d}d ${h}h ${m}m`;
+      if (h > 0) return `${h}h ${m}m`;
+      if (m > 0) return `${m}m`;
+      return `${s}s`;
+    }
+
+    function trustBadge(trust) {
+      const t = Number(trust);
+      if (!Number.isFinite(t)) return { label: state.lang === 'en' ? 'trust: N/A' : 'trust: N/A', cls: 'info' };
+      const low = state.config?.trust?.lowThreshold ?? 10;
+      const high = state.config?.trust?.highThreshold ?? 60;
+      if (t <= low) return { label: `trust: ${t} (High risk)`, cls: 'bad' };
+      if (t >= high) return { label: `trust: ${t} (Low risk)`, cls: 'ok' };
+      return { label: `trust: ${t} (Medium risk)`, cls: 'warn' };
+    }
+
+    function parseTrustFromText(text) {
+      const s = String(text || '');
+      const m = s.match(/Trust\s*:\s*\*\*(\d+)/i);
+      if (!m) return null;
+      const n = Number(m[1]);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function selectedGuild() {
+      return state.guildId || '';
+    }
+
+    function escHtml(s) {
+      return String(s || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // download helper (blob)
+    async function downloadWithAuth(url, filename) {
+      const res = await fetch(url, { headers: headers() });
+      if (res.status === 401) {
+        toast(t('toast_unauthorized_set_token'), 'bad');
+        return;
+      }
+      if (!res.ok) {
+        toast(t('toast_download_failed'), 'bad');
+        return;
+      }
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objUrl), 1500);
+    }
+
+    // ------------------------------
+    // Loaders
+    // ------------------------------
+    function showLoadingCard(containerId) {
+      const el = $(containerId);
+      if (!el) return;
+      el.innerHTML = '';
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<div class="hint">${t('loading')}</div>`;
+      el.appendChild(card);
+    }
+
+    // ------------------------------
+    // Tabs
+    // ------------------------------
+    
+    function updateTabAccess() {
+      const needsGuildTabs = ['logs','cases','tickets','gamenews','user','config'];
+      const hasGuild = !!state.guildId;
+      document.querySelectorAll('.tab').forEach(tab => {
+        const name = tab.dataset.tab;
+        if (!name) return;
+        if (needsGuildTabs.includes(name)) {
+          tab.classList.toggle('disabled', !hasGuild);
+        }
+      });
+      // If user is on a restricted tab without a guild, push them to overview
+      const active = document.querySelector('.tab.active')?.dataset?.tab;
+      if (!hasGuild && active && active !== 'overview') {
+        setTab('overview');
+      }
+    }
+function setTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === `tab-${name}`));
+      try { localStorage.setItem('ozark.activeTab', name); } catch {}
+    }
+    $('tabs').addEventListener('click', (e) => {
+      const tabEl = e.target.closest('.tab');
+      if (!tabEl) return;
+      if (!state.guildId && tabEl.dataset.tab !== 'overview') {
+        toast((window.__i18nT || t)('select_guild_top'), 'bad');
+        return;
+      }
+      setTab(tabEl.dataset.tab);
+
+      // lazy load
+      if (tabEl.dataset.tab === 'logs') loadLogsPage(1).catch(() => null);
+      if (tabEl.dataset.tab === 'cases') loadCasesPage(1).catch(() => null);
+    });
+
+    // ------------------------------
+    // Token
+    // ------------------------------
+    // ------------------------------
+    // ------------------------------
+    function setDashboardToken(newToken, opts = { reload: false }) {
+      const tokenStr = (newToken || '').trim();
+      if (!tokenStr) return;
+
+      state.token = tokenStr;
+      try {
+        localStorage.setItem('OZARK_DASH_JWT', state.token);
+      } catch {
+        // ignore
+      }
+
+      updateBadges();
+      toast(t('toast_token_saved'), 'ok');
+
+      // boot/login flow handles reload/boot
+    }
+
+    // ------------------------------
+    // Login Screen Flow
+    // ------------------------------
+    function showLogin(message) {
+      const ls = document.getElementById('loginScreen');
+      const app = document.getElementById('appRoot');
+      if (app) app.style.display = 'none';
+      if (ls) ls.style.display = 'flex';
+      const err = document.getElementById('loginError');
+      if (err) {
+        if (message) {
+          err.textContent = message;
+          err.style.display = 'block';
+        } else {
+          err.style.display = 'none';
+        }
+      }
+      const inp = document.getElementById('loginTokenInput');
+      if (inp) inp.focus();
+      applyI18n();
+    }
+
+    function showApp() {
+      const ls = document.getElementById('loginScreen');
+      const app = document.getElementById('appRoot');
+      if (ls) ls.style.display = 'none';
+      if (app) app.style.display = 'block';
+      const sb = document.getElementById('sessionBadge');
+      if (sb) {
+        sb.className = 'badge ok';
+        sb.textContent = t('session_ok');
+      }
+    }
+
+    async function validateToken(token) {
+      // lightweight auth check
+      const res = await fetch('/api/guilds', { headers: { 'x-dashboard-token': token } });
+      if (res.status === 401) return false;
+      return res.ok;
+    }
+
+    async function doLogin(token) {
+      const tkn = (token || '').trim();
+      if (!tkn) {
+        showLogin(t('toast_paste_token'));
+        return;
+      }
+      const ok = await validateToken(tkn).catch(() => false);
+      if (!ok) {
+        showLogin(t('badge_auth_invalid'));
+        return;
+      }
+
+      setDashboardToken(tkn, { reload: false });
+      showApp();
+      initSocket();
+      await bootAfterLogin().catch(() => null);
+    }
+
+// ------------------------------
+    // Guilds
+    // ------------------------------
+    async function loadGuilds() {
+      const res = await fetch('/api/guilds', { headers: headers() });
+      if (res.status === 401) {
+        toast(t('toast_unauthorized_set_token'), 'bad');
+        return;
+      }
+      const json = await res.json();
+      state.guilds = Array.isArray(json.items) ? json.items : [];
+      const sel = $('guildPicker');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">🌐 Todos os servidores</option>';
+      state.guildMap = {};
+      for (const g of state.guilds) state.guildMap[g.id] = g;
+      for (const g of state.guilds) {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.name;
+        sel.appendChild(opt);
+      }
+      if (cur) sel.value = cur;
+      $('kpiGuilds').textContent = String(state.guilds.length);
+    }
+
+
+    async function boot() {
+      try {
+        await loadGuilds().catch(() => null);
+
+        // health + KPIs + timeline overview
+        await refreshHealth().catch(() => null);
+        await loadKpis().catch(() => null);
+        await loadTimeline({ showLoader: false }).catch(() => null);
+
+        // GameNews feeds (se existir secção)
+        if (document.getElementById('feedsConfigBody') && typeof window.loadFeedsConfig === 'function') {
+          await window.loadFeedsConfig().catch(() => null);
+        }
+
+        updateBadges();
+      } catch (e) {
+        console.error('[Dashboard] boot error:', e);
+      }
+    }
+    $('guildPicker').addEventListener('change', async () => {
+      state.guildId = $('guildPicker').value;
+
+      // Reset paginations on guild change
+      state.logs.page = 1;
+      state.cases.page = 1;
+
+      // user tab depends on guild
+      $('userStatus').textContent = state.guildId ? 'Servidor selecionado' : 'Seleciona um servidor';
+
+      // Refresh current tab data
+      await loadLogsPage(1).catch(() => null);
+      await loadCasesPage(1).catch(() => null);
+      renderFeeds();
+      await loadGuildConfigUI().catch(() => null);
+      updateBadges();
+      await loadKpis().catch(() => null);
+      await loadTimeline({ showLoader: true }).catch(() => null);
+      updateTabAccess();
+    });
+
+    // ------------------------------
+    // Health
+    // ------------------------------
+    
+    async function refreshHealth() {
+      try {
+        const res = await fetch('/health');
+        const data = await res.json();
+        state.health = data;
+        const ok = !!data.ok;
+        const badge = $('healthBadge');
+        if (badge) {
+          badge.textContent = ok ? t('health_ok') : t('health_issues');
+          badge.className = `badge ${ok ? 'ok' : 'bad'}`;
+        }
+
+        const discordOk = !!data.discordReady;
+        const mongoOk = !!data.mongoConnected;
+        const newsOk = !!data.gameNewsRunning;
+
+        const discordEl = $('healthDiscord');
+        if (discordEl) {
+          discordEl.textContent = discordOk ? t('health_discord_ready') : t('health_discord_not_ready');
+        }
+        const discordDot = $('healthDiscordDot');
+        if (discordDot) {
+          discordDot.classList.remove('health-ok','health-warn','health-bad');
+          discordDot.classList.add(discordOk ? 'health-ok' : 'health-bad');
+        }
+
+        const mongoEl = $('healthMongo');
+        if (mongoEl) {
+          mongoEl.textContent = mongoOk ? t('health_mongo_connected') : t('health_mongo_disconnected');
+        }
+        const mongoDot = $('healthMongoDot');
+        if (mongoDot) {
+          mongoDot.classList.remove('health-ok','health-warn','health-bad');
+          mongoDot.classList.add(mongoOk ? 'health-ok' : 'health-bad');
+        }
+
+        const newsEl = $('healthGameNews');
+        if (newsEl) {
+          newsEl.textContent = newsOk ? t('health_gamenews_running') : t('health_gamenews_stopped');
+        }
+        const newsDot = $('healthGameNewsDot');
+        if (newsDot) {
+          newsDot.classList.remove('health-ok','health-warn','health-bad');
+          newsDot.classList.add(newsOk ? 'health-ok' : 'health-warn');
+        }
+
+        const uptimeEl = $('healthUptime');
+        if (uptimeEl) {
+          uptimeEl.textContent = t('health_uptime', { value: uptimeLabel(data.uptimeSeconds) });
+        }
+        updateBadges();
+      } catch (e) {
+        const badge = $('healthBadge');
+        if (badge) {
+          badge.textContent = t('health_error');
+          badge.className = 'badge bad';
+        }
+      }
+    }
+    async function runSelfTestUI() {
+      try {
+        if (!state.guildId) {
+          toast(t('select_guild_top'), 'bad');
+          return;
+        }
+
+        const channelSelect = $('selLogChannel');
+        const channelId = channelSelect?.value || null;
+
+        if (!channelId) {
+          toast(t('selftest_pick_channel') || 'Seleciona um canal de logs em Config > Geral > Logs primeiro.', 'bad');
+          return;
+        }
+
+        const btn = $('btnSelfTest');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = t('selftest_running') || 'A executar self-test...';
+        }
+
+        const body = { guildId: state.guildId, channelId };
+        const json = await apiPost('/api/admin/selftest', body);
+
+        if (!json || !json.ok) {
+          throw new Error(json?.error || 'SELFTEST_FAILED');
+        }
+
+        toast(t('selftest_ok') || 'Self-test enviado para o canal selecionado.');
+      } catch (err) {
+        console.error(err);
+        toast(t('selftest_error') || 'Erro ao executar self-test.', 'bad');
+      } finally {
+        const btn = $('btnSelfTest');
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = t('selftest_button') || 'Executar self-test';
+        }
+      }
+    }
+
+    $('btnSelfTest')?.addEventListener('click', runSelfTestUI);
+    $('btnHealth').addEventListener('click', refreshHealth);
+    $('btnKpi')?.addEventListener('click', loadKpis);
+    $('btnTimeline')?.addEventListener('click', () => loadTimeline({ showLoader: true }));
+
+    // ------------------------------
+    // Config
+    // ------------------------------
+    function renderConfigBadges() {
+      const c = state.config;
+      if (!c) return;
+      $('cfgLang').textContent = `language: ${c.language || 'n/a'}`;
+      $('cfgLang').className = 'badge info';
+
+      const tr = c.trust?.enabled ? 'on' : 'off';
+      $('cfgTrust').textContent = `trust: ${tr}`;
+      $('cfgTrust').className = `badge ${c.trust?.enabled ? 'ok' : 'warn'}`;
+
+      const as = c.antiSpam?.enabled ? 'on' : 'off';
+      $('cfgAntiSpam').textContent = `antiSpam: ${as}`;
+      $('cfgAntiSpam').className = `badge ${c.antiSpam?.enabled ? 'ok' : 'warn'}`;
+
+      const sl = c.slash?.enabled ? 'on' : 'off';
+      $('cfgSlash').textContent = `slash: ${sl}`;
+      $('cfgSlash').className = `badge ${c.slash?.enabled ? 'ok' : 'warn'}`;
+    }
+
+    function syncFeatureToggles() {
+      if (!state.config) return;
+      const c = state.config;
+      if ($('featGameNews')) $('featGameNews').checked = !!c.gameNews?.enabled;
+      if ($('featGameNewsLogs')) $('featGameNewsLogs').checked = c.gameNews?.logEnabled !== false;
+      if ($('featAntiSpam')) $('featAntiSpam').checked = !!c.antiSpam?.enabled;
+      if ($('featTrust')) $('featTrust').checked = !!c.trust?.enabled;
+      if ($('featSlash')) $('featSlash').checked = !!c.slash?.enabled;
+
+      const auto = c.automation || {};
+      const autoMute = auto.autoMute || {};
+      const autoKick = auto.autoKick || {};
+
+      if ($('featAutoMute')) $('featAutoMute').checked = !!autoMute.enabled;
+      if ($('autoMuteWarns')) $('autoMuteWarns').value = Number(autoMute.warnsToMute || 3);
+      if ($('autoMuteMinutes')) $('autoMuteMinutes').value = Math.round(Number((autoMute.muteDurationMs || (30 * 60 * 1000)) / 60000));
+
+      if ($('featAutoKick')) $('featAutoKick').checked = !!autoKick.enabled;
+      if ($('autoKickInfractions')) $('autoKickInfractions').value = Number(autoKick.infractionsToKick || 5);
+
+      const tickets = c.tickets || {};
+      const autoDel = tickets.autoDeleteClosed || {};
+      if ($('featTicketsAutoDelete')) $('featTicketsAutoDelete').checked = !!autoDel.enabled;
+      if ($('ticketsAutoDeleteDelay')) {
+        const delayMs = Number(autoDel.delayMs || (24 * 60 * 60 * 1000));
+        $('ticketsAutoDeleteDelay').value = Math.max(1, Math.round(delayMs / 60000));
+      }
+    }
+
+    async function setFeatureToggle(path, checked) {
+      try {
+        const sensitive = ['antiSpam.enabled', 'trust.enabled', 'slash.enabled'];
+        if (!checked && sensitive.includes(path)) {
+          const ok = confirm('Tens a certeza que queres desativar esta funcionalidade de moderação automática?');
+          if (!ok) {
+            if (typeof syncFeatureToggles === 'function') syncFeatureToggles();
+            const featStatus = $('featStatus');
+            if (featStatus) featStatus.textContent = 'Alteração cancelada.';
+            return;
+          }
+        }
+
+        const patch = {};
+        const parts = path.split('.');
+        let cur = patch;
+        for (let i = 0; i < parts.length; i++) {
+          const key = parts[i];
+          if (i === parts.length - 1) {
+            cur[key] = checked;
+          } else {
+            cur[key] = cur[key] || {};
+            cur = cur[key];
+          }
+        }
+
+        const res = await fetch('/api/config', {
+          method: 'PATCH',
+          headers: { ...headers(), 'content-type': 'application/json' },
+          body: JSON.stringify(patch)
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          throw new Error(json.error || 'Failed saving feature toggle.');
+        }
+
+        state.config = json.config;
+        $('cfgView').value = JSON.stringify(state.config, null, 2);
+        renderConfigBadges();
+        syncFeatureToggles();
+        const featStatus = $('featStatus');
+        if (featStatus) featStatus.textContent = 'Funcionalidades atualizadas.';
+      } catch (e) {
+        const featStatus = $('featStatus');
+        if (featStatus) featStatus.textContent = 'Erro ao guardar funcionalidades.';
+        toast(e.message || 'Failed saving feature toggle.', 'bad');
+      }
+    }
+
+    let autoSaveAutomationT = null;
+    let autoSaveTicketsT = null;
+
+    function queueSaveAutomation() {
+      clearTimeout(autoSaveAutomationT);
+      autoSaveAutomationT = setTimeout(() => {
+        saveAutomationConfig().catch((e) => {
+          console.error('saveAutomationConfig error', e);
+        });
+      }, 400);
+    }
+
+    function queueSaveTicketsAutoDelete() {
+      clearTimeout(autoSaveTicketsT);
+      autoSaveTicketsT = setTimeout(() => {
+        saveTicketsAutoDeleteConfig().catch((e) => {
+          console.error('saveTicketsAutoDeleteConfig error', e);
+        });
+      }, 400);
+    }
+
+    async function saveAutomationConfig() {
+      try {
+        const enabledMute = !!$('featAutoMute')?.checked;
+        const enabledKick = !!$('featAutoKick')?.checked;
+
+        let warns = Number($('autoMuteWarns')?.value || 3);
+        if (!Number.isFinite(warns) || warns < 1) warns = 3;
+        warns = Math.round(warns);
+
+        let minutes = Number($('autoMuteMinutes')?.value || 30);
+        if (!Number.isFinite(minutes) || minutes < 1) minutes = 30;
+        minutes = Math.round(minutes);
+        const muteDurationMs = minutes * 60 * 1000;
+
+        let infractions = Number($('autoKickInfractions')?.value || 5);
+        if (!Number.isFinite(infractions) || infractions < 1) infractions = 5;
+        infractions = Math.round(infractions);
+
+        const patch = {
+          automation: {
+            enabled: enabledMute || enabledKick,
+            autoMute: {
+              enabled: enabledMute,
+              warnsToMute: warns,
+              muteDurationMs
+            },
+            autoKick: {
+              enabled: enabledKick,
+              infractionsToKick: infractions
+            }
+          }
+        };
+
+        const res = await fetch('/api/config', {
+          method: 'PATCH',
+          headers: { ...headers(), 'content-type': 'application/json' },
+          body: JSON.stringify(patch)
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          throw new Error(json.error || 'Failed saving automation config.');
+        }
+
+        state.config = json.config;
+        $('cfgView').value = JSON.stringify(state.config, null, 2);
+        renderConfigBadges();
+        syncFeatureToggles();
+        const featStatus = $('featStatus');
+        if (featStatus) featStatus.textContent = 'Automação atualizada.';
+      } catch (e) {
+        const featStatus = $('featStatus');
+        if (featStatus) featStatus.textContent = 'Erro ao guardar automação.';
+        toast(e.message || 'Failed saving automation config.', 'bad');
+      }
+    }
+
+    async function saveTicketsAutoDeleteConfig() {
+      try {
+        const enabled = !!$('featTicketsAutoDelete')?.checked;
+        let minutes = Number($('ticketsAutoDeleteDelay')?.value || 1440);
+        if (!Number.isFinite(minutes) || minutes < 1) minutes = 1440;
+        minutes = Math.round(minutes);
+        const delayMs = minutes * 60 * 1000;
+
+        const patch = {
+          tickets: {
+            autoDeleteClosed: {
+              enabled,
+              delayMs
+            }
+          }
+        };
+
+        const res = await fetch('/api/config', {
+          method: 'PATCH',
+          headers: { ...headers(), 'content-type': 'application/json' },
+          body: JSON.stringify(patch)
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          throw new Error(json.error || 'Failed saving tickets auto-delete config.');
+        }
+
+        state.config = json.config;
+        $('cfgView').value = JSON.stringify(state.config, null, 2);
+        renderConfigBadges();
+        syncFeatureToggles();
+        const featStatus = $('featStatus');
+        if (featStatus) featStatus.textContent = 'Auto-delete de tickets atualizado.';
+      } catch (e) {
+        const featStatus = $('featStatus');
+        if (featStatus) featStatus.textContent = 'Erro ao guardar auto-delete de tickets.';
+        toast(e.message || 'Failed saving tickets auto-delete config.', 'bad');
+      }
+    }
+
+    async function loadConfig() {
+      const res = await fetch('/api/config', { headers: headers() });
+      if (res.status === 401) {
+        toast(t('toast_unauthorized_set_token'), 'bad');
+        return;
+      }
+      const json = await res.json();
+      if (!json.ok) {
+        toast('Failed to load config.', 'bad');
+        return;
+      }
+      state.config = json.config;
+      state.schema = json.schema;
+      $('cfgView').value = JSON.stringify(json.config, null, 2);
+      renderConfigBadges();
+      syncFeatureToggles();
+      $('cfgAllowedHint').innerHTML = `Allowed: <span class="mono">${(json.schema?.allowedPaths || []).join(', ')}</span>`;
+    }
+
+    async function saveConfigPatch() {
+      let patch = null;
+      try {
+        patch = JSON.parse($('cfgPatch').value || '{}');
+      } catch {
+        toast('Patch JSON invalid.', 'bad');
+        return;
+      }
+
+      const res = await fetch('/api/config', {
+        method: 'PATCH',
+        headers: { ...headers(), 'content-type': 'application/json' },
+        body: JSON.stringify(patch)
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        toast(json.error || 'Failed saving config.', 'bad');
+        return;
+      }
+
+      state.config = json.config;
+      $('cfgView').value = JSON.stringify(state.config, null, 2);
+      renderConfigBadges();
+      toast(`Config saved. Applied: ${json.applied?.length || 0}`, 'ok');
+    }
+
+    async function loadAudit() {
+      const list = $('auditList');
+      const statusEl = $('auditStatus');
+      if (!list) return;
+      try {
+        if (statusEl) statusEl.textContent = 'A carregar...';
+        list.innerHTML = '';
+        const res = await fetch('/api/audit/config?limit=40', { headers: headers() });
+        if (res.status === 401) {
+          if (statusEl) statusEl.textContent = 'Unauthorized';
+          toast(t('toast_unauthorized_set_token'), 'bad');
+          return;
+        }
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          if (statusEl) statusEl.textContent = json.error || 'Erro ao carregar histórico.';
+          toast(json.error || 'Erro ao carregar histórico.', 'bad');
+          return;
+        }
+
+        const items = Array.isArray(json.items) ? json.items : [];
+        if (!items.length) {
+          list.innerHTML = '<div class="hint">Sem registos de auditoria ainda.</div>';
+          if (statusEl) statusEl.textContent = '';
+          return;
+        }
+
+        const rows = items.map((it) => {
+          const at = it.at ? new Date(it.at).toLocaleString() : 'sem data';
+          const actor = it.actor || 'desconhecido (dashboard)';
+          const guildId = it.guildId || '-';
+          const action = it.action || 'action';
+          return `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.04);">` +
+            `<div>[${at}] <strong>${action}</strong></div>` +
+            `<div class="hint">actor: ${actor} · guild: ${guildId}</div>` +
+          `</div>`;
+        });
+        list.innerHTML = rows.join('');
+        if (statusEl) statusEl.textContent = `Registos: ${items.length}`;
+      } catch (e) {
+        console.error('loadAudit error', e);
+        if (statusEl) statusEl.textContent = 'Erro ao carregar histórico.';
+        toast('Erro ao carregar histórico.', 'bad');
+      }
+    }
+
+    $('btnLoadConfig').addEventListener('click', loadConfig);
+    $('btnSaveConfig').addEventListener('click', saveConfigPatch);
+    $('btnLoadAudit')?.addEventListener('click', loadAudit);
+    $('btnCreateDashUser')?.addEventListener('click', createDashboardUser);
+    $('featGameNews')?.addEventListener('change', (e) => setFeatureToggle('gameNews.enabled', e.target.checked));
+    $('featGameNewsLogs')?.addEventListener('change', (e) => setFeatureToggle('gameNews.logEnabled', e.target.checked));
+    $('featAntiSpam')?.addEventListener('change', (e) => setFeatureToggle('antiSpam.enabled', e.target.checked));
+    $('featTrust')?.addEventListener('change', (e) => setFeatureToggle('trust.enabled', e.target.checked));
+    $('featSlash')?.addEventListener('change', (e) => setFeatureToggle('slash.enabled', e.target.checked));
+
+    $('featAutoMute')?.addEventListener('change', queueSaveAutomation);
+    $('autoMuteWarns')?.addEventListener('input', queueSaveAutomation);
+    $('autoMuteMinutes')?.addEventListener('input', queueSaveAutomation);
+    $('featAutoKick')?.addEventListener('change', queueSaveAutomation);
+    $('autoKickInfractions')?.addEventListener('input', queueSaveAutomation);
+    $('featTicketsAutoDelete')?.addEventListener('change', queueSaveTicketsAutoDelete);
+    $('ticketsAutoDeleteDelay')?.addEventListener('input', queueSaveTicketsAutoDelete);
+
+    // ------------------------------
+    // Definições do Servidor (canais de logs)
+    // ------------------------------
+    async function loadGuildMeta() {
+      if (!state.guildId) {
+        toast(t('select_guild_top'), 'bad');
+        return { channels: [], roles: [] };
+      }
+      const json = await apiGet(`/api/guilds/${state.guildId}/meta`);
+      const channels = Array.isArray(json.channels) ? json.channels : [];
+      const roles = Array.isArray(json.roles) ? json.roles : [];
+      state.feedChannels = channels;
+      return {
+        channels,
+        roles
+      };
+    }
+
+    function fillChannelSelect(selectEl, items, selectedId, labelNone) {
+      if (!selectEl) return;
+      selectEl.innerHTML = '';
+      const opt0 = document.createElement('option');
+      opt0.value = '';
+      opt0.textContent = labelNone || '— Nenhum —';
+      selectEl.appendChild(opt0);
+
+      (items || []).forEach((it) => {
+        const opt = document.createElement('option');
+        opt.value = it.id;
+        opt.textContent = `#${it.name}`;
+        if (selectedId && String(selectedId) === String(it.id)) opt.selected = true;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    function fillRoleMultiSelect(selectEl, roles, selectedIds) {
+      if (!selectEl) return;
+      const selected = new Set((selectedIds || []).map((x) => String(x)));
+      selectEl.innerHTML = '';
+      (roles || []).forEach((r) => {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = r.name;
+        if (selected.has(String(r.id))) opt.selected = true;
+        selectEl.appendChild(opt);
+      });
+
+      const summaryEl = $('staffRolesSummary');
+      if (summaryEl) {
+        const active = (roles || []).filter((r) => selected.has(String(r.id)));
+        if (!active.length) {
+          summaryEl.textContent = 'Nenhuma role de staff definida (serão usados os valores padrão do bot).';
+        } else {
+          summaryEl.innerHTML = 'Roles de staff ativas: ' + active
+            .map((r) => `<span class="mono">@${escHtml(r.name)}</span>`)
+            .join(', ');
+        }
+      }
+
+      // Atualizar resumo quando o utilizador altera a seleção
+      selectEl.onchange = () => {
+        const selIds = new Set(Array.from(selectEl.selectedOptions || []).map((o) => String(o.value)));
+        const summaryEl2 = $('staffRolesSummary');
+        if (!summaryEl2) return;
+        const activeNow = (roles || []).filter((r) => selIds.has(String(r.id)));
+        if (!activeNow.length) {
+          summaryEl2.textContent = 'Nenhuma role de staff definida (serão usados os valores padrão do bot).';
+        } else {
+          summaryEl2.innerHTML = 'Roles de staff ativas: ' + activeNow
+            .map((r) => `<span class="mono">@${escHtml(r.name)}</span>`)
+            .join(', ');
+        }
+      };
+    }
+
+    async function loadGuildConfigUI() {
+      try {
+        if (!state.guildId) {
+          toast(t('select_guild_top'), 'bad');
+          return;
+        }
+        $('guildConfigStatus').textContent = 'A carregar...';
+
+        const [meta, cfg] = await Promise.all([
+          loadGuildMeta(),
+          apiGet(`/api/guilds/${state.guildId}/config`)
+        ]);
+
+        fillChannelSelect($('selLogChannel'), meta.channels, cfg?.config?.logChannelId, '— Usa default (log-bot) —');
+        fillChannelSelect($('selDashboardLogChannel'), meta.channels, cfg?.config?.dashboardLogChannelId, '— Usa automático (dashboard-logs) —');
+        fillRoleMultiSelect($('selStaffRoles'), meta.roles, cfg?.config?.staffRoleIds || []);
+
+        $('guildConfigStatus').textContent = 'Definições carregadas.';
+        // Refresh GameNews feed channel selectors (needs guild channels)
+        try { renderFeedsConfig(); } catch {}
+        updateBadges();
+      } catch (e) {
+        $('guildConfigStatus').textContent = '';
+        if (String(e.message || '').includes('UNAUTHORIZED')) return toast(t('toast_unauthorized_set_token'), 'bad');
+        toast(`Erro a carregar: ${e.message || e}`, 'bad');
+      }
+    }
+
+    async function saveGuildConfigUI() {
+      try {
+        if (!state.guildId) {
+          toast(t('select_guild_top'), 'bad');
+          return;
+        }
+
+        const body = {
+          logChannelId: $('selLogChannel')?.value || null,
+          dashboardLogChannelId: $('selDashboardLogChannel')?.value || null,
+          staffRoleIds: Array.from($('selStaffRoles')?.selectedOptions || []).map(o => o.value)
+        };
+
+        $('guildConfigStatus').textContent = 'A guardar...';
+        await apiPost(`/api/guilds/${state.guildId}/config`, body);
+        $('guildConfigStatus').textContent = 'Definições guardadas.';
+        toast('Servidor atualizado.', 'ok');
+        updateBadges();
+      } catch (e) {
+        $('guildConfigStatus').textContent = '';
+        if (String(e.message || '').includes('UNAUTHORIZED')) return toast(t('toast_unauthorized_set_token'), 'bad');
+        toast(`Erro a guardar: ${e.message || e}`, 'bad');
+      }
+    }
+
+    
+    async function testGuildLogsUI() {
+      try {
+        if (!state.guildId) {
+          toast(t('select_guild_top'), 'bad');
+          return;
+        }
+
+        $('logChannelTestStatus').textContent = 'A testar...';
+        $('dashLogChannelTestStatus').textContent = 'A testar...';
+
+        const body = {
+          logChannelId: $('selLogChannel')?.value || null,
+          dashboardLogChannelId: $('selDashboardLogChannel')?.value || null
+        };
+
+        const json = await apiPost(`/api/guilds/${state.guildId}/test-log-channels`, body);
+        const results = Array.isArray(json.results) ? json.results : [];
+
+        const botRes = results.find(r => r.label === 'Canal de logs do bot') || null;
+        const dashRes = results.find(r => r.label === 'Canal de logs do dashboard') || null;
+
+        function setStatus(el, r) {
+          if (!el) return;
+          if (!r) { el.textContent = ''; return; }
+          if (r.ok) {
+            el.textContent = '✅ OK — mensagem enviada.';
+          } else {
+            el.textContent = `❌ Falhou — ${r.error || 'sem detalhe'}`;
+          }
+        }
+
+        setStatus($('logChannelTestStatus'), botRes);
+        setStatus($('dashLogChannelTestStatus'), dashRes);
+
+        toast('Teste concluído.', 'ok');
+      } catch (e) {
+        $('logChannelTestStatus').textContent = '';
+        $('dashLogChannelTestStatus').textContent = '';
+        if (String(e.message || '').includes('UNAUTHORIZED')) return toast(t('toast_unauthorized_set_token'), 'bad');
+        toast(`Erro no teste: ${e.message || e}`, 'bad');
+      }
+    }
+
+$('btnLoadGuildConfig')?.addEventListener('click', loadGuildConfigUI);
+    $('btnSaveGuildConfig')?.addEventListener('click', saveGuildConfigUI);
+    $('btnTestGuildLogs')?.addEventListener('click', testGuildLogsUI);
+
+
+    // ------------------------------
+    
+    // ------------------------------
+    // KPIs + Timeline
+    // ------------------------------
+    function parseIso(s) {
+      try { return new Date(s).getTime(); } catch { return 0; }
+    }
+
+    
+    async function loadKpis() {
+      try {
+        const guildId = state.guildId || '';
+        const json = await apiGet(`/api/logs?limit=500&page=1${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ''}`);
+        const items = Array.isArray(json.items) ? json.items : [];
+
+        const now = Date.now();
+        const since24h = now - 24 * 60 * 60 * 1000;
+        const since7d = now - 7 * 24 * 60 * 60 * 1000;
+
+        let actionsToday = 0;
+        let actionsWeek = 0;
+        let ticketsOpen = 0;
+        let ticketsClosed24h = 0;
+
+        for (const it of items) {
+          const t = parseIso(it.time || it.createdAt || '');
+          if (!t) continue;
+
+          const title = String(it.title || '').toLowerCase();
+          if (title.includes('warn') || title.includes('mute') || title.includes('ban') || title.includes('kick')) {
+            if (t >= since24h) actionsToday++;
+            if (t >= since7d) actionsWeek++;
+          }
+          if (title.includes('ticket')) {
+            if (title.includes('aberto') || title.includes('aberto') || title.includes('opened')) {
+              ticketsOpen++;
+            }
+            if (title.includes('fechado') || title.includes('closed')) {
+              if (t >= since24h) ticketsClosed24h++;
+            }
+          }
+        }
+
+        $('kpiActionsToday').textContent = String(actionsToday);
+        $('kpiActionsWeek').textContent = `${actionsWeek} / 7d`;
+        $('kpiTicketsOpen').textContent = String(ticketsOpen);
+        $('kpiTicketsClosed').textContent = `${ticketsClosed24h} fechados (24h)`;
+      } catch (e) {
+        // ignore noisy errors
+      }
+    }
+
+    function renderTimeline(items) {
+      const wrap = $('timelineList');
+      if (!wrap) return;
+      if (!items || !items.length) {
+        wrap.innerHTML = '<div class="hint">Sem eventos recentes.</div>';
+        return;
+      }
+
+      wrap.innerHTML = '';
+      for (const it of items.slice(0, 15)) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.style.justifyContent = 'space-between';
+        row.style.alignItems = 'flex-start';
+        row.style.borderBottom = '1px solid var(--border)';
+        row.style.padding = '10px 0';
+
+        const left = document.createElement('div');
+        left.style.flex = '1';
+
+        const title = document.createElement('div');
+        title.style.fontWeight = '700';
+        title.textContent = it.title || '—';
+
+        const desc = document.createElement('div');
+        desc.className = 'hint';
+        desc.textContent = (it.description || '').slice(0, 140);
+
+        left.appendChild(title);
+        left.appendChild(desc);
+
+        const right = document.createElement('div');
+        right.style.minWidth = '160px';
+        right.style.textAlign = 'right';
+
+        const when = document.createElement('div');
+        when.className = 'hint';
+        when.textContent = safeDate(it.time || it.createdAt);
+
+        const who = document.createElement('div');
+        who.className = 'hint';
+        const ex = it.executor?.tag ? `por ${it.executor.tag}` : '';
+        who.textContent = ex;
+
+        right.appendChild(when);
+        right.appendChild(who);
+
+        row.appendChild(left);
+        row.appendChild(right);
+        wrap.appendChild(row);
+      }
+    }
+
+    async function loadTimeline(opts) {
+      const showLoader = !!(opts && opts.showLoader);
+      try {
+        if (showLoader) showLoadingCard('timelineList');
+        const guildId = state.guildId || '';
+        const type = ($('timelineType')?.value || '').trim().toLowerCase();
+        const json = await apiGet(`/api/logs?limit=100&page=1${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ''}${type ? `&type=${encodeURIComponent(type)}` : ''}`);
+        const items = Array.isArray(json.items) ? json.items : [];
+        renderTimeline(items);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+// Logs (Server-side pagination)
+    // ------------------------------
+    function logColor(title) {
+      const t = String(title || '').toLowerCase();
+      if (t.includes('warn')) return 'warn';
+      if (t.includes('mute')) return 'bad';
+      if (t.includes('unmute')) return 'ok';
+      if (t.includes('clear')) return 'info';
+      if (t.includes('anti-spam')) return 'warn';
+      if (t.includes('game news')) return 'info';
+      return 'info';
+    }
+
+    function renderLogs(items) {
+      const list = $('logsList');
+      list.innerHTML = '';
+
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'card';
+        empty.innerHTML = `<h2>No logs</h2><div class="hint">Sem logs para o filtro atual.</div>`;
+        list.appendChild(empty);
+        return;
+      }
+
+      for (const log of items) {
+        const div = document.createElement('div');
+        div.className = 'logItem';
+        const trust = parseTrustFromText(log.description);
+        const tb = trust != null ? trustBadge(trust) : null;
+
+        const userTag = log.user?.tag || log.user || 'N/A';
+        const execTag = log.executor?.tag || log.executor || 'N/A';
+        const guild = log.guild?.name ? `${log.guild.name}` : (log.guild?.id ? log.guild.id : '');
+
+        div.innerHTML = `
+          <div class="logHead">
+            <div class="logTitle">
+              <span class="badge ${logColor(log.title)}">${escHtml(log.title || 'Log')}</span>
+              ${tb ? `<span class="badge ${tb.cls}">${escHtml(tb.label)}</span>` : ''}
+              ${guild ? `<span class="badge">${escHtml(guild)}</span>` : ''}
+            </div>
+            <div class="mono">${safeDate(log.time || log.createdAt || log.timestamp || Date.now())}</div>
+          </div>
+          <div class="logDesc">${escHtml(log.description || '')}</div>
+          <div class="logMeta">👤 ${escHtml(userTag)} • 🛠 ${escHtml(execTag)}</div>
+        `;
+        list.appendChild(div);
+      }
+    }
+
+    function updateLogsPagerUI() {
+      const p = state.logs.page;
+      const lim = state.logs.limit;
+      const total = state.logs.total;
+
+      const maxPage = Math.max(Math.ceil(total / lim) || 1, 1);
+
+      $('logsPageBadge').textContent = `Page ${p} / ${maxPage}`;
+      $('logsTotalBadge').textContent = `Total: ${total}`;
+      $('btnPrevLogs').disabled = p <= 1;
+      $('btnNextLogs').disabled = p >= maxPage;
+
+      $('kpiLogs').textContent = String(state.logs.items.length);
+    }
+
+    function buildLogsUrl(page) {
+      const gid = selectedGuild();
+      const search = ($('logSearch').value || '').trim();
+      const type = ($('logType').value || '').trim();
+      const limit = 25;
+
+      state.logs.limit = limit;
+
+      const url = new URL('/api/logs', location.origin);
+      url.searchParams.set('page', String(page));
+      url.searchParams.set('limit', String(state.logs.limit));
+      if (gid) url.searchParams.set('guildId', gid);
+      if (search) url.searchParams.set('search', search);
+      if (type) url.searchParams.set('type', type);
+      return url;
+    }
+
+    async function loadLogsPage(page) {
+      showLoadingCard('logsList');
+      const url = buildLogsUrl(page);
+      const res = await fetch(url.toString(), { headers: headers() });
+      if (res.status === 401) {
+        toast(t('toast_unauthorized_set_token'), 'bad');
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        toast(json.error || 'Failed to load logs.', 'bad');
+        return;
+      }
+
+      state.logs.page = page;
+      state.logs.total = Number(json.total ?? 0) || 0;
+      state.logs.items = Array.isArray(json.items) ? json.items : [];
+
+      renderLogs(state.logs.items);
+      updateLogsPagerUI();
+    }
+
+    async function exportLogsCsv() {
+      const url = buildLogsUrl(state.logs.page);
+      url.pathname = '/api/logs/export.csv';
+      await downloadWithAuth(url.toString(), 'ozark-logs.csv');
+    }
+
+    $('btnRecarregarLogs').addEventListener('click', () => loadLogsPage(1).catch(() => null));
+    if (document.getElementById('btnClearLogs')) {
+      document.getElementById('btnClearLogs').addEventListener('click', async () => {
+        if (!confirm('Tens a certeza que queres apagar TODOS os logs do dashboard? Esta ação não pode ser revertida.')) return;
+        try {
+          const res = await fetch('/api/logs/clear', { method: 'POST', headers: headers() });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.ok) {
+            toast(json.error || 'Falha ao limpar logs.', 'bad');
+            return;
+          }
+          toast('Logs limpos.', 'ok');
+          await loadLogsPage(1).catch(() => null);
+        } catch (e) {
+          console.error('clear logs error', e);
+          toast('Falha ao limpar logs.', 'bad');
+        }
+      });
+    }
+    $('btnExportCsv').addEventListener('click', () => exportLogsCsv().catch(() => null));
+
+    $('logSearch').addEventListener('input', () => {
+      // debounce-ish: quick reset to page 1
+      clearTimeout(window.__logSearchT);
+      window.__logSearchT = setTimeout(() => loadLogsPage(1).catch(() => null), 250);
+    });
+    $('logType').addEventListener('change', () => loadLogsPage(1).catch(() => null));
+
+    $('btnPrevLogs').addEventListener('click', () => loadLogsPage(Math.max(state.logs.page - 1, 1)).catch(() => null));
+    $('btnNextLogs').addEventListener('click', () => loadLogsPage(state.logs.page + 1).catch(() => null));
+
+    // ------------------------------
+    // Cases (Server-side pagination)
+    // ------------------------------
+    function caseTypeBadge(type) {
+      const t = String(type || '').toUpperCase();
+      if (t === 'MUTE' || t === 'BAN') return 'bad';
+      if (t === 'WARN') return 'warn';
+      return 'info';
+    }
+
+    function updateCasesPagerUI() {
+      const p = state.cases.page;
+      const lim = state.cases.limit;
+      const total = state.cases.total;
+
+      const maxPage = Math.max(Math.ceil(total / lim) || 1, 1);
+
+      $('casesPageBadge').textContent = `Page ${p} / ${maxPage}`;
+      $('casesTotalBadge').textContent = `Total: ${total}`;
+      $('btnPrevCases').disabled = p <= 1;
+      $('btnNextCases').disabled = p >= maxPage;
+    }
+
+    function buildCasesUrl(page) {
+      const guildId = selectedGuild();
+      const q = ($('casesQ').value || '').trim();
+      const userId = ($('casesUserId').value || '').trim();
+      const type = ($('casesType').value || '').trim();
+      const source = ($('casesSource')?.value || '').trim();
+      const limit = 25;
+
+      state.cases.limit = limit;
+
+      const url = new URL('/api/cases', location.origin);
+      url.searchParams.set('page', String(page));
+      url.searchParams.set('limit', String(state.cases.limit));
+      if (guildId) url.searchParams.set('guildId', guildId);
+      if (q) url.searchParams.set('q', q);
+      if (userId) url.searchParams.set('userId', userId);
+      if (type) url.searchParams.set('type', type);
+      if (source) url.searchParams.set('source', source);
+      return url;
+    }
+
+    function renderCases(items) {
+      const list = $('casesList');
+      list.innerHTML = '';
+
+      const gid = selectedGuild();
+      if (!gid) {
+        const empty = document.createElement('div');
+        empty.className = 'card';
+        empty.innerHTML = '<h2>' + t('select_a_guild') + '</h2><div class="hint">Seleciona uma guild no topo para pesquisar cases.</div>';
+        list.appendChild(empty);
+        return;
+      }
+
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'card';
+        empty.innerHTML = `<h2>No cases</h2><div class="hint">Sem cases para o filtro atual.</div>`;
+        list.appendChild(empty);
+        return;
+      }
+
+      for (const c of items) {
+        const div = document.createElement('div');
+        div.className = 'logItem';
+
+        const typeCls = caseTypeBadge(c.type);
+        const caseId = c.caseId != null ? `#${c.caseId}` : '(no caseId)';
+        const reason = escHtml(c.reason || '');
+        const userId = escHtml(c.userId || '');
+        const modId = escHtml(c.moderatorId || '');
+        const source = escHtml(c.source || 'unknown');
+
+        div.innerHTML = `
+          <div class="logHead">
+            <div class="logTitle">
+              <span class="badge info">Case ${escHtml(caseId)}</span>
+              <span class="badge ${typeCls}">${escHtml(c.type || 'N/A')}</span>
+              <span class="badge">source: <span class="mono">${source}</span></span>
+              <span class="badge">user: <span class="mono">${userId}</span></span>
+            </div>
+            <div class="mono">${safeDate(c.createdAt)}</div>
+          </div>
+          <div class="logDesc">${reason}</div>
+          <div class="logMeta">🛠 moderatorId: <span class="mono">${modId}</span></div>
+        `;
+
+        div.addEventListener('click', () => openCaseModal(c.caseId).catch(() => null));
+        list.appendChild(div);
+      }
+    }
+
+    async function loadCasesPage(page) {
+      showLoadingCard('casesList');
+      const gid = selectedGuild();
+      if (!gid) {
+        // still render empty prompt
+        state.cases.items = [];
+        state.cases.total = 0;
+        renderCases([]);
+        updateCasesPagerUI();
+        return;
+      }
+
+      const url = buildCasesUrl(page);
+      const res = await fetch(url.toString(), { headers: headers() });
+      if (res.status === 401) {
+        toast(t('toast_unauthorized_set_token'), 'bad');
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        toast(json.error || 'Failed to load cases.', 'bad');
+        return;
+      }
+
+      state.cases.page = page;
+      state.cases.total = Number(json.total ?? 0) || 0;
+      state.cases.items = Array.isArray(json.items) ? json.items : [];
+
+      renderCases(state.cases.items);
+      updateCasesPagerUI();
+    }
+
+    $('btnRecarregarCases').addEventListener('click', () => loadCasesPage(1).catch(() => null));
+    $('casesQ').addEventListener('input', () => {
+      clearTimeout(window.__casesSearchT);
+      window.__casesSearchT = setTimeout(() => loadCasesPage(1).catch(() => null), 250);
+    });
+    $('casesUserId').addEventListener('input', () => {
+      clearTimeout(window.__casesUserT);
+      window.__casesUserT = setTimeout(() => loadCasesPage(1).catch(() => null), 250);
+    });
+    $('casesType').addEventListener('change', () => loadCasesPage(1).catch(() => null));
+    $('casesSource')?.addEventListener('change', () => loadCasesPage(1).catch(() => null));
+    $('btnPrevCases').addEventListener('click', () => loadCasesPage(Math.max(state.cases.page - 1, 1)).catch(() => null));
+    $('btnNextCases').addEventListener('click', () => loadCasesPage(state.cases.page + 1).catch(() => null));
+    $('btnClearCases').addEventListener('click', async () => {
+      const gid = selectedGuild();
+      if (!gid) {
+        toast('Seleciona uma guild primeiro.', 'bad');
+        return;
+      }
+      if (!confirm('Tens a certeza que queres apagar TODOS os cases deste servidor? Esta ação é permanente.')) return;
+      try {
+        const res = await fetch('/api/cases/clear', {
+          method: 'POST',
+          headers: {
+            ...headers(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ guildId: gid })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          toast(json.error || 'Falha ao limpar cases.', 'bad');
+          return;
+        }
+        toast(`Foram removidos ${json.deleted || 0} cases.`, 'ok');
+        loadCasesPage(1).catch(() => null);
+      } catch (err) {
+        console.error('btnClearCases error', err);
+        toast('Erro ao limpar cases.', 'bad');
+      }
+    });
+
+    // ------------------------------
+    // Case details modal
+    // ------------------------------
+    // Case details modal
+    // ------------------------------
+    const caseModal = {
+      current: null
+    };
+
+    async function openCaseModal(caseId) {
+      const gid = selectedGuild();
+      if (!gid) return;
+
+      const id = parseInt(String(caseId), 10);
+      if (!Number.isFinite(id) || id <= 0) return;
+
+      $('caseBadge').textContent = 'Case';
+      $('caseTitle').textContent = `#${id}`;
+      $('caseBody').innerHTML = `<div class="hint">Loading…</div>`;
+      $('caseOverlay').classList.add('show');
+
+      const url = new URL('/api/case', location.origin);
+      url.searchParams.set('guildId', gid);
+      url.searchParams.set('caseId', String(id));
+
+      const res = await fetch(url.toString(), { headers: headers() });
+      if (res.status === 401) {
+        toast(t('toast_unauthorized_set_token'), 'bad');
+        closeCaseModal();
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        toast(json.error || 'Failed loading case.', 'bad');
+        closeCaseModal();
+        return;
+      }
+
+      caseModal.current = json.item;
+
+      const item = json.item || {};
+      const typeCls = caseTypeBadge(item.type);
+      const dur = item.duration ? `${Math.round(Number(item.duration)/1000)}s` : 'N/A';
+
+      $('caseBody').innerHTML = `
+        <div class="row" style="justify-content: space-between;">
+          <div class="row" style="gap: 10px;">
+            <span class="badge info">Case #${escHtml(item.caseId)}</span>
+            <span class="badge ${typeCls}">${escHtml(item.type)}</span>
+          </div>
+          <span class="badge info">${escHtml(safeDate(item.createdAt))}</span>
+        </div>
+
+        <div style="height: 10px;"></div>
+
+        <div class="card" style="background: rgba(0,0,0,0.20);">
+          <div class="hint">User</div>
+          <div class="mono">${escHtml(item.userTag || item.userId || 'N/A')} (${escHtml(item.userId || '')})</div>
+
+          <div style="height: 10px;"></div>
+
+          <div class="hint">Moderator</div>
+          <div class="mono">${escHtml(item.moderatorTag || item.moderatorId || 'N/A')} (${escHtml(item.moderatorId || '')})</div>
+
+          <div style="height: 10px;"></div>
+
+          <div class="hint">Duration</div>
+          <div class="mono">${escHtml(dur)}</div>
+
+          <div style="height: 10px;"></div>
+
+          <div class="hint">Reason</div>
+          <div class="mono">${escHtml(item.reason || '')}</div>
+        </div>
+
+        <div class="hint" style="margin-top: 10px;">
+          guildId: <span class="mono">${escHtml(item.guildId || '')}</span>
+        </div>
+      `;
+    }
+
+    function closeCaseModal() {
+      $('caseOverlay').classList.remove('show');
+    }
+
+    $('caseClose').addEventListener('click', closeCaseModal);
+    $('caseClose2').addEventListener('click', closeCaseModal);
+    $('caseOverlay').addEventListener('click', (e) => { if (e.target === $('caseOverlay')) closeCaseModal(); });
+
+    $('caseCopy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(caseModal.current || {}, null, 2));
+        toast('Case JSON copied.', 'ok');
+      } catch {
+        toast('Failed to copy.', 'bad');
+      }
+    });
+
+    // ------------------------------
+
+    // ------------------------------
+    // Tickets (Server-side pagination)
+    // ------------------------------
+    function ticketStatusBadge(status) {
+      const s = String(status || '').toUpperCase();
+      if (s === 'OPEN') return 'warn';
+      if (s === 'CLOSED') return 'ok';
+      return 'info';
+    }
+
+    function updateTicketsPagerUI() {
+      const p = state.tickets.page;
+      const lim = state.tickets.limit;
+      const total = state.tickets.total;
+      const maxPage = Math.max(Math.ceil(total / lim) || 1, 1);
+
+      const pageBadge = $('ticketsPageBadge');
+      const totalBadge = $('ticketsTotalBadge');
+      if (pageBadge) pageBadge.textContent = `Page ${p} / ${maxPage}`;
+      if (totalBadge) totalBadge.textContent = `Total: ${total}`;
+      const prevBtn = $('btnPrevTickets');
+      const nextBtn = $('btnNextTickets');
+      if (prevBtn) prevBtn.disabled = p <= 1;
+      if (nextBtn) nextBtn.disabled = p >= maxPage;
+    }
+
+    function buildTicketsUrl(page) {
+      const gid = selectedGuild();
+      const url = new URL('/api/tickets', window.location.origin);
+      url.searchParams.set('page', String(page || 1));
+      url.searchParams.set('limit', String(state.tickets.limit || 25));
+      if (gid) url.searchParams.set('guildId', gid);
+
+      const userId = ($('ticketsUserId')?.value || '').trim();
+      const statusVal = ($('ticketsStatus')?.value || '').trim().toUpperCase();
+      if (userId) url.searchParams.set('userId', userId);
+      if (statusVal === 'OPEN' || statusVal === 'CLOSED') {
+        url.searchParams.set('status', statusVal);
+      }
+      return url;
+    }
+
+    function renderTickets(items) {
+      const list = $('ticketsList');
+      if (!list) return;
+      list.innerHTML = '';
+
+      if (!items || !items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'card';
+        empty.innerHTML = `<h2>${t('tickets_empty_title') || 'Sem tickets'}</h2>
+          <div class="hint">${t('tickets_empty_hint') || 'Não há tickets para o filtro atual.'}</div>`;
+        list.appendChild(empty);
+        return;
+      }
+
+      for (const tk of items) {
+        const row = document.createElement('div');
+        row.className = 'card row';
+        row.style.alignItems = 'flex-start';
+        row.style.justifyContent = 'space-between';
+
+        const left = document.createElement('div');
+        left.style.display = 'flex';
+        left.style.flexDirection = 'column';
+        left.style.gap = '4px';
+
+        const title = document.createElement('div');
+        title.innerHTML = `
+          <span class="badge ${ticketStatusBadge(tk.status)}">${escHtml(tk.status || 'OPEN')}</span>
+          <span class="mono">#${escHtml(tk.channelId || tk._id || '')}</span>
+        `;
+
+        const meta = document.createElement('div');
+        meta.className = 'hint';
+        const userId = tk.userId || tk.createdById || 'N/A';
+        const created = tk.createdAt ? new Date(tk.createdAt).toLocaleString() : 'N/A';
+        const topic = tk.topic || '';
+        meta.innerHTML = `
+          <div>${t('tickets_user_label') || 'Utilizador'}: <span class="mono">${escHtml(userId)}</span></div>
+          <div>${t('tickets_created_label') || 'Aberto em'}: ${escHtml(created)}</div>
+          ${topic ? `<div>${t('tickets_topic_label') || 'Tópico'}: ${escHtml(topic)}</div>` : ''}
+        `;
+
+        left.appendChild(title);
+        left.appendChild(meta);
+
+        const right = document.createElement('div');
+        right.style.display = 'flex';
+        right.style.flexDirection = 'column';
+        right.style.alignItems = 'flex-end';
+        right.style.gap = '6px';
+
+        if (tk.status === 'OPEN') {
+          const btnClose = document.createElement('button');
+          btnClose.className = 'btn-secondary small';
+          btnClose.textContent = t('tickets_close_button') || 'Fechar ticket';
+          btnClose.addEventListener('click', async () => {
+            const gid = selectedGuild();
+            if (!gid) return;
+            if (!confirm(t('tickets_close_confirm') || 'Fechar este ticket?')) return;
+            try {
+              const res = await fetch(`/api/tickets/${encodeURIComponent(tk._id)}/close`, {
+                method: 'POST',
+                headers: {
+                  ...headers(),
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ guildId: gid })
+              });
+              const json = await res.json().catch(() => ({}));
+              if (!res.ok || !json.ok) {
+                toast(json.error || 'Falha ao fechar ticket.', 'bad');
+                return;
+              }
+              toast(t('tickets_close_ok') || 'Ticket fechado.', 'ok');
+              loadTicketsPage(state.tickets.page).catch(() => null);
+            } catch (err) {
+              console.error('closeTicket error', err);
+              toast('Erro ao fechar ticket.', 'bad');
+            }
+          });
+          right.appendChild(btnClose);
+        }
+
+        const statusLabel = document.createElement('div');
+        const closedAt = tk.closedAt ? new Date(tk.closedAt).toLocaleString() : null;
+        statusLabel.className = 'hint';
+        statusLabel.textContent = closedAt
+          ? (t('tickets_closed_at_label') || 'Fechado em') + ': ' + closedAt
+          : (t('tickets_open_label') || 'Ticket aberto');
+        right.appendChild(statusLabel);
+
+        row.appendChild(left);
+        row.appendChild(right);
+        list.appendChild(row);
+      }
+    }
+
+    async function loadTicketsPage(page) {
+      showLoadingCard('ticketsList');
+      const gid = selectedGuild();
+      if (!gid) {
+        state.tickets.items = [];
+        state.tickets.total = 0;
+        renderTickets([]);
+        updateTicketsPagerUI();
+        return;
+      }
+
+      const url = buildTicketsUrl(page);
+      const res = await fetch(url.toString(), { headers: headers() });
+      if (res.status === 401) {
+        toast(t('toast_unauthorized_set_token'), 'bad');
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        toast(json.error || 'Failed to load tickets.', 'bad');
+        return;
+      }
+
+      state.tickets.page = Number(json.page ?? 1) || 1;
+      state.tickets.limit = Number(json.limit ?? 25) || 25;
+      state.tickets.total = Number(json.total ?? 0) || 0;
+      state.tickets.items = Array.isArray(json.items) ? json.items : [];
+
+      renderTickets(state.tickets.items);
+      updateTicketsPagerUI();
+    }
+    window.loadTicketsPage = loadTicketsPage;
+
+    $('btnRecarregarTickets')?.addEventListener('click', () => loadTicketsPage(1).catch(() => null));
+    $('ticketsUserId')?.addEventListener('input', () => {
+      clearTimeout(window.__ticketsUserT);
+      window.__ticketsUserT = setTimeout(() => loadTicketsPage(1).catch(() => null), 250);
+    });
+    $('ticketsStatus')?.addEventListener('change', () => loadTicketsPage(1).catch(() => null));
+    $('btnPrevTickets')?.addEventListener('click', () => loadTicketsPage(Math.max(state.tickets.page - 1, 1)).catch(() => null));
+    $('btnNextTickets')?.addEventListener('click', () => loadTicketsPage(state.tickets.page + 1).catch(() => null));
+    $('btnClearTickets')?.addEventListener('click', async () => {
+      const gid = selectedGuild();
+      if (!gid) {
+        toast('Seleciona uma guild primeiro.', 'bad');
+        return;
+      }
+      if (!confirm('Tens a certeza que queres apagar TODOS os tickets deste servidor? Esta ação é permanente.')) return;
+      try {
+        const res = await fetch('/api/tickets/clear', {
+          method: 'POST',
+          headers: {
+            ...headers(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ guildId: gid })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          toast(json.error || 'Falha ao limpar tickets.', 'bad');
+          return;
+        }
+        toast(`Foram removidos ${json.deleted || 0} tickets.`, 'ok');
+        loadTicketsPage(1).catch(() => null);
+      } catch (err) {
+        console.error('btnClearTickets error', err);
+        toast('Erro ao limpar tickets.', 'bad');
+      }
+    });
+    // GameNews
+    // ------------------------------
+    function computePaused(f) {
+      if (!f.pausedUntil) return false;
+      const d = new Date(f.pausedUntil);
+      if (Number.isNaN(d.getTime())) return false;
+      return d.getTime() > Date.now();
+    }
+
+    function renderFeeds() {
+      const grid = $('feedsGrid');
+      const pausedOnly = $('feedsPausedOnly').value === '1';
+
+      const normalized = (state.feeds || []).map(f => ({
+        source: f.source || f.feedName || 'Unknown',
+        feedName: f.feedName || f.source || 'Unknown',
+        feedUrl: f.feedUrl || null,
+        channelId: f.channelId || null,
+        failCount: Number(f.failCount ?? 0),
+        pausedUntil: f.pausedUntil || null,
+        lastSentAt: f.lastSentAt || null,
+        lastHashesCount: Number(f.lastHashesCount ?? 0),
+        paused: computePaused(f),
+        updatedAt: f.updatedAt || null
+      }));
+
+      const filtered = pausedOnly ? normalized.filter(x => x.paused) : normalized;
+      filtered.sort((a,b) => (a.paused !== b.paused) ? (a.paused ? -1 : 1) : b.failCount - a.failCount);
+
+      const total = normalized.length;
+      const pausedCount = normalized.filter(x => x.paused).length;
+      $('kpiFeeds').textContent = String(total);
+      $('feedsSummary').textContent = `${t('gamenews_kpi_feeds') || 'Feeds'}: ${total} • ${t('gamenews_kpi_paused') || 'Pausados'}: ${pausedCount}`;
+      $('feedsSummary').className = `badge ${pausedCount ? 'warn' : 'ok'}`;
+
+      grid.innerHTML = '';
+      if (!filtered.length) {
+        const empty = document.createElement('div');
+        empty.className = 'card';
+        empty.innerHTML = `<h2>No feeds</h2><div class="hint">Sem dados de status.</div>`;
+        grid.appendChild(empty);
+        return;
+      }
+
+      for (const f of filtered) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const statusCls = f.paused ? 'warn' : (f.failCount > 0 ? 'bad' : 'ok');
+        const statusText = f.paused ? 'PAUSED' : (f.failCount > 0 ? 'WARN' : 'OK');
+
+        card.innerHTML = `
+          <div class="row" style="justify-content: space-between;">
+            <h2 style="margin:0;">${escHtml(f.feedName)}</h2>
+            <span class="badge ${statusCls}">${escHtml(statusText)}</span>
+          </div>
+          <div class="hint"><span class="mono">source:</span> <span class="mono">${escHtml(f.source)}</span></div>
+          ${f.feedUrl ? `<div class="hint"><span class="mono">feedUrl:</span> <span class="mono">${escHtml(f.feedUrl)}</span></div>` : ''}
+          ${f.channelId ? `<div class="hint"><span class="mono">channelId:</span> <span class="mono">${escHtml(f.channelId)}</span></div>` : ''}
+          <div class="row" style="margin-top: 10px;">
+            <span class="badge">failCount: ${escHtml(String(f.failCount))}</span>
+            <span class="badge">lastHashes: ${escHtml(String(f.lastHashesCount))}</span>
+          </div>
+          <div class="hint" style="margin-top: 10px;">lastSentAt: <b>${escHtml(safeDate(f.lastSentAt))}</b></div>
+          <div class="hint">pausedUntil: <b>${escHtml(safeDate(f.pausedUntil))}</b></div>
+        `;
+
+        grid.appendChild(card);
+      }
+    }
+
+    async function loadFeeds() {
+      const res = await fetch('/api/gamenews-status', { headers: headers() });
+      if (res.status === 401) {
+        toast(t('toast_unauthorized_set_token'), 'bad');
+        return;
+      }
+      const json = await res.json();
+      if (!json.ok) {
+        toast('Failed to load GameNews.', 'bad');
+        return;
+      }
+      state.feeds = Array.isArray(json.items) ? json.items : [];
+      renderFeeds();
+    }
+    $('btnRecarregarFeeds').addEventListener('click', loadFeeds);
+    $('feedsPausedOnly').addEventListener('change', renderFeeds);
+
+
+    
+    function renderFeedsConfig() {
+      const body = $('feedsConfigBody');
+      if (!body) return;
+      const feeds = Array.isArray(state.feedConfigs) ? state.feedConfigs : [];
+
+      if (!feeds.length) {
+        body.innerHTML = '<div class="hint">Nenhum feed configurado ainda. Usa "Adicionar feed" para criar um novo.</div>';
+        return;
+      }
+
+      body.innerHTML = '';
+      const channels = Array.isArray(state.feedChannels) ? state.feedChannels : [];
+
+      feeds.forEach((f, idx) => {
+        const row = document.createElement('div');
+        row.className = 'card';
+        row.style.marginBottom = '8px';
+
+        const intervalMinutes = f.intervalMs && Number.isFinite(Number(f.intervalMs))
+          ? Math.round(Number(f.intervalMs) / 60000)
+          : '';
+
+        row.innerHTML = `
+          <div class="row" style="gap:8px; align-items:flex-end; flex-wrap:wrap;">
+            <div style="flex:1; min-width:160px;">
+              <div class="small">Nome</div>
+              <input data-feed-idx="${idx}" data-field="name" value="${escHtml(f.name || '')}" />
+            </div>
+            <div style="flex:2; min-width:220px;">
+              <div class="small">Feed URL</div>
+              <input data-feed-idx="${idx}" data-field="feedUrl" value="${escHtml(f.feedUrl || '')}" />
+            </div>
+            <div style="flex:1; min-width:190px;">
+              <div class="small">Canal</div>
+              <select data-feed-idx="${idx}" data-field="channelId" class="mono"></select>
+              <div class="hint" style="margin-top:2px;">Escolhe o canal destino para este feed.</div>
+            </div>
+            <div style="width:130px;">
+              <div class="small">Intervalo (min)</div>
+              <input type="number" min="0" placeholder="default" data-feed-idx="${idx}" data-field="intervalMs" value="${intervalMinutes}" />
+              <div class="hint" style="margin-top:2px;">0 = usa intervalo global.</div>
+            </div>
+            <div style="min-width:80px; text-align:right;">
+              <label class="small">Ativo
+                <input type="checkbox" data-feed-idx="${idx}" data-field="enabled" ${f.enabled !== false ? 'checked' : ''} />
+              </label>
+              <button type="button" class="btn-danger" data-feed-delete="${idx}" style="margin-top:6px;">Remover</button>
+            </div>
+          </div>
+        `;
+
+        // Fill channel selector
+        const select = row.querySelector('select[data-field="channelId"]');
+        if (select) {
+          select.innerHTML = '';
+          const optNone = document.createElement('option');
+          optNone.value = '';
+          optNone.textContent = '— Seleciona canal —';
+          select.appendChild(optNone);
+
+          channels.forEach((ch) => {
+            const opt = document.createElement('option');
+            opt.value = ch.id;
+            opt.textContent = `#${ch.name}`;
+            if (String(ch.id) === String(f.channelId || '')) opt.selected = true;
+            select.appendChild(opt);
+          });
+        }
+
+        body.appendChild(row);
+      });
+
+      // Bind inputs
+      body.querySelectorAll('input[data-feed-idx], select[data-feed-idx]').forEach((el) => {
+        const idxStr = el.getAttribute('data-feed-idx');
+        const field = el.getAttribute('data-field');
+        const idx = Number(idxStr);
+        if (!Number.isFinite(idx)) return;
+        const feed = state.feedConfigs?.[idx];
+        if (!feed) return;
+
+        if (el.type === 'checkbox') {
+          el.addEventListener('change', () => {
+            feed[field] = !!el.checked;
+          });
+        } else if (el.tagName === 'SELECT') {
+          el.addEventListener('change', () => {
+            feed[field] = el.value || '';
+          });
+        } else if (field === 'intervalMs') {
+          el.addEventListener('input', () => {
+            const v = Number(el.value);
+            if (!Number.isFinite(v) || v <= 0) {
+              feed.intervalMs = null;
+            } else {
+              feed.intervalMs = v * 60000;
+            }
+          });
+        } else {
+          el.addEventListener('input', () => {
+            feed[field] = el.value;
+          });
+        }
+      });
+
+      // Bind delete buttons
+      body.querySelectorAll('button[data-feed-delete]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-feed-delete'));
+          if (!Number.isFinite(idx)) return;
+          if (!Array.isArray(state.feedConfigs)) return;
+          state.feedConfigs.splice(idx, 1);
+          renderFeedsConfig();
+        });
+      });
+    }
+
+
+    async function loadFeedsConfig() {
+      try {
+        const res = await fetch('/api/gamenews/feeds', { headers: headers() });
+        if (res.status === 401) {
+          toast(t('toast_unauthorized_set_token') || 'Sessão expirada. Faz login novamente.', 'bad');
+          return;
+        }
+        const json = await res.json();
+        if (!json.ok) {
+          toast('Falha ao carregar feeds de GameNews.', 'bad');
+          return;
+        }
+        state.feedConfigs = Array.isArray(json.items) ? json.items : [];
+        renderFeedsConfig();
+      } catch (e) {
+        console.error('[Dashboard] loadFeedsConfig error:', e);
+        toast('Erro ao carregar feeds de GameNews.', 'bad');
+      }
+    }
+
+    async function saveFeedsConfig() {
+      try {
+        const feeds = Array.isArray(state.feedConfigs) ? state.feedConfigs : [];
+        const res = await fetch('/api/gamenews/feeds', {
+          method: 'POST',
+          headers: Object.assign({}, headers(), { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ feeds })
+        });
+        if (res.status === 401) {
+          toast(t('toast_unauthorized_set_token') || 'Sessão expirada. Faz login novamente.', 'bad');
+          return;
+        }
+        const json = await res.json();
+        if (!json.ok) {
+          toast('Falha ao guardar feeds de GameNews.', 'bad');
+          return;
+        }
+        state.feedConfigs = Array.isArray(json.items) ? json.items : [];
+        renderFeedsConfig();
+        toast('Feeds de GameNews guardados.', 'ok');
+      } catch (e) {
+        console.error('[Dashboard] saveFeedsConfig error:', e);
+        toast('Erro ao guardar feeds de GameNews.', 'bad');
+      }
+    }
+    window.loadFeedsConfig = loadFeedsConfig;
+    window.saveFeedsConfig = saveFeedsConfig;
+
+    if (document.getElementById('btnAddFeed')) {
+      document.getElementById('btnAddFeed').addEventListener('click', () => {
+        if (!Array.isArray(state.feedConfigs)) state.feedConfigs = [];
+        state.feedConfigs.push({ name: 'Novo feed', feedUrl: '', channelId: '', enabled: true, intervalMs: null });
+        renderFeedsConfig();
+      });
+    }
+    if (document.getElementById('btnSaveFeeds')) {
+      document.getElementById('btnSaveFeeds').addEventListener('click', () => saveFeedsConfig().catch(() => null));
+    }
+
+    if (document.getElementById('feedsConfigBody') && typeof window.loadFeedsConfig === 'function') {
+      window.loadFeedsConfig().catch(() => null);
+    }
+
+
+    refreshHealth().catch(() => null);
+    setInterval(refreshHealth, 5000);
+    setInterval(() => {
+      if (!state.token) return;
+      if (!socket) return;
+      socket.emit('requestGameNewsStatus');
+      socket.emit('requestConfig');
+    }, 5000);
+  
+// JWT-based dashboard auth ------------------------------
+function setDashboardToken(newToken, opts = { reload: false }) {
+  const tokenStr = (newToken || '').trim();
+  if (!tokenStr) return;
+
+  state.token = tokenStr;
+  try {
+    localStorage.setItem('OZARK_DASH_JWT', state.token);
+  } catch {
+    // ignore
+  }
+
+  updateBadges();
+}
+
+async function validateToken(token) {
+  // We'll just call /api/auth/me with the given token and see if it's valid
+  const res = await fetch('/api/auth/me', {
+    headers: {
+      'Authorization': 'Bearer ' + token
+    }
+  });
+  if (res.status === 401) return false;
+  return res.ok;
+}
+
+
+async function bootAfterLogin() {
+  try {
+    await loadGuilds().catch(() => null);
+    await refreshHealth().catch(() => null);
+    await loadKpis().catch(() => null);
+    await loadTimeline({ showLoader: false }).catch(() => null);
+    if (document.getElementById('feedsConfigBody') && typeof window.loadFeedsConfig === 'function') {
+      await window.loadFeedsConfig().catch(() => null);
+    }
+    updateBadges();
+  } catch (e) {
+    console.error('[Dashboard] bootAfterLogin error:', e);
+  }
+}
+async function doLoginWithCredentials() {
+  const userInp = document.getElementById('loginUserInput');
+  const passInp = document.getElementById('loginPassInput');
+  const out = document.getElementById('loginError');
+
+  const username = (userInp?.value || '').trim();
+  const password = passInp?.value || '';
+
+  if (!username || !password) {
+    if (out) {
+      out.style.display = 'block';
+      out.textContent = t('login_error_missing') || 'Preenche utilizador e password.';
+    }
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const json = await res.json();
+    if (!json.ok || !json.token) {
+      if (out) {
+        out.style.display = 'block';
+        out.textContent = t('login_error_invalid') || 'Login inválido.';
+      }
+      return;
+    }
+
+    if (out) {
+      out.style.display = 'none';
+      out.textContent = '';
+    }
+
+    setDashboardToken(json.token, { reload: false });
+    showApp();
+    initSocket();
+    await bootAfterLogin().catch(() => null);
+  } catch (err) {
+    console.error('[Dashboard] login error', err);
+    if (out) {
+      out.style.display = 'block';
+      out.textContent = t('login_error_server') || 'Erro ao ligar ao servidor.';
+    }
+  }
+}
+
+
+async function loadDashboardUsers() {
+  const statusEl = document.getElementById('staffAccessStatus');
+  const listEl = document.getElementById('dashboardUsersList');
+  if (!listEl) return;
+
+  statusEl && (statusEl.textContent = '');
+  listEl.textContent = 'A carregar utilizadores...';
+
+  try {
+    const res = await fetch('/api/auth/users', {
+      headers: {
+        'Authorization': 'Bearer ' + (state.token || '')
+      }
+    });
+    const json = await res.json().catch(() => null);
+    if (!json || !json.ok) {
+      listEl.textContent = 'Não foi possível carregar os utilizadores (sem permissões ou erro de servidor).';
+      return;
+    }
+
+    const users = Array.isArray(json.users) ? json.users : [];
+    if (!users.length) {
+      listEl.textContent = 'Nenhum utilizador de dashboard encontrado.';
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    users.forEach((u) => {
+      const row = document.createElement('div');
+      row.className = 'userRow';
+      row.style.display = 'grid';
+      row.style.gridTemplateColumns = 'minmax(0,1.5fr) repeat(4, minmax(0,1fr))';
+      row.style.alignItems = 'center';
+      row.style.gap = '6px';
+      row.style.padding = '4px 0';
+      row.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+
+      const perms = u.permissions || {};
+
+      row.innerHTML = `
+        <div><strong>${u.username}</strong><br/><span class="small">Role: ${u.role}</span></div>
+        <label class="small"><input type="checkbox" data-perm="canViewLogs" data-user-id="${u._id}"> View logs</label>
+        <label class="small"><input type="checkbox" data-perm="canActOnCases" data-user-id="${u._id}"> Ações mod</label>
+        <label class="small"><input type="checkbox" data-perm="canManageTickets" data-user-id="${u._id}"> Tickets</label>
+        <label class="small"><input type="checkbox" data-perm="canViewConfig" data-user-id="${u._id}"> Ver config</label>
+        <button type="button" class="btn-link small" data-user-remove="${u._id}">Remover</button>
+      `;
+
+      frag.appendChild(row);
+
+      // set checkbox states
+      setTimeout(() => {
+        ['canViewLogs','canActOnCases','canManageTickets','canViewConfig'].forEach((key) => {
+          const input = row.querySelector(`input[data-perm="${key}"][data-user-id="${u._id}"]`);
+          if (input) input.checked = !!perms[key];
+        });
+      }, 0);
+    });
+
+    listEl.textContent = '';
+    listEl.appendChild(frag);
+
+    // attach change handler (delegation)
+    listEl.addEventListener('change', async (ev) => {
+      const target = ev.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      const userId = target.getAttribute('data-user-id');
+      const permKey = target.getAttribute('data-perm');
+      if (!userId || !permKey) return;
+
+      const userRowInputs = listEl.querySelectorAll(`input[data-user-id="${userId}"]`);
+      const permissions = {};
+      userRowInputs.forEach((inp) => {
+        const k = inp.getAttribute('data-perm');
+        permissions[k] = inp.checked;
+      });
+
+      try {
+        const res = await fetch('/api/auth/users/' + encodeURIComponent(userId), {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (state.token || '')
+          },
+          body: JSON.stringify({ permissions })
+        });
+        const j = await res.json().catch(() => null);
+        if (!j || !j.ok) {
+          statusEl && (statusEl.textContent = 'Erro ao atualizar permissões (sem permissões ou erro de servidor).');
+        } else {
+          statusEl && (statusEl.textContent = 'Permissões atualizadas.');
+        }
+      } catch (err) {
+        console.error('Erro ao atualizar permissões de dashboard user', err);
+        statusEl && (statusEl.textContent = 'Erro de rede ao atualizar permissões.');
+      }
+    }, { once: true });
+
+    listEl.addEventListener('click', async (ev) => {
+      const target = ev.target;
+      if (!(target instanceof HTMLButtonElement)) return;
+      const userId = target.getAttribute('data-user-remove');
+      if (!userId) return;
+
+      if (!confirm('Remover este utilizador de dashboard?')) return;
+
+      try {
+        const res = await fetch('/api/auth/users/' + encodeURIComponent(userId), {
+          method: 'DELETE',
+          headers: {
+            'Authorization': 'Bearer ' + (state.token || '')
+          }
+        });
+        const json = await res.json().catch(() => null);
+        if (!json || !json.ok) {
+          statusEl && (statusEl.textContent = 'Erro ao remover utilizador (sem permissões ou erro de servidor).');
+          return;
+        }
+        statusEl && (statusEl.textContent = 'Utilizador removido.');
+        await loadDashboardUsers();
+      } catch (err) {
+        console.error('Erro ao remover utilizador de dashboard', err);
+        statusEl && (statusEl.textContent = 'Erro de rede ao remover utilizador.');
+      }
+    }, { once: true });
+  } catch (err) {
+    console.error('Erro ao carregar utilizadores de dashboard', err);
+    listEl.textContent = 'Erro ao carregar utilizadores.';
+  }
+}
+
+async function createDashboardUser() {
+  const userInp = document.getElementById('newDashUserName');
+  const passInp = document.getElementById('newDashUserPass');
+  const roleSel = document.getElementById('newDashUserRole');
+  const canManageUsersInp = document.getElementById('newDashUserCanManageUsers');
+  const statusEl = document.getElementById('newDashUserStatus');
+
+  if (!userInp || !passInp || !roleSel) return;
+  const username = (userInp.value || '').trim();
+  const password = passInp.value || '';
+  const role = roleSel.value || 'MOD';
+
+  if (!username || !password) {
+    statusEl && (statusEl.textContent = 'Preenche utilizador e password.');
+    return;
+  }
+
+  statusEl && (statusEl.textContent = 'A criar utilizador...');
+
+  const permissions = {
+    canViewLogs: true,
+    canActOnCases: true,
+    canManageTickets: true,
+    canManageGameNews: false,
+    canViewConfig: false,
+    canEditConfig: false,
+    canManageUsers: !!(canManageUsersInp && canManageUsersInp.checked)
+  };
+
+  try {
+    const res = await fetch('/api/auth/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (state.token || '')
+      },
+      body: JSON.stringify({ username, password, role, permissions })
+    });
+    const json = await res.json().catch(() => null);
+    if (!json || !json.ok) {
+      statusEl && (statusEl.textContent = 'Erro ao criar utilizador (username pode já existir ou sem permissões).');
+      return;
+    }
+
+    statusEl && (statusEl.textContent = 'Utilizador criado com sucesso.');
+    userInp.value = '';
+    passInp.value = '';
+    if (canManageUsersInp) canManageUsersInp.checked = false;
+
+    await loadDashboardUsers();
+  } catch (err) {
+    console.error('Erro ao criar utilizador de dashboard', err);
+    statusEl && (statusEl.textContent = 'Erro de rede ao criar utilizador.');
+  }
+}
+
+(function attachLoginHandlers() {
+  const btn = document.getElementById('btnLogin');
+  if (btn) {
+    btn.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      doLoginWithCredentials();
+    });
+  }
+  const pass = document.getElementById('loginPassInput');
+  if (pass) {
+    pass.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        doLoginWithCredentials();
+      }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>
