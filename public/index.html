@@ -994,6 +994,29 @@ input:disabled + .slider {
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
+
+/* === FINAL VISIBILITY OVERRIDES (AUTO-FIX) === */
+.section { display:none; opacity:0; }
+.section.active {
+  display:block !important;
+  opacity:1 !important;
+}
+.section.active .card {
+  background: rgba(15,17,23,0.96) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: #ffffff !important;
+}
+.section.active h1,
+.section.active h2,
+.section.active h3,
+.section.active p,
+.section.active span,
+.section.active label,
+.section.active .hint,
+.section.active .badge {
+  color: #e7e9ee !important;
+}
+
 </style>
 </head>
 <body>
