@@ -20,7 +20,7 @@
       <div class="topbar-right">
         <select id="guildPicker" class="select">
           <option value="" data-i18n="select_guild">Selecione um servidor</option>
-          <!-- estes são apenas exemplos, depois trocamos pelos reais via API -->
+          <!-- Exemplo; depois isto será preenchido pela API -->
           <option value="dummy-1">Servidor de exemplo #1</option>
           <option value="dummy-2">Servidor de exemplo #2</option>
         </select>
@@ -57,7 +57,7 @@
         <div class="card">
           <h2 data-i18n="overview_title">Visão geral</h2>
           <p class="hint" data-i18n="overview_hint">
-            Resumo rápido do estado do bot, servidores e atividades recentes.
+            Resumo de alto nível sobre o estado do bot, servidores ligados e atividade recente.
           </p>
           <div class="grid-3">
             <div class="kpi">
@@ -69,7 +69,7 @@
               <div class="kpi-value">3 420</div>
             </div>
             <div class="kpi">
-              <div class="kpi-label" data-i18n="kpi_actions_24h">Ações de moderação (24h)</div>
+              <div class="kpi-label" data-i18n="kpi_actions_24h">Ações de moderação (últimas 24h)</div>
               <div class="kpi-value">27</div>
             </div>
           </div>
@@ -81,14 +81,14 @@
         <div class="card">
           <h2 data-i18n="logs_title">Hub de moderação</h2>
           <p class="hint" data-i18n="logs_hint">
-            Consulta de avisos, mutes, bans e outros eventos de moderação.
+            Consulta centralizada de avisos, mutes, bans e restantes ações de moderação.
           </p>
           <div class="row gap">
             <input
               id="logSearch"
               class="input"
               data-i18n-placeholder="logs_search_placeholder"
-              placeholder="Procurar utilizador ou moderador"
+              placeholder="Procurar por utilizador, moderador ou detalhe do log"
             >
             <select id="logType" class="select">
               <option value="" data-i18n="logs_filter_all">Todos os tipos</option>
@@ -102,7 +102,7 @@
           </div>
           <div id="logsList" class="list">
             <div class="empty" data-i18n="logs_empty">
-              Sem logs para o filtro atual.
+              Não existem registos para o filtro atual.
             </div>
           </div>
         </div>
@@ -113,11 +113,11 @@
         <div class="card">
           <h2 data-i18n="cases_title">Casos</h2>
           <p class="hint" data-i18n="cases_hint">
-            Histórico de infrações agregadas por utilizador.
+            Visão consolidada das infrações de cada utilizador ao longo do tempo.
           </p>
           <div class="list">
             <div class="empty" data-i18n="cases_empty">
-              Ainda não existem casos registados.
+              Ainda não existem casos registados para este servidor.
             </div>
           </div>
         </div>
@@ -128,11 +128,11 @@
         <div class="card">
           <h2 data-i18n="tickets_title">Tickets</h2>
           <p class="hint" data-i18n="tickets_hint">
-            Gestão de pedidos de suporte e tickets abertos nos servidores.
+            Gestão de pedidos de suporte e tickets abertos nos servidores configurados.
           </p>
           <div class="list">
             <div class="empty" data-i18n="tickets_empty">
-              Nenhum ticket encontrado.
+              Não foram encontrados tickets para o período selecionado.
             </div>
           </div>
         </div>
@@ -143,11 +143,11 @@
         <div class="card">
           <h2 data-i18n="gamenews_title">GameNews</h2>
           <p class="hint" data-i18n="gamenews_hint">
-            Estado dos feeds de notícias e últimos envios para o Discord.
+            Estado dos feeds de notícias, últimos envios e potenciais falhas na publicação.
           </p>
           <div class="list">
             <div class="empty" data-i18n="gamenews_empty">
-              Nenhum feed configurado.
+              Nenhum feed de GameNews se encontra configurado neste momento.
             </div>
           </div>
         </div>
@@ -158,7 +158,7 @@
         <div class="card">
           <h2 data-i18n="users_title">Utilizadores</h2>
           <p class="hint" data-i18n="users_hint">
-            Consulta rápida de métricas e histórico de cada utilizador.
+            Consulta rápida de métricas e histórico de casos de cada utilizador.
           </p>
           <div class="list">
             <div class="empty" data-i18n="users_empty">
@@ -173,11 +173,11 @@
         <div class="card">
           <h2 data-i18n="config_title">Configuração do servidor</h2>
           <p class="hint" data-i18n="config_hint">
-            Ajuste canais, cargos de staff e preferências de registo.
+            Defina canais, cargos de staff e preferências de registo para este servidor.
           </p>
           <div class="list">
             <div class="empty" data-i18n="config_empty">
-              Em breve: integração com a API do OzarkBot para guardar definições.
+              Em breve: integração direta com a API do OzarkBot para guardar estas definições.
             </div>
           </div>
         </div>
