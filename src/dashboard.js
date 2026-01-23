@@ -331,10 +331,21 @@ app.use('/api', rateLimit({ windowMs: 60_000, max: 100, keyPrefix: 'rl:api:' }))
 app.get('/api/guilds', requireDashboardAuth, async (req, res) => {
   try {
     if (!_client) return res.json({ ok: true, items: [] });
+    const items = _client.guilds.cache.map((g) => ({
+      id: g.id,
+      name: g.name
+    }));
+    items.sort((a, b) => a.name.localeCompare(b.name));
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error('[Dashboard] /api/guilds error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
+  }
+});
+
 // Overview metrics for dashboard
 app.get('/api/overview', requireDashboardAuth, (req, res) => {
   try {
-    // Very defensive: if client or guilds cache are not ready, return zeros instead of 500
     if (!_client || !_client.guilds || !_client.guilds.cache) {
       return res.json({ ok: true, guilds: 0, users: 0, actions24h: 0 });
     }
@@ -350,28 +361,17 @@ app.get('/api/overview', requireDashboardAuth, (req, res) => {
       }
     }
 
-    // For now, keep actions24h as 0 to avoid DB issues here.
-    const actions24h = 0;
+    const actions24h = 0; // Placeholder for now
 
     return res.json({ ok: true, guilds: guildsCount, users: usersCount, actions24h });
   } catch (err) {
     console.error('[Dashboard] /api/overview error (safe fallback):', err);
-    // Never propagate as 500 – always return a safe default so the dashboard still works
     return res.json({ ok: true, guilds: 0, users: 0, actions24h: 0 });
   }
 });
 
-    const items = _client.guilds.cache.map((g) => ({
-      id: g.id,
-      name: g.name
-    }));
-    items.sort((a, b) => a.name.localeCompare(b.name));
-    return res.json({ ok: true, items });
-  } catch (err) {
-    console.error('[Dashboard] /api/guilds error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
-});
+
+
 
 // Guild metadata for dashboard UI (channels + roles)
 app.get('/api/guilds/:guildId/meta', requireDashboardAuth, async (req, res) => {
@@ -403,6 +403,25 @@ app.get('/api/guilds/:guildId/meta', requireDashboardAuth, async (req, res) => {
 app.get('/api/guilds/:guildId/channels', requireDashboardAuth, async (req, res) => {
   try {
     if (!_client) return res.json({ ok: true, items: [] });
+
+    const guildId = sanitizeId(req.params.guildId);
+    if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+
+    const guild = _client.guilds.cache.get(guildId) || null;
+    if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
+
+    const items = guild.channels.cache
+      .filter((ch) => ch && ch.isTextBased?.() && !ch.isDMBased?.())
+      .map((ch) => ({ id: ch.id, name: ch.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error('[Dashboard] /api/guilds/:guildId/channels error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
+  }
+});
+
 // Guild members (for Users tab)
 app.get('/api/guilds/:guildId/users', requireDashboardAuth, async (req, res) => {
   try {
@@ -414,7 +433,6 @@ app.get('/api/guilds/:guildId/users', requireDashboardAuth, async (req, res) => 
     const guild = _client.guilds.cache.get(guildId);
     if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
 
-    // Best effort: ensure cache has members
     try {
       await guild.members.fetch();
     } catch (e) {
@@ -447,23 +465,7 @@ app.get('/api/guilds/:guildId/users', requireDashboardAuth, async (req, res) => 
 });
 
 
-    const guildId = sanitizeId(req.params.guildId);
-    if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
 
-    const guild = _client.guilds.cache.get(guildId) || null;
-    if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
-
-    const items = guild.channels.cache
-      .filter((ch) => ch && ch.isTextBased?.() && !ch.isDMBased?.())
-      .map((ch) => ({ id: ch.id, name: ch.name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return res.json({ ok: true, items });
-  } catch (err) {
-    console.error('[Dashboard] /api/guilds/:guildId/channels error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
-});
 
 app.get('/api/config', requireDashboardAuth, (req, res) => {
   try {
