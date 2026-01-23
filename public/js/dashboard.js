@@ -786,7 +786,7 @@ async function loadUsers() {
   // Futuro: aqui podemos ligar clique para abrir drawer com histórico/casos
 }
 
-function loadTickets(page = 1) {
+async function loadTickets(page = 1) {
   const guildPicker = document.getElementById('guildPicker');
   const listEl = document.querySelector('#tab-tickets .list');
 
