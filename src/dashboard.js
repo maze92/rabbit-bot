@@ -1957,8 +1957,6 @@ app.post('/api/tickets/:ticketId/close', requireDashboardAuth, async (req, res) 
   }
 });
 
-  }
-});
 turn res.status(500).json({ ok: false, error: 'Internal Server Error' });
   }
 });
@@ -2088,8 +2086,6 @@ app.post('/api/tickets/:ticketId/reply', requireDashboardAuth, async (req, res) 
   }
 });
 
-  }
-});
 app.get('/api/audit/config', requireDashboardAuth, async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10) || 20, 1), 100);
