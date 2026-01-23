@@ -6,10 +6,12 @@ const state = {
 // Traduções
 const I18N = {
   pt: {
+    // Topbar / layout
     app_subtitle: 'Painel de gestão e moderação',
     select_guild: 'Selecione um servidor',
     badge_bot_online: '● Bot online',
 
+    // Tabs
     tab_overview: 'Visão geral',
     tab_logs: 'Moderação',
     tab_cases: 'Casos',
@@ -18,47 +20,58 @@ const I18N = {
     tab_user: 'Utilizadores',
     tab_config: 'Configuração',
 
+    // Overview
     overview_title: 'Visão geral',
-    overview_hint: 'Resumo rápido do estado do bot, servidores e atividades recentes.',
+    overview_hint: 'Resumo de alto nível sobre o estado do bot, servidores ligados e atividade recente.',
     kpi_guilds: 'Servidores ligados',
     kpi_users: 'Utilizadores monitorizados',
-    kpi_actions_24h: 'Ações de moderação (24h)',
+    kpi_actions_24h: 'Ações de moderação (últimas 24h)',
 
+    // Logs
     logs_title: 'Hub de moderação',
-    logs_hint: 'Consulta de avisos, mutes, bans e outros eventos de moderação.',
-    logs_search_placeholder: 'Procurar utilizador ou moderador',
+    logs_hint: 'Consulta centralizada de avisos, mutes, bans e restantes ações de moderação.',
+    logs_search_placeholder: 'Procurar por utilizador, moderador ou detalhe do log',
     logs_filter_all: 'Todos os tipos',
     logs_reload: 'Recarregar',
-    logs_empty: 'Sem logs para o filtro atual.',
+    logs_empty: 'Não existem registos para o filtro atual.',
 
+    // Cases
     cases_title: 'Casos',
-    cases_hint: 'Histórico de infrações agregadas por utilizador.',
-    cases_empty: 'Ainda não existem casos registados.',
+    cases_hint: 'Visão consolidada das infrações de cada utilizador ao longo do tempo.',
+    cases_empty: 'Ainda não existem casos registados para este servidor.',
 
+    // Tickets
     tickets_title: 'Tickets',
-    tickets_hint: 'Gestão de pedidos de suporte e tickets abertos nos servidores.',
-    tickets_empty: 'Nenhum ticket encontrado.',
+    tickets_hint: 'Gestão de pedidos de suporte e tickets abertos nos servidores configurados.',
+    tickets_empty: 'Não foram encontrados tickets para o período selecionado.',
 
+    // GameNews
     gamenews_title: 'GameNews',
-    gamenews_hint: 'Estado dos feeds de notícias e últimos envios para o Discord.',
-    gamenews_empty: 'Nenhum feed configurado.',
+    gamenews_hint: 'Estado dos feeds de notícias, últimos envios e potenciais falhas na publicação.',
+    gamenews_empty: 'Nenhum feed de GameNews se encontra configurado neste momento.',
 
+    // Users
     users_title: 'Utilizadores',
-    users_hint: 'Consulta rápida de métricas e histórico de cada utilizador.',
-    users_empty: 'Selecione um servidor para ver utilizadores.',
+    users_hint: 'Consulta rápida de métricas, histórico de casos e ações aplicadas a cada utilizador.',
+    users_empty: 'Selecione um servidor para listar e analisar os respetivos utilizadores.',
 
+    // Config
     config_title: 'Configuração do servidor',
-    config_hint: 'Ajuste canais, cargos de staff e preferências de registo.',
-    config_empty: 'Em breve: integração com a API do OzarkBot para guardar definições.',
+    config_hint: 'Defina canais, cargos de staff e preferências de registo para este servidor.',
+    config_empty: 'Em breve: integração direta com a API do OzarkBot para guardar estas definições.',
 
+    // Mensagens auxiliares
     warn_select_guild: 'Selecione um servidor para aceder às restantes secções.',
     language_changed: 'Idioma alterado.',
   },
+
   en: {
-    app_subtitle: 'Moderation & management panel',
+    // Topbar / layout
+    app_subtitle: 'Moderation and management dashboard',
     select_guild: 'Select a server',
     badge_bot_online: '● Bot online',
 
+    // Tabs
     tab_overview: 'Overview',
     tab_logs: 'Moderation',
     tab_cases: 'Cases',
@@ -67,39 +80,47 @@ const I18N = {
     tab_user: 'Users',
     tab_config: 'Configuration',
 
+    // Overview
     overview_title: 'Overview',
-    overview_hint: 'Quick summary of bot status, guilds and recent activity.',
+    overview_hint: 'High-level summary of bot status, connected guilds and recent activity.',
     kpi_guilds: 'Connected guilds',
     kpi_users: 'Monitored users',
-    kpi_actions_24h: 'Moderation actions (24h)',
+    kpi_actions_24h: 'Moderation actions (last 24h)',
 
+    // Logs
     logs_title: 'Moderation hub',
-    logs_hint: 'Inspect warns, mutes, bans and other moderation events.',
-    logs_search_placeholder: 'Search by user or moderator',
+    logs_hint: 'Central place to review warns, mutes, bans and other moderation events.',
+    logs_search_placeholder: 'Search by user, moderator or log details',
     logs_filter_all: 'All types',
     logs_reload: 'Reload',
-    logs_empty: 'No logs for the current filter.',
+    logs_empty: 'There are no records matching the current filter.',
 
+    // Cases
     cases_title: 'Cases',
-    cases_hint: 'History of infractions grouped by user.',
-    cases_empty: 'No cases have been registered yet.',
+    cases_hint: 'Consolidated view of each user’s infractions over time.',
+    cases_empty: 'No cases have been registered for this server yet.',
 
+    // Tickets
     tickets_title: 'Tickets',
-    tickets_hint: 'Manage support requests and open tickets across guilds.',
-    tickets_empty: 'No tickets found.',
+    tickets_hint: 'Manage support requests and open tickets across your configured guilds.',
+    tickets_empty: 'No tickets were found for the selected period.',
 
+    // GameNews
     gamenews_title: 'GameNews',
-    gamenews_hint: 'Status of news feeds and latest posts sent to Discord.',
-    gamenews_empty: 'No feeds configured.',
+    gamenews_hint: 'Status of news feeds, recent posts and any delivery failures.',
+    gamenews_empty: 'No GameNews feeds are configured at the moment.',
 
+    // Users
     users_title: 'Users',
-    users_hint: 'Quick view of metrics and history per user.',
-    users_empty: 'Select a server to list users.',
+    users_hint: 'Quick access to metrics, case history and actions applied per user.',
+    users_empty: 'Select a server to list and analyse its users.',
 
+    // Config
     config_title: 'Server configuration',
-    config_hint: 'Adjust channels, staff roles and logging preferences.',
-    config_empty: 'Coming soon: direct integration with OzarkBot API.',
+    config_hint: 'Configure channels, staff roles and logging preferences for this server.',
+    config_empty: 'Coming soon: direct integration with the OzarkBot API to persist these settings.',
 
+    // Helper messages
     warn_select_guild: 'Select a server to access the other sections.',
     language_changed: 'Language updated.',
   },
