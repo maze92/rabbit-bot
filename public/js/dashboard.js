@@ -1,7 +1,6 @@
 // Estado simples
 const state = {
   lang: 'pt',
-  guildId: '',
 };
 
 // Traduções
@@ -151,12 +150,16 @@ function setTab(name) {
   });
 }
 
-// Bloqueio de tabs sem servidor
+// Bloqueio de tabs sem servidor (versão simples + garantida)
 function updateTabAccess() {
-  const needsGuild = ['logs', 'cases', 'tickets', 'gamenews', 'user', 'config'];
-  const hasGuild = !!state.guildId;
+  const guildPicker = document.getElementById('guildPicker');
   const warning = document.getElementById('tabWarning');
+  const needsGuild = ['logs', 'cases', 'tickets', 'gamenews', 'user', 'config'];
 
+  const currentGuild = guildPicker?.value || '';
+  const hasGuild = !!currentGuild;
+
+  // marcar/desmarcar tabs visualmente
   document.querySelectorAll('.tab').forEach((tab) => {
     const name = tab.dataset.tab;
     if (!name) return;
@@ -165,13 +168,16 @@ function updateTabAccess() {
     }
   });
 
+  // aviso
   if (!hasGuild) {
+    if (warning) warning.classList.add('visible');
+
+    // se por algum motivo estivermos numa tab que exige guild, volta para overview
     const active = document.querySelector('.tab.active');
     const activeName = active?.dataset.tab;
     if (activeName && needsGuild.includes(activeName)) {
       setTab('overview');
     }
-    if (warning) warning.classList.add('visible');
   } else {
     if (warning) warning.classList.remove('visible');
   }
@@ -184,11 +190,17 @@ function initTabs() {
   tabsEl.addEventListener('click', (e) => {
     const tabEl = e.target.closest('.tab');
     if (!tabEl) return;
+
     const name = tabEl.dataset.tab;
     if (!name) return;
 
-    if (tabEl.classList.contains('disabled')) {
-      updateTabAccess();
+    const guildPicker = document.getElementById('guildPicker');
+    const currentGuild = guildPicker?.value || '';
+    const needsGuild = ['logs', 'cases', 'tickets', 'gamenews', 'user', 'config'];
+
+    // ⚠️ BLOQUEIO: se tentar abrir tab que precisa de servidor e não há servidor → não muda
+    if (!currentGuild && needsGuild.includes(name)) {
+      updateTabAccess(); // garante que o aviso está visível e overview ativa
       return;
     }
 
@@ -210,11 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Guild picker
   const guildPicker = document.getElementById('guildPicker');
   if (guildPicker) {
-    state.guildId = guildPicker.value || '';
+    // estado inicial
     updateTabAccess();
 
-    guildPicker.addEventListener('change', (e) => {
-      state.guildId = e.target.value || '';
+    guildPicker.addEventListener('change', () => {
       updateTabAccess();
     });
   } else {
