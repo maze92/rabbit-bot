@@ -1853,6 +1853,7 @@ app.get('/api/tickets', requireDashboardAuth, async (req, res) => {
   }
 });
 
+
 app.post('/api/tickets/:ticketId/close', requireDashboardAuth, async (req, res) => {
   try {
     if (!TicketModel) {
@@ -1861,38 +1862,18 @@ app.post('/api/tickets/:ticketId/close', requireDashboardAuth, async (req, res) 
 
     const ticketId = (req.params.ticketId || '').toString().trim();
     const rawGuildId = (req.body?.guildId || '').toString().trim();
-    const channelIdBody = (req.body?.channelId || '').toString().trim();
 
-    if (!ticketId && !channelIdBody) {
-      return res.status(400).json({ ok: false, error: 'ticketId or channelId is required' });
+    if (!ticketId) {
+      return res.status(400).json({ ok: false, error: 'ticketId is required' });
     }
 
-    let ticket = null;
-    let guildId = rawGuildId;
-
-    // 1) tenta resolver por _id
-    if (ticketId) {
-      try {
-        ticket = await TicketModel.findById(ticketId);
-      } catch {
-        ticket = null;
-      }
-    }
-
-    // 2) se falhar, tenta por guildId + channelId
-    if (!ticket && rawGuildId && channelIdBody) {
-      try {
-        ticket = await TicketModel.findOne({ guildId: rawGuildId, channelId: channelIdBody });
-      } catch {
-        ticket = null;
-      }
-    }
-
+    // Resolve ticket por ID
+    const ticket = await TicketModel.findById(ticketId);
     if (!ticket) {
       return res.status(404).json({ ok: false, error: 'Ticket not found' });
     }
 
-    guildId = guildId || (ticket.guildId || '');
+    const guildId = rawGuildId || (ticket.guildId || '');
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
     }
@@ -1908,18 +1889,18 @@ app.post('/api/tickets/:ticketId/close', requireDashboardAuth, async (req, res) 
     ticket.closedById = actor;
     await ticket.save();
 
-    // Best-effort: atualizar canal no Discord (permissões + nome)
+    // Best-effort: sincronizar com o Discord
     try {
       if (_client) {
         const guild = _client.guilds.cache.get(guildId);
-        const channelId = ticket.channelId || channelIdBody;
+        const channelId = ticket.channelId;
         const userId = ticket.userId;
 
         if (guild && channelId) {
           const channel = guild.channels.cache.get(channelId);
           if (channel) {
             try {
-              // Apenas tenta editar permissões se o userId parecer um ID Discord válido
+              // Só tenta editar permissões se o userId parecer um ID de utilizador válido
               if (userId && /^[0-9]{10,20}$/.test(String(userId))) {
                 await channel.permissionOverwrites.edit(String(userId), { SendMessages: false });
               }
@@ -1957,11 +1938,6 @@ app.post('/api/tickets/:ticketId/close', requireDashboardAuth, async (req, res) 
   }
 });
 
-turn res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
-});
-
-// Clear tickets for a guild (dashboard action)
 // Clear tickets for a guild (dashboard action)
 app.post('/api/tickets/clear', requireDashboardAuth, rateLimit({ windowMs: 60_000, max: 3, keyPrefix: 'rl:tickets:clear:' }), async (req, res) => {
   try {
@@ -2000,42 +1976,21 @@ app.post('/api/tickets/:ticketId/reply', requireDashboardAuth, async (req, res) 
 
     const ticketId = (req.params.ticketId || '').toString().trim();
     const rawGuildId = (req.body?.guildId || '').toString().trim();
-    const channelIdBody = (req.body?.channelId || '').toString().trim();
     const content = sanitizeText(req.body?.content || '', { maxLen: 2000, stripHtml: true });
 
-    if (!ticketId && !channelIdBody) {
-      return res.status(400).json({ ok: false, error: 'ticketId or channelId is required' });
+    if (!ticketId) {
+      return res.status(400).json({ ok: false, error: 'ticketId is required' });
     }
     if (!content) {
       return res.status(400).json({ ok: false, error: 'content is required' });
     }
 
-    let ticket = null;
-    let guildId = rawGuildId;
-
-    // 1) tenta resolver por _id
-    if (ticketId) {
-      try {
-        ticket = await TicketModel.findById(ticketId).lean();
-      } catch {
-        ticket = null;
-      }
-    }
-
-    // 2) se falhar, tenta por guildId + channelId
-    if (!ticket && rawGuildId && channelIdBody) {
-      try {
-        ticket = await TicketModel.findOne({ guildId: rawGuildId, channelId: channelIdBody }).lean();
-      } catch {
-        ticket = null;
-      }
-    }
-
+    const ticket = await TicketModel.findById(ticketId).lean();
     if (!ticket) {
       return res.status(404).json({ ok: false, error: 'Ticket not found' });
     }
 
-    guildId = guildId || (ticket.guildId || '');
+    const guildId = rawGuildId || (ticket.guildId || '');
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
     }
@@ -2049,7 +2004,7 @@ app.post('/api/tickets/:ticketId/reply', requireDashboardAuth, async (req, res) 
       return res.status(404).json({ ok: false, error: 'Guild not found' });
     }
 
-    const channelId = ticket.channelId || channelIdBody;
+    const channelId = ticket.channelId;
     if (!channelId) {
       return res.status(404).json({ ok: false, error: 'Ticket channel not found' });
     }
@@ -2065,7 +2020,7 @@ app.post('/api/tickets/:ticketId/reply', requireDashboardAuth, async (req, res) 
     await channel.send(`${prefix} ${content}`);
 
     try {
-      await TicketModel.updateOne({ _id: ticket._id }, { $set: { lastMessageAt: new Date() } });
+      await TicketModel.updateOne({ _id: ticketId }, { $set: { lastMessageAt: new Date() } });
     } catch (e) {
       console.warn('[Dashboard] Failed to update ticket lastMessageAt:', e?.message || e);
     }
@@ -2076,7 +2031,7 @@ app.post('/api/tickets/:ticketId/reply', requireDashboardAuth, async (req, res) 
       guildId,
       targetUserId: ticket.userId,
       actor,
-      payload: { ticketId: ticket._id }
+      payload: { ticketId }
     });
 
     return res.json({ ok: true });
@@ -2085,7 +2040,6 @@ app.post('/api/tickets/:ticketId/reply', requireDashboardAuth, async (req, res) 
     return res.status(500).json({ ok: false, error: 'Internal Server Error' });
   }
 });
-
 app.get('/api/audit/config', requireDashboardAuth, async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10) || 20, 1), 100);
