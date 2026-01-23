@@ -4,6 +4,59 @@ const state = {
   guildChannelsCache: {}, // guildId -> canais
 };
 
+
+// Simple toast helper
+function toast(message) {
+  try {
+    if (!message) return;
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.style.position = 'fixed';
+      container.style.bottom = '1.5rem';
+      container.style.right = '1.5rem';
+      container.style.zIndex = '9999';
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+      container.style.gap = '0.5rem';
+      document.body.appendChild(container);
+    }
+
+    const el = document.createElement('div');
+    el.textContent = message;
+    el.style.background = 'rgba(0, 0, 0, 0.85)';
+    el.style.color = '#fff';
+    el.style.padding = '0.5rem 0.75rem';
+    el.style.borderRadius = '4px';
+    el.style.fontSize = '0.85rem';
+    el.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.35)';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(10px)';
+    el.style.transition = 'opacity 150ms ease-out, transform 150ms ease-out';
+
+    container.appendChild(el);
+
+    requestAnimationFrame(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    });
+
+    setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(10px)';
+      setTimeout(() => {
+        el.remove();
+        if (!container.children.length) {
+          container.remove();
+        }
+      }, 200);
+    }, 3000);
+  } catch (e) {
+    console.error('toast error:', e);
+  }
+}
+
 const DASH_TOKEN_KEY = 'DASHBOARD_TOKEN';
 
 // Traduções
@@ -729,7 +782,7 @@ async function loadTickets(page = 1) {
         headers['Content-Type'] = 'application/json';
 
         try {
-          const resp = await fetch(`/api/tickets/${"${encodeURIComponent(ticketId)}"}/reply`, {
+          const resp = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/reply`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ guildId, content: content.trim() })
@@ -778,7 +831,7 @@ async function loadTickets(page = 1) {
         headers['Content-Type'] = 'application/json';
 
         try {
-          const resp = await fetch(`/api/tickets/${"${encodeURIComponent(ticketId)}"}/close`, {
+          const resp = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/close`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ guildId })
