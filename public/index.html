@@ -59,7 +59,7 @@
           <p class="hint" data-i18n="overview_hint">
             Resumo de alto nível sobre o estado do bot, servidores ligados e atividade recente.
           </p>
-          <div class="grid-3">
+          <div class="kpi-row">
             <div class="kpi">
               <div class="kpi-label" data-i18n="kpi_guilds">Servidores ligados</div>
               <div class="kpi-value">12</div>
@@ -95,11 +95,15 @@
               <option value="warn">Warn</option>
               <option value="mute">Mute</option>
               <option value="unmute">Unmute</option>
-              <option value="kick">Kick</option>
-              <option value="ban">Ban</option>
+              <option value="clear">Clear</option>
+              <option value="anti-spam">Anti-Spam</option>
+              <option value="game news">Game News</option>
             </select>
-            <button class="btn" id="btnReloadLogs" data-i18n="logs_reload">Recarregar</button>
+            <button id="btnReloadLogs" class="btn" data-i18n="logs_reload">Recarregar</button>
           </div>
+        </div>
+
+        <div class="card">
           <div id="logsList" class="list">
             <div class="empty" data-i18n="logs_empty">
               Não existem registos para o filtro atual.
@@ -115,7 +119,16 @@
           <p class="hint" data-i18n="cases_hint">
             Visão consolidada das infrações de cada utilizador ao longo do tempo.
           </p>
-          <div class="list">
+          <div class="row gap">
+            <input
+              id="casesSearch"
+              class="input"
+              placeholder="Procurar por utilizador, moderador ou ID de caso"
+            >
+          </div>
+        </div>
+        <div class="card">
+          <div id="casesList" class="list">
             <div class="empty" data-i18n="cases_empty">
               Ainda não existem casos registados para este servidor.
             </div>
@@ -130,7 +143,9 @@
           <p class="hint" data-i18n="tickets_hint">
             Gestão de pedidos de suporte e tickets abertos nos servidores configurados.
           </p>
-          <div class="list">
+        </div>
+        <div class="card">
+          <div id="ticketsList" class="list">
             <div class="empty" data-i18n="tickets_empty">
               Não foram encontrados tickets para o período selecionado.
             </div>
@@ -145,7 +160,9 @@
           <p class="hint" data-i18n="gamenews_hint">
             Estado dos feeds de notícias, últimos envios e potenciais falhas na publicação.
           </p>
-          <div class="list">
+        </div>
+        <div class="card">
+          <div id="gamenewsList" class="list">
             <div class="empty" data-i18n="gamenews_empty">
               Nenhum feed de GameNews se encontra configurado neste momento.
             </div>
@@ -185,6 +202,7 @@
     </main>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script src="/js/dashboard.js" defer></script>
 </body>
 </html>
