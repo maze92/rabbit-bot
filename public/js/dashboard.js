@@ -5,6 +5,63 @@ const state = {
 
 const DASH_TOKEN_KEY = 'DASHBOARD_TOKEN';
 
+let socket = null;
+let socketConnected = false;
+
+function maybeConnectSocket(providedToken) {
+  try {
+    if (typeof io !== 'function') {
+      // Socket.IO script not loaded
+      return;
+    }
+
+    // Já existe ligação ativa
+    if (socket && socketConnected) return;
+
+    const token = providedToken || getStoredToken();
+    if (!token) return;
+
+    socket = io('/', {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('connect', () => {
+      socketConnected = true;
+      console.log('[Dashboard] Socket conectado');
+    });
+
+    socket.on('disconnect', (reason) => {
+      socketConnected = false;
+      console.log('[Dashboard] Socket desconectado:', reason);
+    });
+
+    socket.on('connect_error', (err) => {
+      socketConnected = false;
+      console.warn('[Dashboard] Erro na ligação Socket.IO:', err?.message || err);
+    });
+
+    socket.on('logs', () => {
+      // Sempre que houver novos logs no servidor,
+      // se estivermos na tab de Moderação + guild selecionada, recarregamos.
+      const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+      const guildId = document.getElementById('guildPicker')?.value || '';
+      if (activeTab === 'logs' && guildId) {
+        loadLogs().catch((e) => console.error('Erro loadLogs (socket):', e));
+      }
+    });
+
+    socket.on('gamenews_status', () => {
+      const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+      if (activeTab === 'gamenews') {
+        loadGameNewsStatus().catch((e) => console.error('Erro loadGameNewsStatus (socket):', e));
+      }
+    });
+  } catch (err) {
+    console.error('[Dashboard] maybeConnectSocket error:', err);
+  }
+}
+
 // Traduções
 const I18N = {
   pt: {
@@ -79,12 +136,10 @@ const I18N = {
 
     // Mensagens auxiliares
     warn_select_guild: 'Selecione um servidor para aceder às restantes secções.',
-    language_changed: 'Idioma alterado.',
   },
-
   en: {
     // Topbar / layout
-    app_subtitle: 'Moderation and management dashboard',
+    app_subtitle: 'Management and moderation panel',
     select_guild: 'Select a server',
     badge_bot_online: '● Bot online',
 
@@ -99,18 +154,18 @@ const I18N = {
 
     // Overview
     overview_title: 'Overview',
-    overview_hint: 'High-level summary of bot status, connected guilds and recent activity.',
-    kpi_guilds: 'Connected guilds',
+    overview_hint: 'High-level summary of bot status, connected servers and recent activity.',
+    kpi_guilds: 'Connected servers',
     kpi_users: 'Monitored users',
     kpi_actions_24h: 'Moderation actions (last 24h)',
 
     // Logs
     logs_title: 'Moderation hub',
-    logs_hint: 'Central place to review warns, mutes, bans and other moderation events.',
+    logs_hint: 'Centralized view of warnings, mutes, bans and all moderation actions.',
     logs_search_placeholder: 'Search by user, moderator or log details',
     logs_filter_all: 'All types',
     logs_reload: 'Reload',
-    logs_empty: 'There are no records matching the current filter.',
+    logs_empty: 'No entries match the current filter.',
     logs_loading: 'Loading logs…',
     logs_error_generic: 'Could not load logs.',
     logs_error_http: 'Error loading logs.',
@@ -144,93 +199,83 @@ const I18N = {
 
     // Users
     users_title: 'Users',
-    users_hint: 'Quick access to metrics, case history and actions applied per user.',
-    users_empty: 'Select a server to list and analyse its users.',
+    users_hint: 'Quick lookup of metrics and case history for each user.',
+    users_empty: 'Select a server to see users.',
 
     // Config
     config_title: 'Server configuration',
-    config_hint: 'Configure channels, staff roles and logging preferences for this server.',
-    config_empty: 'Coming soon: direct integration with the OzarkBot API to persist these settings.',
+    config_hint: 'Define channels, staff roles and logging preferences for this server.',
+    config_empty: 'Coming soon: direct integration with OzarkBot’s API to persist these settings.',
 
-    // Helper messages
+    // Misc
     warn_select_guild: 'Select a server to access the other sections.',
-    language_changed: 'Language updated.',
   },
 };
 
-// Helpers
+// Helpers de tradução
 function t(key) {
-  const lang = I18N[state.lang] ? state.lang : 'pt';
-  return I18N[lang][key] ?? I18N.pt[key] ?? key;
+  const langObj = I18N[state.lang] || I18N.pt;
+  return langObj[key] || key;
 }
 
-function applyI18n() {
-  document.documentElement.lang = state.lang;
-
+function applyTranslations() {
+  // data-i18n
   document.querySelectorAll('[data-i18n]').forEach((el) => {
-    const k = el.getAttribute('data-i18n');
-    if (!k) return;
-    el.textContent = t(k);
+    const key = el.getAttribute('data-i18n');
+    if (!key) return;
+    el.textContent = t(key);
   });
 
+  // placeholders
   document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
-    const k = el.getAttribute('data-i18n-placeholder');
-    if (!k) return;
-    el.setAttribute('placeholder', t(k));
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (!key) return;
+    const txt = t(key);
+    if ('placeholder' in el) {
+      el.placeholder = txt;
+    }
   });
-
-  const warn = document.getElementById('tabWarning');
-  if (warn) warn.textContent = t('warn_select_guild');
 }
 
-function setLang(newLang) {
-  state.lang = (newLang || 'pt').toLowerCase();
-  try {
-    localStorage.setItem('OZARK_LANG_SIMPLE', state.lang);
-  } catch {}
-
-  const lp = document.getElementById('langPicker');
-  if (lp) lp.value = state.lang;
-
-  applyI18n();
+// Pequenos helpers
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-// ==== TOKEN DASHBOARD (DASHBOARD_TOKEN) ====
+function setTab(name) {
+  const sections = document.querySelectorAll('.section');
+  const tabs = document.querySelectorAll('.tab');
+  sections.forEach((s) => s.classList.remove('active'));
+  tabs.forEach((t) => t.classList.remove('active'));
 
-// Lê token, migrando da key antiga se existir
+  const section = document.getElementById(`tab-${name}`);
+  const tab = document.querySelector(`.tab[data-tab="${name}"]`);
+  if (section) section.classList.add('active');
+  if (tab) tab.classList.add('active');
+}
+
 function getStoredToken() {
-  let jwt = null;
-
   try {
-    jwt = localStorage.getItem(DASH_TOKEN_KEY);
-    if (!jwt) {
-      const legacy = localStorage.getItem('OZARK_DASH_JWT');
-      if (legacy) {
-        jwt = legacy;
-        localStorage.setItem(DASH_TOKEN_KEY, legacy);
-        localStorage.removeItem('OZARK_DASH_JWT');
-      }
-    }
+    return localStorage.getItem(DASH_TOKEN_KEY) || '';
   } catch {
-    jwt = null;
+    return '';
   }
-
-  return jwt || null;
 }
 
-function setStoredToken(jwt) {
+function setStoredToken(token) {
   try {
-    if (!jwt) {
-      localStorage.removeItem(DASH_TOKEN_KEY);
-    } else {
-      localStorage.setItem(DASH_TOKEN_KEY, jwt);
-    }
+    localStorage.setItem(DASH_TOKEN_KEY, token);
   } catch {
     // ignore
   }
 }
 
-// Pede e guarda o token da dashboard (DASHBOARD_TOKEN)
 function ensureDashToken() {
   let jwt = getStoredToken();
   if (!jwt) {
@@ -243,45 +288,26 @@ function ensureDashToken() {
       jwt = input.trim();
       if (jwt) {
         setStoredToken(jwt);
+        // Assim que tivermos um token válido, tentamos ligar o Socket.IO
+        maybeConnectSocket(jwt);
       }
     }
+  } else {
+    // Se já tivermos token guardado, garantimos que a ligação Socket.IO está criada
+    maybeConnectSocket(jwt);
   }
   return jwt || null;
 }
 
-// Sanitização simples de texto para evitar XSS
-function escapeHtml(value) {
-  if (!value) return '';
-  return value
-    .toString()
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-// Tabs
-function setTab(name) {
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.classList.toggle('active', tab.dataset.tab === name);
-  });
-
-  document.querySelectorAll('.section').forEach((sec) => {
-    sec.classList.toggle('active', sec.id === `tab-${name}`);
-  });
-}
-
-// Bloqueio de tabs sem servidor (versão simples + garantida)
-function updateTabAccess() {
+// Bloqueio de tabs sem guild
+function updateTabsGuildLock() {
   const guildPicker = document.getElementById('guildPicker');
   const warning = document.getElementById('tabWarning');
+  const hasGuild = !!(guildPicker && guildPicker.value);
+
   const needsGuild = ['logs', 'cases', 'tickets', 'gamenews', 'user', 'config'];
 
-  const currentGuild = guildPicker?.value || '';
-  const hasGuild = !!currentGuild;
-
-  // marcar/desmarcar tabs visualmente
+  // marcar tabs como "disabled"
   document.querySelectorAll('.tab').forEach((tab) => {
     const name = tab.dataset.tab;
     if (!name) return;
@@ -316,26 +342,23 @@ async function loadLogs(page = 1) {
   if (!listEl) return;
 
   const guildId = guildPicker?.value || '';
-  const type = typeEl?.value || '';
-  const search = searchEl?.value || '';
-
   if (!guildId) {
-    listEl.innerHTML = `<div class="empty">${escapeHtml(t('warn_select_guild'))}</div>`;
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_empty'))}</div>`;
     return;
   }
 
-  // Estado de loading
   listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_loading'))}</div>`;
 
   const params = new URLSearchParams();
-  params.set('page', String(page));
-  params.set('limit', '20');
   params.set('guildId', guildId);
-  if (type) params.set('type', type);
-  if (search) params.set('search', search);
+  params.set('page', String(page));
+  params.set('limit', '50');
+
+  if (typeEl && typeEl.value) params.set('type', typeEl.value);
+  if (searchEl && searchEl.value) params.set('search', searchEl.value.trim());
 
   const headers = {};
-  const jwt = ensureDashToken();
+  const jwt = getStoredToken();
   if (jwt) {
     headers['Authorization'] = `Bearer ${jwt}`;
     headers['x-dashboard-token'] = jwt;
@@ -372,42 +395,38 @@ async function loadLogs(page = 1) {
   try {
     data = await resp.json();
   } catch (err) {
-    console.error('Erro a ler JSON de /api/logs:', err);
+    console.error('Erro a fazer parse do JSON de /api/logs:', err);
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_error_generic'))}</div>`;
     return;
   }
 
-  const items = data.items || [];
-
-  if (!items.length) {
+  if (!data || !Array.isArray(data.items) || data.items.length === 0) {
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_empty'))}</div>`;
     return;
   }
 
-  const html = items
-    .map((item) => {
-      const title = item.title || item.type || '';
-      const userTag = item.user?.tag || item.userId || '—';
-      const execTag = item.executor?.tag || item.moderatorId || '—';
-      const time = item.time || item.createdAt || '';
-      const description = item.description || item.reason || '';
+  const html = data.items
+    .map((log) => {
+      const title = log.title || 'Log';
+      const user = log.user?.tag || log.user?.id || t('logs_user_label');
+      const executor = log.executor?.tag || log.executor?.id || t('logs_executor_label');
+      const time = log.time || log.createdAt || '';
+
       return `
-        <div class="card">
-          <div class="row gap" style="justify-content: space-between; align-items:flex-start;">
-            <div>
-              <strong>${escapeHtml(title)}</strong>
-              ${
-                description
-                  ? `<div class="hint">${escapeHtml(description)}</div>`
-                  : ''
-              }
-            </div>
-            <div style="text-align:right; font-size:11px; color:var(--text-muted);">
-              <div>${escapeHtml(t('logs_user_label'))}: ${escapeHtml(userTag)}</div>
-              <div>${escapeHtml(t('logs_executor_label'))}: ${escapeHtml(execTag)}</div>
-              <div>${escapeHtml(t('logs_timestamp_label'))}: ${escapeHtml(time)}</div>
+        <div class="list-item">
+          <div class="list-item-main">
+            <strong>${escapeHtml(title)}</strong>
+            <div class="meta">
+              <span>${escapeHtml(t('logs_user_label'))}: ${escapeHtml(user)}</span>
+              <span>${escapeHtml(t('logs_executor_label'))}: ${escapeHtml(executor)}</span>
+              <span>${escapeHtml(t('logs_timestamp_label'))}: ${escapeHtml(time)}</span>
             </div>
           </div>
+          ${
+            log.description
+              ? `<div class="list-item-body">${escapeHtml(log.description)}</div>`
+              : ''
+          }
         </div>
       `;
     })
@@ -416,29 +435,32 @@ async function loadLogs(page = 1) {
   listEl.innerHTML = html;
 }
 
-// ==== CASES: ligação a /api/cases ====
+// ==== CASES: ligação à API /api/cases ====
 
 async function loadCases(page = 1) {
   const guildPicker = document.getElementById('guildPicker');
-  const listEl = document.getElementById('casesList') || document.querySelector('#tab-cases .list');
+  const listEl = document.getElementById('casesList');
+  const searchEl = document.getElementById('casesSearch');
 
   if (!listEl) return;
 
   const guildId = guildPicker?.value || '';
   if (!guildId) {
-    listEl.innerHTML = `<div class="empty">${escapeHtml(t('warn_select_guild'))}</div>`;
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_empty'))}</div>`;
     return;
   }
 
   listEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_loading'))}</div>`;
 
   const params = new URLSearchParams();
-  params.set('page', String(page));
-  params.set('limit', '20');
   params.set('guildId', guildId);
+  params.set('page', String(page));
+  params.set('limit', '25');
+
+  if (searchEl && searchEl.value) params.set('q', searchEl.value.trim());
 
   const headers = {};
-  const jwt = ensureDashToken();
+  const jwt = getStoredToken();
   if (jwt) {
     headers['Authorization'] = `Bearer ${jwt}`;
     headers['x-dashboard-token'] = jwt;
@@ -475,42 +497,40 @@ async function loadCases(page = 1) {
   try {
     data = await resp.json();
   } catch (err) {
-    console.error('Erro a ler JSON de /api/cases:', err);
+    console.error('Erro a fazer parse do JSON de /api/cases:', err);
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_error_generic'))}</div>`;
     return;
   }
 
-  const items = data.items || [];
-
-  if (!items.length) {
+  if (!data || !Array.isArray(data.items) || data.items.length === 0) {
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_empty'))}</div>`;
     return;
   }
 
-  const html = items
+  const html = data.items
     .map((c) => {
-      const user = c.userId || '—';
-      const type = c.type || '';
-      const caseId = c.caseId != null ? `#${c.caseId}` : '';
+      const id = c.caseId || c._id || '—';
+      const user = c.userTag || c.userId || '—';
+      const mod = c.moderatorTag || c.moderatorId || '—';
+      const type = c.type || '—';
       const reason = c.reason || '';
       const createdAt = c.createdAt || '';
+
       return `
-        <div class="card">
-          <div class="row gap" style="justify-content: space-between; align-items:flex-start;">
-            <div>
-              <strong>${escapeHtml(user)}</strong>
-              ${
-                reason
-                  ? `<div class="hint">${escapeHtml(reason)}</div>`
-                  : ''
-              }
-            </div>
-            <div style="text-align:right; font-size:11px; color:var(--text-muted);">
-              ${caseId ? `<div>Case: ${escapeHtml(caseId)}</div>` : ''}
-              ${type ? `<div>Tipo: ${escapeHtml(type)}</div>` : ''}
-              ${createdAt ? `<div>Criado em: ${escapeHtml(createdAt)}</div>` : ''}
+        <div class="list-item">
+          <div class="list-item-main">
+            <strong>#${escapeHtml(String(id))}</strong> — ${escapeHtml(type)}
+            <div class="meta">
+              <span>Utilizador: ${escapeHtml(user)}</span>
+              <span>Moderador: ${escapeHtml(mod)}</span>
+              <span>Data: ${escapeHtml(createdAt)}</span>
             </div>
           </div>
+          ${
+            reason
+              ? `<div class="list-item-body">${escapeHtml(reason)}</div>`
+              : ''
+          }
         </div>
       `;
     })
@@ -519,30 +539,29 @@ async function loadCases(page = 1) {
   listEl.innerHTML = html;
 }
 
-// ==== TICKETS: ligação a /api/tickets ====
+// ==== Tickets: ligação à API /api/tickets ====
 
 async function loadTickets(page = 1) {
   const guildPicker = document.getElementById('guildPicker');
-  const listEl = document.querySelector('#tab-tickets .list');
+  const listEl = document.getElementById('ticketsList');
 
   if (!listEl) return;
 
   const guildId = guildPicker?.value || '';
   if (!guildId) {
-    listEl.innerHTML = `<div class="empty">${escapeHtml(t('warn_select_guild'))}</div>`;
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('tickets_empty'))}</div>`;
     return;
   }
 
   listEl.innerHTML = `<div class="empty">${escapeHtml(t('tickets_loading'))}</div>`;
 
   const params = new URLSearchParams();
-  params.set('page', String(page));
-  params.set('limit', '20');
   params.set('guildId', guildId);
-  // Opcionalmente poderíamos passar status/userId no futuro
+  params.set('page', String(page));
+  params.set('limit', '25');
 
   const headers = {};
-  const jwt = ensureDashToken();
+  const jwt = getStoredToken();
   if (jwt) {
     headers['Authorization'] = `Bearer ${jwt}`;
     headers['x-dashboard-token'] = jwt;
@@ -579,19 +598,17 @@ async function loadTickets(page = 1) {
   try {
     data = await resp.json();
   } catch (err) {
-    console.error('Erro a ler JSON de /api/tickets:', err);
+    console.error('Erro a fazer parse do JSON de /api/tickets:', err);
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('tickets_error_generic'))}</div>`;
     return;
   }
 
-  const items = data.items || [];
-
-  if (!items.length) {
+  if (!data || !Array.isArray(data.items) || data.items.length === 0) {
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('tickets_empty'))}</div>`;
     return;
   }
 
-  const html = items
+  const html = data.items
     .map((tkt) => {
       const userId = tkt.userId || tkt.createdById || '—';
       const channelId = tkt.channelId || '—';
@@ -626,16 +643,16 @@ async function loadTickets(page = 1) {
   listEl.innerHTML = html;
 }
 
-// ==== GAMENEWS: ligação a /api/gamenews-status ====
+// ==== GameNews: ligação à API /api/gamenews-status ====
 
 async function loadGameNewsStatus() {
-  const listEl = document.querySelector('#tab-gamenews .list');
+  const listEl = document.getElementById('gamenewsList');
   if (!listEl) return;
 
   listEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_loading'))}</div>`;
 
   const headers = {};
-  const jwt = ensureDashToken();
+  const jwt = getStoredToken();
   if (jwt) {
     headers['Authorization'] = `Bearer ${jwt}`;
     headers['x-dashboard-token'] = jwt;
@@ -672,13 +689,12 @@ async function loadGameNewsStatus() {
   try {
     data = await resp.json();
   } catch (err) {
-    console.error('Erro a ler JSON de /api/gamenews-status:', err);
+    console.error('Erro a fazer parse do JSON de /api/gamenews-status:', err);
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_error_generic'))}</div>`;
     return;
   }
 
-  const items = data.items || [];
-
+  const items = Array.isArray(data.items) ? data.items : [];
   if (!items.length) {
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_empty'))}</div>`;
     return;
@@ -686,31 +702,23 @@ async function loadGameNewsStatus() {
 
   const html = items
     .map((feed) => {
-      const name = feed.feedName || feed.source || 'Feed';
+      const src = feed.source || feed.feedName || 'Feed';
       const url = feed.feedUrl || '';
       const channelId = feed.channelId || '—';
       const enabled = feed.enabled !== false;
-      const failCount = feed.failCount ?? 0;
-      const lastSentAt = feed.lastSentAt || '';
-      const lastHashesCount = feed.lastHashesCount ?? 0;
-      const pausedUntil = feed.pausedUntil || null;
+      const lastSent = feed.lastSentAt ? String(feed.lastSentAt) : '—';
+      const fails = feed.failCount ?? 0;
 
       return `
-        <div class="card">
-          <div class="row gap" style="justify-content: space-between; align-items:flex-start;">
-            <div>
-              <strong>${escapeHtml(name)}</strong>
-              <div class="hint">
-                ${url ? `Feed: ${escapeHtml(url)}<br>` : ''}
-                Canal: ${escapeHtml(channelId)}
-              </div>
-            </div>
-            <div style="text-align:right; font-size:11px; color:var(--text-muted);">
-              <div>Ativo: ${enabled ? 'Sim' : 'Não'}</div>
-              <div>Falhas: ${escapeHtml(failCount)}</div>
-              <div>Último envio: ${escapeHtml(lastSentAt || '—')}</div>
-              <div>Hashes recentes: ${escapeHtml(lastHashesCount)}</div>
-              ${pausedUntil ? `<div>Pausado até: ${escapeHtml(pausedUntil)}</div>` : ''}
+        <div class="list-item">
+          <div class="list-item-main">
+            <strong>${escapeHtml(src)}</strong>
+            <div class="meta">
+              <span>URL: ${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(url)}</a>` : '—'}</span>
+              <span>Canal: ${escapeHtml(channelId)}</span>
+              <span>Ativo: ${enabled ? 'Sim' : 'Não'}</span>
+              <span>Falhas: ${escapeHtml(String(fails))}</span>
+              <span>Último envio: ${escapeHtml(lastSent)}</span>
             </div>
           </div>
         </div>
@@ -721,110 +729,90 @@ async function loadGameNewsStatus() {
   listEl.innerHTML = html;
 }
 
-// Tabs & navegação
-function initTabs() {
-  const tabsEl = document.getElementById('tabs');
-  if (!tabsEl) return;
-
-  const needsGuild = ['logs', 'cases', 'tickets', 'gamenews', 'user', 'config'];
-  const protectedTabs = ['logs', 'cases', 'tickets', 'gamenews', 'user', 'config'];
-
-  tabsEl.addEventListener('click', (e) => {
-    const tabEl = e.target.closest('.tab');
-    if (!tabEl) return;
-
-    const name = tabEl.dataset.tab;
-    if (!name) return;
-
-    const guildPicker = document.getElementById('guildPicker');
-    const currentGuild = guildPicker?.value || '';
-
-    // 1) Bloqueio por servidor
-    if (!currentGuild && needsGuild.includes(name)) {
-      updateTabAccess();
-      return;
-    }
-
-    // 2) Bloqueio por token (auth)
-    if (protectedTabs.includes(name)) {
-      const existing = getStoredToken();
-      const jwt = existing || ensureDashToken();
-      if (!jwt) {
-        // Cancelou o prompt → não muda de tab
-        return;
-      }
-    }
-
-    // 3) Ativar tab
-    setTab(name);
-
-    // 4) Lazy load consoante a tab
-    if (name === 'logs') {
-      loadLogs().catch((err) => console.error('Erro loadLogs:', err));
-    }
-    if (name === 'cases') {
-      loadCases().catch((err) => console.error('Erro loadCases:', err));
-    }
-    if (name === 'tickets') {
-      loadTickets().catch((err) => console.error('Erro loadTickets:', err));
-    }
-    if (name === 'gamenews') {
-      loadGameNewsStatus().catch((err) => console.error('Erro loadGameNewsStatus:', err));
-    }
-  });
-}
-
-// Boot
+// Bootstrap da UI
 document.addEventListener('DOMContentLoaded', () => {
   // idioma inicial
   const saved = (localStorage.getItem('OZARK_LANG_SIMPLE') || 'pt').toLowerCase();
   state.lang = saved;
+  // Tenta logo ligar o Socket.IO com token guardado (se existir)
+  maybeConnectSocket();
   const lp = document.getElementById('langPicker');
-  if (lp) lp.value = saved;
+  if (lp) {
+    lp.value = state.lang;
+  }
+  applyTranslations();
 
-  applyI18n();
-  initTabs();
-
-  // Guild picker
   const guildPicker = document.getElementById('guildPicker');
   if (guildPicker) {
-    updateTabAccess();
-
     guildPicker.addEventListener('change', () => {
-      updateTabAccess();
-
-      const activeName = document.querySelector('.tab.active')?.dataset.tab;
-      if (activeName === 'logs') {
-        loadLogs().catch((err) => console.error('Erro loadLogs (guild change):', err));
-      }
-      if (activeName === 'cases') {
-        loadCases().catch((err) => console.error('Erro loadCases (guild change):', err));
-      }
-      if (activeName === 'tickets') {
-        loadTickets().catch((err) => console.error('Erro loadTickets (guild change):', err));
-      }
-      if (activeName === 'gamenews') {
-        loadGameNewsStatus().catch((err) => console.error('Erro loadGameNewsStatus (guild change):', err));
-      }
+      updateTabsGuildLock();
     });
-  } else {
-    updateTabAccess();
   }
+  updateTabsGuildLock();
 
-  // Listener de idioma
-  const langPicker = document.getElementById('langPicker');
-  if (langPicker) {
-    langPicker.addEventListener('change', (e) => {
-      setLang(e.target.value);
-      console.log(t('language_changed'));
+  // troca de idioma
+  if (lp) {
+    lp.addEventListener('change', () => {
+      const val = lp.value === 'en' ? 'en' : 'pt';
+      state.lang = val;
+      try {
+        localStorage.setItem('OZARK_LANG_SIMPLE', val);
+      } catch {
+        // ignore
+      }
+      applyTranslations();
     });
   }
 
-  // Botão "Recarregar" nos logs
-  const reloadBtn = document.getElementById('btnReloadLogs');
-  if (reloadBtn) {
-    reloadBtn.addEventListener('click', () => {
-      loadLogs().catch((err) => console.error('Erro loadLogs (reload):', err));
+  // Click nas tabs
+  const protectedTabs = ['logs', 'cases', 'tickets', 'gamenews', 'user', 'config'];
+
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const name = tab.dataset.tab;
+      if (!name) return;
+
+      // 1) Bloqueio por guild
+      const guildId = guildPicker?.value || '';
+      if (!guildId && protectedTabs.includes(name)) {
+        updateTabsGuildLock();
+        return;
+      }
+
+      // 2) Bloqueio por token (auth)
+      if (protectedTabs.includes(name)) {
+        const existing = getStoredToken();
+        const jwt = existing || ensureDashToken();
+        if (!jwt) {
+          // Cancelou o prompt → não muda de tab
+          return;
+        }
+      }
+
+      // 3) Ativar tab
+      setTab(name);
+
+      // 4) Lazy load consoante a tab
+      if (name === 'logs') {
+        loadLogs().catch((err) => console.error('Erro loadLogs:', err));
+      }
+      if (name === 'cases') {
+        loadCases().catch((err) => console.error('Erro loadCases:', err));
+      }
+      if (name === 'tickets') {
+        loadTickets().catch((err) => console.error('Erro loadTickets:', err));
+      }
+      if (name === 'gamenews') {
+        loadGameNewsStatus().catch((err) => console.error('Erro loadGameNewsStatus:', err));
+      }
+    });
+  });
+
+  // Botão de recarregar logs
+  const btnReloadLogs = document.getElementById('btnReloadLogs');
+  if (btnReloadLogs) {
+    btnReloadLogs.addEventListener('click', () => {
+      loadLogs().catch((err) => console.error('Erro loadLogs (btn):', err));
     });
   }
 
