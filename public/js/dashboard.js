@@ -34,6 +34,12 @@ const I18N = {
     logs_filter_all: 'Todos os tipos',
     logs_reload: 'Recarregar',
     logs_empty: 'Não existem registos para o filtro atual.',
+    logs_loading: 'A carregar logs…',
+    logs_error_generic: 'Não foi possível carregar os logs.',
+    logs_error_http: 'Erro ao carregar logs.',
+    logs_user_label: 'Utilizador',
+    logs_executor_label: 'Moderador',
+    logs_timestamp_label: 'Data',
 
     // Cases
     cases_title: 'Casos',
@@ -94,6 +100,12 @@ const I18N = {
     logs_filter_all: 'All types',
     logs_reload: 'Reload',
     logs_empty: 'There are no records matching the current filter.',
+    logs_loading: 'Loading logs…',
+    logs_error_generic: 'Could not load logs.',
+    logs_error_http: 'Error loading logs.',
+    logs_user_label: 'User',
+    logs_executor_label: 'Moderator',
+    logs_timestamp_label: 'Date',
 
     // Cases
     cases_title: 'Cases',
@@ -146,6 +158,9 @@ function applyI18n() {
     if (!k) return;
     el.setAttribute('placeholder', t(k));
   });
+
+  const warn = document.getElementById('tabWarning');
+  if (warn) warn.textContent = t('warn_select_guild');
 }
 
 function setLang(newLang) {
@@ -158,6 +173,18 @@ function setLang(newLang) {
   if (lp) lp.value = state.lang;
 
   applyI18n();
+}
+
+// Sanitização simples de texto para evitar XSS
+function escapeHtml(value) {
+  if (!value) return '';
+  return value
+    .toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Tabs
@@ -204,6 +231,105 @@ function updateTabAccess() {
   }
 }
 
+// ==== LOGS: ligação à API /api/logs ====
+
+async function loadLogs(page = 1) {
+  const guildPicker = document.getElementById('guildPicker');
+  const listEl = document.getElementById('logsList');
+  const typeEl = document.getElementById('logType');
+  const searchEl = document.getElementById('logSearch');
+
+  if (!listEl) return;
+
+  const guildId = guildPicker?.value || '';
+  const type = typeEl?.value || '';
+  const search = searchEl?.value || '';
+
+  if (!guildId) {
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('warn_select_guild'))}</div>`;
+    return;
+  }
+
+  // Estado de loading
+  listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_loading'))}</div>`;
+
+  const params = new URLSearchParams();
+  params.set('page', String(page));
+  params.set('limit', '20');
+  params.set('guildId', guildId);
+  if (type) params.set('type', type);
+  if (search) params.set('search', search);
+
+  const headers = {};
+  // Compatível com o backend antigo que usava OZARK_DASH_JWT
+  const jwt = localStorage.getItem('OZARK_DASH_JWT');
+  if (jwt) {
+    headers['Authorization'] = `Bearer ${jwt}`;
+  }
+
+  let resp;
+  try {
+    resp = await fetch(`/api/logs?${params.toString()}`, { headers });
+  } catch (err) {
+    console.error('Erro ao chamar /api/logs:', err);
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_error_generic'))}</div>`;
+    return;
+  }
+
+  if (!resp.ok) {
+    console.error('HTTP error /api/logs:', resp.status);
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_error_http'))} (${resp.status})</div>`;
+    return;
+  }
+
+  let data;
+  try {
+    data = await resp.json();
+  } catch (err) {
+    console.error('Erro a ler JSON de /api/logs:', err);
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_error_generic'))}</div>`;
+    return;
+  }
+
+  const items = data.items || [];
+
+  if (!items.length) {
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_empty'))}</div>`;
+    return;
+  }
+
+  const html = items
+    .map((item) => {
+      const title = item.title || '';
+      const userTag = item.user?.tag || item.user?.id || '—';
+      const execTag = item.executor?.tag || item.executor?.id || '—';
+      const time = item.time || item.createdAt || '';
+      const description = item.description || '';
+      return `
+        <div class="card">
+          <div class="row gap" style="justify-content: space-between; align-items:flex-start;">
+            <div>
+              <strong>${escapeHtml(title)}</strong>
+              ${
+                description
+                  ? `<div class="hint">${escapeHtml(description)}</div>`
+                  : ''
+              }
+            </div>
+            <div style="text-align:right; font-size:11px; color:var(--text-muted);">
+              <div>${escapeHtml(t('logs_user_label'))}: ${escapeHtml(userTag)}</div>
+              <div>${escapeHtml(t('logs_executor_label'))}: ${escapeHtml(execTag)}</div>
+              <div>${escapeHtml(t('logs_timestamp_label'))}: ${escapeHtml(time)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+
+  listEl.innerHTML = html;
+}
+
 function initTabs() {
   const tabsEl = document.getElementById('tabs');
   if (!tabsEl) return;
@@ -226,6 +352,11 @@ function initTabs() {
     }
 
     setTab(name);
+
+    // Lazy load de logs quando se entra na tab
+    if (name === 'logs') {
+      loadLogs().catch((err) => console.error('Erro loadLogs:', err));
+    }
   });
 }
 
@@ -243,11 +374,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Guild picker
   const guildPicker = document.getElementById('guildPicker');
   if (guildPicker) {
-    // estado inicial
     updateTabAccess();
 
     guildPicker.addEventListener('change', () => {
       updateTabAccess();
+
+      // se estivermos na tab de logs quando mudas de servidor, recarrega logs
+      const activeName = document.querySelector('.tab.active')?.dataset.tab;
+      if (activeName === 'logs') {
+        loadLogs().catch((err) => console.error('Erro loadLogs (guild change):', err));
+      }
     });
   } else {
     updateTabAccess();
@@ -259,6 +395,25 @@ document.addEventListener('DOMContentLoaded', () => {
     langPicker.addEventListener('change', (e) => {
       setLang(e.target.value);
       console.log(t('language_changed'));
+    });
+  }
+
+  // Botão "Recarregar" nos logs
+  const reloadBtn = document.getElementById('btnReloadLogs');
+  if (reloadBtn) {
+    reloadBtn.addEventListener('click', () => {
+      loadLogs().catch((err) => console.error('Erro loadLogs (reload):', err));
+    });
+  }
+
+  // Enter no campo de pesquisa dispara reload
+  const searchEl = document.getElementById('logSearch');
+  if (searchEl) {
+    searchEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        loadLogs().catch((err) => console.error('Erro loadLogs (enter search):', err));
+      }
     });
   }
 });
