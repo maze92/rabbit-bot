@@ -2263,10 +2263,6 @@ function setTab(name) {
       if (!tabEl) return;
 
       const name = tabEl.dataset.tab;
-      if (!state.guildId && name !== 'overview') {
-        toast((window.__i18nT || t)('select_guild_top'), 'bad');
-        return;
-      }
 
       setTab(name);
 
