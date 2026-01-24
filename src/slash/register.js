@@ -20,10 +20,20 @@ module.exports = async function registerSlashCommands(client) {
     const commands = buildSlashCommands(config.prefix || '!');
 
     const guildId = slashCfg.guildId || process.env.GUILD_ID;
+
+    // First: clear any old global commands to avoid duplicates in Discord's UI.
+    try {
+      await rest.put(Routes.applicationCommands(clientId), { body: [] });
+      console.log('[slash/register] Cleared existing global slash commands.');
+    } catch (clearErr) {
+      console.warn('[slash/register] Failed to clear global commands (can be ignored if none exist):', clearErr);
+    }
+
     if (guildId) {
       await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
       console.log(`[slash/register] Registered ${commands.length} guild slash commands in guild ${guildId}.`);
     } else {
+      // If no guildId is configured, fall back to global registration.
       await rest.put(Routes.applicationCommands(clientId), { body: commands });
       console.log(`[slash/register] Registered ${commands.length} global slash commands.`);
     }

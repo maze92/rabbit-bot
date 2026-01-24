@@ -287,18 +287,20 @@
     document.querySelectorAll('.section').forEach(function (sec) {
       sec.classList.remove('active');
     });
-    document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
+    document.querySelectorAll('.topnav button[data-tab]').forEach(function (btn) {
       btn.classList.remove('active');
     });
 
     const section = document.getElementById('tab-' + name);
-    const button = document.querySelector('.tabs button[data-tab="' + name + '"]');
+    const button = document.querySelector('.topnav button[data-tab="' + name + '"]');
     if (section) section.classList.add('active');
     if (button) button.classList.add('active');
 
     updateTabAccess();
     if (name === 'overview') {
       loadOverview().catch(function () {});
+    } else if (name === 'cases') {
+      loadCases().catch(function () {});
     } else if (name === 'gamenews') {
       loadGameNews().catch(function () {});
     } else if (name === 'tickets') {
@@ -319,7 +321,7 @@
 
     const tabsRequiringGuild = ['logs', 'cases', 'tickets', 'gamenews', 'user', 'config'];
     tabsRequiringGuild.forEach(function (name) {
-      const btn = document.querySelector('.tabs button[data-tab="' + name + '"]');
+      const btn = document.querySelector('.topnav button[data-tab="' + name + '"]');
       if (!btn) return;
       btn.disabled = !hasGuild;
     });
@@ -376,7 +378,7 @@
       items.forEach(function (g) {
         const opt = document.createElement('option');
         opt.value = g.id;
-        opt.textContent = g.name + ' (' + g.id + ')';
+        opt.textContent = g.name;
         select.appendChild(opt);
       });
 
@@ -616,7 +618,74 @@
     }
   }
 
+  
   // -----------------------------
+  // Cases (infractions history)
+  // -----------------------------
+
+  async function loadCases() {
+    const section = document.getElementById('tab-cases');
+    if (!section) return;
+
+    const listEl = section.querySelector('.list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+
+    if (!state.guildId) {
+      const div = document.createElement('div');
+      div.className = 'empty';
+      div.textContent = t('cases_empty');
+      listEl.appendChild(div);
+      return;
+    }
+
+    const loading = document.createElement('div');
+    loading.className = 'empty';
+    loading.textContent = '...';
+    listEl.appendChild(loading);
+
+    try {
+      const res = await apiGet('/cases?guildId=' + encodeURIComponent(state.guildId) + '&limit=25&page=1');
+      const items = (res && res.items) || [];
+      listEl.innerHTML = '';
+
+      if (!items.length) {
+        const div = document.createElement('div');
+        div.className = 'empty';
+        div.textContent = t('cases_empty');
+        listEl.appendChild(div);
+        return;
+      }
+
+      items.forEach(function (c) {
+        const row = document.createElement('div');
+        row.className = 'list-item';
+
+        const title = (c.type || 'CASE') + ' • ' + (c.userId || '—');
+        const subtitleParts = [];
+
+        if (c.caseId) subtitleParts.push('#' + c.caseId);
+        if (c.reason) subtitleParts.push(c.reason);
+        if (c.createdAt) subtitleParts.push(new Date(c.createdAt).toLocaleString());
+
+        row.innerHTML =
+          '<div class="title">' + escapeHtml(title) + '</div>' +
+          '<div class="subtitle">' + escapeHtml(subtitleParts.join(' • ')) + '</div>';
+
+        listEl.appendChild(row);
+      });
+    } catch (err) {
+      console.error('Failed to load cases', err);
+      listEl.innerHTML = '';
+      const div = document.createElement('div');
+      div.className = 'empty';
+      div.textContent = 'Erro ao carregar casos / error loading cases.';
+      listEl.appendChild(div);
+    }
+  }
+
+// -----------------------------
   // Tickets
   // -----------------------------
 
@@ -868,7 +937,7 @@
     }
 
     // Tabs
-    document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
+    document.querySelectorAll('.topnav button[data-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var tab = btn.getAttribute('data-tab');
         if (!tab) return;
