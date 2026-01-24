@@ -56,21 +56,21 @@ module.exports = async (client, interaction) => {
       console.warn('[slash/ticketclose] Failed to update overwrites on close:', err?.message || err);
     }
 
-    // Renomear canal para o formato canónico closed-ticket-<username/id>
+    // Renomear canal para o formato canónico closed-ticket-<algo>
     try {
-      let baseName =
-        ticket.username ||
-        ticket.userTag ||
-        ticket.userId ||
-        '';
+      const current = channel.name || '';
+      let baseName = current
+        .replace(/^closed-ticket-/i, '')
+        .replace(/^ticket-/i, '')
+        .replace(/^closed-/i, '')
+        .trim();
 
-      if (!baseName || !String(baseName).trim()) {
-        // fallback: limpar o nome atual do canal
-        const current = channel.name || '';
-        baseName = current
-          .replace(/^closed-ticket-/i, '')
-          .replace(/^ticket-/i, '')
-          .replace(/^closed-/i, '') || 'ticket';
+      if (!baseName) {
+        baseName =
+          ticket.username ||
+          ticket.userTag ||
+          ticket.userId ||
+          'ticket';
       }
 
       baseName = String(baseName).replace(/\s+/g, '-');

@@ -2052,7 +2052,7 @@ app.post('/api/tickets/:ticketId/reopen', requireDashboardAuth, async (req, res)
               try {
                 await channel.permissionOverwrites.edit(userIdStr, { SendMessages: true });
               } catch (err) {
-                console.warn('[Dashboard] Failed to update ticket channel overwrites (reopen):', err?.message || err);
+                // Ignoramos erros ao atualizar permissões do ticket em reopen (não crítico)
               }
             }
 
