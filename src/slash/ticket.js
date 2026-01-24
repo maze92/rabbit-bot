@@ -4,6 +4,7 @@ const { ChannelType, PermissionFlagsBits, MessageFlags } = require('discord.js')
 const config = require('../config/defaultConfig');
 const { t } = require('../systems/i18n');
 const Ticket = require('../database/models/Ticket');
+const { canUseTicketOrHelp } = require('./utils');
 
 module.exports = async function ticketSlash(client, interaction) {
   try {
@@ -17,55 +18,37 @@ module.exports = async function ticketSlash(client, interaction) {
       });
     }
 
+    // Permissões específicas para /ticket (cargo base + acima, ou staff)
+    if (!canUseTicketOrHelp(member)) {
+      return interaction.reply({
+        content: t('common.noPermission') || 'Não tens permissão para criar tickets.',
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
     const ticketsCfg = config.tickets || {};
     if (ticketsCfg.enabled === false) {
       return interaction.reply({
-        content: t('tickets.disabled') || 'Ticket system is disabled.',
+        content: t('tickets.disabled') || 'O sistema de tickets está desativado.',
         flags: MessageFlags.Ephemeral
       });
     }
 
-    const topic = interaction.options.getString('topic') || 'Sem tópico especificado';
+    const topicRaw = interaction.options.getString('topic');
+    const topic = topicRaw && topicRaw.trim().length
+      ? topicRaw.trim()
+      : (t('tickets.noTopic') || 'Sem tópico especificado');
 
-    const { canUseTicketOrHelp } = require('./utils');
-
-    if (!canUseTicketOrHelp(member)) {
-      return interaction.reply({
-        content: t('common.noPermission') || 'Não tens permissão para abrir tickets.',
-        flags: MessageFlags.Ephemeral
-      });
-    }
-
-    // Check if this user already has an open ticket in this guild
-    try {
-      const existing = await Ticket.findOne({
-        guildId: guild.id,
-        userId: interaction.user.id,
-        status: 'OPEN'
-      }).lean();
-
-      if (existing) {
-        const ch = guild.channels.cache.get(existing.channelId);
-        if (ch) {
-          return interaction.reply({
-            content: `❗ Já tens um ticket aberto em ${ch}. Usa esse canal ou pede a um staff para o fechar.`,
-            flags: MessageFlags.Ephemeral
-          });
-        }
-      }
-    } catch (err) {
-      console.warn('[slash/ticket] Failed to query existing ticket:', err?.message || err);
-    }
-
-    // Discord channel name constraints are strict; keep it safe + short.
-    const baseName = `ticket-${(interaction.user.username || interaction.user.id)
+    // Nome do canal: ticket-nome
+    const safeUsername = (interaction.user.username || 'user')
       .toLowerCase()
-      .replace(/[^a-z0-9]+/gi, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 20) || interaction.user.id}`;
+      .replace(/[^a-z0-9_-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    const baseName = safeUsername ? `ticket-${safeUsername}` : 'ticket';
+    const channelName = baseName.slice(0, 80);
 
-    const channelName = baseName || 'ticket';
-
+    // Permissões do canal
     const overwrites = [
       {
         id: guild.roles.everyone.id,
@@ -83,8 +66,12 @@ module.exports = async function ticketSlash(client, interaction) {
       }
     ];
 
-    // Allow configured staff roles
-    for (const roleId of // staffRoleIds (removed)) {
+    // Roles de staff configuradas (para ver/gerir tickets)
+    const staffRoleIds = Array.isArray(ticketsCfg.staffRoleIds) && ticketsCfg.staffRoleIds.length
+      ? ticketsCfg.staffRoleIds
+      : (Array.isArray(config.staffRoles) ? config.staffRoles : []);
+
+    for (const roleId of staffRoleIds) {
       overwrites.push({
         id: roleId,
         allow: [
@@ -98,7 +85,7 @@ module.exports = async function ticketSlash(client, interaction) {
       });
     }
 
-    // Ensure the bot can access/manage the channel
+    // Garantir que o bot tem acesso total ao canal de ticket
     const botMember = guild.members.me || guild.members.cache.get(client.user.id);
     if (botMember) {
       overwrites.push({
@@ -113,10 +100,13 @@ module.exports = async function ticketSlash(client, interaction) {
       });
     }
 
+    // Categoria (opcional) onde os tickets serão criados
     let parent = null;
     if (ticketsCfg.categoryId) {
-      parent = guild.channels.cache.get(ticketsCfg.categoryId) || null;
-      if (!parent || parent.type !== ChannelType.GuildCategory) parent = null;
+      const cat = guild.channels.cache.get(ticketsCfg.categoryId);
+      if (cat && cat.type === ChannelType.GuildCategory) {
+        parent = cat;
+      }
     }
 
     const channel = await guild.channels.create({
@@ -126,13 +116,14 @@ module.exports = async function ticketSlash(client, interaction) {
       permissionOverwrites: overwrites
     });
 
-    // Persist the ticket so it appears in the dashboard and can be closed later
+    // Guardar o ticket em Mongo para aparecer na dashboard
     try {
       await Ticket.create({
         guildId: guild.id,
         channelId: channel.id,
         userId: interaction.user.id,
         createdById: interaction.user.id,
+        status: 'OPEN',
         topic
       });
     } catch (err) {
@@ -143,21 +134,21 @@ module.exports = async function ticketSlash(client, interaction) {
       `👋 Olá ${interaction.user}, obrigado pelo contacto!`,
       '',
       `📌 **Tópico:** ${topic}`,
-      ' ',
+      '',
       'Um membro da equipa irá responder assim que possível.'
     ];
 
-    if (// staffRoleIds (removed).length) {
-      introLines.push('', // staffRoleIds (removed).map((id) => `<@&${id}>`).join(' '));
+    if (staffRoleIds.length) {
+      introLines.push('', staffRoleIds.map((id) => `<@&${id}>`).join(' '));
     }
 
     await channel.send({
       content: introLines.join('\n'),
-      allowedMentions: { users: [interaction.user.id], roles: // staffRoleIds (removed) }
+      allowedMentions: { users: [interaction.user.id], roles: staffRoleIds }
     });
 
     return interaction.reply({
-      content: `Ticket criado: ${channel}`,
+      content: t('tickets.created', { channel: String(channel) }) || `Ticket criado: ${channel}`,
       flags: MessageFlags.Ephemeral
     });
   } catch (err) {
