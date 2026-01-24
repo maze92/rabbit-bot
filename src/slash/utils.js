@@ -1,7 +1,9 @@
 // src/slash/utils.js
 
-// Kept for backwards compatibility within slash commands.
-// Prefer importing from src/utils/staff.js in new code.
-const { isStaff } = require('../utils/staff');
+const { isStaff, canUseTicketOrHelp, isHighStaff } = require('../utils/staff');
 
-module.exports = { isStaff };
+module.exports = {
+  isStaff,
+  canUseTicketOrHelp,
+  isHighStaff
+};

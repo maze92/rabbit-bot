@@ -1922,19 +1922,38 @@ app.post('/api/tickets/:ticketId/close', requireDashboardAuth, async (req, res) 
               }
             }
 
+            // Renomeia de forma canónica: closed-ticket-username
             try {
-              if (!channel.name.startsWith('closed-')) {
-                const base = channel.name || 'ticket';
-                const newName = ('closed-' + base).slice(0, 90);
+              const current = channel.name || 'ticket';
+              let baseName = current;
+
+              if (baseName.startsWith('closed-ticket-')) {
+                baseName = baseName.slice('closed-ticket-'.length);
+              } else if (baseName.startsWith('ticket-')) {
+                baseName = baseName.slice('ticket-'.length);
+              } else if (baseName.startsWith('closed-')) {
+                baseName = baseName.slice('closed-'.length);
+              }
+
+              baseName = baseName.replace(/[^a-z0-9-]/gi, '') || 'ticket';
+
+              const newName = `closed-ticket-${baseName}`.slice(0, 90);
+              if (newName !== current) {
                 await channel.setName(newName);
               }
             } catch (err) {
               console.warn('[Dashboard] Failed to rename ticket channel:', err?.message || err);
             }
+
+            // Mensagem de fecho no próprio canal
+            try {
+              await channel.send('✅ Ticket fechado. Obrigado por entrares em contacto!');
+            } catch (err) {
+              console.warn('[Dashboard] Failed to send ticket close message:', err?.message || err);
+            }
           }
         }
-      }
-    } catch (err) {
+      }    } catch (err) {
       console.warn('[Dashboard] Failed to sync ticket close to Discord (non-fatal):', err?.message || err);
     }
 

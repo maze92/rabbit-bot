@@ -27,18 +27,11 @@ module.exports = async function ticketSlash(client, interaction) {
 
     const topic = interaction.options.getString('topic') || 'Sem tópico especificado';
 
-    // Resolve staff roles (from tickets config or global staffRoles)
-    let staffRoleIds = Array.isArray(ticketsCfg.staffRoleIds) && ticketsCfg.staffRoleIds.length
-      ? ticketsCfg.staffRoleIds
-      : (Array.isArray(config.staffRoles) ? config.staffRoles : []);
+    const { canUseTicketOrHelp } = require('./utils');
 
-    staffRoleIds = staffRoleIds.map((id) => String(id));
-
-    const hasStaffRole = member.roles.cache.some((r) => staffRoleIds.includes(r.id));
-
-    if (!hasStaffRole) {
+    if (!canUseTicketOrHelp(member)) {
       return interaction.reply({
-        content: t('common.noPermission') || 'You do not have permission to create tickets.',
+        content: t('common.noPermission') || 'Não tens permissão para abrir tickets.',
         flags: MessageFlags.Ephemeral
       });
     }

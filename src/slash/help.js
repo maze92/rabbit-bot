@@ -5,6 +5,24 @@ const { t } = require('../systems/i18n');
 
 module.exports = async function helpSlash(_client, interaction) {
   try {
+    const guild = interaction.guild;
+    const member = interaction.member;
+
+    if (!guild || !member) {
+      return interaction.reply({
+        content: t('common.guildOnly') || 'This command can only be used in a server.',
+        flags: 64
+      });
+    }
+
+    const { canUseTicketOrHelp } = require('./utils');
+    if (!canUseTicketOrHelp(member)) {
+      return interaction.reply({
+        content: t('common.noPermission') || 'Não tens permissão para usar este comando.',
+        flags: 64
+      });
+    }
+
     const prefix = config.prefix || '!';
     const lines = [];
 
