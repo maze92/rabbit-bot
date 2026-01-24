@@ -2175,7 +2175,12 @@ app.post('/api/tickets/:ticketId/reply', requireDashboardAuth, async (req, res) 
     await channel.send(`${prefix} ${content}`);
 
     try {
-      await TicketModel.updateOne({ _id: ticketId }, { $set: { lastMessageAt: new Date() } });
+      await TicketModel.updateOne({ _id: ticketId }, { $set: {
+        lastMessageAt: new Date(),
+        lastResponderId: actor,
+        lastResponderName: actor,
+        lastResponderAt: new Date()
+      } });
     } catch (e) {
       console.warn('[Dashboard] Failed to update ticket lastMessageAt:', e?.message || e);
     }

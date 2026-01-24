@@ -27,6 +27,11 @@ const ticketSchema = new Schema(
       maxlength: 200
     },
 
+    // Última resposta (ex: staff via dashboard)
+    lastResponderId: { type: String, default: null },
+    lastResponderName: { type: String, default: null },
+    lastResponderAt: { type: Date, default: null },
+
     closedAt: { type: Date, default: null }
   },
   {

@@ -731,14 +731,35 @@
       const created = tkt.createdAt ? new Date(tkt.createdAt).toLocaleString() : '—';
       const status = tkt.status || 'OPEN';
 
-      let actionsHtml = '';
-      actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-reply">Responder</button>';
-
+      // Se tivermos informação da última resposta, usamos para um rótulo mais amigável
+      let statusLabel = status;
       if (status === 'CLOSED') {
+        statusLabel = t('tickets_status_closed') || 'CLOSED';
+      } else if (tkt.lastResponderName) {
+        statusLabel = t('tickets_status_answered') || 'Respondido';
+      } else {
+        statusLabel = t('tickets_status_open') || 'OPEN';
+      }
+
+      let actionsHtml = '';
+
+      if (status !== 'CLOSED') {
+        actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-reply">Responder</button>';
+        actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-close">Fechar</button>';
+      } else {
         actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-reopen">Reabrir</button>';
         actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-delete">Apagar</button>';
-      } else {
-        actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-close">Fechar</button>';
+      }
+
+      // Texto da última resposta, se existir
+      let lastResponderHtml = '';
+      if (tkt.lastResponderName) {
+        lastResponderHtml =
+          '<div class="subtitle small">' +
+          escapeHtml(t('tickets_last_reply') || 'Última resposta:') +
+          ' ' +
+          escapeHtml(tkt.lastResponderName) +
+          '</div>';
       }
 
       row.innerHTML =
@@ -750,10 +771,11 @@
         '<div class="subtitle">' +
         escapeHtml(tkt.userTag || tkt.userId || '') +
         ' • ' +
-        escapeHtml(status) +
+        escapeHtml(statusLabel) +
         ' • ' +
         escapeHtml(created) +
         '</div>' +
+        lastResponderHtml +
         '<div class="actions" style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">' +
         actionsHtml +
         '</div>';
@@ -1096,6 +1118,8 @@
           closeTicket(ticketId).catch(function () {});
         } else if (target.classList.contains('btn-ticket-delete')) {
           deleteTicket(ticketId).catch(function () {});
+        } else if (target.classList.contains('btn-ticket-reopen')) {
+          reopenTicket(ticketId).catch(function () {});
         }
       });
 
