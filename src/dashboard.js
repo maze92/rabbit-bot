@@ -2065,20 +2065,16 @@ app.post('/api/tickets/:ticketId/reopen', requireDashboardAuth, async (req, res)
             try {
               if (channel.name.startsWith('closed-')) {
                 let baseName = channel.name.slice('closed-'.length) || 'ticket';
-                const ticketPrefix = 'ticket-';
 
-                // Normalizar: garantir que só existe um prefixo "ticket-"
-                let lower = baseName.toLowerCase();
-                while (lower.startsWith(ticketPrefix + ticketPrefix)) {
-                  baseName = baseName.slice(ticketPrefix.length);
-                  lower = baseName.toLowerCase();
+                // Remover prefixes antigos (closed-ticket-, ticket- repetido, etc.)
+                baseName = baseName.replace(/^closed-ticket-/i, '');
+                baseName = baseName.replace(/^ticket-/i, '');
+
+                if (!baseName || !baseName.trim()) {
+                  baseName = ticket.username || ticket.userTag || ticket.userId || 'ticket';
                 }
 
-                if (!lower.startsWith(ticketPrefix)) {
-                  baseName = ticketPrefix + baseName;
-                }
-
-                const newName = baseName.slice(0, 90);
+                const newName = `ticket-${baseName}`.slice(0, 90);
                 await channel.setName(newName);
               }
             } catch (err) {
