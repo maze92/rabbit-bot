@@ -60,39 +60,39 @@ function toast(message) {
 
 const DASH_TOKEN_KEY = 'DASHBOARD_TOKEN';
 
-// Traduções
+// Traducoes
 const I18N = {
   pt: {
     // Topbar / layout
-    app_subtitle: 'Painel de gestão e moderação',
+    app_subtitle: 'Painel de gestao e moderacao',
     select_guild: 'Selecione um servidor',
-    badge_bot_online: '● Bot online',
+    badge_bot_online: '* Bot online',
 
     // Tabs
-    tab_overview: 'Visão geral',
-    tab_logs: 'Moderação',
+    tab_overview: 'Visao geral',
+    tab_logs: 'Moderacao',
     tab_cases: 'Casos',
     tab_tickets: 'Tickets',
     tab_gamenews: 'GameNews',
     tab_user: 'Utilizadores',
-    tab_config: 'Configuração',
+    tab_config: 'Configuracao',
 
     // Overview
-    overview_title: 'Visão geral',
-    overview_hint: 'Resumo de alto nível sobre o estado do bot, servidores ligados e atividade recente.',
+    overview_title: 'Visao geral',
+    overview_hint: 'Resumo de alto nivel sobre o estado do bot, servidores ligados e atividade recente.',
     kpi_guilds: 'Servidores ligados',
     kpi_users: 'Utilizadores monitorizados',
-    kpi_actions_24h: 'Ações de moderação (últimas 24h)',
+    kpi_actions_24h: 'Acoes de moderacao (ultimas 24h)',
 
     // Logs
-    logs_title: 'Hub de moderação',
-    logs_hint: 'Consulta centralizada de avisos, mutes, bans e restantes ações de moderação.',
+    logs_title: 'Hub de moderacao',
+    logs_hint: 'Consulta centralizada de avisos, mutes, bans e restantes acoes de moderacao.',
     logs_search_placeholder: 'Procurar por utilizador, moderador ou detalhe do log',
     logs_filter_all: 'Todos os tipos',
     logs_reload: 'Recarregar',
-    logs_empty: 'Não existem registos para o filtro atual.',
-    logs_loading: 'A carregar logs…',
-    logs_error_generic: 'Não foi possível carregar os logs.',
+    logs_empty: 'Nao existem registos para o filtro atual.',
+    logs_loading: 'A carregar logs...',
+    logs_error_generic: 'Nao foi possivel carregar os logs.',
     logs_error_http: 'Erro ao carregar logs.',
     logs_user_label: 'Utilizador',
     logs_executor_label: 'Moderador',
@@ -100,49 +100,49 @@ const I18N = {
 
     // Cases
     cases_title: 'Casos',
-    cases_hint: 'Visão consolidada das infrações de cada utilizador ao longo do tempo.',
-    cases_empty: 'Ainda não existem casos registados para este servidor.',
-    cases_loading: 'A carregar casos…',
-    cases_error_generic: 'Não foi possível carregar os casos.',
+    cases_hint: 'Visao consolidada das infracoes de cada utilizador ao longo do tempo.',
+    cases_empty: 'Ainda nao existem casos registados para este servidor.',
+    cases_loading: 'A carregar casos...',
+    cases_error_generic: 'Nao foi possivel carregar os casos.',
     cases_error_http: 'Erro ao carregar casos.',
 
     // Tickets
     tickets_title: 'Tickets',
-    tickets_hint: 'Gestão de pedidos de suporte e tickets abertos nos servidores configurados.',
-    tickets_empty: 'Não foram encontrados tickets para o período selecionado.',
-    tickets_loading: 'A carregar tickets…',
-    tickets_error_generic: 'Não foi possível carregar os tickets.',
+    tickets_hint: 'Gestao de pedidos de suporte e tickets abertos nos servidores configurados.',
+    tickets_empty: 'Nao foram encontrados tickets para o periodo selecionado.',
+    tickets_loading: 'A carregar tickets...',
+    tickets_error_generic: 'Nao foi possivel carregar os tickets.',
     tickets_error_http: 'Erro ao carregar tickets.',
 
     // GameNews
     gamenews_title: 'GameNews',
-    gamenews_hint: 'Estado dos feeds de notícias, últimos envios e potenciais falhas na publicação.',
+    gamenews_hint: 'Estado dos feeds de noticias, ultimos envios e potenciais falhas na publicacao.',
     gamenews_empty: 'Nenhum feed de GameNews se encontra configurado neste momento.',
-    gamenews_loading: 'A carregar estado dos feeds…',
-    gamenews_error_generic: 'Não foi possível carregar o estado dos feeds.',
+    gamenews_loading: 'A carregar estado dos feeds...',
+    gamenews_error_generic: 'Nao foi possivel carregar o estado dos feeds.',
     gamenews_error_http: 'Erro ao carregar GameNews.',
 
-    gamenews_editor_title: 'Configuração de feeds',
-    gamenews_editor_hint: 'Adiciona, edita ou remove feeds e escolhe o canal onde as notícias serão enviadas.',
+    gamenews_editor_title: 'Configuracao de feeds',
+    gamenews_editor_hint: 'Adiciona, edita ou remove feeds e escolhe o canal onde as noticias serao enviadas.',
     gamenews_add_feed: 'Adicionar feed',
-    gamenews_save_feeds: 'Guardar alterações',
-    gamenews_feeds_loading: 'A carregar configuração de feeds…',
-    gamenews_feeds_empty: 'Ainda não existem feeds configurados. Adiciona o primeiro feed para começar.',
-    gamenews_feeds_error_generic: 'Não foi possível carregar a configuração de feeds.',
+    gamenews_save_feeds: 'Guardar alteracoes',
+    gamenews_feeds_loading: 'A carregar configuracao de feeds...',
+    gamenews_feeds_empty: 'Ainda nao existem feeds configurados. Adiciona o primeiro feed para comecar.',
+    gamenews_feeds_error_generic: 'Nao foi possivel carregar a configuracao de feeds.',
     gamenews_feeds_error_http: 'Erro ao carregar os feeds de GameNews.',
 
     // Users
     users_title: 'Utilizadores',
-    users_hint: 'Consulta rápida de métricas e histórico de casos de cada utilizador.',
+    users_hint: 'Consulta rapida de metricas e historico de casos de cada utilizador.',
     users_empty: 'Selecione um servidor para ver utilizadores.',
 
     // Config
-    config_title: 'Configuração do servidor',
-    config_hint: 'Defina canais, cargos de staff e preferências de registo para este servidor.',
-    config_empty: 'Em breve: integração direta com a API do OzarkBot para guardar estas definições.',
+    config_title: 'Configuracao do servidor',
+    config_hint: 'Defina canais, cargos de staff e preferencias de registo para este servidor.',
+    config_empty: 'Em breve: integracao direta com a API do OzarkBot para guardar estas definicoes.',
 
     // Mensagens auxiliares
-    warn_select_guild: 'Selecione um servidor para aceder às restantes secções.',
+    warn_select_guild: 'Selecione um servidor para aceder as restantes seccoes.',
     language_changed: 'Idioma alterado.',
   },
 
@@ -150,7 +150,7 @@ const I18N = {
     // Topbar / layout
     app_subtitle: 'Moderation and management dashboard',
     select_guild: 'Select a server',
-    badge_bot_online: '● Bot online',
+    badge_bot_online: '* Bot online',
 
     // Tabs
     tab_overview: 'Overview',
@@ -175,7 +175,7 @@ const I18N = {
     logs_filter_all: 'All types',
     logs_reload: 'Reload',
     logs_empty: 'There are no records matching the current filter.',
-    logs_loading: 'Loading logs…',
+    logs_loading: 'Loading logs...',
     logs_error_generic: 'Could not load logs.',
     logs_error_http: 'Error loading logs.',
     logs_user_label: 'User',
@@ -184,9 +184,9 @@ const I18N = {
 
     // Cases
     cases_title: 'Cases',
-    cases_hint: 'Consolidated view of each user’s infractions over time.',
+    cases_hint: 'Consolidated view of each user's infractions over time.',
     cases_empty: 'No cases have been registered for this server yet.',
-    cases_loading: 'Loading cases…',
+    cases_loading: 'Loading cases...',
     cases_error_generic: 'Could not load cases.',
     cases_error_http: 'Error loading cases.',
 
@@ -194,7 +194,7 @@ const I18N = {
     tickets_title: 'Tickets',
     tickets_hint: 'Manage support requests and open tickets across your configured guilds.',
     tickets_empty: 'No tickets were found for the selected period.',
-    tickets_loading: 'Loading tickets…',
+    tickets_loading: 'Loading tickets...',
     tickets_error_generic: 'Could not load tickets.',
     tickets_error_http: 'Error loading tickets.',
 
@@ -202,7 +202,7 @@ const I18N = {
     gamenews_title: 'GameNews',
     gamenews_hint: 'Status of news feeds, recent posts and any delivery failures.',
     gamenews_empty: 'No GameNews feeds are configured at the moment.',
-    gamenews_loading: 'Loading feed status…',
+    gamenews_loading: 'Loading feed status...',
     gamenews_error_generic: 'Could not load feed status.',
     gamenews_error_http: 'Error loading GameNews.',
 
@@ -210,7 +210,7 @@ const I18N = {
     gamenews_editor_hint: 'Add, edit or remove feeds and choose which channel will receive each feed.',
     gamenews_add_feed: 'Add feed',
     gamenews_save_feeds: 'Save changes',
-    gamenews_feeds_loading: 'Loading feed configuration…',
+    gamenews_feeds_loading: 'Loading feed configuration...',
     gamenews_feeds_empty: 'No feeds have been configured yet. Add your first feed to get started.',
     gamenews_feeds_error_generic: 'Could not load feed configuration.',
     gamenews_feeds_error_http: 'Error loading GameNews feeds.',
@@ -270,7 +270,7 @@ function setLang(newLang) {
 
 // ==== TOKEN DASHBOARD (DASHBOARD_TOKEN) ====
 
-// Lê token, migrando da key antiga se existir
+// Le token, migrando da key antiga se existir
 function getStoredToken() {
   let jwt = null;
 
@@ -332,7 +332,7 @@ function getAuthHeaders() {
   return headers;
 }
 
-// Sanitização simples de texto para evitar XSS
+// Sanitizacao simples de texto para evitar XSS
 function escapeHtml(value) {
   if (value === null || value === undefined) return '';
   return value
@@ -355,7 +355,7 @@ function setTab(name) {
   });
 }
 
-// Bloqueio de tabs sem servidor (versão simples + garantida)
+// Bloqueio de tabs sem servidor (versao simples + garantida)
 function updateTabAccess() {
   const guildPicker = document.getElementById('guildPicker');
   const warning = document.getElementById('tabWarning');
@@ -421,7 +421,7 @@ async function loadGuilds() {
 
   const items = Array.isArray(data.items) ? data.items : [];
 
-  // Limpa opções atuais (mantém placeholder)
+  // Limpa opcoes atuais (mantem placeholder)
   const placeholder = guildPicker.querySelector('option[value=""]');
   guildPicker.innerHTML = '';
   if (placeholder) {
@@ -444,7 +444,7 @@ async function loadGuilds() {
   updateTabAccess();
 }
 
-// ==== LOGS: ligação à API /api/logs ====
+// ==== LOGS: ligacao a API /api/logs ====
 
 async function loadLogs(page = 1) {
   const guildPicker = document.getElementById('guildPicker');
@@ -493,7 +493,7 @@ async function loadLogs(page = 1) {
         ${
           state.lang === 'en'
             ? 'Check if the dashboard token (DASHBOARD_TOKEN) is configured and correct.'
-            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) está configurado e correto.'
+            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) esta configurado e correto.'
         }
       </div>`;
     } else {
@@ -521,8 +521,8 @@ async function loadLogs(page = 1) {
   const html = items
     .map((item) => {
       const title = item.title || item.type || '';
-      const userTag = item.user?.tag || item.userId || '—';
-      const execTag = item.executor?.tag || item.moderatorId || '—';
+      const userTag = item.user?.tag || item.userId || '-';
+      const execTag = item.executor?.tag || item.moderatorId || '-';
       const time = item.time || item.createdAt || '';
       const description = item.description || item.reason || '';
       return `
@@ -564,7 +564,7 @@ async function loadLogs(page = 1) {
 }
 
 
-// ==== CASES: ligação a /api/cases ====
+// ==== CASES: ligacao a /api/cases ====
 
 async function loadCases(page = 1) {
   const guildPicker = document.getElementById('guildPicker');
@@ -605,7 +605,7 @@ async function loadCases(page = 1) {
         ${
           state.lang === 'en'
             ? 'Check if the dashboard token (DASHBOARD_TOKEN) is configured and correct.'
-            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) está configurado e correto.'
+            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) esta configurado e correto.'
         }
       </div>`;
     } else {
@@ -632,7 +632,7 @@ async function loadCases(page = 1) {
 
   const html = items
     .map((c) => {
-      const user = c.userId || '—';
+      const user = c.userId || '-';
       const type = c.type || '';
       const caseId = c.caseId != null ? `#${c.caseId}` : '';
       const reason = c.reason || '';
@@ -676,7 +676,7 @@ async function loadCases(page = 1) {
 }
 
 
-// ==== TICKETS: ligação a /api/tickets ====
+// ==== TICKETS: ligacao a /api/tickets ====
 
 async function loadTickets(page = 1) {
   const guildPicker = document.getElementById('guildPicker');
@@ -696,7 +696,7 @@ async function loadTickets(page = 1) {
   params.set('page', String(page));
   params.set('limit', '20');
   params.set('guildId', guildId);
-  // Opcionalmente poderíamos passar status/userId no futuro
+  // Opcionalmente poderiamos passar status/userId no futuro
 
   const headers = getAuthHeaders();
 
@@ -718,7 +718,7 @@ async function loadTickets(page = 1) {
         ${
           state.lang === 'en'
             ? 'Check if the dashboard token (DASHBOARD_TOKEN) is configured and correct.'
-            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) está configurado e correto.'
+            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) esta configurado e correto.'
         }
       </div>`;
     } else {
@@ -747,8 +747,8 @@ async function loadTickets(page = 1) {
 
   const html = items.map((tkt) => {
     const ticketId = tkt._id || tkt.id || '';
-    const userId = tkt.userId || tkt.createdById || '—';
-    const channelId = tkt.channelId || '—';
+    const userId = tkt.userId || tkt.createdById || '-';
+    const channelId = tkt.channelId || '-';
     const status = tkt.status || 'OPEN';
     const createdAt = tkt.createdAt || '';
     const closedAt = tkt.closedAt || null;
@@ -776,7 +776,7 @@ async function loadTickets(page = 1) {
     }
     if (lastMsgAt) {
       metaHtml += '<div>' +
-        (state.lang === 'en' ? 'Last message' : 'Última msg') +
+        (state.lang === 'en' ? 'Last message' : 'Ultima msg') +
         ': ' + escapeHtml(lastMsgAt) +
       '</div>';
     }
@@ -877,7 +877,7 @@ async function loadTickets(page = 1) {
 
         const confirmMsg = state.lang === 'en'
           ? 'Close this ticket? The channel will be updated on Discord.'
-          : 'Fechar este ticket? O canal será atualizado no Discord.';
+          : 'Fechar este ticket? O canal sera atualizado no Discord.';
 
         const confirmed = window.confirm(confirmMsg);
         if (!confirmed) return;
@@ -958,7 +958,7 @@ async function loadGameNewsStatus() {
         ${
           state.lang === 'en'
             ? 'Check if the dashboard token (DASHBOARD_TOKEN) is configured and correct.'
-            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) está configurado e correto.'
+            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) esta configurado e correto.'
         }
       </div>`;
     } else {
@@ -987,7 +987,7 @@ async function loadGameNewsStatus() {
     .map((feed) => {
       const name = feed.feedName || feed.source || 'Feed';
       const url = feed.feedUrl || '';
-      const channelId = feed.channelId || '—';
+      const channelId = feed.channelId || '-';
       const enabled = feed.enabled !== false;
       const failCount = feed.failCount ?? 0;
       const lastSentAt = feed.lastSentAt || '';
@@ -1005,11 +1005,11 @@ async function loadGameNewsStatus() {
               </div>
             </div>
             <div style="text-align:right; font-size:11px; color:var(--text-muted);">
-              <div>Ativo: ${enabled ? 'Sim' : 'Não'}</div>
+              <div>Ativo: ${enabled ? 'Sim' : 'Nao'}</div>
               <div>Falhas: ${escapeHtml(failCount)}</div>
-              <div>Último envio: ${escapeHtml(lastSentAt || '—')}</div>
+              <div>Ultimo envio: ${escapeHtml(lastSentAt || '-')}</div>
               <div>Hashes recentes: ${escapeHtml(lastHashesCount)}</div>
-              ${pausedUntil ? `<div>Pausado até: ${escapeHtml(pausedUntil)}</div>` : ''}
+              ${pausedUntil ? `<div>Pausado ate: ${escapeHtml(pausedUntil)}</div>` : ''}
             </div>
           </div>
         </div>
@@ -1036,7 +1036,7 @@ async function loadGameNewsStatus() {
 
 
 function ensureGameNewsEditorLayout() {
-  // Hide the old inline editor list to avoid duplicates — we use a modal editor instead.
+  // Hide the old inline editor list to avoid duplicates - we use a modal editor instead.
   const feedsList = document.getElementById('gamenewsFeedsList');
   if (feedsList) feedsList.style.display = 'none';
 
@@ -1207,7 +1207,7 @@ async function openGameNewsFeedModal({ guildId, feed, isNew }) {
   form.appendChild(field(state.lang === 'en' ? 'Name' : 'Nome', inName));
   form.appendChild(field(state.lang === 'en' ? 'Enabled' : 'Ativo', enabledWrap));
   form.appendChild(field('RSS URL', inUrl, true));
-  form.appendChild(field(state.lang === 'en' ? 'News channel' : 'Canal de notícias', selChannel));
+  form.appendChild(field(state.lang === 'en' ? 'News channel' : 'Canal de noticias', selChannel));
   form.appendChild(field(state.lang === 'en' ? 'Logs channel' : 'Canal de logs', selLogChannel));
   form.appendChild(field(state.lang === 'en' ? 'Interval (min)' : 'Intervalo (min)', inInterval));
 
@@ -1255,7 +1255,7 @@ async function openGameNewsFeedModal({ guildId, feed, isNew }) {
     const intervalMs = Number.isFinite(mins) && mins > 0 ? Math.round(mins * 60_000) : null;
 
     if (!feedUrl || !channelId) {
-      toast(state.lang === 'en' ? 'RSS URL and channel are required.' : 'O URL RSS e o canal são obrigatórios.');
+      toast(state.lang === 'en' ? 'RSS URL and channel are required.' : 'O URL RSS e o canal sao obrigatorios.');
       return;
     }
 
@@ -1400,7 +1400,7 @@ async function loadGameNewsFeedsEditor() {
         ${
           state.lang === 'en'
             ? 'Check if the dashboard token (DASHBOARD_TOKEN) is configured and correct.'
-            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) está configurado e correto.'
+            : 'Verifica se o token da dashboard (DASHBOARD_TOKEN) esta configurado e correto.'
         }
       </div>`;
     } else {
@@ -1480,7 +1480,7 @@ async function loadGameNewsFeedsEditor() {
 
   listEl.innerHTML = html;
 
-  // Liga eventos de remoção
+  // Liga eventos de remocao
   listEl.querySelectorAll('.gn-remove').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       const row = e.target.closest('.gamenews-feed-row');
@@ -1539,14 +1539,14 @@ async function saveGameNewsFeeds() {
     return;
   }
 
-  // Recarrega editor e estado após guardar
+  // Recarrega editor e estado apos guardar
   await loadGameNewsFeedsEditor();
   await loadGameNewsStatus();
 
   alert(state.lang === 'en' ? 'GameNews feeds saved.' : 'Feeds de GameNews guardados com sucesso.');
 }
 
-// Tabs & navegação
+// Tabs & navegacao
 function initTabs() {
   const tabsEl = document.getElementById('tabs');
   if (!tabsEl) return;
@@ -1575,7 +1575,7 @@ function initTabs() {
       const existing = getStoredToken();
       const jwt = existing || ensureDashToken();
       if (!jwt) {
-        // Cancelou o prompt → não muda de tab
+        // Cancelou o prompt > nao muda de tab
         return;
       }
     }
@@ -1620,9 +1620,9 @@ async function loadOverview() {
 
   if (!gEl || !uEl || !aEl) return;
 
-  gEl.textContent = '…';
-  uEl.textContent = '…';
-  aEl.textContent = '…';
+  gEl.textContent = '...';
+  uEl.textContent = '...';
+  aEl.textContent = '...';
 
   const headers = getAuthHeaders();
 
@@ -1674,7 +1674,7 @@ async function loadUsers() {
     return;
   }
 
-  listEl.innerHTML = `<div class="empty">${escapeHtml(t('users_loading') || 'A carregar utilizadores…')}</div>`;
+  listEl.innerHTML = `<div class="empty">${escapeHtml(t('users_loading') || 'A carregar utilizadores...')}</div>`;
 
   const headers = getAuthHeaders();
 
@@ -1683,7 +1683,7 @@ async function loadUsers() {
     resp = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/users`, { headers });
   } catch (err) {
     console.error('Erro a chamar /api/guilds/:guildId/users:', err);
-    listEl.innerHTML = `<div class="empty">${escapeHtml(t('users_error_generic') || 'Não foi possível carregar os utilizadores.')}</div>`;
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('users_error_generic') || 'Nao foi possivel carregar os utilizadores.')}</div>`;
     return;
   }
 
@@ -1698,7 +1698,7 @@ async function loadUsers() {
     data = await resp.json();
   } catch (err) {
     console.error('Erro a ler JSON de /api/guilds/:guildId/users:', err);
-    listEl.innerHTML = `<div class="empty">${escapeHtml(t('users_error_generic') || 'Não foi possível carregar os utilizadores.')}</div>`;
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('users_error_generic') || 'Nao foi possivel carregar os utilizadores.')}</div>`;
     return;
   }
 
@@ -1721,7 +1721,7 @@ async function loadUsers() {
             <div>
               <strong>${escapeHtml(tag)}</strong>
               <div class="hint">
-                ${u.bot ? 'Bot • ' : ''}
+                ${u.bot ? 'Bot - ' : ''}
                 ${
                   roles
                     ? escapeHtml(roles)
@@ -1834,7 +1834,7 @@ async function loadGuildConfig() {
     console.error('Erro a carregar config do servidor:', err);
     if (statusEl) {
       statusEl.textContent =
-        t('config_save_error') || 'Erro ao carregar configuração do servidor.';
+        t('config_save_error') || 'Erro ao carregar configuracao do servidor.';
     }
   }
 }
@@ -1873,20 +1873,20 @@ async function saveGuildConfig() {
     if (!resp.ok) {
       if (statusEl) {
         statusEl.textContent =
-          t('config_save_error') || 'Erro ao guardar configuração.';
+          t('config_save_error') || 'Erro ao guardar configuracao.';
       }
       return;
     }
 
     if (statusEl) {
       statusEl.textContent =
-        t('config_save_ok') || 'Configuração guardada com sucesso.';
+        t('config_save_ok') || 'Configuracao guardada com sucesso.';
     }
   } catch (err) {
     console.error('Erro a guardar config do servidor:', err);
     if (statusEl) {
       statusEl.textContent =
-        t('config_save_error') || 'Erro ao guardar configuração.';
+        t('config_save_error') || 'Erro ao guardar configuracao.';
     }
   }
 }
@@ -1937,7 +1937,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Carrega lista de servidores após DOM estar pronto
+    // Carrega lista de servidores apos DOM estar pronto
     loadGuilds().catch((err) => console.error('Erro loadGuilds:', err));
   } else {
     updateTabAccess();
@@ -1952,7 +1952,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Botão "Recarregar" nos logs
+  // Botao "Recarregar" nos logs
   const reloadBtn = document.getElementById('btnReloadLogs');
   if (reloadBtn) {
     reloadBtn.addEventListener('click', () => {
@@ -1971,7 +1971,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Botões do editor de GameNews
+  // Botoes do editor de GameNews
   const btnAddFeed = document.getElementById('btnAddGameNewsFeed');
   if (btnAddFeed) {
     btnAddFeed.addEventListener('click', async () => {
@@ -1993,7 +1993,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  // Botões de configuração do servidor
+  // Botoes de configuracao do servidor
   const btnReloadCfg = document.getElementById('btnReloadGuildConfig');
   if (btnReloadCfg) {
     btnReloadCfg.addEventListener('click', () => {
