@@ -287,7 +287,7 @@
     document.querySelectorAll('.section').forEach(function (sec) {
       sec.classList.remove('active');
     });
-    document.querySelectorAll('.topnav button[data-tab]').forEach(function (btn) {
+    document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
       btn.classList.remove('active');
     });
 
@@ -937,7 +937,7 @@
     }
 
     // Tabs
-    document.querySelectorAll('.topnav button[data-tab]').forEach(function (btn) {
+    document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var tab = btn.getAttribute('data-tab');
         if (!tab) return;
