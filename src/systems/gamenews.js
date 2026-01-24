@@ -106,15 +106,19 @@ function isFeedPaused(record) {
   return record.pausedUntil.getTime() > Date.now();
 }
 
-async function registerFeedFailure(record, config) {
+async function registerFeedFailure(record, config, client, feed) {
   const maxFails = Number(config?.gameNews?.backoff?.maxFails ?? 3);
   const pauseMs = Number(config?.gameNews?.backoff?.pauseMs ?? 30 * 60 * 1000);
 
-  record.failCount = (record.failCount || 0) + 1;
+  record\.failCount = \(record\.failCount \|\| 0\) \+ 1;
+
+  // Optional per-feed log channel
+  await sendFeedLog(client, feed, `⚠️ GameNews: falha no feed **${feed?.name || 'Feed'}** (tentativas: ${record.failCount})`).catch(() => null);
 
   if (record.failCount >= maxFails) {
     record.pausedUntil = new Date(Date.now() + pauseMs);
     record.failCount = 0;
+    await sendFeedLog(client, feed, `⏸️ GameNews: feed **${feed?.name || 'Feed'}** em pausa até ${record.pausedUntil.toISOString()} (backoff).`).catch(() => null);
   }
 
   await record.save();
@@ -257,9 +261,11 @@ async function getFeedsFromDb() {
     return docs
       .filter((d) => d && d.feedUrl && d.channelId)
       .map((d) => ({
+        guildId: d.guildId || null,
         name: d.name || 'Feed',
         feed: d.feedUrl,
         channelId: d.channelId,
+        logChannelId: d.logChannelId || null,
         enabled: d.enabled !== false,
         // Per-feed interval override (ms). Falls back to config.gameNews.interval when null/invalid.
         intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
@@ -483,7 +489,7 @@ module.exports = async function gameNewsSystem(client, config) {
             console.error(`[GameNews] Error processing feed ${feedName}:`, err?.message || err);
 
             try {
-              await registerFeedFailure(record, config);
+              await registerFeedFailure(record, config, client, feed);
 
               if (record.pausedUntil && record.pausedUntil.getTime() > Date.now()) {
                 console.warn(
@@ -515,3 +521,15 @@ module.exports = async function gameNewsSystem(client, config) {
     console.error('[GameNews] Critical error starting system:', err);
   }
 };
+async function sendFeedLog(client, feed, message) {
+  try {
+    if (!feed?.logChannelId) return;
+    const channel = await client.channels.fetch(feed.logChannelId).catch(() => null);
+    if (!channel || !channel.isTextBased?.()) return;
+    await channel.send(String(message).slice(0, 1800));
+  } catch (e) {
+    // silent
+  }
+}
+
+

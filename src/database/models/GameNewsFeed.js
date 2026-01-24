@@ -4,9 +4,17 @@ const { Schema, model } = require('mongoose');
 
 const gameNewsFeedSchema = new Schema(
   {
+    guildId: { type: String, required: true, index: true },
+
     name: { type: String, required: true },
     feedUrl: { type: String, required: true },
+
+    // Channel where the news posts are sent
     channelId: { type: String, required: true },
+
+    // Optional channel where GameNews diagnostics (failures/pauses) are logged
+    logChannelId: { type: String, default: null },
+
     enabled: { type: Boolean, default: true },
 
     // Optional override: custom interval for this feed (ms).
@@ -16,6 +24,7 @@ const gameNewsFeedSchema = new Schema(
   { timestamps: true }
 );
 
-gameNewsFeedSchema.index({ name: 1, feedUrl: 1 }, { unique: false });
+// Non-unique index (same RSS can be used across multiple guilds).
+gameNewsFeedSchema.index({ guildId: 1, feedUrl: 1 });
 
 module.exports = model('GameNewsFeed', gameNewsFeedSchema);

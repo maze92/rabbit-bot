@@ -2,6 +2,7 @@
 const state = {
   lang: 'pt',
   guildChannelsCache: {}, // guildId -> canais
+  gameNewsFeedsByGuild: {}, // guildId -> feeds (editor)
 };
 
 
@@ -547,7 +548,21 @@ async function loadLogs(page = 1) {
     .join('');
 
   listEl.innerHTML = html;
+
+  // Store as current editable set (per guild)
+  state.gameNewsFeedsByGuild[guildId] = items;
+
+  // Click -> open modal editor
+  listEl.querySelectorAll('[data-feed-idx]').forEach((el) => {
+    el.addEventListener('click', async () => {
+      const idx = Number(el.getAttribute('data-feed-idx'));
+      const feed = items[idx];
+      if (!feed) return;
+      await openGameNewsFeedModal({ guildId, feed, isNew: false });
+    });
+  });
 }
+
 
 // ==== CASES: ligação a /api/cases ====
 
@@ -645,7 +660,21 @@ async function loadCases(page = 1) {
     .join('');
 
   listEl.innerHTML = html;
+
+  // Store as current editable set (per guild)
+  state.gameNewsFeedsByGuild[guildId] = items;
+
+  // Click -> open modal editor
+  listEl.querySelectorAll('[data-feed-idx]').forEach((el) => {
+    el.addEventListener('click', async () => {
+      const idx = Number(el.getAttribute('data-feed-idx'));
+      const feed = items[idx];
+      if (!feed) return;
+      await openGameNewsFeedModal({ guildId, feed, isNew: false });
+    });
+  });
 }
+
 
 // ==== TICKETS: ligação a /api/tickets ====
 
@@ -870,6 +899,7 @@ async function loadTickets(page = 1) {
 // ==== GAMENEWS: estado (/api/gamenews-status) ====
 
 async function loadGameNewsStatus() {
+  ensureGameNewsEditorLayout();
   const listEl = document.getElementById('gamenewsStatusList');
   if (!listEl) return;
 
@@ -879,7 +909,14 @@ async function loadGameNewsStatus() {
 
   let resp;
   try {
-    resp = await fetch('/api/gamenews-status', { headers });
+    const guildPicker = document.getElementById('guildPicker');
+  const guildId = guildPicker?.value || '';
+  if (!guildId) {
+    listEl.innerHTML = `<div class="empty">${escapeHtml(t('warn_select_guild'))}</div>`;
+    return;
+  }
+
+  resp = await fetch(`/api/gamenews-status?guildId=${encodeURIComponent(guildId)}`, { headers });
   } catch (err) {
     console.error('Erro ao chamar /api/gamenews-status:', err);
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_error_generic'))}</div>`;
@@ -955,6 +992,314 @@ async function loadGameNewsStatus() {
     .join('');
 
   listEl.innerHTML = html;
+
+  // Store as current editable set (per guild)
+  state.gameNewsFeedsByGuild[guildId] = items;
+
+  // Click -> open modal editor
+  listEl.querySelectorAll('[data-feed-idx]').forEach((el) => {
+    el.addEventListener('click', async () => {
+      const idx = Number(el.getAttribute('data-feed-idx'));
+      const feed = items[idx];
+      if (!feed) return;
+      await openGameNewsFeedModal({ guildId, feed, isNew: false });
+    });
+  });
+}
+
+
+
+function ensureGameNewsEditorLayout() {
+  // Hide the old inline editor list to avoid duplicates — we use a modal editor instead.
+  const feedsList = document.getElementById('gamenewsFeedsList');
+  if (feedsList) feedsList.style.display = 'none';
+
+  const btnSave = document.getElementById('btnSaveGameNewsFeeds');
+  if (btnSave) btnSave.style.display = 'none';
+
+  // Keep "Adicionar feed" button visible as a small action.
+  const btnAdd = document.getElementById('btnAddGameNewsFeed');
+  if (btnAdd) {
+    btnAdd.classList.remove('primary');
+    btnAdd.classList.add('btn');
+  }
+}
+
+function buildModalShell() {
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.background = 'rgba(0,0,0,0.55)';
+  overlay.style.zIndex = '9998';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.padding = '1rem';
+
+  const box = document.createElement('div');
+  box.style.width = 'min(720px, 100%)';
+  box.style.background = 'var(--card, #0f1115)';
+  box.style.border = '1px solid rgba(255,255,255,0.08)';
+  box.style.borderRadius = '10px';
+  box.style.boxShadow = '0 12px 40px rgba(0,0,0,0.45)';
+  box.style.padding = '1rem';
+  box.style.zIndex = '9999';
+
+  overlay.appendChild(box);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  return { overlay, box };
+}
+
+async function saveGameNewsFeedsForGuild(guildId, feeds) {
+  const headers = getAuthHeaders();
+  headers['Content-Type'] = 'application/json';
+
+  const resp = await fetch(`/api/gamenews/feeds?guildId=${encodeURIComponent(guildId)}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ guildId, feeds })
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`HTTP ${resp.status} ${text || ''}`.trim());
+  }
+
+  const data = await resp.json();
+  return Array.isArray(data.items) ? data.items : [];
+}
+
+async function openGameNewsFeedModal({ guildId, feed, isNew }) {
+  const channels = await fetchGuildChannelsForGameNews(guildId);
+
+  const { overlay, box } = buildModalShell();
+
+  const title = document.createElement('div');
+  title.style.display = 'flex';
+  title.style.alignItems = 'center';
+  title.style.justifyContent = 'space-between';
+  title.style.gap = '0.75rem';
+
+  const h = document.createElement('h3');
+  h.style.margin = '0';
+  h.textContent = isNew ? (state.lang === 'en' ? 'Add feed' : 'Adicionar feed') : (state.lang === 'en' ? 'Edit feed' : 'Editar feed');
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn';
+  closeBtn.type = 'button';
+  closeBtn.textContent = state.lang === 'en' ? 'Close' : 'Fechar';
+  closeBtn.addEventListener('click', () => overlay.remove());
+
+  title.appendChild(h);
+  title.appendChild(closeBtn);
+
+  const form = document.createElement('div');
+  form.style.display = 'grid';
+  form.style.gridTemplateColumns = '1fr 1fr';
+  form.style.gap = '0.75rem';
+  form.style.marginTop = '0.75rem';
+
+  function field(label, inputEl, full = false) {
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.style.gap = '0.35rem';
+    if (full) wrap.style.gridColumn = '1 / -1';
+
+    const l = document.createElement('label');
+    l.style.fontSize = '0.85rem';
+    l.style.opacity = '0.9';
+    l.textContent = label;
+
+    wrap.appendChild(l);
+    wrap.appendChild(inputEl);
+    return wrap;
+  }
+
+  const inName = document.createElement('input');
+  inName.className = 'input';
+  inName.placeholder = 'GameSpot';
+  inName.value = feed?.name || '';
+
+  const inUrl = document.createElement('input');
+  inUrl.className = 'input';
+  inUrl.placeholder = 'https://.../rss';
+  inUrl.value = feed?.feedUrl || '';
+
+  const selChannel = document.createElement('select');
+  selChannel.className = 'select';
+  const opt0 = document.createElement('option');
+  opt0.value = '';
+  opt0.textContent = state.lang === 'en' ? 'Select channel' : 'Selecione o canal';
+  selChannel.appendChild(opt0);
+  for (const ch of channels) {
+    const o = document.createElement('option');
+    o.value = ch.id;
+    o.textContent = `#${ch.name}`;
+    selChannel.appendChild(o);
+  }
+  selChannel.value = feed?.channelId || '';
+
+  const selLogChannel = document.createElement('select');
+  selLogChannel.className = 'select';
+  const optL = document.createElement('option');
+  optL.value = '';
+  optL.textContent = state.lang === 'en' ? 'Select logs channel (optional)' : 'Canal de logs (opcional)';
+  selLogChannel.appendChild(optL);
+  for (const ch of channels) {
+    const o = document.createElement('option');
+    o.value = ch.id;
+    o.textContent = `#${ch.name}`;
+    selLogChannel.appendChild(o);
+  }
+  selLogChannel.value = feed?.logChannelId || '';
+
+  const inInterval = document.createElement('input');
+  inInterval.className = 'input';
+  inInterval.type = 'number';
+  inInterval.min = '0';
+  inInterval.placeholder = state.lang === 'en' ? 'Interval (minutes)' : 'Intervalo (minutos)';
+  inInterval.value = feed?.intervalMs ? String(Math.round(Number(feed.intervalMs) / 60000)) : '';
+
+  const chkEnabled = document.createElement('input');
+  chkEnabled.type = 'checkbox';
+  chkEnabled.checked = feed?.enabled !== false;
+
+  const enabledWrap = document.createElement('div');
+  enabledWrap.style.display = 'flex';
+  enabledWrap.style.alignItems = 'center';
+  enabledWrap.style.gap = '0.5rem';
+  enabledWrap.appendChild(chkEnabled);
+  const enabledTxt = document.createElement('div');
+  enabledTxt.textContent = state.lang === 'en' ? 'Enabled' : 'Ativo';
+  enabledWrap.appendChild(enabledTxt);
+
+  form.appendChild(field(state.lang === 'en' ? 'Name' : 'Nome', inName));
+  form.appendChild(field(state.lang === 'en' ? 'Enabled' : 'Ativo', enabledWrap));
+  form.appendChild(field('RSS URL', inUrl, true));
+  form.appendChild(field(state.lang === 'en' ? 'News channel' : 'Canal de notícias', selChannel));
+  form.appendChild(field(state.lang === 'en' ? 'Logs channel' : 'Canal de logs', selLogChannel));
+  form.appendChild(field(state.lang === 'en' ? 'Interval (min)' : 'Intervalo (min)', inInterval));
+
+  const actions = document.createElement('div');
+  actions.style.display = 'flex';
+  actions.style.justifyContent = 'space-between';
+  actions.style.alignItems = 'center';
+  actions.style.gap = '0.75rem';
+  actions.style.marginTop = '1rem';
+
+  const left = document.createElement('div');
+  left.style.display = 'flex';
+  left.style.gap = '0.5rem';
+
+  const right = document.createElement('div');
+  right.style.display = 'flex';
+  right.style.gap = '0.5rem';
+
+  const btnDelete = document.createElement('button');
+  btnDelete.className = 'btn danger';
+  btnDelete.type = 'button';
+  btnDelete.textContent = state.lang === 'en' ? 'Delete' : 'Eliminar';
+  btnDelete.style.display = isNew ? 'none' : 'inline-flex';
+
+  const btnCancel = document.createElement('button');
+  btnCancel.className = 'btn';
+  btnCancel.type = 'button';
+  btnCancel.textContent = state.lang === 'en' ? 'Cancel' : 'Cancelar';
+
+  const btnSave = document.createElement('button');
+  btnSave.className = 'btn primary';
+  btnSave.type = 'button';
+  btnSave.textContent = state.lang === 'en' ? 'Save' : 'Guardar';
+
+  btnCancel.addEventListener('click', () => overlay.remove());
+
+  btnSave.addEventListener('click', async () => {
+    const name = (inName.value || '').trim() || 'Feed';
+    const feedUrl = (inUrl.value || '').trim();
+    const channelId = selChannel.value || '';
+    const logChannelId = selLogChannel.value || '';
+    const enabled = chkEnabled.checked;
+
+    const mins = Number(inInterval.value || 0);
+    const intervalMs = Number.isFinite(mins) && mins > 0 ? Math.round(mins * 60_000) : null;
+
+    if (!feedUrl || !channelId) {
+      toast(state.lang === 'en' ? 'RSS URL and channel are required.' : 'O URL RSS e o canal são obrigatórios.');
+      return;
+    }
+
+    const list = Array.isArray(state.gameNewsFeedsByGuild[guildId]) ? [...state.gameNewsFeedsByGuild[guildId]] : [];
+
+    if (isNew) {
+      list.push({ name, feedUrl, channelId, logChannelId: logChannelId || null, enabled, intervalMs });
+    } else {
+      const idx = list.findIndex((x) => x && x.id === feed.id);
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], name, feedUrl, channelId, logChannelId: logChannelId || null, enabled, intervalMs };
+      }
+    }
+
+    try {
+      const saved = await saveGameNewsFeedsForGuild(guildId, list.map((x) => ({
+        name: x.name,
+        feedUrl: x.feedUrl,
+        channelId: x.channelId,
+        logChannelId: x.logChannelId || null,
+        enabled: x.enabled !== false,
+        intervalMs: x.intervalMs ?? null
+      })));
+
+      state.gameNewsFeedsByGuild[guildId] = saved;
+      toast(state.lang === 'en' ? 'Saved.' : 'Guardado.');
+      overlay.remove();
+      await loadGameNewsStatus();
+    } catch (e) {
+      console.error('saveGameNewsFeedsForGuild error:', e);
+      toast(state.lang === 'en' ? 'Failed to save.' : 'Falha ao guardar.');
+    }
+  });
+
+  btnDelete.addEventListener('click', async () => {
+    const list = Array.isArray(state.gameNewsFeedsByGuild[guildId]) ? [...state.gameNewsFeedsByGuild[guildId]] : [];
+    const next = list.filter((x) => x && x.id !== feed.id);
+
+    try {
+      const saved = await saveGameNewsFeedsForGuild(guildId, next.map((x) => ({
+        name: x.name,
+        feedUrl: x.feedUrl,
+        channelId: x.channelId,
+        logChannelId: x.logChannelId || null,
+        enabled: x.enabled !== false,
+        intervalMs: x.intervalMs ?? null
+      })));
+
+      state.gameNewsFeedsByGuild[guildId] = saved;
+      toast(state.lang === 'en' ? 'Deleted.' : 'Eliminado.');
+      overlay.remove();
+      await loadGameNewsStatus();
+    } catch (e) {
+      console.error('delete feed error:', e);
+      toast(state.lang === 'en' ? 'Failed to delete.' : 'Falha ao eliminar.');
+    }
+  });
+
+  left.appendChild(btnDelete);
+  right.appendChild(btnCancel);
+  right.appendChild(btnSave);
+
+  actions.appendChild(left);
+  actions.appendChild(right);
+
+  box.appendChild(title);
+  box.appendChild(form);
+  box.appendChild(actions);
+
+  document.body.appendChild(overlay);
 }
 
 // ==== GAMENEWS: editor de feeds (/api/gamenews/feeds) ====
@@ -1013,7 +1358,7 @@ async function loadGameNewsFeedsEditor() {
 
   let resp;
   try {
-    resp = await fetch('/api/gamenews/feeds', { headers });
+    resp = await fetch(`/api/gamenews/feeds?guildId=${encodeURIComponent(guildId)}`, { headers });
   } catch (err) {
     console.error('Erro ao chamar /api/gamenews/feeds:', err);
     listEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_feeds_error_generic'))}</div>`;
@@ -1148,7 +1493,7 @@ async function saveGameNewsFeeds() {
 
   let resp;
   try {
-    resp = await fetch('/api/gamenews/feeds', {
+    resp = await fetch(`/api/gamenews/feeds?guildId=${encodeURIComponent(guildId)}`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ feeds }),
@@ -1374,7 +1719,21 @@ async function loadUsers() {
     .join('');
 
   listEl.innerHTML = html;
+
+  // Store as current editable set (per guild)
+  state.gameNewsFeedsByGuild[guildId] = items;
+
+  // Click -> open modal editor
+  listEl.querySelectorAll('[data-feed-idx]').forEach((el) => {
+    el.addEventListener('click', async () => {
+      const idx = Number(el.getAttribute('data-feed-idx'));
+      const feed = items[idx];
+      if (!feed) return;
+      await openGameNewsFeedModal({ guildId, feed, isNew: false });
+    });
+  });
 }
+
 
 // ==== CONFIG TAB (/api/guilds/:guildId/meta + /config) ====
 
@@ -1590,65 +1949,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnAddFeed = document.getElementById('btnAddGameNewsFeed');
   if (btnAddFeed) {
     btnAddFeed.addEventListener('click', async () => {
-      const listEl = document.getElementById('gamenewsFeedsList');
-      if (!listEl) return;
-
-      // Garante que já temos pelo menos uma lista carregada
-      if (!listEl.querySelector('.gamenews-feed-row')) {
-        await loadGameNewsFeedsEditor().catch((err) => console.error('Erro loadGameNewsFeedsEditor (add):', err));
-      }
-
       const guildPicker = document.getElementById('guildPicker');
       const guildId = guildPicker?.value || '';
-      const channels = guildId ? state.guildChannelsCache[guildId] || [] : [];
-
-      const channelOptions = [
-        `<option value="">${escapeHtml(state.lang === 'en' ? 'Select a channel' : 'Selecione um canal')}</option>`,
-        ...channels.map(
-          (ch) => `<option value="${escapeHtml(ch.id)}"># ${escapeHtml(ch.name)}</option>`
-        ),
-      ].join('');
-
-      const div = document.createElement('div');
-      div.className = 'card gamenews-feed-row';
-      div.innerHTML = `
-        <div class="row gap">
-          <div class="col">
-            <label>${escapeHtml(state.lang === 'en' ? 'Name' : 'Nome')}</label>
-            <input class="input gn-name" value="" />
-          </div>
-          <div class="col">
-            <label>Feed URL</label>
-            <input class="input gn-url" value="" placeholder="https://" />
-          </div>
-        </div>
-        <div class="row gap" style="margin-top:8px; align-items:flex-end;">
-          <div class="col">
-            <label>${escapeHtml(state.lang === 'en' ? 'Channel' : 'Canal')}</label>
-            <select class="select gn-channel">
-              ${channelOptions}
-            </select>
-          </div>
-          <div class="col">
-            <label>${escapeHtml(state.lang === 'en' ? 'Interval (minutes, optional)' : 'Intervalo (minutos, opcional)')}</label>
-            <input class="input gn-interval" type="number" min="0" step="1" value="" />
-          </div>
-          <div class="col" style="text-align:right;">
-            <label style="display:block; margin-bottom:4px;">
-              <input type="checkbox" class="gn-enabled" checked />
-              ${escapeHtml(state.lang === 'en' ? 'Enabled' : 'Ativo')}
-            </label>
-            <button type="button" class="btn danger gn-remove">${escapeHtml(state.lang === 'en' ? 'Remove' : 'Remover')}</button>
-          </div>
-        </div>
-      `;
-
-      listEl.appendChild(div);
-
-      const removeBtn = div.querySelector('.gn-remove');
-      if (removeBtn) {
-        removeBtn.addEventListener('click', () => div.remove());
+      if (!guildId) {
+        toast(state.lang === 'en' ? 'Select a server first.' : 'Seleciona um servidor primeiro.');
+        return;
       }
+      await openGameNewsFeedModal({ guildId, feed: {}, isNew: true });
     });
   }
 

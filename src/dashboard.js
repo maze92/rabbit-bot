@@ -1499,6 +1499,8 @@ app.get('/api/case', requireDashboardAuth, async (req, res) => {
 
 app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
   try {
+    const guildId = sanitizeId(req.query.guildId || '');
+
     if (!GameNewsModel) {
       return res.json({
         ok: true,
@@ -1511,12 +1513,16 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
     let feeds = [];
     if (GameNewsFeed) {
       try {
-        const docs = await GameNewsFeed.find({}).lean();
+        const q = guildId ? { guildId } : {};
+        const docs = await GameNewsFeed.find(q).lean();
         feeds = docs.map((d) => ({
+          guildId: d.guildId || null,
           name: d.name || 'Feed',
           feedUrl: d.feedUrl,
           channelId: d.channelId,
-          enabled: d.enabled !== false
+          logChannelId: d.logChannelId || null,
+          enabled: d.enabled !== false,
+          intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
         }));
       } catch (e) {
         console.error('[Dashboard] /api/gamenews-status: failed loading GameNewsFeed:', e?.message || e);
@@ -1525,15 +1531,18 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
 
     if (!feeds.length && Array.isArray(config?.gameNews?.sources)) {
       feeds = config.gameNews.sources.map((s) => ({
+        guildId: null,
         name: s.name,
         feedUrl: s.feed,
         channelId: s.channelId,
-        enabled: true
+        logChannelId: null,
+        enabled: true,
+        intervalMs: null
       }));
     }
 
     const names = feeds.map((s) => s?.name).filter(Boolean);
-    const docs = await GameNewsModel.find({ source: { $in: names } }).lean();
+    const docs = names.length ? await GameNewsModel.find({ source: { $in: names } }).lean() : [];
 
     const map = new Map();
     for (const d of docs) map.set(d.source, d);
@@ -1541,11 +1550,14 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
     const items = feeds.map((s) => {
       const d = map.get(s.name);
       return {
+        guildId: s.guildId || null,
         source: s.name,
         feedName: s.name,
         feedUrl: s.feedUrl,
         channelId: s.channelId,
+        logChannelId: s.logChannelId || null,
         enabled: s.enabled !== false,
+        intervalMs: typeof s.intervalMs === 'number' ? s.intervalMs : null,
 
         failCount: d?.failCount ?? 0,
         pausedUntil: d?.pausedUntil ?? null,
@@ -1558,7 +1570,7 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
 
     return res.json({
       ok: true,
-      source: GameNewsFeed ? 'mongo+feeds' : 'mongo+static',
+      source: GameNewsFeed ? (guildId ? 'mongo+feeds:guild' : 'mongo+feeds') : 'mongo+static',
       items
     });
   } catch (err) {
@@ -1567,18 +1579,22 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
   }
 });
 
+
 // GameNews feeds configuration (for dashboard editor)
 app.get('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
   try {
-    // If there is no GameNewsFeed model at all, fall back to the static
-    // config-based feeds (read-only until the first save).
+    const guildId = sanitizeId(req.query.guildId || '');
+
+    // If there is no GameNewsFeed model at all, fall back to static config feeds (read-only).
     if (!GameNewsFeed) {
       const items = Array.isArray(config?.gameNews?.sources)
         ? config.gameNews.sources.map((s, idx) => ({
             id: String(idx),
+            guildId: null,
             name: s.name,
             feedUrl: s.feed,
             channelId: s.channelId,
+            logChannelId: null,
             enabled: true,
             intervalMs: null
           }))
@@ -1586,34 +1602,17 @@ app.get('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       return res.json({ ok: true, items, source: 'static' });
     }
 
-    // When the model exists but the collection is still empty, we treat the
-    // static config feeds as the initial editable set. As soon as the user
-    // hits "Guardar feeds", these will be persisted in Mongo and from that
-    // point on everything is driven by the database.
-    let docs = await GameNewsFeed.find({}).sort({ createdAt: 1 }).lean();
+    // Load feeds for a guild when specified, else all.
+    const q = guildId ? { guildId } : {};
+    const docs = await GameNewsFeed.find(q).sort({ createdAt: 1 }).lean();
 
-    if (!docs.length && Array.isArray(config?.gameNews?.sources)) {
-      const seed = config.gameNews.sources
-        .filter((s) => s && s.feed && s.channelId)
-        .map((s) => ({
-          name: s.name,
-          feedUrl: s.feed,
-          channelId: s.channelId,
-          enabled: true,
-          intervalMs: null
-        }));
-
-      if (seed.length) {
-        await GameNewsFeed.insertMany(seed);
-        docs = await GameNewsFeed.find({}).sort({ createdAt: 1 }).lean();
-      }
-    }
-
-    const items = docs.map((d, idx) => ({
-      id: (d._id && d._id.toString()) || String(idx),
+    const items = docs.map((d) => ({
+      id: d._id.toString(),
+      guildId: d.guildId || null,
       name: d.name || 'Feed',
       feedUrl: d.feedUrl,
       channelId: d.channelId,
+      logChannelId: d.logChannelId || null,
       enabled: d.enabled !== false,
       intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
     }));
@@ -1631,6 +1630,11 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
       return res.status(503).json({ ok: false, error: 'GameNewsFeed model not available on this deployment.' });
     }
 
+    const guildId = sanitizeId(req.body?.guildId || req.query.guildId || '');
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+
     const feeds = Array.isArray(req.body?.feeds) ? req.body.feeds : [];
     const sanitized = [];
 
@@ -1639,30 +1643,42 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
       const name = sanitizeText(f.name || 'Feed', { maxLen: 64, stripHtml: true }) || 'Feed';
       const feedUrl = sanitizeText(f.feedUrl, { maxLen: 512, stripHtml: true });
       const channelId = sanitizeId(f.channelId);
-      const enabled = !!f.enabled;
+      const logChannelId = sanitizeId(f.logChannelId) || null;
+      const enabled = f.enabled !== false;
 
       const intervalRaw = Number(f.intervalMs ?? 0);
       const intervalMs = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : null;
 
       if (!feedUrl || !channelId) continue;
-      sanitized.push({ name, feedUrl, channelId, enabled, intervalMs });
+      sanitized.push({ guildId, name, feedUrl, channelId, logChannelId, enabled, intervalMs });
     }
 
-    // Replace all documents with the new set (global config)
-    await GameNewsFeed.deleteMany({});
+    // Replace all docs for this guild only.
+    await GameNewsFeed.deleteMany({ guildId });
     if (sanitized.length) {
       await GameNewsFeed.insertMany(sanitized);
     }
 
-    const docs = await GameNewsFeed.find({}).sort({ createdAt: 1 }).lean();
+    const docs = await GameNewsFeed.find({ guildId }).sort({ createdAt: 1 }).lean();
     const items = docs.map((d) => ({
       id: d._id.toString(),
+      guildId: d.guildId || null,
       name: d.name || 'Feed',
       feedUrl: d.feedUrl,
       channelId: d.channelId,
+      logChannelId: d.logChannelId || null,
       enabled: d.enabled !== false,
       intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
     }));
+
+    await recordAudit({
+      req,
+      action: 'gamenews.feeds.save',
+      guildId,
+      targetUserId: null,
+      actor: getActorFromRequest(req),
+      payload: { count: items.length }
+    });
 
     return res.json({ ok: true, items });
   } catch (err) {
