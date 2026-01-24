@@ -67,13 +67,24 @@ module.exports = async (client, interaction) => {
       }
 
       try {
-        const currentName = channel.name || '';
-        const baseName = currentName
-          .replace(/^closed-/, '')
-          .replace(/^ticket-/, '');
-        const newName = `closed-ticket-${baseName}`.slice(0, 95);
-        await channel.setName(newName).catch(() => null);
-      } catch (err) {
+  const currentName = channel.name || '';
+  let baseName = currentName;
+
+  // Remove prefixes from previous states: closed-ticket-, ticket-, closed-
+  baseName = baseName.replace(/^closed-ticket-/i, '');
+  baseName = baseName.replace(/^ticket-/i, '');
+  baseName = baseName.replace(/^closed-/i, '');
+
+  if (!baseName || !baseName.trim()) {
+    baseName = ticket.username || ticket.userTag || ticket.userId || 'ticket';
+  }
+
+  const newName = `closed-ticket-${baseName}`.slice(0, 95);
+  await channel.setName(newName).catch(() => null);
+} catch (err) {
+  console.warn('[slash/ticketclose] Failed to rename ticket channel:', err?.message || err);
+}
+
         console.warn('[slash/ticketclose] Failed to rename ticket channel:', err?.message || err);
       }
     } catch (err) {

@@ -230,7 +230,7 @@ async function decodeDashboardToken(rawToken) {
   if (process.env.DASHBOARD_TOKEN && rawToken === process.env.DASHBOARD_TOKEN) {
     return {
       _id: null,
-      username: 'env-token',
+      username: 'admin',
       role: 'ADMIN',
       permissions: {
         canViewLogs: true,
@@ -2086,7 +2086,7 @@ app.post('/api/tickets/:ticketId/reopen', requireDashboardAuth, async (req, res)
             }
 
             try {
-              await channel.send(`[Dashboard] Ticket reaberto por ${actor}.`);
+              await channel.send(`🔓 [Dashboard] Ticket reaberto por ${actor}.`);
             } catch {
               // ignore
             }
