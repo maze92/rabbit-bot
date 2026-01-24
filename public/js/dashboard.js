@@ -731,6 +731,14 @@
       const created = tkt.createdAt ? new Date(tkt.createdAt).toLocaleString() : '—';
       const status = tkt.status || 'OPEN';
 
+      let actionsHtml = '';
+      actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-reply">Responder</button>';
+      if (status === 'CLOSED') {
+        actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-delete">Apagar</button>';
+      } else {
+        actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-close">Fechar</button>';
+      }
+
       row.innerHTML =
         '<div class="title">#' +
         escapeHtml(String(tkt._id || '').slice(-6)) +
@@ -745,8 +753,7 @@
         escapeHtml(created) +
         '</div>' +
         '<div class="actions" style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">' +
-        '  <button type="button" class="btn btn-small btn-ticket-reply">Responder</button>' +
-        '  <button type="button" class="btn btn-small btn-ticket-close">Fechar</button>' +
+        actionsHtml +
         '</div>';
 
       listEl.appendChild(row);
@@ -819,6 +826,25 @@
       console.error('Failed to reply ticket', err);
       toast('Erro ao responder ao ticket / error replying ticket.');
     }
+
+  async function deleteTicket(ticketId) {
+    if (!state.guildId) return;
+    const confirmMsg = t('tickets_delete_confirm') || 'Tens a certeza que queres apagar este ticket?';
+    const ok = window.confirm(confirmMsg);
+    if (!ok) return;
+
+    try {
+      await apiPost('/tickets/' + encodeURIComponent(ticketId) + '/delete', {
+        guildId: state.guildId
+      });
+      toast(t('tickets_delete_success') || 'Ticket apagado com sucesso.');
+      await loadTickets();
+    } catch (err) {
+      console.error('Failed to delete ticket', err);
+      toast('Erro ao apagar ticket / error deleting ticket.');
+    }
+  }
+
   }
 
   // -----------------------------
