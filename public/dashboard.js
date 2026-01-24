@@ -744,46 +744,72 @@ async function loadTickets(page = 1) {
   }
 
   
-  const html = items
-    .map((tkt) => {
-      const ticketId = tkt._id || tkt.id || '';
-      const userId = tkt.userId || tkt.createdById || '—';
-      const channelId = tkt.channelId || '—';
-      const status = tkt.status || 'OPEN';
-      const createdAt = tkt.createdAt || '';
-      const closedAt = tkt.closedAt || null;
-      const subject = tkt.subject || tkt.topic || '';
-      const lastMsgAt = tkt.lastMessageAt || '';
 
-      return `
-        <div class="card ticket-row" data-ticket-id="${ticketId}">
-          <div class="row gap" style="justify-content: space-between; align-items:flex-start;">
-            <div>
-              <strong>${escapeHtml(subject || (state.lang === 'en' ? `Ticket from ${userId}` : `Ticket de ${userId}`))}</strong>
-              <div class="hint">
-                ${state.lang === 'en' ? 'User' : 'Utilizador'}: ${escapeHtml(userId)}<br>
-                ${state.lang === 'en' ? 'Channel' : 'Canal'}: ${escapeHtml(channelId)}
-              </div>
-            </div>
-            <div style="text-align:right; font-size:11px; color:var(--text-muted);">
-              <div>Status: ${escapeHtml(status)}</div>
-              ${createdAt ? `<div>${state.lang === 'en' ? 'Created at' : 'Criado em'}: ${escapeHtml(createdAt)}</div>` : ''}
-              ${closedAt ? `<div>${state.lang === 'en' ? 'Closed at' : 'Fechado em'}: ${escapeHtml(closedAt)}</div>` : ''}
-              ${lastMsgAt ? `<div>${state.lang === 'en' ? 'Last message' : 'Última msg'}: ${escapeHtml(lastMsgAt)}</div>` : ''}
-            </div>
-          </div>
-          <div class="row gap" style="margin-top:8px; justify-content:flex-end;">
-            <button type="button" class="btn small" data-action="reply">
-              ${escapeHtml(t('tickets_btn_reply') || (state.lang === 'en' ? 'Reply' : 'Responder'))}
-            </button>
-            <button type="button" class="btn small danger" data-action="close">
-              ${escapeHtml(t('tickets_btn_close') || (state.lang === 'en' ? 'Close ticket' : 'Fechar ticket'))}
-            </button>
-          </div>
-        </div>
-      `;
-    })
-    .join('');
+  const html = items.map((tkt) => {
+    const ticketId = tkt._id || tkt.id || '';
+    const userId = tkt.userId || tkt.createdById || '—';
+    const channelId = tkt.channelId || '—';
+    const status = tkt.status || 'OPEN';
+    const createdAt = tkt.createdAt || '';
+    const closedAt = tkt.closedAt || null;
+    const subject = tkt.subject || tkt.topic || '';
+    const lastMsgAt = tkt.lastMessageAt || '';
+
+    const title =
+      subject ||
+      (state.lang === 'en'
+        ? 'Ticket from ' + userId
+        : 'Ticket de ' + userId);
+
+    let metaHtml = '';
+    if (createdAt) {
+      metaHtml += '<div>' +
+        (state.lang === 'en' ? 'Created at' : 'Criado em') +
+        ': ' + escapeHtml(createdAt) +
+      '</div>';
+    }
+    if (closedAt) {
+      metaHtml += '<div>' +
+        (state.lang === 'en' ? 'Closed at' : 'Fechado em') +
+        ': ' + escapeHtml(closedAt) +
+      '</div>';
+    }
+    if (lastMsgAt) {
+      metaHtml += '<div>' +
+        (state.lang === 'en' ? 'Last message' : 'Última msg') +
+        ': ' + escapeHtml(lastMsgAt) +
+      '</div>';
+    }
+
+    return (
+      '<div class="card ticket-row" data-ticket-id="' + escapeHtml(ticketId) + '">' +
+        '<div class="row gap" style="justify-content: space-between; align-items:flex-start;">' +
+          '<div>' +
+            '<strong>' + escapeHtml(title) + '</strong>' +
+            '<div class="hint">' +
+              (state.lang === 'en' ? 'User' : 'Utilizador') + ': ' + escapeHtml(userId) + '<br>' +
+              (state.lang === 'en' ? 'Channel' : 'Canal') + ': ' + escapeHtml(channelId) +
+            '</div>' +
+          '</div>' +
+          '<div style="text-align:right; font-size:11px; color:var(--text-muted);">' +
+            '<div>Status: ' + escapeHtml(status) + '</div>' +
+            metaHtml +
+          '</div>' +
+        '</div>' +
+        '<div class="row gap" style="margin-top:8px; justify-content:flex-end;">' +
+          '<button type="button" class="btn small" data-action="reply">' +
+            escapeHtml(t('tickets_btn_reply') || (state.lang === 'en' ? 'Reply' : 'Responder')) +
+          '</button>' +
+          '<button type="button" class="btn small danger" data-action="close">' +
+            escapeHtml(t('tickets_btn_close') || (state.lang === 'en' ? 'Close ticket' : 'Fechar ticket')) +
+          '</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join('');
+
+  listEl.innerHTML = html;
+
 
   listEl.innerHTML = html;
 
