@@ -287,12 +287,12 @@
     document.querySelectorAll('.section').forEach(function (sec) {
       sec.classList.remove('active');
     });
-    document.querySelectorAll('.topnav button[data-tab]').forEach(function (btn) {
+    document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
       btn.classList.remove('active');
     });
 
     const section = document.getElementById('tab-' + name);
-    const button = document.querySelector('.topnav button[data-tab="' + name + '"]');
+    const button = document.querySelector('.tabs button[data-tab="' + name + '"]');
     if (section) section.classList.add('active');
     if (button) button.classList.add('active');
 
@@ -319,7 +319,7 @@
 
     const tabsRequiringGuild = ['logs', 'cases', 'tickets', 'gamenews', 'user', 'config'];
     tabsRequiringGuild.forEach(function (name) {
-      const btn = document.querySelector('.topnav button[data-tab="' + name + '"]');
+      const btn = document.querySelector('.tabs button[data-tab="' + name + '"]');
       if (!btn) return;
       btn.disabled = !hasGuild;
     });
@@ -868,7 +868,7 @@
     }
 
     // Tabs
-    document.querySelectorAll('.topnav button[data-tab]').forEach(function (btn) {
+    document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var tab = btn.getAttribute('data-tab');
         if (!tab) return;
