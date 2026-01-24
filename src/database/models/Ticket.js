@@ -32,6 +32,9 @@ const ticketSchema = new Schema(
     lastResponderName: { type: String, default: null },
     lastResponderAt: { type: Date, default: null },
 
+    // Quando o ticket é reaberto (via dashboard)
+    reopenedAt: { type: Date, default: null },
+
     closedAt: { type: Date, default: null }
   },
   {

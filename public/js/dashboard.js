@@ -735,6 +735,8 @@
       let statusLabel = status;
       if (status === 'CLOSED') {
         statusLabel = t('tickets_status_closed') || 'CLOSED';
+      } else if (tkt.reopenedAt) {
+        statusLabel = t('tickets_status_reopened') || 'Reaberto';
       } else if (tkt.lastResponderName) {
         statusLabel = t('tickets_status_answered') || 'Respondido';
       } else {
@@ -865,6 +867,7 @@
         content: content,
       });
       toast(t('tickets_reply_success'));
+      await loadTickets();
     } catch (err) {
       console.error('Failed to reply ticket', err);
       toast('Erro ao responder ao ticket / error replying ticket.');

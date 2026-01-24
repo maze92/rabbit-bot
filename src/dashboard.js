@@ -2032,6 +2032,8 @@ app.post('/api/tickets/:ticketId/reopen', requireDashboardAuth, async (req, res)
     const actor = getActorFromRequest(req) || 'dashboard';
 
     ticket.status = 'OPEN';
+    // Marca que foi reaberto (mantemos histórico em reopenedAt)
+    ticket.reopenedAt = new Date();
     ticket.closedAt = null;
     ticket.closedById = null;
     await ticket.save();
@@ -2057,7 +2059,11 @@ app.post('/api/tickets/:ticketId/reopen', requireDashboardAuth, async (req, res)
             try {
               if (channel.name.startsWith('closed-')) {
                 const base = channel.name.slice('closed-'.length) || 'ticket';
-                const newName = ('ticket-' + base).slice(0, 90);
+                let newName = base;
+                if (!base.toLowerCase().startsWith('ticket-')) {
+                  newName = ('ticket-' + base);
+                }
+                newName = newName.slice(0, 90);
                 await channel.setName(newName);
               }
             } catch (err) {
