@@ -1975,6 +1975,25 @@ app.post('/api/tickets/:ticketId/close', requireDashboardAuth, async (req, res) 
     const guildId = (ticket.guildId || '').toString().trim() || null;
     const actor = getActorFromRequest(req) || 'dashboard';
 
+    // Tentar remover o canal no Discord (best effort)
+    try {
+      if (_client && guildId && ticket.channelId) {
+        const guild = _client.guilds.cache.get(guildId);
+        if (guild) {
+          const channel = guild.channels.cache.get(ticket.channelId);
+          if (channel) {
+            try {
+              await channel.delete(`Ticket apagado via dashboard por ${actor}`);
+            } catch (err) {
+              console.warn('[Dashboard] Failed to delete ticket channel on Discord:', err?.message || err);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Dashboard] Failed to sync ticket delete to Discord (non-fatal):', err?.message || err);
+    }
+
     await TicketModel.deleteOne({ _id: ticketId });
 
     await recordAudit({
@@ -1992,6 +2011,88 @@ app.post('/api/tickets/:ticketId/close', requireDashboardAuth, async (req, res) 
     return res.status(500).json({ ok: false, error: 'Internal Server Error' });
   }
 });
+
+app.post('/api/tickets/:ticketId/reopen', requireDashboardAuth, async (req, res) => {
+  try {
+    if (!TicketModel) {
+      return res.status(503).json({ ok: false, error: 'Ticket model not available' });
+    }
+
+    const ticketId = (req.params.ticketId || '').toString().trim();
+    if (!ticketId) {
+      return res.status(400).json({ ok: false, error: 'ticketId is required' });
+    }
+
+    const ticket = await TicketModel.findById(ticketId);
+    if (!ticket) {
+      return res.status(404).json({ ok: false, error: 'Ticket not found' });
+    }
+
+    const guildId = (ticket.guildId || '').toString().trim() || null;
+    const actor = getActorFromRequest(req) || 'dashboard';
+
+    ticket.status = 'OPEN';
+    ticket.closedAt = null;
+    ticket.closedById = null;
+    await ticket.save();
+
+    try {
+      if (_client && guildId && ticket.channelId) {
+        const guild = _client.guilds.cache.get(guildId);
+        if (guild) {
+          const channel = guild.channels.cache.get(ticket.channelId);
+          if (channel && channel.isTextBased?.()) {
+            const rawUserId = ticket.userId;
+            const userIdStr = rawUserId ? String(rawUserId).trim() : '';
+            const isLikelyId = /^[0-9]{10,20}$/.test(userIdStr);
+
+            if (isLikelyId) {
+              try {
+                await channel.permissionOverwrites.edit(userIdStr, { SendMessages: true });
+              } catch (err) {
+                console.warn('[Dashboard] Failed to update ticket channel overwrites (reopen):', err?.message || err);
+              }
+            }
+
+            try {
+              if (channel.name.startsWith('closed-')) {
+                const base = channel.name.slice('closed-'.length) || 'ticket';
+                const newName = ('ticket-' + base).slice(0, 90);
+                await channel.setName(newName);
+              }
+            } catch (err) {
+              console.warn('[Dashboard] Failed to rename ticket channel on reopen:', err?.message || err);
+            }
+
+            try {
+              await channel.send(`[Dashboard] Ticket reaberto por ${actor}.`);
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Dashboard] Failed to sync ticket reopen to Discord (non-fatal):', err?.message || err);
+    }
+
+    await recordAudit({
+      req,
+      action: 'ticket.reopen',
+      guildId: guildId || undefined,
+      targetUserId: ticket.userId,
+      actor,
+      payload: { ticketId }
+    });
+
+    return res.json({ ok: true, item: ticket });
+  } catch (err) {
+    console.error('[Dashboard] /api/tickets/:ticketId/reopen error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
+  }
+});
+
+
 
 app.post('/api/tickets/clear', requireDashboardAuth, rateLimit({ windowMs: 60_000, max: 3, keyPrefix: 'rl:tickets:clear:' }), async (req, res) => {
   try {

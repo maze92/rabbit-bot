@@ -733,7 +733,9 @@
 
       let actionsHtml = '';
       actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-reply">Responder</button>';
+
       if (status === 'CLOSED') {
+        actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-reopen">Reabrir</button>';
         actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-delete">Apagar</button>';
       } else {
         actionsHtml += '  <button type="button" class="btn btn-small btn-ticket-close">Fechar</button>';
@@ -807,6 +809,25 @@
     } catch (err) {
       console.error('Failed to close ticket', err);
       toast('Erro ao fechar ticket / error closing ticket.');
+    }
+  }
+
+
+  async function reopenTicket(ticketId) {
+    if (!state.guildId) return;
+    const confirmMsg = t('tickets_reopen_confirm') || 'Tens a certeza que queres reabrir este ticket?';
+    const ok = window.confirm(confirmMsg);
+    if (!ok) return;
+
+    try {
+      await apiPost('/tickets/' + encodeURIComponent(ticketId) + '/reopen', {
+        guildId: state.guildId,
+      });
+      toast(t('tickets_reopen_success') || 'Ticket reaberto com sucesso.');
+      await loadTickets();
+    } catch (err) {
+      console.error('Failed to reopen ticket', err);
+      toast('Erro ao reabrir ticket / error reopening ticket.');
     }
   }
 
