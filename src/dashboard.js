@@ -2057,20 +2057,24 @@ app.post('/api/tickets/:ticketId/reopen', requireDashboardAuth, async (req, res)
             }
 
             try {
-              if (channel.name.startsWith('closed-')) {
-                let baseName = channel.name.slice('closed-'.length) || 'ticket';
+              // Nome canónico ao reabrir: ticket-<username/id>
+              let baseName =
+                ticket.username ||
+                ticket.userTag ||
+                ticket.userId ||
+                '';
 
-                // Remover prefixes antigos (closed-ticket-, ticket- repetido, etc.)
-                baseName = baseName.replace(/^closed-ticket-/i, '');
-                baseName = baseName.replace(/^ticket-/i, '');
-
-                if (!baseName || !baseName.trim()) {
-                  baseName = ticket.username || ticket.userTag || ticket.userId || 'ticket';
-                }
-
-                const newName = `ticket-${baseName}`.slice(0, 90);
-                await channel.setName(newName);
+              if (!baseName || !String(baseName).trim()) {
+                const current = channel.name || '';
+                baseName = current
+                  .replace(/^closed-ticket-/i, '')
+                  .replace(/^ticket-/i, '')
+                  .replace(/^closed-/i, '') || 'ticket';
               }
+
+              baseName = String(baseName).replace(/\s+/g, '-');
+              const newName = `ticket-${baseName}`.slice(0, 90);
+              await channel.setName(newName);
             } catch (err) {
               console.warn('[Dashboard] Failed to rename ticket channel on reopen:', err?.message || err);
             }
