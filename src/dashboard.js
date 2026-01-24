@@ -1910,6 +1910,12 @@ app.post('/api/tickets/:ticketId/close', requireDashboardAuth, async (req, res) 
         if (guild) {
           const channel = guild.channels.cache.get(ticket.channelId);
           if (channel && channel.isTextBased?.()) {
+            try {
+              await channel.send('✅ Ticket fechado. Obrigado por entrares em contacto!');
+            } catch (err) {
+              console.warn('[Dashboard] Failed to send ticket close message:', err?.message || err);
+            }
+
             const rawUserId = ticket.userId;
             const userIdStr = rawUserId ? String(rawUserId).trim() : '';
             const isLikelyId = /^[0-9]{10,20}$/.test(userIdStr);
@@ -2044,6 +2050,12 @@ app.post('/api/tickets/:ticketId/reopen', requireDashboardAuth, async (req, res)
         if (guild) {
           const channel = guild.channels.cache.get(ticket.channelId);
           if (channel && channel.isTextBased?.()) {
+            try {
+              await channel.send('✅ Ticket fechado. Obrigado por entrares em contacto!');
+            } catch (err) {
+              console.warn('[Dashboard] Failed to send ticket close message:', err?.message || err);
+            }
+
             const rawUserId = ticket.userId;
             const userIdStr = rawUserId ? String(rawUserId).trim() : '';
             const isLikelyId = /^[0-9]{10,20}$/.test(userIdStr);
@@ -2058,12 +2070,21 @@ app.post('/api/tickets/:ticketId/reopen', requireDashboardAuth, async (req, res)
 
             try {
               if (channel.name.startsWith('closed-')) {
-                const base = channel.name.slice('closed-'.length) || 'ticket';
-                let newName = base;
-                if (!base.toLowerCase().startsWith('ticket-')) {
-                  newName = ('ticket-' + base);
+                let baseName = channel.name.slice('closed-'.length) || 'ticket';
+                const ticketPrefix = 'ticket-';
+
+                // Normalizar: garantir que só existe um prefixo "ticket-"
+                let lower = baseName.toLowerCase();
+                while (lower.startsWith(ticketPrefix + ticketPrefix)) {
+                  baseName = baseName.slice(ticketPrefix.length);
+                  lower = baseName.toLowerCase();
                 }
-                newName = newName.slice(0, 90);
+
+                if (!lower.startsWith(ticketPrefix)) {
+                  baseName = ticketPrefix + baseName;
+                }
+
+                const newName = baseName.slice(0, 90);
                 await channel.setName(newName);
               }
             } catch (err) {

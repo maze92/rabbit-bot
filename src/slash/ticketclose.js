@@ -74,14 +74,8 @@ module.exports = async (client, interaction) => {
       // ignore
     }
 
-    // Public confirmation in the ticket channel; ephemeral confirmation to the actor
-    try {
-      await channel.send('✅ Ticket fechado. Obrigado por entrares em contacto!').catch(() => null);
-    } catch {
-      // ignore
-    }
-
-    return interaction.reply({ content: '✅ Ticket fechado.', flags: 64 }).catch(() => null);
+    // Envia apenas uma confirmação (ephemeral) ao utilizador que executou o comando
+    return interaction.reply({ content: '✅ Ticket fechado. Obrigado por entrares em contacto!', flags: 64 }).catch(() => null);
   } catch (err) {
     console.error('[slash/ticketclose] Error:', err);
     try {
