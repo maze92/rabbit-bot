@@ -1145,7 +1145,21 @@ app.post('/api/mod/remove-infraction', requireDashboardAuth, async (req, res) =>
 });
 
 app.get('/health', (req, res) => {
-otalCommandsExecuted: s.totalCommandsExecuted,
+  try {
+    const s = status.getStatus();
+
+    const discordReady = Boolean(s.discordReady);
+    const mongoConnected = Boolean(s.mongoConnected);
+    const gameNewsRunning = Boolean(s.gameNewsRunning);
+
+    const payload = {
+      ok: discordReady && mongoConnected,
+      discordReady,
+      mongoConnected,
+      gameNewsRunning,
+      uptimeSeconds: Math.floor(process.uptime()),
+      metrics: {
+        totalCommandsExecuted: s.totalCommandsExecuted,
         totalInfractionsCreated: s.totalInfractionsCreated,
         autoModActions: s.autoModActions,
         antiSpamActions: s.antiSpamActions
@@ -1159,6 +1173,9 @@ otalCommandsExecuted: s.totalCommandsExecuted,
       ok: false,
       error: 'Health check failed'
     });
+  }
+});
+
   }
 });
 
