@@ -3,6 +3,7 @@
 
 const { PermissionsBitField } = require('discord.js');
 const config = require('../config/defaultConfig');
+const { getTrustConfig, getEffectiveMuteDuration } = require('../utils/trust');
 const infractionsService = require('./infractionsService');
 const warningsService = require('./warningsService');
 const logger = require('./logger');
@@ -62,23 +63,14 @@ async function handleInfractionAutomation(opts) {
         ? autoMuteCfg.muteDurationMs
         : 10 * 60 * 1000; // 10 minutos por omissão
 
-    // Pequeno escalonamento simples com base na confiança (trust)
-    let multiplier = 1;
-    try {
-      const trust = trustUser && typeof trustUser.trust === 'number' ? trustUser.trust : 0;
+    // Duração efetiva calculada com o mesmo helper usado na dashboard (getEffectiveMuteDuration)
+    const trustCfg = getTrustConfig();
+    const trustValue =
+      trustUser && typeof trustUser.trust === 'number'
+        ? trustUser.trust
+        : (typeof trustCfg.base === 'number' ? trustCfg.base : 0);
 
-      if (trust < 0 && trust >= -20) {
-        multiplier = 2;
-      } else if (trust < -20 && trust >= -40) {
-        multiplier = 3;
-      } else if (trust < -40) {
-        multiplier = 4;
-      }
-    } catch (err) {
-      console.warn('[automation] failed to compute trust-based scaling:', err?.message || err);
-    }
-
-    const durationMs = Math.max(60_000, Math.floor(baseDurationMs * multiplier));
+    const durationMs = getEffectiveMuteDuration(baseDurationMs, trustCfg, trustValue);
 
     const member = await guild.members.fetch(user.id).catch(() => null);
     if (!member) return;
