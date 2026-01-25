@@ -28,6 +28,9 @@ let DashboardAudit = null;
 let TicketLog = null;
 let Infraction = null;
 
+// In-memory cache para controlar fetch de membros por guild na dashboard
+const guildMembersLastFetch = new Map();
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const DashboardUserModel = require('./database/models/DashboardUser');
@@ -410,11 +413,20 @@ app.get('/api/guilds/:guildId/users', requireDashboardAuth, async (req, res) => 
     const guild = _client.guilds.cache.get(guildId);
     if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
 
-    // Garantir que temos a lista de membros atualizada (não apenas cache parcial)
-    try {
-      await guild.members.fetch();
-    } catch (e) {
-      console.warn('[Dashboard] Failed to fetch full member list for guild', guildId, e);
+    // Evitar spam ao gateway: só tentamos fetch completo de X em X minutos
+    const now = Date.now();
+    const last = guildMembersLastFetch.get(guildId) || 0;
+    const shouldFetch =
+      guild.members.cache.size < (guild.memberCount || guild.members.cache.size) &&
+      now - last > 5 * 60 * 1000; // 5 minutos
+
+    if (shouldFetch) {
+      try {
+        await guild.members.fetch();
+        guildMembersLastFetch.set(guildId, Date.now());
+      } catch (e) {
+        console.warn('[Dashboard] Failed to fetch full member list for guild', guildId, e);
+      }
     }
 
     const items = guild.members.cache.map((m) => ({
