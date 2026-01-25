@@ -175,8 +175,13 @@
       gamenews_save_success: 'Feeds de GameNews guardados.',
 
       users_title: 'Utilizadores',
-      users_hint: 'Lista rápida de utilizadores do servidor.',
+      users_hint: 'Lista de utilizadores e acesso rápido ao histórico de moderação.',
       users_empty: 'Selecione um servidor para ver utilizadores.',
+      users_detail_empty: 'Selecione um utilizador para ver o histórico de moderação e tickets.',
+      users_history_title: 'Histórico do utilizador',
+      users_history_infractions: 'Infrações recentes',
+      users_history_tickets: 'Tickets recentes',
+      users_history_none: 'Sem histórico de moderação para este utilizador.',
 
       config_title: 'Configuração do servidor',
       config_hint: 'Define canais de logs e cargos de staff para este servidor.',
@@ -248,8 +253,13 @@
       gamenews_save_success: 'GameNews feeds saved.',
 
       users_title: 'Users',
-      users_hint: 'Quick list of guild users.',
+      users_hint: 'Users list with quick access to their moderation history.',
       users_empty: 'Select a server to see the users list.',
+      users_detail_empty: 'Select a user to see their moderation and ticket history.',
+      users_history_title: 'User history',
+      users_history_infractions: 'Recent infractions',
+      users_history_tickets: 'Recent tickets',
+      users_history_none: 'No moderation history for this user.',
 
       config_title: 'Server configuration',
       config_hint: 'Define log channels, support channel and staff roles for this guild.',
@@ -470,9 +480,17 @@
         return;
       }
 
+      const detailEl = document.getElementById('userDetailPanel');
+      // Limpar painel de detalhe quando se recarrega a lista
+      if (detailEl) {
+        detailEl.innerHTML = '<div class="empty">' + escapeHtml(t('users_detail_empty')) + '</div>';
+      }
+
       items.forEach(function (u) {
         const row = document.createElement('div');
         row.className = 'list-item';
+        row.dataset.userId = u.id || '';
+        row.dataset.username = u.username || u.tag || u.id || '';
 
         const name = u.username || u.tag || u.id;
         const roles = (u.roles || []).map(function (r) { return r.name; }).join(', ');
@@ -484,6 +502,22 @@
           (roles ? ' • ' + escapeHtml(roles) : '') +
           '</div>';
 
+        row.addEventListener('click', function () {
+          // Marcar seleção visual
+          document.querySelectorAll('#tab-user .list .list-item').forEach(function (el) {
+            el.classList.remove('active');
+          });
+          row.classList.add('active');
+
+          loadUserHistory({
+            id: u.id,
+            username: u.username || u.tag || u.id || '',
+            bot: !!u.bot
+          }).catch(function (err) {
+            console.error('Failed to load user history', err);
+          });
+        });
+
         listEl.appendChild(row);
       });
     } catch (err) {
@@ -493,6 +527,151 @@
       empty.className = 'empty';
       empty.textContent = 'Erro ao carregar utilizadores / error loading users.';
       listEl.appendChild(empty);
+    }
+  }
+
+
+  async function loadUserHistory(user) {
+    const detailEl = document.getElementById('userDetailPanel');
+    if (!detailEl) return;
+
+    if (!state.guildId || !user || !user.id) {
+      detailEl.innerHTML = '<div class="empty">' + escapeHtml(t('users_detail_empty')) + '</div>';
+      return;
+    }
+
+    // Placeholder for bots
+    if (user.bot) {
+      detailEl.innerHTML =
+        '<div class="title">' + escapeHtml(t('users_history_title')) + '</div>' +
+        '<div class="subtitle">' + escapeHtml(user.username || user.id) + ' • BOT</div>' +
+        '<div class="empty">' + escapeHtml(t('users_history_none')) + '</div>';
+      return;
+    }
+
+    detailEl.innerHTML = '<div class="empty">' + escapeHtml(t('loading')) + '</div>';
+
+    try {
+      const res = await apiGet(
+        '/guilds/' +
+          encodeURIComponent(state.guildId) +
+          '/users/' +
+          encodeURIComponent(user.id) +
+          '/history'
+      );
+
+      if (!res || res.ok === false) {
+        console.error('User history error', res && res.error);
+        detailEl.innerHTML =
+          '<div class="empty">Erro ao carregar histórico / error loading history.</div>';
+        return;
+      }
+
+      const infractions = res.infractions || [];
+      const counts = res.counts || {};
+      const tickets = res.tickets || [];
+
+      let html = '';
+
+      html += '<div class="title">' + escapeHtml(t('users_history_title')) + '</div>';
+      html +=
+        '<div class="subtitle">' +
+        escapeHtml(user.username || user.id) +
+        ' • ' +
+        escapeHtml(user.id) +
+        '</div>';
+
+      // Badges de resumo
+      html += '<div class="badge-row">';
+
+      const warnCount = counts.WARN || 0;
+      const muteCount = counts.MUTE || 0;
+      const kickCount = counts.KICK || 0;
+      const banCount = counts.BAN || 0;
+
+      if (warnCount || muteCount || kickCount || banCount) {
+        if (warnCount) {
+          html +=
+            '<div class="badge badge-warn">WARN: ' + String(warnCount) + '</div>';
+        }
+        if (muteCount) {
+          html +=
+            '<div class="badge badge-mute">MUTE: ' + String(muteCount) + '</div>';
+        }
+        if (kickCount) {
+          html += '<div class="badge">KICK: ' + String(kickCount) + '</div>';
+        }
+        if (banCount) {
+          html += '<div class="badge badge-ban">BAN: ' + String(banCount) + '</div>';
+        }
+      } else {
+        html +=
+          '<div class="badge">' + escapeHtml(t('users_history_none')) + '</div>';
+      }
+
+      html += '</div>';
+
+      // Infrações recentes
+      html += '<div class="history-section">';
+      html += '<h3>' + escapeHtml(t('users_history_infractions')) + '</h3>';
+
+      if (!infractions.length) {
+        html +=
+          '<div class="empty" style="margin-top:4px;">' +
+          escapeHtml(t('users_history_none')) +
+          '</div>';
+      } else {
+        html += '<ul>';
+        infractions.forEach(function (inf) {
+          const when = inf.createdAt
+            ? new Date(inf.createdAt).toLocaleString()
+            : '';
+          const reason = inf.reason || '';
+          const line =
+            '[' +
+            (inf.type || 'UNK') +
+            '] ' +
+            (reason ? reason : '') +
+            (when ? ' • ' + when : '');
+          html += '<li>' + escapeHtml(line) + '</li>';
+        });
+        html += '</ul>';
+      }
+      html += '</div>';
+
+      // Tickets recentes
+      html += '<div class="history-section">';
+      html += '<h3>' + escapeHtml(t('users_history_tickets')) + '</h3>';
+
+      if (!tickets.length) {
+        html +=
+          '<div class="empty" style="margin-top:4px;">' +
+          escapeHtml(t('users_history_none')) +
+          '</div>';
+      } else {
+        html += '<ul>';
+        tickets.forEach(function (tkt) {
+          const opened = tkt.createdAt
+            ? new Date(tkt.createdAt).toLocaleString()
+            : '';
+          const status = tkt.closedAt ? 'Fechado' : 'Aberto';
+          const line =
+            '#' +
+            String(tkt.ticketNumber).padStart(3, '0') +
+            ' • ' +
+            status +
+            (opened ? ' • ' + opened : '');
+          html += '<li>' + escapeHtml(line) + '</li>';
+        });
+        html += '</ul>';
+      }
+      html += '</div>';
+
+      detailEl.innerHTML = html;
+    } catch (err) {
+      console.error('Failed to load user history', err);
+      detailEl.innerHTML =
+        '<div class="empty">Erro ao carregar histórico / error loading history.</div>';
     }
   }
 

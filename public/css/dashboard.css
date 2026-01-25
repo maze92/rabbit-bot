@@ -242,6 +242,102 @@ h2 {
   color: var(--text-muted);
 }
 
+
+/* Users layout */
+
+#tab-user .user-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+#tab-user .user-layout .list {
+  margin-top: 0;
+  max-height: 460px;
+  overflow: auto;
+}
+
+#tab-user .user-detail {
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: rgba(255,255,255,0.02);
+  padding: 10px 12px;
+  min-height: 120px;
+}
+
+#tab-user .user-detail .title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+#tab-user .user-detail .subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+#tab-user .user-detail .history-section {
+  margin-top: 8px;
+}
+
+#tab-user .user-detail .history-section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+#tab-user .user-detail .history-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#tab-user .user-detail .history-section li {
+  font-size: 12px;
+  padding: 3px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.04);
+}
+
+#tab-user .user-detail .history-section li:last-child {
+  border-bottom: none;
+}
+
+#tab-user .user-detail .badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+#tab-user .user-detail .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+#tab-user .user-detail .badge.badge-warn {
+  background: rgba(250, 166, 26, 0.18);
+}
+
+#tab-user .user-detail .badge.badge-mute {
+  background: rgba(88, 101, 242, 0.2);
+}
+
+#tab-user .user-detail .badge.badge-ban {
+  background: rgba(240, 71, 71, 0.25);
+}
+
+#tab-user .user-detail .empty {
+  margin-top: 0;
+}
+
 /* Mobile */
 
 @media (max-width: 768px) {
@@ -258,4 +354,9 @@ h2 {
   .tabs {
     flex-wrap: wrap;
   }
+}
+
+.list .list-item.active {
+  border-color: var(--accent);
+  background: rgba(88,101,242,0.12);
 }

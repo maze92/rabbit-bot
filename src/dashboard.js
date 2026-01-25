@@ -444,6 +444,48 @@ app.get('/api/guilds/:guildId/users', requireDashboardAuth, async (req, res) => 
 
 
 
+app.get('/api/guilds/:guildId/users/:userId/history', requireDashboardAuth, async (req, res) => {
+  try {
+    const guildId = sanitizeId(req.params.guildId);
+    const userId = sanitizeId(req.params.userId);
+    if (!guildId || !userId) {
+      return res.status(400).json({ ok: false, error: 'guildId and userId are required' });
+    }
+
+    if (!infractionsService) {
+      return res.status(503).json({ ok: false, error: 'Infractions service not available' });
+    }
+
+    const [infractions, counts, ticketDocs] = await Promise.all([
+      infractionsService.getRecentInfractions(guildId, userId, 10),
+      infractionsService.countInfractionsByType(guildId, userId),
+      TicketLog
+        ? TicketLog.find({ guildId, userId })
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    const tickets = (ticketDocs || []).map((t) => ({
+      ticketNumber: t.ticketNumber,
+      createdAt: t.createdAt || null,
+      closedAt: t.closedAt || null
+    }));
+
+    return res.json({
+      ok: true,
+      infractions: infractions || [],
+      counts: counts || {},
+      tickets
+    });
+  } catch (err) {
+    console.error('[Dashboard] /api/guilds/:guildId/users/:userId/history error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
+  }
+});
+
+
 app.get('/api/config', requireDashboardAuth, (req, res) => {
   try {
     return res.json({
