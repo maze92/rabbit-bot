@@ -128,7 +128,7 @@ async function resetUser(guildId, userId, baseTrust, reason) {
   // repor trust base, mas sempre dentro dos limites configurados
   const minTrust = typeof trustCfg.minTrust === 'number' ? trustCfg.minTrust : -100;
   const maxTrust = typeof trustCfg.maxTrust === 'number' ? trustCfg.maxTrust : 100;
-  const nextTrust = typeof baseTrust === 'number' ? baseTrust : (typeof trustCfg.baseTrust === 'number' ? trustCfg.baseTrust : 0);
+  const nextTrust = typeof baseTrust === 'number' ? baseTrust : (typeof trustCfg.base === 'number' ? trustCfg.base : 0);
 
   u.trust = clampTrust(nextTrust, minTrust, maxTrust);
 

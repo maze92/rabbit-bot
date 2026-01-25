@@ -449,7 +449,7 @@ app.get('/api/guilds/:guildId/users', requireDashboardAuth, async (req, res) => 
       bot: !!m.user?.bot,
       joinedAt: m.joinedAt || null,
       roles: m.roles?.cache
-        ?.filter((r) => r && r.id !== guild.id)
+        ?.filter((r) => r && r.id !== guild.id && r.id !== '1385619241235120169')
         .map((r) => ({ id: r.id, name: r.name })) || []
     }));
 
@@ -1035,7 +1035,7 @@ app.post('/api/mod/reset-trust', requireDashboardAuth, rateLimit({ windowMs: 60_
     const warningsService = require('./systems/warningsService');
     const trustCfg = require('./utils/trust').getTrustConfig();
 
-    const baseTrust = typeof trustCfg.baseTrust === 'number' ? trustCfg.baseTrust : 0;
+    const baseTrust = typeof trustCfg.base === 'number' ? trustCfg.base : 0;
 
     const dbUser = await warningsService.resetUser(guild.id, member.id, baseTrust, baseReason).catch(() => null);
 

@@ -203,8 +203,9 @@
       users_history_none: 'Sem histórico de moderação para este utilizador.',
       users_trust_title: 'Nível de confiança (trust)',
       users_trust_score: 'Trust',
-      users_trust_next_penalty: 'Próximo auto-mute estimado após mais {remaining} warn(s): ~{minutes} min',
-      users_trust_next_penalty_simple: 'Próximo auto-mute estimado: ~{minutes} min',
+      users_trust_next_penalty_prefix: 'Próximo auto-mute estimado após mais',
+      users_trust_next_penalty_suffix: 'warn(s); duração aproximada',
+      users_trust_next_penalty_simple_prefix: 'Próximo auto-mute estimado:',
       users_trust_automation_disabled: 'Automação de mute automática está desativada para este servidor.',
       users_actions_title: 'Ações rápidas de moderação',
       users_actions_warn: 'Warn',
@@ -313,8 +314,9 @@
       users_history_none: 'No moderation history for this user.',
       users_trust_title: 'Trust level',
       users_trust_score: 'Trust',
-      users_trust_next_penalty: 'Next estimated auto-mute after {remaining} more warn(s): ~{minutes} min',
-      users_trust_next_penalty_simple: 'Next estimated auto-mute: ~{minutes} min',
+      users_trust_next_penalty_prefix: 'Next estimated auto-mute after',
+      users_trust_next_penalty_suffix: 'more warn(s); estimated duration',
+      users_trust_next_penalty_simple_prefix: 'Next estimated auto-mute:',
       users_trust_automation_disabled: 'Automatic mute automation is disabled for this server.',
       users_actions_title: 'Quick moderation actions',
       users_actions_warn: 'Warn',
@@ -667,13 +669,43 @@
         html += '<h3>' + escapeHtml(t('users_trust_title')) + '</h3>';
 
         html += '<div class="user-trust-main">';
+
+        // Badge para nível de trust (baixo / médio / alto)
+        var trustVal = dbInfo.trust;
+        var trustLabel = dbInfo.trustLabel ? String(dbInfo.trustLabel) : '';
+        var trustLabelLower = trustLabel.toLowerCase();
+        var trustLevelClass = 'neutral';
+
+        if (trustLabelLower.includes('alto') || trustLabelLower.includes('high')) {
+          trustLevelClass = 'high';
+        } else if (
+          trustLabelLower.includes('médio') ||
+          trustLabelLower.includes('medio') ||
+          trustLabelLower.includes('medium')
+        ) {
+          trustLevelClass = 'medium';
+        } else if (trustLabelLower.includes('baixo') || trustLabelLower.includes('low')) {
+          trustLevelClass = 'low';
+        }
+
+        html += '<div class="user-trust-header">';
         html +=
           '<div class="user-trust-score">' +
           escapeHtml(t('users_trust_score')) +
           ': ' +
-          String(dbInfo.trust) +
-          (dbInfo.trustLabel ? ' (' + escapeHtml(String(dbInfo.trustLabel)) + ')' : '') +
+          String(trustVal) +
           '</div>';
+
+        if (trustLabel) {
+          html +=
+            '<span class="trust-badge trust-badge-' +
+            trustLevelClass +
+            '">' +
+            escapeHtml(trustLabel) +
+            '</span>';
+        }
+
+        html += '</div>';
 
         if (dbInfo.nextPenalty && dbInfo.nextPenalty.automationEnabled) {
           var np = dbInfo.nextPenalty;
@@ -688,21 +720,22 @@
           if (remaining !== null && mins !== null) {
             html +=
               '<span>' +
-              escapeHtml(
-                t('users_trust_next_penalty', {
-                  remaining: String(remaining),
-                  minutes: String(mins)
-                })
-              ) +
+              escapeHtml(t('users_trust_next_penalty_prefix')) +
+              ' ' +
+              String(remaining) +
+              ' warn(s); ' +
+              escapeHtml(t('users_trust_next_penalty_suffix')) +
+              ' ~' +
+              String(mins) +
+              ' min' +
               '</span>';
           } else if (mins !== null) {
             html +=
               '<span>' +
-              escapeHtml(
-                t('users_trust_next_penalty_simple', {
-                  minutes: String(mins)
-                })
-              ) +
+              escapeHtml(t('users_trust_next_penalty_simple_prefix')) +
+              ' ~' +
+              String(mins) +
+              ' min' +
               '</span>';
           }
           html += '</div>';

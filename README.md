@@ -1,99 +1,158 @@
-# Ozark Discord Bot
+# Ozark Bot
 
-**Ozark** é um bot de Discord focado em **moderação automática**, **gestão de infrações**, **Trust Score**, **RSS Game News** e **dashboard web em tempo real**.
+Ozark Bot is a modern Discord moderation and utility bot with a clean web dashboard, designed for small and medium communities that want **automation**, **transparency** and **safety** without complexity.
 
-Foi concebido para servir como uma base **robusta, extensível e profissional**, adequada tanto para comunidades pequenas como para servidores de grande dimensão.
+The project is being rebuilt from the ground up with a focus on:
 
----
-
-## ✨ Destaques
-
-- Compatível com `discord.js` **v14.25+** (preparado para v15)
-- AutoMod avançado com normalização de texto (PT / EN)
-- Trust Score persistente e progressivo
-- Dashboard web com monitorização em tempo real
-- Preparado para produção (Railway, Docker, VPS)
+- Clear and auditable moderation (everything registred as infractions)
+- A trust-based system instead of hard bans/kicks
+- A simple support flow based on tickets via threads
+- A lightweight GameNews system for gaming communities
+- Easy deployment on platforms like **Railway**
 
 ---
 
-## 🚀 Funcionalidades
+## Features (v1.0.0)
 
-### 🛡️ Moderação Automática
-- Deteção de linguagem ofensiva com normalização de:
-  - acentos
-  - símbolos
-  - variações comuns de bypass
-- Warnings progressivos e automáticos
-- Timeout baseado em Trust Score
-- Anti-Spam com cooldown inteligente
-- Exclusões por cargos (staff / admins)
+### 🔐 Trust‑based moderation
 
-### 🧠 Trust Score
-- Score individual persistente por utilizador
-- Penalizações automáticas por infrações
-- Regeneração gradual ao longo do tempo
-- Influência direta em:
-  - número de avisos permitidos
-  - duração dos mutes
+- Central **trust score** per user (per guild), stored in MongoDB.
+- Every moderation action creates an **Infraction** (`WARN` / `MUTE`).
+- Automatic **escalation** based on trust and number of warns:
+  - After a configurable number of WARNs, the bot applies a temporary **mute**.
+  - Mute duration scales automatically with the user's trust level.
+- No automatic kicks/bans – everything is controlled by trust and mutes.
+- Full history visible in the dashboard:
+  - Recent infractions
+  - Trust score and trust label
+  - Next estimated auto‑mute (how many warns left and for how many minutes)
 
-### 📰 Game News (RSS)
-- Leitura de múltiplos feeds RSS
-- Deduplicação real por hash
-- Retry com backoff e jitter
-- Persistência em MongoDB
-- Integração com dashboard e estado da aplicação
+### 🧑‍⚖️ Moderation dashboard
 
-### 📊 Dashboard Web
-- Express + Socket.IO
-- Visualização de:
-  - estado do bot
-  - estado do MongoDB
-  - estado do GameNews
-  - Trust Score e infrações
-- Endpoint `/health` para monitorização externa
-- Autenticação por token (`DASHBOARD_TOKEN`)
+Web dashboard (Express + Socket.IO) with:
 
-### ⚙️ Comandos
-- Comandos de texto (prefixo configurável)
-- Slash Commands (`/warn`, `/mute`, `/unmute`, `/userinfo`, etc.)
-- Respostas ephemerais para ações administrativas
-- Lógica partilhada entre comandos texto e slash
+- **Overview** of moderation activity for the last 24h.
+- **Users panel**:
+  - Search users and inspect:
+    - Trust, warnings, infractions
+    - Recent tickets autolinked
+  - Quick actions:
+    - `Warn`
+    - `Unmute`
+    - `Reset trust/warnings` (for false positives or manual forgiveness)
+- Respect for role hierarchy:
+  - The bot never acts on members with higher or equal role.
+  - Certain internal roles (e.g. system roles) are hidden from the UI.
+
+### 🎫 Ticket system via threads
+
+- Static support message in a configurable **Ticket channel**.
+- Users react on the message to open a **thread** (e.g. `ticket-001`, `ticket-002`, ...).
+- Inside each ticket thread, the bot sends an initial embed with a close button:
+  - Any participant in the thread can close the ticket via the button.
+- Old `/ticket` and `/ticketclose` command logic has been removed.
+- Ticket events are logged in the dashboard under a **Tickets** section in moderation logs.
+
+### 📰 GameNews
+
+- Per‑guild configuration of which RSS feeds are active.
+- Simple limiter for number of posts per interval to avoid spam.
+- Feeds can be toggled on/off per guild from the dashboard.
+- Posts are sent directly into the configured channel(s) in a clean, minimal format.
+
+### 🌐 Internationalization
+
+- Full PT / EN support for:
+  - Dashboard texts
+  - Slash command descriptions
+  - System messages (where relevant)
+- Language is switchable from the dashboard.
+- AutoMod messages use **generic** and user‑friendly texts (e.g. "Linguagem imprópria") instead of exposing the exact detected content.
+
+### 🧱 Tech stack
+
+- **Node.js** 20.x
+- **discord.js** 14
+- **Express** + **Socket.IO** for the dashboard
+- **MongoDB** with Mongoose
+- Ready for **Railway** deployment (Docker/Procfile not required, uses `node src/index.js`).
 
 ---
 
-## 🛠️ Requisitos
+## Getting started
 
-- **Node.js 20.x**
-- MongoDB (local ou cloud)
-- Bot criado no Discord Developer Portal com:
-  - Message Content Intent
-  - Guild Members Intent
+### Prerequisites
 
----
+- Node.js 20.x
+- A MongoDB database (Atlas or self‑hosted)
+- A Discord application + bot token
+- (Optional) Railway account for hosting
 
-## ⚙️ Configuração
+### Installation
 
-### Variáveis de ambiente
+```bash
+git clone https://github.com/maze92/ozark-bot.git
+cd ozark-bot
+npm install
+```
 
-Cria um ficheiro `.env`:
+### Configuration
+
+All main options live in `src/config/defaultConfig.js`. At minimum, you must set:
+
+- `discord.token` – your bot token
+- `mongo.uri` – Mongo connection string
+- `dashboard.token` – secret token to access the web dashboard
+- `gameNews` – default feed configuration (can be refined later)
+- `automation.autoMute` – thresholds and durations for automatic mutes
+- `trust` – base, min, max and penalty rules
+
+Environment variables (via `.env`) can override sensitive values, for example:
 
 ```env
-TOKEN=discord_bot_token
-MONGO_URI=mongodb_connection_string
-DASHBOARD_TOKEN=secure_random_token
+DISCORD_TOKEN=your-token-here
+MONGO_URI=mongodb+srv://...
+DASHBOARD_TOKEN=some-long-secret
 PORT=3000
+```
 
+### Running locally
 
+```bash
+npm start
+```
 
-### 🧵 Sistema de Tickets por Threads
-- Mensagem fixa de suporte com reação 🎫 num canal configurável.
-- Cada reação abre uma **thread privada** (`ticket-001`, `ticket-002`, ...).
-- Embed inicial dentro da thread com botão via reação 🔒 para fechar o ticket.
-- Logs de tickets integrados com o sistema de moderação e painel de histórico por utilizador.
+- The bot will connect to Discord and MongoDB.
+- The dashboard will start on the configured port (default: `3000`).
+- Open `http://localhost:3000` and enter your dashboard token.
 
-### 👤 Histórico por Utilizador na Dashboard
-- Nova área na tab **Utilizadores** com:
-  - Resumo de infrações (WARN / MUTE / KICK / BAN)
-  - Lista de ações recentes
-  - Lista de tickets associados ao utilizador
-- Ajuda moderadores a tomar decisões rápidas e consistentes.
+---
+
+## Deployment (Railway)
+
+1. Push this repository to your own GitHub account.
+2. Create a new Railway project and connect the repo.
+3. Set environment variables:
+   - `DISCORD_TOKEN`
+   - `MONGO_URI`
+   - `DASHBOARD_TOKEN`
+   - `PORT`
+4. Railway will run the `start` script from `package.json`:
+   - `NODE_ENV=production node src/index.js`
+
+---
+
+## Roadmap
+
+Some of the next planned improvements:
+
+- More advanced GameNews UX (per‑feed control, better embeds).
+- Additional moderation widgets for the dashboard.
+- Optional logging to external services (e.g. webhooks).
+- More granular trust visualizations and analytics.
+
+---
+
+## License
+
+This project is released under the **ISC** license. See `LICENSE` for details.

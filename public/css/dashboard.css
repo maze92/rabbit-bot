@@ -459,3 +459,42 @@ h2 {
 .user-trust-next-disabled {
   opacity: 0.85;
 }
+
+
+/* Trust badge styling */
+.user-trust-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.trust-badge-high {
+  background: rgba(46, 204, 113, 0.18);
+  border: 1px solid rgba(46, 204, 113, 0.7);
+}
+
+.trust-badge-medium {
+  background: rgba(241, 196, 15, 0.16);
+  border: 1px solid rgba(241, 196, 15, 0.7);
+}
+
+.trust-badge-low {
+  background: rgba(231, 76, 60, 0.18);
+  border: 1px solid rgba(231, 76, 60, 0.7);
+}
+
+.trust-badge-neutral {
+  background: rgba(149, 165, 166, 0.16);
+  border: 1px solid rgba(149, 165, 166, 0.7);
+}

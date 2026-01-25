@@ -7,7 +7,6 @@ const logger = require('./logger');
 const warningsService = require('./warningsService');
 const infractionsService = require('./infractionsService');
 const { t } = require('./i18n');
-const { safeDM } = require('../utils/dm');
 const {
   getTrustConfig,
   getEffectiveMaxWarnings,
@@ -26,19 +25,8 @@ function buildWarnChannelMessage({ userMention, warnings, maxWarnings, reason })
   return t('automod.warnPublic', null, { userMention, warnings, maxWarnings, reason });
 }
 
-function buildWarnDMMessage({ guildName, reason, warnings, maxWarnings }) {
-  // Reuse the manual warn DM format so users receive a consistent message
-  return t('warn.dmText', null, { guildName, warnings, maxWarnings, reason });
-}
-
 function buildMuteChannelMessage({ userMention, minutes }) {
   return t('automod.mutePublic', null, { userMention, minutes });
-}
-
-function buildMuteDMMessage({ guildName, minutes }) {
-  // Keep it short; no trust exposure
-  const duration = `${minutes}m`;
-  return t('mute.dmText', null, { guildName, duration, reason: t('automod.muteReason') });
 }
 
 function yesNo(v) {
@@ -121,7 +109,7 @@ module.exports = async function autoModeration(message, client) {
       currentTrust
     );
 
-    const warnReason = t('automod.warnReason', null, { word: foundWord });
+    const warnReason = t('automod.warnReasonGeneric') || 'Linguagem imprópria';
 
     // Create WARN infraction with Case ID
     const infWarn = await infractionsService.create({
@@ -143,16 +131,7 @@ module.exports = async function autoModeration(message, client) {
       })
     }).catch(() => null);
 
-    if (config.notifications?.dmOnWarn) {
-      const dmText = buildWarnDMMessage({
-        guildName: guild.name,
-        reason: warnReason,
-        warnings: dbUser.warnings,
-        maxWarnings: effectiveMaxWarnings
-      });
-
-      await safeDM(message.author, dmText);
-    }
+    // DM-on-warn removido a pedido do owner
 
     const warnCasePrefix = infWarn?.caseId ? `Case: **#${infWarn.caseId}**\n` : '';
     await logger(
@@ -219,14 +198,7 @@ module.exports = async function autoModeration(message, client) {
       })
     ).catch(() => null);
 
-    if (config.notifications?.dmOnMute) {
-      const dmText = buildMuteDMMessage({
-        guildName: guild.name,
-        minutes: mins
-      });
-
-      await safeDM(message.author, dmText);
-    }
+    // DM-on-mute removido a pedido do owner
 
     const muteCasePrefix = infMute?.caseId ? `Case: **#${infMute.caseId}**\n` : '';
     await logger(
