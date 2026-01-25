@@ -1,3 +1,5 @@
+console.log('[Dashboard] script file evaluated');
+try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
 'use strict';
 
 (function () {
