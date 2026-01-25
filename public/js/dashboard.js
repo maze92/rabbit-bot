@@ -676,7 +676,21 @@
       // Ações rápidas de moderação
       html += '<div class="history-section user-actions">';
       html += '<h3>' + escapeHtml(t('users_actions_title')) + '</h3>';
-      html += '<div class="badge-row">';
+
+      html += '<div class="user-actions-fields">';
+      html +=
+        '<input type="text" class="input xs user-actions-reason" ' +
+        'placeholder="' +
+        escapeHtml(t('users_actions_reason_placeholder')) +
+        '">';
+      html +=
+        '<input type="text" class="input xs user-actions-duration" ' +
+        'placeholder="' +
+        escapeHtml(t('users_actions_duration_placeholder')) +
+        '">';
+      html += '</div>';
+
+      html += '<div class="badge-row user-actions-buttons">';
       html +=
         '<button type="button" class="btn xs btn-warn" data-action="warn">' +
         escapeHtml(t('users_actions_warn')) +
@@ -759,8 +773,17 @@
               const action = btn.getAttribute('data-action');
               if (!state.guildId || !user || !user.id) return;
 
-              const baseReason = prompt(t('users_actions_reason_placeholder')) || '';
-              const reason = baseReason.trim() || null;
+              const reasonInput =
+                container.querySelector('.user-actions-reason') || null;
+              const durationInput =
+                container.querySelector('.user-actions-duration') || null;
+
+              const reasonRaw = reasonInput && reasonInput.value ? reasonInput.value : '';
+              const durationRaw =
+                durationInput && durationInput.value ? durationInput.value : '';
+
+              const reason = reasonRaw.trim() || null;
+              const duration = durationRaw.trim() || null;
 
               if (action === 'warn') {
                 apiPost('/mod/warn', {
@@ -783,12 +806,11 @@
                     toast(t('cases_error_generic'));
                   });
               } else if (action === 'mute') {
-                const dur = prompt(t('users_actions_duration_placeholder')) || '';
                 apiPost('/mod/mute', {
                   guildId: state.guildId,
                   userId: user.id,
                   reason: reason,
-                  duration: dur.trim() || null
+                  duration: duration
                 })
                   .then(function (res) {
                     if (!res || res.ok === false) {

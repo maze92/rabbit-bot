@@ -277,5 +277,27 @@
   </div>
 
   <script src="/js/dashboard.js" defer></script>
+
+<!-- Moderation Action Modal -->
+<div id="modActionModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-card">
+    <h3 id="modActionTitle">Moderation</h3>
+    <div class="modal-body">
+      <label id="modActionReasonLabel">Reason</label>
+      <input id="modActionReason" type="text" placeholder="" />
+
+      <div id="modActionDurationWrap" class="hidden">
+        <label id="modActionDurationLabel">Duration</label>
+        <input id="modActionDuration" type="text" placeholder="10m, 1h, 1d" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="modActionCancel" class="btn">Cancel</button>
+      <button id="modActionConfirm" class="btn primary">Confirm</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
