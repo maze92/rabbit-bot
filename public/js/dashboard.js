@@ -683,21 +683,12 @@
         'placeholder="' +
         escapeHtml(t('users_actions_reason_placeholder')) +
         '">';
-      html +=
-        '<input type="text" class="input xs user-actions-duration" ' +
-        'placeholder="' +
-        escapeHtml(t('users_actions_duration_placeholder')) +
-        '">';
       html += '</div>';
 
       html += '<div class="badge-row user-actions-buttons">';
       html +=
         '<button type="button" class="btn xs btn-warn" data-action="warn">' +
         escapeHtml(t('users_actions_warn')) +
-        '</button>';
-      html +=
-        '<button type="button" class="btn xs btn-mute" data-action="mute">' +
-        escapeHtml(t('users_actions_mute')) +
         '</button>';
       html +=
         '<button type="button" class="btn xs btn-unmute" data-action="unmute">' +
@@ -775,15 +766,9 @@
 
               const reasonInput =
                 container.querySelector('.user-actions-reason') || null;
-              const durationInput =
-                container.querySelector('.user-actions-duration') || null;
 
               const reasonRaw = reasonInput && reasonInput.value ? reasonInput.value : '';
-              const durationRaw =
-                durationInput && durationInput.value ? durationInput.value : '';
-
               const reason = reasonRaw.trim() || null;
-              const duration = durationRaw.trim() || null;
 
               if (action === 'warn') {
                 apiPost('/mod/warn', {
@@ -803,26 +788,6 @@
                   })
                   .catch(function (err) {
                     console.error('Warn error', err);
-                    toast(t('cases_error_generic'));
-                  });
-              } else if (action === 'mute') {
-                apiPost('/mod/mute', {
-                  guildId: state.guildId,
-                  userId: user.id,
-                  reason: reason,
-                  duration: duration
-                })
-                  .then(function (res) {
-                    if (!res || res.ok === false) {
-                      console.error('Mute failed', res && res.error);
-                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
-                      return;
-                    }
-                    toast(t('users_actions_mute') + ' OK');
-                    loadUserHistory(user).catch(function () {});
-                  })
-                  .catch(function (err) {
-                    console.error('Mute error', err);
                     toast(t('cases_error_generic'));
                   });
               } else if (action === 'unmute') {

@@ -324,7 +324,7 @@ app.get('/api/guilds', requireDashboardAuth, async (req, res) => {
 });
 
 // Overview metrics for dashboard
-app.get('/api/overview', requireDashboardAuth, (req, res) => {
+app.get('/api/overview', requireDashboardAuth, async (req, res) => {
   try {
     if (!_client || !_client.guilds || !_client.guilds.cache) {
       return res.json({ ok: true, guilds: 0, users: 0, actions24h: 0 });
@@ -341,7 +341,19 @@ app.get('/api/overview', requireDashboardAuth, (req, res) => {
       }
     }
 
-    const actions24h = 0; // Placeholder for now
+    // Contar ações de moderação nas últimas 24h
+    let actions24h = 0;
+    try {
+      if (Infraction && Infraction.countDocuments) {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        actions24h = await Infraction.countDocuments({
+          createdAt: { $gte: since }
+        }).exec();
+      }
+    } catch (errCount) {
+      console.error('[Dashboard] Failed to count infractions for overview:', errCount);
+      actions24h = 0;
+    }
 
     return res.json({ ok: true, guilds: guildsCount, users: usersCount, actions24h });
   } catch (err) {
