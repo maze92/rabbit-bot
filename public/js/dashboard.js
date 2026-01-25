@@ -201,8 +201,9 @@
       users_history_infractions: 'Infrações recentes',
       users_history_tickets: 'Tickets recentes',
       users_history_none: 'Sem histórico de moderação para este utilizador.',
-      users_history_click_to_remove: 'Clique numa infração para a remover e ajustar o trust.',
-      users_history_remove_confirm: 'Tens a certeza que queres remover esta infração? Isto pode ajustar o trust e o número de avisos.',
+      users_history_remove_success: 'Infração removida com sucesso.',
+      users_history_click_to_remove: 'Clica numa infração para a remover e ajustar o trust.',
+      users_history_remove_confirm: 'Tens a certeza que queres remover esta infração? Isto vai atualizar o trust e o número de avisos.',
       users_trust_title: 'Nível de confiança (trust)',
       users_trust_score: 'Trust',
       users_trust_next_penalty_prefix: 'Próximo auto-mute estimado após mais',
@@ -316,8 +317,9 @@
       users_history_infractions: 'Recent infractions',
       users_history_tickets: 'Recent tickets',
       users_history_none: 'No moderation history for this user.',
+      users_history_remove_success: 'Infraction removed successfully.',
       users_history_click_to_remove: 'Click an infraction to remove it and adjust trust.',
-      users_history_remove_confirm: 'Are you sure you want to remove this infraction? This may adjust trust and warning count.',
+      users_history_remove_confirm: 'Are you sure you want to remove this infraction? This will update trust and warning count.',
       users_trust_title: 'Trust level',
       users_trust_score: 'Trust',
       users_trust_next_penalty_prefix: 'Next estimated auto-mute after',
@@ -573,7 +575,10 @@
         row.dataset.username = u.username || u.tag || u.id || '';
 
         const name = u.username || u.tag || u.id;
-        const roles = (u.roles || []).map(function (r) { return r.name; }).join(', ');
+        const roles = (u.roles || [])
+          .filter(function (r) { return r && r.id !== '1385619241235120169'; })
+          .map(function (r) { return r.name; })
+          .join(', ');
 
         const isBot = !!u.bot;
 
@@ -843,19 +848,29 @@
           escapeHtml(t('users_history_none')) +
           '</div>';
       } else {
-        html += '<ul>';
+        html += '<ul class="infractions-list">';
         infractions.forEach(function (inf) {
           const when = inf.createdAt
             ? new Date(inf.createdAt).toLocaleString()
             : '';
           const reason = inf.reason || '';
+          const id = String(inf._id || '');
           const line =
             '[' +
             (inf.type || 'UNK') +
             '] ' +
             (reason ? reason : '') +
             (when ? ' • ' + when : '');
-          html += '<li>' + escapeHtml(line) + '</li>';
+          html +=
+            '<li class="infraction-item" data-infraction-id="' +
+            escapeHtml(id) +
+            '" title="' +
+            escapeHtml(t('users_history_click_to_remove')) +
+            '">' +
+            '<span class="infraction-line">' +
+            escapeHtml(line) +
+            '</span>' +
+            '</li>';
         });
         html += '</ul>';
       }
@@ -891,7 +906,7 @@
 
       detailEl.innerHTML = html;
 
-      // Bind quick moderation actions
+            // Bind quick moderation actions
       try {
         const container = detailEl.querySelector('.user-actions');
         if (container) {
@@ -906,26 +921,7 @@
               const reasonRaw = reasonInput && reasonInput.value ? reasonInput.value : '';
               const reason = reasonRaw.trim() || null;
 
-              if (action === 'reset-history') {
-                apiPost('/mod/reset-history', {
-                  guildId: state.guildId,
-                  userId: user.id,
-                  reason: reason
-                })
-                  .then(function (res) {
-                    if (!res || res.ok === false) {
-                      console.error('Reset history failed', res && res.error);
-                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
-                      return;
-                    }
-                    toast(t('users_actions_reset_history') + ' OK');
-                    loadUserHistory(user).catch(function () {});
-                  })
-                  .catch(function (err) {
-                    console.error('Reset history error', err);
-                    toast(t('cases_error_generic'));
-                  });
-              } else if (action === 'warn') {
+              if (action === 'warn') {
                 apiPost('/mod/warn', {
                   guildId: state.guildId,
                   userId: user.id,
@@ -987,68 +983,42 @@
             });
           });
         }
+
+        // Bind infractions click-to-remove
+        const infraList = detailEl.querySelector('.infractions-list');
+        if (infraList) {
+          infraList.querySelectorAll('.infraction-item').forEach(function (li) {
+            li.addEventListener('click', function () {
+              const id = li.getAttribute('data-infraction-id');
+              if (!id || !state.guildId || !user || !user.id) return;
+
+              if (!window.confirm(t('users_history_remove_confirm'))) return;
+
+              apiPost('/mod/remove-infraction', {
+                guildId: state.guildId,
+                userId: user.id,
+                infractionId: id
+              })
+                .then(function (res) {
+                  if (!res || res.ok === false) {
+                    console.error('Remove infraction failed', res && res.error);
+                    toast(res && res.error ? String(res.error) : t('cases_error_generic'));
+                    return;
+                  }
+                  toast(t('users_history_remove_success'));
+                  loadUserHistory(user).catch(function () {});
+                })
+                .catch(function (err) {
+                  console.error('Remove infraction error', err);
+                  toast(t('cases_error_generic'));
+                });
+            });
+          });
+        }
       } catch (err) {
         console.error('Failed to bind user quick actions', err);
       }
-    } catch (err) {
-      console.error('Failed to load user history', err);
-      detailEl.innerHTML =
-        '<div class="empty">Erro ao carregar histórico / error loading history.</div>';
-    }
-  }
 
-  // -----------------------------
-  // GameNews (status + editor)
-  // -----------------------------
-
-  function renderGameNewsStatus(items) {
-    const listEl = document.getElementById('gamenewsStatusList');
-    if (!listEl) return;
-    listEl.innerHTML = '';
-
-    if (!items || !items.length) {
-      const empty = document.createElement('div');
-      empty.className = 'empty';
-      empty.textContent = t('gamenews_empty');
-      listEl.appendChild(empty);
-      return;
-    }
-
-    items.forEach(function (s) {
-      const row = document.createElement('div');
-      row.className = 'list-item';
-
-      const lastSent = s.lastSentAt ? new Date(s.lastSentAt).toLocaleString() : '—';
-      const fails = s.failCount != null ? String(s.failCount) : '0';
-
-      let stateLabel;
-      if (s.enabled === false) {
-        stateLabel = t('gamenews_status_state_paused');
-      } else if (s.paused) {
-        stateLabel = t('gamenews_status_state_paused');
-      } else if (s.failCount && s.failCount > 0) {
-        stateLabel = t('gamenews_status_state_error');
-      } else {
-        stateLabel = t('gamenews_status_state_ok');
-      }
-
-      const statusText = stateLabel + ' • ' + 'Fails: ' + fails;
-
-      row.innerHTML =
-        '<div class="title">' +
-        escapeHtml(s.feedName || s.source || 'Feed') +
-        '</div>' +
-        '<div class="subtitle">' +
-        escapeHtml(s.feedUrl || '') +
-        '</div>' +
-        '<div class="meta">' +
-        escapeHtml(statusText) +
-        ' • ' + escapeHtml(t('gamenews_status_last_label')) + ': ' +
-        escapeHtml(lastSent) +
-        '</div>';
-
-      listEl.appendChild(row);
-    });
   }
 
   function renderGameNewsEditor(feeds) {

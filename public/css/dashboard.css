@@ -568,3 +568,57 @@ h2 {
   background: rgba(149, 165, 166, 0.16);
   border: 1px solid rgba(149, 165, 166, 0.7);
 }
+
+
+/* User list UX polish */
+.list .list-item {
+  transition: background 120ms ease-out, border-color 120ms ease-out, transform 80ms ease-out, box-shadow 80ms ease-out;
+}
+
+.list .list-item:hover {
+  background: rgba(255,255,255,0.02);
+  border-color: var(--border-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.16);
+}
+
+.history-section {
+  border-top: 1px solid rgba(255,255,255,0.04);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.history-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.history-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* Simple icon bullets using emojis without extra assets */
+.history-section h3::before {
+  content: '📄';
+  font-size: 13px;
+}
+
+.history-section:nth-of-type(2) h3::before {
+  content: '🎫';
+}
+
+.infractions-list .infraction-item {
+  transition: background 120ms ease-out, border-color 120ms ease-out, transform 80ms ease-out;
+}
+
+.infractions-list .infraction-item.removed {
+  opacity: 0.4;
+  transform: scale(0.99);
+}
