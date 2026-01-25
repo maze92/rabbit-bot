@@ -1,5 +1,3 @@
-console.log('[Dashboard] script file evaluated');
-try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
 'use strict';
 
 (function () {
@@ -64,18 +62,9 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
       method: 'GET',
       headers: getAuthHeaders(),
     });
-
     if (!res.ok) {
-      // Se o token for inválido/expirado, limpa e força novo login
-      if (res.status === 401) {
-        console.error('[Dashboard] Unauthorized (401) for', path);
-        try {
-          localStorage.removeItem('OZARK_DASH_TOKEN');
-        } catch (e) {}
-      }
       throw new Error('HTTP ' + res.status + ' for ' + path);
     }
-
     return res.json();
   }
 
@@ -85,17 +74,9 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
       headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
       body: JSON.stringify(body || {}),
     });
-
     if (!res.ok) {
-      if (res.status === 401) {
-        console.error('[Dashboard] Unauthorized (401) for', path);
-        try {
-          localStorage.removeItem('OZARK_DASH_TOKEN');
-        } catch (e) {}
-      }
       throw new Error('HTTP ' + res.status + ' for ' + path);
     }
-
     return res.json();
   }
 
@@ -662,7 +643,7 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
 
     detailEl.innerHTML = '<div class="empty">' + escapeHtml(t('loading')) + '</div>';
 
-        {
+    try {
       const [historyRes, userRes] = await Promise.all([
         apiGet(
           '/guilds/' +
@@ -736,15 +717,10 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
           '</div>';
 
         if (trustLabel) {
-          var trustIcon = '';
-          if (trustLevelClass === 'high') trustIcon = '🟢 ';
-          else if (trustLevelClass === 'medium') trustIcon = '🟡 ';
-          else if (trustLevelClass === 'low') trustIcon = '🔴 ';
           html +=
             '<span class="trust-badge trust-badge-' +
             trustLevelClass +
             '">' +
-            trustIcon +
             escapeHtml(trustLabel) +
             '</span>';
         }
@@ -929,16 +905,6 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
       html += '</div>';
 
       detailEl.innerHTML = html;
-      // Helpers for history loading overlay
-      function setHistoryLoading(isLoading) {
-        if (!detailEl) return;
-        if (isLoading) {
-          detailEl.classList.add('history-loading');
-        } else {
-          detailEl.classList.remove('history-loading');
-        }
-      }
-
 
             // Bind quick moderation actions
       try {
@@ -956,14 +922,12 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
               const reason = reasonRaw.trim() || null;
 
               if (action === 'warn') {
-                setHistoryLoading(true);
                 apiPost('/mod/warn', {
                   guildId: state.guildId,
                   userId: user.id,
                   reason: reason
                 })
                   .then(function (res) {
-                    setHistoryLoading(false);
                     if (!res || res.ok === false) {
                       console.error('Warn failed', res && res.error);
                       toast(res && res.error ? String(res.error) : t('cases_error_generic'));
@@ -974,19 +938,16 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
                     loadUserHistory(user).catch(function () {});
                   })
                   .catch(function (err) {
-                    setHistoryLoading(false);
                     console.error('Warn error', err);
                     toast(t('cases_error_generic'));
                   });
               } else if (action === 'unmute') {
-                setHistoryLoading(true);
                 apiPost('/mod/unmute', {
                   guildId: state.guildId,
                   userId: user.id,
                   reason: reason
                 })
                   .then(function (res) {
-                    setHistoryLoading(false);
                     if (!res || res.ok === false) {
                       console.error('Unmute failed', res && res.error);
                       toast(res && res.error ? String(res.error) : t('cases_error_generic'));
@@ -996,19 +957,16 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
                     loadUserHistory(user).catch(function () {});
                   })
                   .catch(function (err) {
-                    setHistoryLoading(false);
                     console.error('Unmute error', err);
                     toast(t('cases_error_generic'));
                   });
               } else if (action === 'reset') {
-                setHistoryLoading(true);
                 apiPost('/mod/reset-trust', {
                   guildId: state.guildId,
                   userId: user.id,
                   reason: reason
                 })
                   .then(function (res) {
-                    setHistoryLoading(false);
                     if (!res || res.ok === false) {
                       console.error('Reset trust failed', res && res.error);
                       toast(res && res.error ? String(res.error) : t('cases_error_generic'));
@@ -1018,7 +976,6 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
                     loadUserHistory(user).catch(function () {});
                   })
                   .catch(function (err) {
-                    setHistoryLoading(false);
                     console.error('Reset trust error', err);
                     toast(t('cases_error_generic'));
                   });
@@ -1037,14 +994,12 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
 
               if (!window.confirm(t('users_history_remove_confirm'))) return;
 
-              setHistoryLoading(true);
               apiPost('/mod/remove-infraction', {
                 guildId: state.guildId,
                 userId: user.id,
                 infractionId: id
               })
                 .then(function (res) {
-                  setHistoryLoading(false);
                   if (!res || res.ok === false) {
                     console.error('Remove infraction failed', res && res.error);
                     toast(res && res.error ? String(res.error) : t('cases_error_generic'));
@@ -1054,7 +1009,6 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
                   loadUserHistory(user).catch(function () {});
                 })
                 .catch(function (err) {
-                  setHistoryLoading(false);
                   console.error('Remove infraction error', err);
                   toast(t('cases_error_generic'));
                 });
@@ -1767,8 +1721,7 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
   // -----------------------------
 
   document.addEventListener('DOMContentLoaded', function () {
-
-    console.log('[Dashboard] DOMContentLoaded init');    // i18n inicial
+    // i18n inicial
     applyI18n();
 
     // Lang picker
@@ -1922,24 +1875,4 @@ try { window.OZARK_DASHBOARD_ALIVE = true; } catch (e) {}
     loadGuilds().catch(function () {});
     setTab('overview');
   });
-}
 })();
-
-// ===== History loading overlay helpers =====
-function showHistoryLoading(container) {
-  if (!container) return;
-  let overlay = container.querySelector('.history-loading');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.className = 'history-loading';
-    overlay.innerHTML = '<div class="spinner"></div>';
-    container.style.position = 'relative';
-    container.appendChild(overlay);
-  }
-}
-
-function hideHistoryLoading(container) {
-  if (!container) return;
-  const overlay = container.querySelector('.history-loading');
-  if (overlay) overlay.remove();
-}
