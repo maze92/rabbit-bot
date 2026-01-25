@@ -67,7 +67,16 @@ module.exports = (client) => {
       if (emojiName === OPEN_EMOJI) {
         const ok = await isTicketChannel(reaction.message);
         if (!ok) return;
-        return handleTicketOpen(reaction, user);
+        await handleTicketOpen(reaction, user);
+
+        // Remover a reação do utilizador após criar o ticket,
+        // para que possa abrir um novo ticket com um único clique da próxima vez.
+        try {
+          await reaction.users.remove(user.id);
+        } catch (err) {
+          console.error('[messageReactionAdd] Failed to remove user reaction after creating ticket:', err);
+        }
+        return;
       }
 
       // Fechar ticket: reação dentro da thread no emoji de fecho
