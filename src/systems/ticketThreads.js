@@ -39,8 +39,9 @@ async function handleTicketOpen(reaction, user) {
     const ticketNumber = last ? last.ticketNumber + 1 : 1;
     const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
 
-    // Criar thread privada a partir da mensagem base
-    const thread = await message.startThread({
+    // Criar thread privada no canal (não ligada diretamente à mensagem base)
+    const parentChannel = message.channel;
+    const thread = await parentChannel.threads.create({
       name: ticketName,
       type: ChannelType.PrivateThread,
       autoArchiveDuration: 1440, // 24h
@@ -92,11 +93,6 @@ async function handleTicketOpen(reaction, user) {
 
     // Adicionar reação de fecho
     await controlMessage.react(CLOSE_EMOJI).catch(() => {});
-
-    // Mensagem adicional a incentivar a descrição do problema
-    await thread.send(
-      `✍️ ${user}, descreve em detalhe o motivo do teu contacto para que possamos ajudar da melhor forma possível.`
-    ).catch(() => {});
   } catch (err) {
     console.error('[ticketThreads] handleTicketOpen error:', err);
   }
