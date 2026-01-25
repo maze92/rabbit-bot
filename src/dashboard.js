@@ -18,6 +18,7 @@ const dashboardBridge = require('./systems/dashboardBridge');
 const { parseDuration, formatDuration } = require('./utils/time');
 const { getTrustConfig, getTrustLabel, getEffectiveMaxMessages, getEffectiveMuteDuration } = require('./utils/trust');
 const { isStaff } = require('./utils/staff');
+const rateLimit = require('./systems/rateLimit');
 
 let DashboardLog = null;
 let GameNewsModel = null;
@@ -982,7 +983,7 @@ app.get('/api/guilds/:guildId/config', requireDashboardAuth, async (req, res) =>
   }
 });
 
-app.post('/api/guilds/:guildId/config', requireDashboardAuth, rateLimiter({ windowMs: 20_000, max: 20, keyPrefix: 'rl:guildConfig:' }), async (req, res) => {
+app.post('/api/guilds/:guildId/config', requireDashboardAuth, rateLimit({ windowMs: 20_000, max: 20, keyPrefix: 'rl:guildConfig:' }), async (req, res) => {
   try {
     if (!GuildConfig) {
       return res.status(500).json({ ok: false, error: 'GuildConfig model not available' });
