@@ -4,6 +4,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const mongoose = require('mongoose');
 const { ChannelType } = require('discord.js');
 
 const status = require('./systems/status');
@@ -1104,7 +1105,20 @@ app.post('/api/mod/remove-infraction', requireDashboardAuth, async (req, res) =>
       return res.status(500).json({ ok: false, error: 'Infraction model not available' });
     }
 
-    const inf = await Infraction.findOne({ _id: infractionId, guildId, userId }).lean();
+    // Tentar encontrar a infração de forma robusta (ObjectId ou string legacy)
+    const filter = { guildId, userId };
+    if (infractionId && typeof infractionId === 'string' && /^[0-9a-fA-F]{24}$/.test(infractionId)) {
+      filter._id = new mongoose.Types.ObjectId(infractionId);
+    } else if (infractionId) {
+      filter._id = infractionId;
+    }
+
+    const rawCollection = Infraction && Infraction.collection;
+    if (!rawCollection) {
+      return res.status(500).json({ ok: false, error: 'Infractions collection not available' });
+    }
+
+    const inf = await rawCollection.findOne(filter);
     if (!inf) {
       return res.status(404).json({ ok: false, error: 'Infraction not found' });
     }
@@ -1135,13 +1149,18 @@ app.post('/api/mod/remove-infraction', requireDashboardAuth, async (req, res) =>
 
     if (warningsService && typeof warningsService.removeInfractionEffects === 'function') {
       try {
-        await warningsService.removeInfractionEffects(guild.id, member.id, inf.type || '');
+        if (guild && member) {
+          await warningsService.removeInfractionEffects(guild.id, member.id, inf.type || '');
+        } else {
+          await warningsService.removeInfractionEffects(guildId, userId, inf.type || '');
+        }
       } catch (e) {
         console.warn('[Dashboard] remove-infraction: failed to adjust trust/warnings', e);
       }
     }
 
-    await Infraction.deleteOne({ _id: inf._id }).exec();
+    // Remover definitivamente o documento, usando a mesma estratégia de filtro
+    await rawCollection.deleteOne({ _id: inf._id, guildId, userId });
 
     return res.json({ ok: true });
   } catch (err) {
