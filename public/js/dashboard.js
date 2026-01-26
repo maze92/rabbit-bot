@@ -207,7 +207,7 @@
       gamenews_detail_config_title: 'Configuração do feed',
       gamenews_detail_meta_title: 'Detalhes recentes',
       gamenews_btn_toggle: 'Ativar / desativar',
-      gamenews_last_sent_label: 'Último envio:'
+      gamenews_last_sent_label: 'Último envio:',
 
       users_title: 'Utilizadores',
       users_hint: 'Lista de utilizadores e acesso rápido ao histórico de moderação.',
@@ -333,7 +333,7 @@
       gamenews_detail_config_title: 'Feed configuration',
       gamenews_detail_meta_title: 'Recent details',
       gamenews_btn_toggle: 'Enable / Disable',
-      gamenews_last_sent_label: 'Last sent:'
+      gamenews_last_sent_label: 'Last sent:',
 
       users_title: 'Users',
       users_hint: 'Users list with quick access to their moderation history.',
