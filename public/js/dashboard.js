@@ -333,7 +333,7 @@
       gamenews_detail_config_title: 'Feed configuration',
       gamenews_detail_meta_title: 'Recent details',
       gamenews_btn_toggle: 'Enable / Disable',
-      gamenews_last_sent_label: 'Last sent:'
+      gamenews_last_sent_label: 'Last sent:',
 
       users_title: 'Users',
       users_hint: 'Users list with quick access to their moderation history.',
