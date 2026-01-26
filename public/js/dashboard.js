@@ -1603,23 +1603,24 @@ function renderGameNewsUI() {
 }
 
 async function saveGameNewsFeeds() {
- {
-    if (!state.guildId) {
-      toast(t('gamenews_select_guild'));
-      return;
-    }
-
-    try {
-      const feeds = collectGameNewsEditorFeeds();
-      const guildParam = '?guildId=' + encodeURIComponent(state.guildId);
-      await apiPost('/gamenews/feeds' + guildParam, { guildId: state.guildId, feeds: feeds });
-      toast(t('gamenews_save_success'));
-      await loadGameNews();
-    } catch (err) {
-      console.error('Failed to save GameNews feeds', err);
-      toast(t('gamenews_error_generic'));
-    }
+  if (!state.guildId) {
+    toast(t('gamenews_select_guild'));
+    return;
   }
+  try {
+    const feeds = collectGameNewsEditorFeeds();
+    const guildParam = '?guildId=' + encodeURIComponent(state.guildId);
+    await apiPost('/gamenews/feeds' + guildParam, {
+      guildId: state.guildId,
+      feeds: feeds
+    });
+    toast(t('gamenews_save_success'));
+    await loadGameNews();
+  } catch (err) {
+    console.error('Failed to save GameNews feeds', err);
+    toast(t('gamenews_error_generic'));
+  }
+} // <--- Agora fecha corretamente a função
 
   
   // -----------------------------
@@ -2316,9 +2317,8 @@ async function saveGameNewsFeeds() {
       });
     }
 
-    // Carrega guilds e visão geral inicial
+// Carrega guilds e visão geral inicial
     loadGuilds().catch(function () {});
     setTab('overview');
-  });
-});
-})();
+  }); // Fecha o document.addEventListener('DOMContentLoaded', ...)
+})(); // Fecha o (function () { ...
