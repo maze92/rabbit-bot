@@ -207,7 +207,7 @@
       gamenews_detail_config_title: 'Configuração do feed',
       gamenews_detail_meta_title: 'Detalhes recentes',
       gamenews_btn_toggle: 'Ativar / desativar',
-      gamenews_last_sent_label: 'Último envio:',
+      gamenews_last_sent_label: 'Último envio:'
 
       users_title: 'Utilizadores',
       users_hint: 'Lista de utilizadores e acesso rápido ao histórico de moderação.',
@@ -333,7 +333,7 @@
       gamenews_detail_config_title: 'Feed configuration',
       gamenews_detail_meta_title: 'Recent details',
       gamenews_btn_toggle: 'Enable / Disable',
-      gamenews_last_sent_label: 'Last sent:',
+      gamenews_last_sent_label: 'Last sent:'
 
       users_title: 'Users',
       users_hint: 'Users list with quick access to their moderation history.',
@@ -624,38 +624,16 @@
 
         const isBot = !!u.bot;
 
-        row.innerHTML =
-        '<div class="row gap">' +
-        '  <div class="col">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_name_label')) + '</label>' +
-        '    <input type="text" class="input feed-name" value="' + escapeHtml(f.name || '') + '" />' +
-        '  </div>' +
-        '  <div class="col">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_url_label')) + '</label>' +
-        '    <input type="text" class="input feed-url" value="' + escapeHtml(f.feedUrl || '') + '" />' +
-        '  </div>' +
-        '</div>' +
-        '<div class="row gap" style="margin-top:6px;">' +
-        '  <div class="col">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_channel_label')) + '</label>' +
-        '    <input type="text" class="input feed-channel" value="' + escapeHtml(f.channelId || '') + '" />' +
-        '  </div>' +
-        '  <div class="col" style="display:flex;align-items:center;gap:8px;">' +
-        '    <label><input type="checkbox" class="feed-enabled"' +
-        (f.enabled === false ? '' : ' checked') +
-        '> ' + escapeHtml(t('gamenews_feed_enabled_label')) + '</label>' +
-        '    <button type="button" class="btn btn-small btn-remove-feed">' + escapeHtml(t('gamenews_feed_remove_label')) + '</button>' +
-        '  </div>' +
-        '</div>' +
-        '<div class="row gap" style="margin-top:6px;">' +
-        '  <div class="col col-sm">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_max_label')) + '</label>' +
-        '    <input type="number" min="1" max="10" class="input feed-max" value="' +
-        escapeHtml((f.maxPerCycle != null ? String(f.maxPerCycle) : '')) +
-        '" />' +
-        '  </div>' +
-        '</div>';
+        const rolesText = roles || '-';
 
+        row.innerHTML =
+          '<div class="title">' +
+          escapeHtml(name) +
+          (isBot ? ' [BOT]' : '') +
+          '</div>' +
+          '<div class="subtitle">' +
+          escapeHtml(rolesText) +
+          '</div>';
         row.addEventListener('click', function () {
           // Marcar seleção visual
           document.querySelectorAll('#tab-user .list .list-item').forEach(function (el) {
@@ -1227,20 +1205,7 @@
       })
       .filter(function (x) { return !!x; });
   }
-        }
-        if (!feedUrl || !channelId) return null;
-        return {
-          name: name || 'Feed',
-          feedUrl: feedUrl,
-          channelId: channelId,
-          enabled: enabled,
-          maxPerCycle: maxPerCycle
-        };
-      })
-      .filter(function (x) { return !!x; });
-  }
 
-  
 async function loadGameNews() {
   const feedsList = document.getElementById('gamenewsFeedsList');
   const detailEl = document.getElementById('gamenewsDetailPanel');
