@@ -313,7 +313,10 @@ app.get('/api/guilds', requireDashboardAuth, async (req, res) => {
     if (!_client) return res.json({ ok: true, items: [] });
     const items = _client.guilds.cache.map((g) => ({
       id: g.id,
-      name: g.name
+      name: g.name,
+      memberCount: typeof g.memberCount === 'number'
+        ? g.memberCount
+        : (typeof g.approximateMemberCount === 'number' ? g.approximateMemberCount : null)
     }));
     items.sort((a, b) => a.name.localeCompare(b.name));
     return res.json({ ok: true, items });
@@ -1106,20 +1109,23 @@ app.post('/api/mod/remove-infraction', requireDashboardAuth, async (req, res) =>
       return res.status(404).json({ ok: false, error: 'Infraction not found' });
     }
 
-    const { guild, member } = await resolveGuildMember(guildId, userId);
-    if (!guild || !member) {
-      return res.status(404).json({ ok: false, error: 'User not found in guild' });
+    let guild = null;
+    let member = null;
+    try {
+      const resolved = await resolveGuildMember(guildId, userId);
+      guild = resolved.guild;
+      member = resolved.member;
+    } catch (e) {
+      console.warn('[Dashboard] remove-infraction: failed to resolve member from Discord', e);
     }
 
-    const me = guild.members.me;
-    if (!me) {
-      return res.status(500).json({ ok: false, error: 'Bot member not available' });
-    }
-
-    // Não deixar remover infração de alguém com cargo superior ao bot
-    if (member.roles.highest && me.roles.highest &&
-        member.roles.highest.comparePositionTo(me.roles.highest) >= 0) {
-      return res.status(403).json({ ok: false, error: 'User has higher or equal role' });
+    if (guild && member && guild.members && guild.members.me) {
+      const me = guild.members.me;
+      // Não deixar remover infração de alguém com cargo superior ao bot
+      if (member.roles && member.roles.highest && me.roles && me.roles.highest &&
+          member.roles.highest.comparePositionTo(me.roles.highest) >= 0) {
+        return res.status(403).json({ ok: false, error: 'User has higher or equal role' });
+      }
     }
 
     let warningsService = null;

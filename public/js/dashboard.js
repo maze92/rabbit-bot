@@ -5,6 +5,7 @@
     lang: 'pt',
     guildId: null,
     currentTab: 'overview',
+    guilds: []
   };
 
   const API_BASE = '/api';
@@ -507,6 +508,7 @@
     try {
       const res = await apiGet('/guilds');
       const items = (res && res.items) || [];
+      state.guilds = items;
       select.innerHTML = '';
 
       const optEmpty = document.createElement('option');
@@ -535,6 +537,23 @@
     if (!listEl) return;
 
     listEl.innerHTML = '';
+
+    // Update member count label (if we know it)
+    var membersLabel = document.getElementById('usersMemberCount');
+    if (membersLabel) {
+      var guildInfo = Array.isArray(state.guilds)
+        ? state.guilds.find(function (g) { return g && g.id === state.guildId; })
+        : null;
+      if (guildInfo && typeof guildInfo.memberCount === 'number') {
+        if (state.lang === 'pt') {
+          membersLabel.textContent = guildInfo.memberCount + ' membros';
+        } else {
+          membersLabel.textContent = guildInfo.memberCount + ' members';
+        }
+      } else {
+        membersLabel.textContent = '';
+      }
+    }
 
     if (!state.guildId) {
       const div = document.createElement('div');
@@ -569,16 +588,14 @@
       }
 
       items.forEach(function (u) {
+        if (u && u.bot) return;
         const row = document.createElement('div');
         row.className = 'list-item';
         row.dataset.userId = u.id || '';
         row.dataset.username = u.username || u.tag || u.id || '';
 
         const name = u.username || u.tag || u.id;
-        const roles = (u.roles || [])
-          .filter(function (r) { return r && r.id !== '1385619241235120169'; })
-          .map(function (r) { return r.name; })
-          .join(', ');
+        const roles = (u.roles || []).map(function (r) { return r.name; }).join(', ');
 
         const isBot = !!u.bot;
 
