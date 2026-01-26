@@ -314,8 +314,6 @@
       gamenews_save_success: 'GameNews feeds saved.',
       gamenews_editor_empty: 'No feeds configured yet. Add your first feed to get started.',
       gamenews_feed_name_label: 'Name',
-      gamenews_feed_url_label: 'Feed URL',
-      gamenews_feed_channel_label: 'Channel',
       gamenews_feed_enabled_label: 'Enabled',
       gamenews_feed_url_label: 'Feed URL',
       gamenews_feed_channel_label: 'Channel ID',
@@ -663,7 +661,7 @@
   }
 
 
-async function loadUserHistory(user) {
+  async function loadUserHistory(user) {
     const detailEl = document.getElementById('userDetailPanel');
     if (!detailEl) return;
 
@@ -672,121 +670,413 @@ async function loadUserHistory(user) {
       return;
     }
 
-    detailEl.innerHTML = '<div class="empty">...</div>';
+    // Placeholder for bots
+    if (user.bot) {
+      detailEl.innerHTML =
+        '<div class="title">' + escapeHtml(t('users_history_title')) + '</div>' +
+        '<div class="subtitle">' + escapeHtml(user.username || user.id) + ' • BOT</div>' +
+        '<div class="empty">' + escapeHtml(t('users_history_none')) + '</div>';
+      return;
+    }
+
+    detailEl.innerHTML = '<div class="empty">' + escapeHtml(t('loading')) + '</div>';
 
     try {
-      // Carrega os dados em paralelo
       const [historyRes, userRes] = await Promise.all([
-        apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/users/' + encodeURIComponent(user.id) + '/history'),
-        apiGet('/user?guildId=' + encodeURIComponent(state.guildId) + '&userId=' + encodeURIComponent(user.id))
+        apiGet(
+          '/guilds/' +
+            encodeURIComponent(state.guildId) +
+            '/users/' +
+            encodeURIComponent(user.id) +
+            '/history'
+        ),
+        apiGet(
+          '/user?guildId=' +
+            encodeURIComponent(state.guildId) +
+            '&userId=' +
+            encodeURIComponent(user.id)
+        )
       ]);
 
-      const infractions = historyRes.infractions || [];
-      const tickets = historyRes.tickets || [];
-      const dbInfo = (userRes && userRes.db) ? userRes.db : null;
-
-      let html = '<div class="title">' + escapeHtml(t('users_history_title')) + '</div>';
-      html += '<div class="subtitle">' + escapeHtml(user.username) + ' • ' + escapeHtml(user.id) + '</div>';
-
-      // Bloco de Trust/Confiança
-      if (dbInfo) {
-        const trust = typeof dbInfo.trust === 'number' ? dbInfo.trust : 0;
-        html += '<div class="history-section">';
-        html += '<h3>' + escapeHtml(t('users_trust_title')) + '</h3>';
-        html += '<div class="trust-score">' + escapeHtml(t('users_trust_score')) + ': <strong>' + trust + '</strong></div>';
-        html += '</div>';
+      if (!historyRes || historyRes.ok === false) {
+        console.error('User history error', historyRes && historyRes.error);
+        detailEl.innerHTML =
+          '<div class="empty">' + escapeHtml(t('cases_error_generic')) + '</div>';
+        return;
       }
 
-      // Bloco de Ações Rápidas
+      const infractions = historyRes.infractions || [];
+      const counts = historyRes.counts || {};
+      const tickets = historyRes.tickets || [];
+
+      const dbInfo = userRes && userRes.db ? userRes.db : null;
+
+      let html = '';
+
+      html += '<div class="title">' + escapeHtml(t('users_history_title')) + '</div>';
+      html +=
+        '<div class="subtitle">' +
+        escapeHtml(user.username || user.id) +
+        ' • ' +
+        escapeHtml(user.id) +
+        '</div>';
+
+      // Trust e próxima penalização
+      if (dbInfo && typeof dbInfo.trust === 'number') {
+        html += '<div class="history-section user-trust">';
+        html += '<h3>' + escapeHtml(t('users_trust_title')) + '</h3>';
+
+        html += '<div class="user-trust-main">';
+
+        // Badge para nível de trust (baixo / médio / alto)
+        var trustVal = dbInfo.trust;
+        var trustLabel = dbInfo.trustLabel ? String(dbInfo.trustLabel) : '';
+        var trustLabelLower = trustLabel.toLowerCase();
+        var trustLevelClass = 'neutral';
+
+        if (trustLabelLower.includes('alto') || trustLabelLower.includes('high')) {
+          trustLevelClass = 'high';
+        } else if (
+          trustLabelLower.includes('médio') ||
+          trustLabelLower.includes('medio') ||
+          trustLabelLower.includes('medium')
+        ) {
+          trustLevelClass = 'medium';
+        } else if (trustLabelLower.includes('baixo') || trustLabelLower.includes('low')) {
+          trustLevelClass = 'low';
+        }
+
+        html += '<div class="user-trust-header">';
+        html +=
+          '<div class="user-trust-score">' +
+          escapeHtml(t('users_trust_score')) +
+          ': ' +
+          String(trustVal) +
+          '</div>';
+
+        if (trustLabel) {
+          html +=
+            '<span class="trust-badge trust-badge-' +
+            trustLevelClass +
+            '">' +
+            escapeHtml(trustLabel) +
+            '</span>';
+        }
+
+        html += '</div>';
+
+        if (dbInfo.nextPenalty && dbInfo.nextPenalty.automationEnabled) {
+          var np = dbInfo.nextPenalty;
+          var remaining =
+            typeof np.remaining === 'number' ? np.remaining : null;
+          var mins =
+            typeof np.estimatedMuteMinutes === 'number'
+              ? np.estimatedMuteMinutes
+              : null;
+
+          // Número atual de WARNs (para mostrar no texto de limiar)
+          var currentWarns =
+            dbInfo && typeof dbInfo.warnings === 'number'
+              ? dbInfo.warnings
+              : (counts && counts.WARN) || 0;
+
+          html += '<div class="user-trust-next">';
+          if (mins !== null) {
+            if (remaining !== null && remaining > 0) {
+              html +=
+                '<span>' +
+                escapeHtml(t('users_trust_next_penalty_prefix')) +
+                ' ' +
+                String(remaining) +
+                ' warn(s); ' +
+                escapeHtml(t('users_trust_next_penalty_suffix')) +
+                ' ~' +
+                String(mins) +
+                ' min' +
+                '</span>';
+            } else {
+              html +=
+                '<span>' +
+                escapeHtml(t('users_trust_next_penalty_at_threshold')) +
+                ' ~' +
+                String(mins) +
+                ' min ' +
+                '(' +
+                String(currentWarns) +
+                ' WARN(s) atuais)' +
+                '</span>';
+            }
+          }
+          html += '</div>';
+        } else {
+          html +=
+            '<div class="user-trust-next-disabled">' +
+            escapeHtml(t('users_trust_automation_disabled')) +
+            '</div>';
+        }
+
+        html += '</div>'; // user-trust-main
+        html += '</div>'; // history-section user-trust
+      }
+
+      // Badges de resumo
+      html += '<div class="badge-row">';
+
+      const warnCount =
+        dbInfo && typeof dbInfo.warnings === 'number'
+          ? dbInfo.warnings
+          : (counts.WARN || 0);
+      const muteCount = counts.MUTE || 0;
+
+      if (warnCount || muteCount) {
+        if (warnCount) {
+          html +=
+            '<div class="badge badge-warn">WARN: ' + String(warnCount) + '</div>';
+        }
+        if (muteCount) {
+          html +=
+            '<div class="badge badge-mute">MUTE: ' + String(muteCount) + '</div>';
+        }
+      } else {
+        html +=
+          '<div class="badge">' + escapeHtml(t('users_history_none')) + '</div>';
+      }
+
+      html += '</div>';
+
+      // Ações rápidas de moderação
       html += '<div class="history-section user-actions">';
       html += '<h3>' + escapeHtml(t('users_actions_title')) + '</h3>';
-      html += '<input type="text" class="input xs user-actions-reason" style="margin-bottom:8px" placeholder="' + escapeHtml(t('users_actions_reason_placeholder')) + '">';
-      html += '<div class="badge-row">';
-      html += '<button class="btn xs" data-action="warn">' + escapeHtml(t('users_actions_warn')) + '</button>';
-      html += '<button class="btn xs" data-action="unmute">' + escapeHtml(t('users_actions_unmute')) + '</button>';
-      html += '<button class="btn xs" data-action="reset">' + escapeHtml(t('users_actions_reset')) + '</button>';
-      html += '<button class="btn xs" data-action="reset-history" style="color:#ff4444">' + escapeHtml(t('users_actions_reset_history')) + '</button>';
-      html += '</div></div>';
 
-      // Bloco de Infrações
+      html += '<div class="user-actions-fields">';
+      html +=
+        '<input type="text" class="input xs user-actions-reason" ' +
+        'placeholder="' +
+        escapeHtml(t('users_actions_reason_placeholder')) +
+        '">';
+      html += '</div>';
+
+      html += '<div class="badge-row user-actions-buttons">';
+      html +=
+        '<button type="button" class="btn xs btn-warn" data-action="warn">' +
+        escapeHtml(t('users_actions_warn')) +
+        '</button>';
+      html +=
+        '<button type="button" class="btn xs btn-unmute" data-action="unmute">' +
+        escapeHtml(t('users_actions_unmute')) +
+        '</button>';
+      html +=
+        '<button type="button" class="btn xs btn-reset" data-action="reset">' +
+        escapeHtml(t('users_actions_reset')) +
+        '</button>';
+      html += '</div>';
+      html += '</div>';
+
+      // Infrações recentes
       html += '<div class="history-section">';
-      html += '<h3>' + escapeHtml(t('users_history_infractions')) + ' (' + infractions.length + ')</h3>';
-      if (infractions.length > 0) {
-        html += '<p style="font-size:11px; opacity:0.7; margin-bottom:8px">' + escapeHtml(t('users_history_click_to_remove')) + '</p>';
+      html += '<h3>' + escapeHtml(t('users_history_infractions')) + '</h3>';
+      html +=
+        '<div class="history-hint">' +
+        escapeHtml(t('users_history_click_to_remove')) +
+        '</div>';
+
+      if (!infractions.length) {
+        html +=
+          '<div class="empty" style="margin-top:4px;">' +
+          escapeHtml(t('users_history_none')) +
+          '</div>';
+      } else {
         html += '<ul class="infractions-list">';
         infractions.forEach(function (inf) {
-          const date = inf.createdAt ? new Date(inf.createdAt).toLocaleString() : '---';
-          html += '<li class="infraction-item" data-infraction-id="' + inf._id + '">';
-          html += '<strong>[' + escapeHtml(inf.type.toUpperCase()) + ']</strong> ';
-          html += '<span>' + escapeHtml(inf.reason || 'Sem motivo') + '</span>';
-          html += '<div class="meta">' + escapeHtml(date) + ' • Mod ID: ' + escapeHtml(inf.moderatorId || '?') + '</div>';
-          html += '</li>';
+          const id = (inf._id || inf.id || '').toString();
+          const when = inf.createdAt
+            ? new Date(inf.createdAt).toLocaleString()
+            : '';
+          const reason = inf.reason || '';
+          const line =
+            '[' +
+            (inf.type || 'UNK') +
+            '] ' +
+            (reason ? reason : '') +
+            (when ? ' • ' + when : '');
+          html +=
+            '<li class="infraction-item" data-infraction-id="' +
+            escapeHtml(id) +
+            '\">' +
+            escapeHtml(line) +
+            '</li>';
         });
         html += '</ul>';
+      }
+      html += '</div>';
+
+      // Tickets recentes
+      html += '<div class="history-section">';
+      html += '<h3>' + escapeHtml(t('users_history_tickets')) + '</h3>';
+
+      if (!tickets.length) {
+        html +=
+          '<div class="empty" style="margin-top:4px;">' +
+          escapeHtml(t('users_history_none')) +
+          '</div>';
       } else {
-        html += '<div class="empty-small">' + escapeHtml(t('users_history_none')) + '</div>';
+        html += '<ul>';
+        tickets.forEach(function (tkt) {
+          const opened = tkt.createdAt
+            ? new Date(tkt.createdAt).toLocaleString()
+            : '';
+          const status = tkt.closedAt ? 'Fechado' : 'Aberto';
+          const line =
+            '#' +
+            String(tkt.ticketNumber).padStart(3, '0') +
+            ' • ' +
+            status +
+            (opened ? ' • ' + opened : '');
+          html += '<li>' + escapeHtml(line) + '</li>';
+        });
+        html += '</ul>';
       }
       html += '</div>';
 
       detailEl.innerHTML = html;
 
-      // --- Lógica de Eventos ---
+      // Bind quick moderation actions
+      try {
+        const container = detailEl.querySelector('.user-actions');
+        if (container) {
+          container.querySelectorAll('button[data-action]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const action = btn.getAttribute('data-action');
+              if (!state.guildId || !user || !user.id) return;
 
-      // Ações (Warn, Mute, etc)
-      const actionContainer = detailEl.querySelector('.user-actions');
-      if (actionContainer) {
-        actionContainer.querySelectorAll('button[data-action]').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            const action = btn.getAttribute('data-action');
-            const reason = actionContainer.querySelector('.user-actions-reason').value;
-            let endpoint = '/mod/' + action;
-            if (action === 'reset') endpoint = '/mod/reset-trust';
+              const reasonInput =
+                container.querySelector('.user-actions-reason') || null;
 
-            apiPost(endpoint, {
-              guildId: state.guildId,
-              userId: user.id,
-              reason: reason.trim() || null
-            }).then(function (res) {
-              if (res.ok !== false) {
-                toast("Sucesso: " + action);
-                loadUserHistory(user).catch(function(){});
-              } else {
-                toast("Erro: " + (res.error || "Falha"));
+              const reasonRaw = reasonInput && reasonInput.value ? reasonInput.value : '';
+              const reason = reasonRaw.trim() || null;
+
+              if (action === 'reset-history') {
+                apiPost('/mod/reset-history', {
+                  guildId: state.guildId,
+                  userId: user.id,
+                  reason: reason
+                })
+                  .then(function (res) {
+                    if (!res || res.ok === false) {
+                      console.error('Reset history failed', res && res.error);
+                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
+                      return;
+                    }
+                    toast(t('users_actions_reset_history') + ' OK');
+                    loadUserHistory(user).catch(function () {});
+                  })
+                  .catch(function (err) {
+                    console.error('Reset history error', err);
+                    toast(t('cases_error_generic'));
+                  });
+              } else if (action === 'warn') {
+                apiPost('/mod/warn', {
+                  guildId: state.guildId,
+                  userId: user.id,
+                  reason: reason
+                })
+                  .then(function (res) {
+                    if (!res || res.ok === false) {
+                      console.error('Warn failed', res && res.error);
+                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
+                      return;
+                    }
+                    toast(t('users_actions_warn') + ' OK');
+                    // reload history to reflect new infraction
+                    loadUserHistory(user).catch(function () {});
+                  })
+                  .catch(function (err) {
+                    console.error('Warn error', err);
+                    toast(t('cases_error_generic'));
+                  });
+              } else if (action === 'unmute') {
+                apiPost('/mod/unmute', {
+                  guildId: state.guildId,
+                  userId: user.id,
+                  reason: reason
+                })
+                  .then(function (res) {
+                    if (!res || res.ok === false) {
+                      console.error('Unmute failed', res && res.error);
+                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
+                      return;
+                    }
+                    toast(t('users_actions_unmute') + ' OK');
+                    loadUserHistory(user).catch(function () {});
+                  })
+                  .catch(function (err) {
+                    console.error('Unmute error', err);
+                    toast(t('cases_error_generic'));
+                  });
+              } else if (action === 'reset') {
+                apiPost('/mod/reset-trust', {
+                  guildId: state.guildId,
+                  userId: user.id,
+                  reason: reason
+                })
+                  .then(function (res) {
+                    if (!res || res.ok === false) {
+                      console.error('Reset trust failed', res && res.error);
+                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
+                      return;
+                    }
+                    toast(t('users_actions_reset') + ' OK');
+                    loadUserHistory(user).catch(function () {});
+                  })
+                  .catch(function (err) {
+                    console.error('Reset trust error', err);
+                    toast(t('cases_error_generic'));
+                  });
               }
-            }).catch(function (err) {
-              console.error(err);
-              toast("Erro na API");
             });
           });
-        });
-      }
+        }
 
-      // Remoção de infração
-      const infraList = detailEl.querySelector('.infractions-list');
-      if (infraList) {
-        infraList.querySelectorAll('.infraction-item').forEach(function (li) {
-          li.addEventListener('click', function () {
-            const infId = li.getAttribute('data-infraction-id');
-            if (!window.confirm(t('users_history_remove_confirm'))) return;
+        // Bind infractions click-to-remove
+        const infraList = detailEl.querySelector('.infractions-list');
+        if (infraList) {
+          infraList.querySelectorAll('.infraction-item').forEach(function (li) {
+            li.addEventListener('click', function () {
+              const id = li.getAttribute('data-infraction-id');
+              if (!id || !state.guildId || !user || !user.id) return;
 
-            apiPost('/mod/remove-infraction', {
-              guildId: state.guildId,
-              userId: user.id,
-              infractionId: infId
-            }).then(function (res) {
-              toast(t('users_history_remove_success'));
-              loadUserHistory(user).catch(function(){});
-            }).catch(function (err) {
-              console.error(err);
-              toast("Erro ao remover");
+              if (!window.confirm(t('users_history_remove_confirm'))) return;
+
+              apiPost('/mod/remove-infraction', {
+                guildId: state.guildId,
+                userId: user.id,
+                infractionId: id
+              })
+                .then(function (res) {
+                  if (!res || res.ok === false) {
+                    console.error('Remove infraction failed', res && res.error);
+                    toast(res && res.error ? String(res.error) : t('cases_error_generic'));
+                    return;
+                  }
+                  // Feedback visual e reload de histórico
+                  li.classList.add('removing');
+                  toast(t('users_history_remove_success'));
+                  loadUserHistory(user).catch(function () {});
+                })
+                .catch(function (err) {
+                  console.error('Remove infraction error', err);
+                  toast(t('cases_error_generic'));
+                });
             });
           });
-        });
+        }
+      } catch (err) {
+        console.error('Failed to bind user quick actions', err);
       }
-
     } catch (err) {
       console.error('Failed to load user history', err);
-      detailEl.innerHTML = '<div class="error">' + escapeHtml(t('users_error_generic')) + '</div>';
+      detailEl.innerHTML =
+        '<div class="empty">Erro ao carregar histórico / error loading history.</div>';
     }
   }
 
@@ -1313,7 +1603,7 @@ function renderGameNewsUI() {
 }
 
 async function saveGameNewsFeeds() {
-async function saveGameNewsFeeds() {
+ {
     if (!state.guildId) {
       toast(t('gamenews_select_guild'));
       return;
@@ -2030,4 +2320,5 @@ async function saveGameNewsFeeds() {
     loadGuilds().catch(function () {});
     setTab('overview');
   });
+});
 })();
