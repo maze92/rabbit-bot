@@ -129,37 +129,30 @@
             Estado dos feeds de notícias, últimos envios e potenciais falhas na publicação.
           </p>
 
-          <!-- Lista de status (read-only, vindo do sistema de GameNews) -->
-          <div class="list" id="gamenewsStatusList">
-            <div class="empty" data-i18n="gamenews_empty">
-              Nenhum feed de GameNews se encontra configurado neste momento.
-            </div>
+          <div class="row gap" style="margin-bottom:8px;">
+            <button id="btnAddGameNewsFeed" class="btn primary" type="button" data-i18n="gamenews_add_feed">
+              Adicionar feed
+            </button>
+            <button id="btnSaveGameNewsFeeds" class="btn" type="button" data-i18n="gamenews_save_feeds">
+              Guardar alterações
+            </button>
           </div>
 
-          <hr />
-
-          <!-- Editor de feeds (para adicionar/editar/remover + escolher canal) -->
-          <h3 data-i18n="gamenews_editor_title">Configuração de feeds</h3>
-          <p class="hint" data-i18n="gamenews_editor_hint">
-            Adiciona, edita ou remove feeds e escolhe o canal onde as notícias serão enviadas.
-          </p>
-
-          <div class="gamenews-editor">
-            <div class="row gap">
-              <button id="btnAddGameNewsFeed" class="btn primary" type="button" data-i18n="gamenews_add_feed">
-                Adicionar feed
-              </button>
-              <button id="btnSaveGameNewsFeeds" class="btn" type="button" data-i18n="gamenews_save_feeds">
-                Guardar alterações
-              </button>
-            </div>
-
+          <div class="user-layout gamenews-layout">
             <div class="list" id="gamenewsFeedsList">
-              <!-- Linhas de feeds serão preenchidas via JS -->
+              <div class="empty" data-i18n="gamenews_empty">
+                Nenhum feed de GameNews se encontra configurado neste momento.
+              </div>
+            </div>
+            <div class="user-detail gamenews-detail" id="gamenewsDetailPanel">
+              <div class="empty" data-i18n="gamenews_detail_empty">
+                Seleciona um feed para veres detalhes, estado e configuração.
+              </div>
             </div>
           </div>
         </div>
       </section>
+
 
       <!-- Users -->
       <section class="section" id="tab-user">

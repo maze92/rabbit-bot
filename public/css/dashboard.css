@@ -579,3 +579,45 @@ h2 {
   border-color: rgba(255, 255, 255, 0.08);
   transform: translateX(1px);
 }
+
+
+/* GameNews layout aligned with Users tab */
+#tab-gamenews .user-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+#tab-gamenews .user-layout .list {
+  margin-top: 0;
+  max-height: 460px;
+  overflow: auto;
+}
+
+#tab-gamenews .user-detail {
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: rgba(255,255,255,0.02);
+  padding: 10px 12px;
+  min-height: 120px;
+}
+
+#tab-gamenews .user-banner {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  opacity: 0.9;
+  background: rgba(255,255,255,0.04);
+}
+
+#tab-gamenews .history-section h3 {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+#tab-gamenews .history-section .meta-line {
+  font-size: 12px;
+  opacity: 0.85;
+}
