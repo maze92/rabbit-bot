@@ -1085,7 +1085,7 @@ app.post('/api/mod/remove-infraction', requireDashboardAuth, async (req, res) =>
     const { guildId: g0, userId: u0, infractionId: id0 } = req.body || {};
     const guildId = sanitizeId(g0);
     const userId = sanitizeId(u0);
-    const infractionId = sanitizeId(id0);
+    const infractionId = typeof id0 === 'string' || typeof id0 === 'number' ? String(id0) : null;
     const actor = getActorFromRequest(req);
 
     await recordAudit({
