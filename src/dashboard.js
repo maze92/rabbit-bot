@@ -1971,19 +1971,7 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
       }
     }
 
-    if (!feeds.length && Array.isArray(config?.gameNews?.sources)) {
-      feeds = config.gameNews.sources.map((s) => ({
-        guildId: null,
-        name: s.name,
-        feedUrl: s.feed,
-        channelId: s.channelId,
-        logChannelId: null,
-        enabled: true,
-        intervalMs: null
-      }));
-    }
-
-    const names = feeds.map((s) => s?.name).filter(Boolean);
+const names = feeds.map((s) => s?.name).filter(Boolean);
     const docs = names.length ? await GameNewsModel.find({ source: { $in: names } }).lean() : [];
 
     const map = new Map();
@@ -2028,24 +2016,11 @@ app.get('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
   try {
     const guildId = sanitizeId(req.query.guildId || '');
 
-    // If there is no GameNewsFeed model at all, fall back to static config feeds (read-only).
+    // If there is no GameNewsFeed model at all, return empty list (no static defaults).
     if (!GameNewsFeed) {
-      const items = Array.isArray(config?.gameNews?.sources)
-        ? config.gameNews.sources.map((s, idx) => ({
-            id: String(idx),
-            guildId: null,
-            name: s.name,
-            feedUrl: s.feed,
-            channelId: s.channelId,
-            logChannelId: null,
-            enabled: true,
-            intervalMs: null
-          }))
-        : [];
-      return res.json({ ok: true, items, source: 'static' });
+      return res.json({ ok: true, items: [], source: 'mongo-missing' });
     }
-
-    // Load feeds for a guild when specified, else all.
+// Load feeds for a guild when specified, else all.
     const q = guildId ? { guildId } : {};
     const docs = await GameNewsFeed.find(q).sort({ createdAt: 1 }).lean();
 

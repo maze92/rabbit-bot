@@ -181,6 +181,7 @@
       gamenews_loading: 'A carregar estado dos feeds...',
       gamenews_select_guild: 'Selecione um servidor para configurar GameNews.',
       gamenews_error_generic: 'Não foi possível carregar GameNews.',
+      gamenews_error_incomplete: 'Alguns feeds estão incompletos (falta URL ou canal). Preenche todos os campos antes de guardar.',
       gamenews_editor_title: 'Configuração de feeds',
       gamenews_editor_hint: 'Adiciona, edita ou remove feeds e escolhe o canal para cada um.',
       gamenews_add_feed: 'Adicionar feed',
@@ -307,6 +308,7 @@
       gamenews_loading: 'Loading GameNews status...',
       gamenews_select_guild: 'Select a server to configure GameNews.',
       gamenews_error_generic: 'Could not load GameNews.',
+      gamenews_error_incomplete: 'Some feeds are incomplete (missing URL or channel). Please fill all fields before saving.',
       gamenews_editor_title: 'Feeds configuration',
       gamenews_editor_hint: 'Add, edit or remove feeds and choose the target channel for each one.',
       gamenews_add_feed: 'Add feed',
@@ -1580,6 +1582,8 @@ function renderGameNewsUI() {
       const target = state.gamenews.feeds[idx];
       target.enabled = !target.enabled;
       renderGameNewsUI();
+      // Auto-save after toggle so o utilizador não precisa de clicar "Guardar alterações"
+      saveGameNewsFeeds().catch(function () {});
     });
   }
 
@@ -1609,7 +1613,12 @@ async function saveGameNewsFeeds() {
   }
   try {
     const feeds = collectGameNewsEditorFeeds();
-    const guildParam = '?guildId=' + encodeURIComponent(state.guildId);
+    if ((!feeds || !feeds.length) && state.gamenews && Array.isArray(state.gamenews.feeds) && state.gamenews.feeds.length) {
+      // Existem feeds na UI mas nenhum é válido (falta URL ou canal)
+      toast(t('gamenews_error_incomplete'));
+      return;
+    }
+const guildParam = '?guildId=' + encodeURIComponent(state.guildId);
     await apiPost('/gamenews/feeds' + guildParam, {
       guildId: state.guildId,
       feeds: feeds
