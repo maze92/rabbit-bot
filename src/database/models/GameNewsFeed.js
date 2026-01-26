@@ -19,7 +19,11 @@ const gameNewsFeedSchema = new Schema(
 
     // Optional override: custom interval for this feed (ms).
     // If null, uses global config.gameNews.interval.
-    intervalMs: { type: Number, default: null }
+    intervalMs: { type: Number, default: null },
+
+    // Optional override: maximum number of news items to send per cycle for this feed.
+    // If null, falls back to global config.gameNews.maxPerCycle.
+    maxPerCycle: { type: Number, default: null }
   },
   { timestamps: true }
 );
