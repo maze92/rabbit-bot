@@ -664,7 +664,7 @@
 
 
 async function loadUserHistory(user) {
-    var detailEl = document.getElementById('userDetailPanel');
+    const detailEl = document.getElementById('userDetailPanel');
     if (!detailEl) return;
 
     if (!state.guildId || !user || !user.id) {
@@ -675,32 +675,29 @@ async function loadUserHistory(user) {
     detailEl.innerHTML = '<div class="empty">...</div>';
 
     try {
-      // Carrega histórico e dados do utilizador em paralelo
-      var results = await Promise.all([
+      // Carrega os dados em paralelo
+      const [historyRes, userRes] = await Promise.all([
         apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/users/' + encodeURIComponent(user.id) + '/history'),
         apiGet('/user?guildId=' + encodeURIComponent(state.guildId) + '&userId=' + encodeURIComponent(user.id))
       ]);
 
-      var historyRes = results[0];
-      var userRes = results[1];
+      const infractions = historyRes.infractions || [];
+      const tickets = historyRes.tickets || [];
+      const dbInfo = (userRes && userRes.db) ? userRes.db : null;
 
-      var infractions = (historyRes && historyRes.infractions) || [];
-      var tickets = (historyRes && historyRes.tickets) || [];
-      var dbInfo = (userRes && userRes.db) || null;
-
-      var html = '<div class="title">' + escapeHtml(t('users_history_title')) + '</div>';
+      let html = '<div class="title">' + escapeHtml(t('users_history_title')) + '</div>';
       html += '<div class="subtitle">' + escapeHtml(user.username) + ' • ' + escapeHtml(user.id) + '</div>';
 
-      // Secção de Trust
+      // Bloco de Trust/Confiança
       if (dbInfo) {
-        var trust = typeof dbInfo.trust === 'number' ? dbInfo.trust : 0;
+        const trust = typeof dbInfo.trust === 'number' ? dbInfo.trust : 0;
         html += '<div class="history-section">';
         html += '<h3>' + escapeHtml(t('users_trust_title')) + '</h3>';
         html += '<div class="trust-score">' + escapeHtml(t('users_trust_score')) + ': <strong>' + trust + '</strong></div>';
         html += '</div>';
       }
 
-      // Secção de Ações Rápidas
+      // Bloco de Ações Rápidas
       html += '<div class="history-section user-actions">';
       html += '<h3>' + escapeHtml(t('users_actions_title')) + '</h3>';
       html += '<input type="text" class="input xs user-actions-reason" style="margin-bottom:8px" placeholder="' + escapeHtml(t('users_actions_reason_placeholder')) + '">';
@@ -711,14 +708,14 @@ async function loadUserHistory(user) {
       html += '<button class="btn xs" data-action="reset-history" style="color:#ff4444">' + escapeHtml(t('users_actions_reset_history')) + '</button>';
       html += '</div></div>';
 
-      // Secção de Infrações
+      // Bloco de Infrações
       html += '<div class="history-section">';
       html += '<h3>' + escapeHtml(t('users_history_infractions')) + ' (' + infractions.length + ')</h3>';
       if (infractions.length > 0) {
         html += '<p style="font-size:11px; opacity:0.7; margin-bottom:8px">' + escapeHtml(t('users_history_click_to_remove')) + '</p>';
         html += '<ul class="infractions-list">';
         infractions.forEach(function (inf) {
-          var date = inf.createdAt ? new Date(inf.createdAt).toLocaleString() : '---';
+          const date = inf.createdAt ? new Date(inf.createdAt).toLocaleString() : '---';
           html += '<li class="infraction-item" data-infraction-id="' + inf._id + '">';
           html += '<strong>[' + escapeHtml(inf.type.toUpperCase()) + ']</strong> ';
           html += '<span>' + escapeHtml(inf.reason || 'Sem motivo') + '</span>';
@@ -733,47 +730,50 @@ async function loadUserHistory(user) {
 
       detailEl.innerHTML = html;
 
-      // Eventos para as Ações Rápidas
-      var container = detailEl.querySelector('.user-actions');
-      if (container) {
-        container.querySelectorAll('button[data-action]').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var action = btn.getAttribute('data-action');
-            var reasonInput = container.querySelector('.user-actions-reason');
-            var reason = reasonInput ? reasonInput.value.trim() : '';
+      // --- Lógica de Eventos ---
 
-            var endpoint = '/mod/' + action;
+      // Ações (Warn, Mute, etc)
+      const actionContainer = detailEl.querySelector('.user-actions');
+      if (actionContainer) {
+        actionContainer.querySelectorAll('button[data-action]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const action = btn.getAttribute('data-action');
+            const reason = actionContainer.querySelector('.user-actions-reason').value;
+            let endpoint = '/mod/' + action;
             if (action === 'reset') endpoint = '/mod/reset-trust';
 
             apiPost(endpoint, {
               guildId: state.guildId,
               userId: user.id,
-              reason: reason || null
+              reason: reason.trim() || null
             }).then(function (res) {
-              toast("Ação executada: " + action);
-              loadUserHistory(user).catch(function(){});
+              if (res.ok !== false) {
+                toast("Sucesso: " + action);
+                loadUserHistory(user).catch(function(){});
+              } else {
+                toast("Erro: " + (res.error || "Falha"));
+              }
             }).catch(function (err) {
               console.error(err);
-              toast("Erro ao executar ação");
+              toast("Erro na API");
             });
           });
         });
       }
 
-      // Evento para remover infração ao clicar
-      var infraList = detailEl.querySelector('.infractions-list');
+      // Remoção de infração
+      const infraList = detailEl.querySelector('.infractions-list');
       if (infraList) {
         infraList.querySelectorAll('.infraction-item').forEach(function (li) {
           li.addEventListener('click', function () {
-            var id = li.getAttribute('data-infraction-id');
-            if (!id || !state.guildId || !user.id) return;
+            const infId = li.getAttribute('data-infraction-id');
             if (!window.confirm(t('users_history_remove_confirm'))) return;
 
             apiPost('/mod/remove-infraction', {
               guildId: state.guildId,
               userId: user.id,
-              infractionId: id
-            }).then(function () {
+              infractionId: infId
+            }).then(function (res) {
               toast(t('users_history_remove_success'));
               loadUserHistory(user).catch(function(){});
             }).catch(function (err) {
