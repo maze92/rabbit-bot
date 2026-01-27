@@ -64,7 +64,7 @@
       headers: getAuthHeaders(),
     });
     if (!res.ok) {
-      throw new Error('HTTP ' + res.status + ' for ' + path);
+      throw new Error(`HTTP ${res.status} for ${path}`);
     }
     return res.json();
   }
@@ -76,7 +76,7 @@
       body: JSON.stringify(body || {}),
     });
     if (!res.ok) {
-      throw new Error('HTTP ' + res.status + ' for ' + path);
+      throw new Error(`HTTP ${res.status} for ${path}`);
     }
     return res.json();
   }
@@ -584,7 +584,7 @@
       const detailEl = document.getElementById('userDetailPanel');
       // Limpar painel de detalhe quando se recarrega a lista
       if (detailEl) {
-        detailEl.innerHTML = '<div class="empty">' + escapeHtml(t('users_detail_empty')) + '</div>';
+        detailEl.innerHTML = `<div class="empty">${escapeHtml(t('users_detail_empty'))}</div>`;
       }
 
       items.forEach(function (u) {
@@ -645,7 +645,7 @@
     if (!detailEl) return;
 
     if (!state.guildId || !user || !user.id) {
-      detailEl.innerHTML = '<div class="empty">' + escapeHtml(t('users_detail_empty')) + '</div>';
+      detailEl.innerHTML = `<div class="empty">${escapeHtml(t('users_detail_empty'))}</div>`;
       return;
     }
 
@@ -692,13 +692,8 @@
 
       let html = '';
 
-      html += '<div class="title">' + escapeHtml(t('users_history_title')) + '</div>';
-      html +=
-        '<div class="subtitle">' +
-        escapeHtml(user.username || user.id) +
-        ' • ' +
-        escapeHtml(user.id) +
-        '</div>';
+      html += `<div class="title">${escapeHtml(t('users_history_title'))}</div>`;
+      html += `<div class="subtitle">${escapeHtml(user.username || user.id)} • ${escapeHtml(user.id)}</div>`;
 
       // Trust e próxima penalização
       if (dbInfo && typeof dbInfo.trust === 'number') {
@@ -825,29 +820,24 @@
 
       // Ações rápidas de moderação
       html += '<div class="history-section user-actions">';
-      html += '<h3>' + escapeHtml(t('users_actions_title')) + '</h3>';
+      html += `<h3>${escapeHtml(t('users_actions_title'))}</h3>`;
 
       html += '<div class="user-actions-fields">';
-      html +=
-        '<input type="text" class="input xs user-actions-reason" ' +
-        'placeholder="' +
-        escapeHtml(t('users_actions_reason_placeholder')) +
-        '">';
+      html += `<input type="text" class="input xs user-actions-reason" placeholder="${escapeHtml(
+        t('users_actions_reason_placeholder')
+      )}">`;
       html += '</div>';
 
       html += '<div class="badge-row user-actions-buttons">';
-      html +=
-        '<button type="button" class="btn xs btn-warn" data-action="warn">' +
-        escapeHtml(t('users_actions_warn')) +
-        '</button>';
-      html +=
-        '<button type="button" class="btn xs btn-unmute" data-action="unmute">' +
-        escapeHtml(t('users_actions_unmute')) +
-        '</button>';
-      html +=
-        '<button type="button" class="btn xs btn-reset" data-action="reset">' +
-        escapeHtml(t('users_actions_reset')) +
-        '</button>';
+      html += `<button type="button" class="btn xs btn-warn" data-action="warn">${escapeHtml(
+        t('users_actions_warn')
+      )}</button>`;
+      html += `<button type="button" class="btn xs btn-unmute" data-action="unmute">${escapeHtml(
+        t('users_actions_unmute')
+      )}</button>`;
+      html += `<button type="button" class="btn xs btn-reset" data-action="reset">${escapeHtml(
+        t('users_actions_reset')
+      )}</button>`;
       html += '</div>';
       html += '</div>';
 
@@ -1131,30 +1121,33 @@
       row.className = 'list-item';
       row.dataset.index = String(idx);
 
-      row.innerHTML =
-        '<div class="row gap">' +
-        '  <div class="col">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_name_label')) + '</label>' +
-        '    <input type="text" class="input feed-name" value="' + escapeHtml(f.name || '') + '" />' +
-        '  </div>' +
-        '  <div class="col">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_url_label')) + '</label>' +
-        '    <input type="text" class="input feed-url" value="' + escapeHtml(f.feedUrl || '') + '" />' +
-        '  </div>' +
-        '</div>' +
-        '<div class="row gap" style="margin-top:6px;">' +
-        '  <div class="col">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_channel_label')) + '</label>' +
-        '    <input type="text" class="input feed-channel" value="' + escapeHtml(f.channelId || '') + '" />' +
-        '  </div>' +
-        '  <div class="col" style="display:flex;align-items:center;gap:8px;">' +
-        '    <label><input type="checkbox" class="feed-enabled"' +
-        (f.enabled === false ? '' : ' checked') +
-        '> ' + escapeHtml(t('gamenews_feed_enabled_label')) + '</label>' +
-        '    <button type="button" class="btn btn-small btn-remove-feed">' + escapeHtml(t('gamenews_feed_remove_label')) + '</button>' +
-        '  </div>' +
-        '</div>';
-
+            row.innerHTML = `
+        <div class="row gap">
+          <div class="col">
+            <label>${escapeHtml(t('gamenews_feed_name_label'))}</label>
+            <input type="text" class="input feed-name" value="${escapeHtml(f.name || '')}" />
+          </div>
+          <div class="col">
+            <label>${escapeHtml(t('gamenews_feed_url_label'))}</label>
+            <input type="text" class="input feed-url" value="${escapeHtml(f.feedUrl || '')}" />
+          </div>
+        </div>
+        <div class="row gap" style="margin-top:6px;">
+          <div class="col">
+            <label>${escapeHtml(t('gamenews_feed_channel_label'))}</label>
+            <input type="text" class="input feed-channel" value="${escapeHtml(f.channelId || '')}" />
+          </div>
+          <div class="col" style="display:flex;align-items:center;gap:8px;">
+            <label>
+              <input type="checkbox" class="feed-enabled"${f.enabled === false ? '' : ' checked'}>
+              ${escapeHtml(t('gamenews_feed_enabled_label'))}
+            </label>
+            <button type="button" class="btn btn-small btn-remove-feed">
+              ${escapeHtml(t('gamenews_feed_remove_label'))}
+            </button>
+          </div>
+        </div>
+      `;
       listEl.appendChild(row);
     });
   }
