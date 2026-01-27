@@ -592,7 +592,8 @@ h2 {
 #tab-gamenews .user-layout .list {
   margin-top: 0;
   max-height: 460px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 #tab-gamenews .user-detail {
