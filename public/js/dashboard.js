@@ -599,17 +599,17 @@
 
         const isBot = !!u.bot;
 
-        row.innerHTML =
-          '<div class="user-row-header">' +
-          '  <div class="title">' + escapeHtml(name) + '</div>' +
-          '  <div class="user-type-badge ' + (isBot ? 'bot' : 'human') + '">' +
-          escapeHtml(isBot ? 'BOT' : 'USER') +
-          '  </div>' +
-          '</div>' +
-          '<div class="subtitle">' +
-          escapeHtml(u.id) +
-          (roles ? ' • ' + escapeHtml(roles) : '') +
-          '</div>';
+        row.innerHTML = `
+          <div class="user-row-header">
+            <div class="title">${escapeHtml(name)}</div>
+            <div class="user-type-badge ${isBot ? 'bot' : 'human'}">
+              ${escapeHtml(isBot ? 'BOT' : 'USER')}
+            </div>
+          </div>
+          <div class="subtitle">
+            ${escapeHtml(u.id)}${roles ? ' • ' + escapeHtml(roles) : ''}
+          </div>
+        `;
 
         row.addEventListener('click', function () {
           // Marcar seleção visual
@@ -651,14 +651,15 @@
 
     // Placeholder for bots
     if (user.bot) {
-      detailEl.innerHTML =
-        '<div class="title">' + escapeHtml(t('users_history_title')) + '</div>' +
-        '<div class="subtitle">' + escapeHtml(user.username || user.id) + ' • BOT</div>' +
-        '<div class="empty">' + escapeHtml(t('users_history_none')) + '</div>';
+      detailEl.innerHTML = `
+        <div class="title">${escapeHtml(t('users_history_title'))}</div>
+        <div class="subtitle">${escapeHtml(user.username || user.id)} • BOT</div>
+        <div class="empty">${escapeHtml(t('users_history_none'))}</div>
+      `;
       return;
     }
 
-    detailEl.innerHTML = '<div class="empty">' + escapeHtml(t('loading')) + '</div>';
+    detailEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
 
     try {
       const [historyRes, userRes] = await Promise.all([
@@ -679,8 +680,7 @@
 
       if (!historyRes || historyRes.ok === false) {
         console.error('User history error', historyRes && historyRes.error);
-        detailEl.innerHTML =
-          '<div class="empty">' + escapeHtml(t('cases_error_generic')) + '</div>';
+        detailEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_error_generic'))}</div>`;
         return;
       }
 
@@ -698,7 +698,7 @@
       // Trust e próxima penalização
       if (dbInfo && typeof dbInfo.trust === 'number') {
         html += '<div class="history-section user-trust">';
-        html += '<h3>' + escapeHtml(t('users_trust_title')) + '</h3>';
+        html += `<h3>${escapeHtml(t('users_trust_title'))}</h3>`;
 
         html += '<div class="user-trust-main">';
 
@@ -804,16 +804,13 @@
 
       if (warnCount || muteCount) {
         if (warnCount) {
-          html +=
-            '<div class="badge badge-warn">WARN: ' + String(warnCount) + '</div>';
+          html += `<div class="badge badge-warn">WARN: ${String(warnCount)}</div>`;
         }
         if (muteCount) {
-          html +=
-            '<div class="badge badge-mute">MUTE: ' + String(muteCount) + '</div>';
+          html += `<div class="badge badge-mute">MUTE: ${String(muteCount)}</div>`;
         }
       } else {
-        html +=
-          '<div class="badge">' + escapeHtml(t('users_history_none')) + '</div>';
+        html += `<div class="badge">${escapeHtml(t('users_history_none'))}</div>`;
       }
 
       html += '</div>';
@@ -843,17 +840,14 @@
 
       // Infrações recentes
       html += '<div class="history-section">';
-      html += '<h3>' + escapeHtml(t('users_history_infractions')) + '</h3>';
+      html += `<h3>${escapeHtml(t('users_history_infractions'))}</h3>`;
       html +=
         '<div class="history-hint">' +
         escapeHtml(t('users_history_click_to_remove')) +
         '</div>';
 
       if (!infractions.length) {
-        html +=
-          '<div class="empty" style="margin-top:4px;">' +
-          escapeHtml(t('users_history_none')) +
-          '</div>';
+        html += `<div class="empty" style="margin-top:4px;">${escapeHtml(t('users_history_none'))}</div>`;
       } else {
         html += '<ul class="infractions-list">';
         infractions.forEach(function (inf) {
@@ -868,12 +862,7 @@
             '] ' +
             (reason ? reason : '') +
             (when ? ' • ' + when : '');
-          html +=
-            '<li class="infraction-item" data-infraction-id="' +
-            escapeHtml(id) +
-            '\">' +
-            escapeHtml(line) +
-            '</li>';
+          html += `<li class="infraction-item" data-infraction-id="${escapeHtml(id)}">${escapeHtml(line)}</li>`;
         });
         html += '</ul>';
       }
@@ -881,13 +870,10 @@
 
       // Tickets recentes
       html += '<div class="history-section">';
-      html += '<h3>' + escapeHtml(t('users_history_tickets')) + '</h3>';
+      html += `<h3>${escapeHtml(t('users_history_tickets'))}</h3>`;
 
       if (!tickets.length) {
-        html +=
-          '<div class="empty" style="margin-top:4px;">' +
-          escapeHtml(t('users_history_none')) +
-          '</div>';
+        html += `<div class="empty" style="margin-top:4px;">${escapeHtml(t('users_history_none'))}</div>`;
       } else {
         html += '<ul>';
         tickets.forEach(function (tkt) {
@@ -1302,9 +1288,10 @@
         }
       }
 
-      row.innerHTML =
-        '<div class="title">' + escapeHtml(title) + '</div>' +
-        '<div class="subtitle">' + escapeHtml(subtitleParts.join(' • ')) + '</div>';
+      row.innerHTML = `
+        <div class="title">${escapeHtml(title)}</div>
+        <div class="subtitle">${escapeHtml(subtitleParts.join(' • '))}</div>
+      `;
 
       listEl.appendChild(row);
     });
@@ -1414,9 +1401,10 @@
         if (c.reason) subtitleParts.push(c.reason);
         if (c.createdAt) subtitleParts.push(new Date(c.createdAt).toLocaleString());
 
-        row.innerHTML =
-          '<div class="title">' + escapeHtml(title) + '</div>' +
-          '<div class="subtitle">' + escapeHtml(subtitleParts.join(' • ')) + '</div>';
+        row.innerHTML = `
+          <div class="title">${escapeHtml(title)}</div>
+          <div class="subtitle">${escapeHtml(subtitleParts.join(' • '))}</div>
+        `;
 
         listEl.appendChild(row);
       });
