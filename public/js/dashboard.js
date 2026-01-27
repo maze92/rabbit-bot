@@ -1305,6 +1305,94 @@ etElementById('gamenewsDetailPanel');
   renderGameNewsUI();
 }
 
+async function loadGameNews() {
+  const feedsList = document.getElementById('gamenewsFeedsList');
+  const detailEl = document.getElementById('gamenewsDetailPanel');
+
+  if (!feedsList || !detailEl) return;
+
+  if (!state.gamenews) {
+    state.gamenews = { feeds: [], status: [], selectedFeedId: null, channels: [] };
+  }
+  state.gamenews.feeds = [];
+  state.gamenews.status = [];
+  state.gamenews.channels = [];
+
+  if (!state.guildId) {
+    feedsList.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = t('gamenews_select_guild');
+    feedsList.appendChild(empty);
+
+    detailEl.innerHTML = '';
+    const emptyDetail = document.createElement('div');
+    emptyDetail.className = 'empty';
+    emptyDetail.textContent = t('gamenews_detail_empty');
+    detailEl.appendChild(emptyDetail);
+    return;
+  }
+
+  feedsList.innerHTML = '';
+  const loadingList = document.createElement('div');
+  loadingList.className = 'empty';
+  loadingList.textContent = t('gamenews_loading');
+  feedsList.appendChild(loadingList);
+
+  detailEl.innerHTML = '';
+  const loadingDetail = document.createElement('div');
+  loadingDetail.className = 'empty';
+  loadingDetail.textContent = t('gamenews_loading');
+  detailEl.appendChild(loadingDetail);
+
+  const guildParam = '?guildId=' + encodeURIComponent(state.guildId);
+
+  let statusItems = [];
+  try {
+    const statusRes = await apiGet('/gamenews/status' + guildParam);
+    statusItems = (statusRes && statusRes.items) || [];
+  } catch (err) {
+    console.error('GameNews status error', err);
+  }
+
+  let feeds = [];
+  try {
+    const feedsRes = await apiGet('/gamenews/feeds' + guildParam);
+    feeds = (feedsRes && feedsRes.items) || [];
+  } catch (err) {
+    console.error('GameNews feeds error', err);
+  }
+
+  let channels = [];
+  try {
+    const meta = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/meta');
+    channels = (meta && meta.channels) || [];
+  } catch (err) {
+    console.error('GameNews meta error', err);
+  }
+
+  state.gamenews.status = Array.isArray(statusItems) ? statusItems : [];
+  state.gamenews.feeds = Array.isArray(feeds) ? feeds.slice() : [];
+  state.gamenews.channels = Array.isArray(channels) ? channels.slice() : [];
+
+  if (!state.gamenews.feeds.length) {
+    feedsList.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = t('gamenews_editor_empty');
+    feedsList.appendChild(empty);
+
+    detailEl.innerHTML = '';
+    const emptyDetail = document.createElement('div');
+    emptyDetail.className = 'empty';
+    emptyDetail.textContent = t('gamenews_detail_empty');
+    detailEl.appendChild(emptyDetail);
+    return;
+  }
+
+  renderGameNewsUI();
+}
+
 function getGameNewsStatusForFeed(feed) {
   const statusArr = (state.gamenews && Array.isArray(state.gamenews.status))
     ? state.gamenews.status
