@@ -1968,10 +1968,22 @@
   window.OzarkDashboard.escapeHtml = escapeHtml;
   window.OzarkDashboard.setTab = setTab;
   window.OzarkDashboard.loadGuilds = loadGuilds;
+
+  // Users
   window.OzarkDashboard.loadUsers = loadUsers;
   window.OzarkDashboard.loadUserHistory = loadUserHistory;
+
+  // Moderation (logs / cases)
   window.OzarkDashboard.loadLogs = loadLogs;
   window.OzarkDashboard.loadCases = loadCases;
+  window.OzarkDashboard.createLogRow = createLogRow;
+  window.OzarkDashboard.createCaseRow = createCaseRow;
+  window.OzarkDashboard.renderLogs = renderLogs;
+
+  // GameNews
   window.OzarkDashboard.loadGameNews = loadGameNews;
+  window.OzarkDashboard.renderGameNewsStatus = renderGameNewsStatus;
+  window.OzarkDashboard.renderGameNewsEditor = renderGameNewsEditor;
+  window.OzarkDashboard.createGameNewsFeedRow = createGameNewsFeedRow;
 
 })();
