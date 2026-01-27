@@ -9,8 +9,9 @@ const gameNewsFeedSchema = new Schema(
     name: { type: String, required: true },
     feedUrl: { type: String, required: true },
 
-    // Channel where the news posts are sent
-    channelId: { type: String, required: true },
+    // Channel where the news posts are sent (optional at DB level;
+    // if null, the feed will never post until a channel is configured)
+    channelId: { type: String, default: null },
 
     // Optional channel where GameNews diagnostics (failures/pauses) are logged
     logChannelId: { type: String, default: null },
