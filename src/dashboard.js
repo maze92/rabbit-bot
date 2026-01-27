@@ -1963,8 +1963,7 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
           channelId: d.channelId,
           logChannelId: d.logChannelId || null,
           enabled: d.enabled !== false,
-          intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null,
-          maxPerCycle: typeof d.maxPerCycle === 'number' ? d.maxPerCycle : null
+          intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
         }));
       } catch (e) {
         console.error('[Dashboard] /api/gamenews-status: failed loading GameNewsFeed:', e?.message || e);
@@ -2000,7 +1999,6 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
         logChannelId: s.logChannelId || null,
         enabled: s.enabled !== false,
         intervalMs: typeof s.intervalMs === 'number' ? s.intervalMs : null,
-        maxPerCycle: typeof s.maxPerCycle === 'number' ? s.maxPerCycle : null,
 
         failCount: d?.failCount ?? 0,
         pausedUntil: d?.pausedUntil ?? null,
@@ -2057,8 +2055,7 @@ app.get('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       channelId: d.channelId,
       logChannelId: d.logChannelId || null,
       enabled: d.enabled !== false,
-      intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null,
-      maxPerCycle: typeof d.maxPerCycle === 'number' ? d.maxPerCycle : null
+      intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
     }));
 
     return res.json({ ok: true, items, source: 'mongo' });
@@ -2093,14 +2090,8 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
       const intervalRaw = Number(f.intervalMs ?? 0);
       const intervalMs = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : null;
 
-      const maxPerCycleRaw = Number(f.maxPerCycle ?? 0);
-      const maxPerCycle =
-        Number.isFinite(maxPerCycleRaw) && maxPerCycleRaw > 0 && maxPerCycleRaw <= 10
-          ? maxPerCycleRaw
-          : null;
-
       if (!feedUrl || !channelId) continue;
-      sanitized.push({ guildId, name, feedUrl, channelId, logChannelId, enabled, intervalMs, maxPerCycle });
+      sanitized.push({ guildId, name, feedUrl, channelId, logChannelId, enabled, intervalMs });
     }
 
     // Replace all docs for this guild only.
@@ -2118,8 +2109,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
       channelId: d.channelId,
       logChannelId: d.logChannelId || null,
       enabled: d.enabled !== false,
-      intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null,
-      maxPerCycle: typeof d.maxPerCycle === 'number' ? d.maxPerCycle : null
+      intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
     }));
 
     await recordAudit({

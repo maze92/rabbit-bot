@@ -188,7 +188,6 @@
       gamenews_feed_enabled_label: 'Ativo',
       gamenews_feed_url_label: 'URL do feed',
       gamenews_feed_channel_label: 'Canal ID',
-      gamenews_feed_max_label: 'Máx. notícias por ciclo (1–10)',
       gamenews_feed_remove_label: 'Remover',
       gamenews_status_last_label: 'Último envio',
       gamenews_status_state_ok: 'Ativo',
@@ -305,7 +304,6 @@
       gamenews_feed_enabled_label: 'Enabled',
       gamenews_feed_url_label: 'Feed URL',
       gamenews_feed_channel_label: 'Channel ID',
-      gamenews_feed_max_label: 'Max posts per run (1–10)',
       gamenews_feed_remove_label: 'Remove',
       gamenews_status_last_label: 'Last sent',
       gamenews_status_state_ok: 'Active',
@@ -602,36 +600,16 @@
         const isBot = !!u.bot;
 
         row.innerHTML =
-        '<div class="row gap">' +
-        '  <div class="col">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_name_label')) + '</label>' +
-        '    <input type="text" class="input feed-name" value="' + escapeHtml(f.name || '') + '" />' +
-        '  </div>' +
-        '  <div class="col">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_url_label')) + '</label>' +
-        '    <input type="text" class="input feed-url" value="' + escapeHtml(f.feedUrl || '') + '" />' +
-        '  </div>' +
-        '</div>' +
-        '<div class="row gap" style="margin-top:6px;">' +
-        '  <div class="col">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_channel_label')) + '</label>' +
-        '    <input type="text" class="input feed-channel" value="' + escapeHtml(f.channelId || '') + '" />' +
-        '  </div>' +
-        '  <div class="col" style="display:flex;align-items:center;gap:8px;">' +
-        '    <label><input type="checkbox" class="feed-enabled"' +
-        (f.enabled === false ? '' : ' checked') +
-        '> ' + escapeHtml(t('gamenews_feed_enabled_label')) + '</label>' +
-        '    <button type="button" class="btn btn-small btn-remove-feed">' + escapeHtml(t('gamenews_feed_remove_label')) + '</button>' +
-        '  </div>' +
-        '</div>' +
-        '<div class="row gap" style="margin-top:6px;">' +
-        '  <div class="col col-sm">' +
-        '    <label>' + escapeHtml(t('gamenews_feed_max_label')) + '</label>' +
-        '    <input type="number" min="1" max="10" class="input feed-max" value="' +
-        escapeHtml((f.maxPerCycle != null ? String(f.maxPerCycle) : '')) +
-        '" />' +
-        '  </div>' +
-        '</div>';
+          '<div class="user-row-header">' +
+          '  <div class="title">' + escapeHtml(name) + '</div>' +
+          '  <div class="user-type-badge ' + (isBot ? 'bot' : 'human') + '">' +
+          escapeHtml(isBot ? 'BOT' : 'USER') +
+          '  </div>' +
+          '</div>' +
+          '<div class="subtitle">' +
+          escapeHtml(u.id) +
+          (roles ? ' • ' + escapeHtml(roles) : '') +
+          '</div>';
 
         row.addEventListener('click', function () {
           // Marcar seleção visual
@@ -1191,22 +1169,8 @@
         const feedUrl = row.querySelector('.feed-url').value.trim();
         const channelId = row.querySelector('.feed-channel').value.trim();
         const enabled = row.querySelector('.feed-enabled').checked;
-        const maxInput = row.querySelector('.feed-max');
-        let maxPerCycle = null;
-        if (maxInput && maxInput.value) {
-          const v = Number(maxInput.value.trim());
-          if (Number.isFinite(v) && v >= 1 && v <= 10) {
-            maxPerCycle = v;
-          }
-        }
         if (!feedUrl || !channelId) return null;
-        return {
-          name: name || 'Feed',
-          feedUrl: feedUrl,
-          channelId: channelId,
-          enabled: enabled,
-          maxPerCycle: maxPerCycle
-        };
+        return { name: name || 'Feed', feedUrl: feedUrl, channelId: channelId, enabled: enabled };
       })
       .filter(function (x) { return !!x; });
   }

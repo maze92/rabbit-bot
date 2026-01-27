@@ -268,9 +268,7 @@ async function getFeedsFromDb() {
         logChannelId: d.logChannelId || null,
         enabled: d.enabled !== false,
         // Per-feed interval override (ms). Falls back to config.gameNews.interval when null/invalid.
-        intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null,
-        // Optional per-feed cap of items per cycle; falls back to global config.gameNews.maxPerCycle when null/invalid.
-        maxPerCycle: typeof d.maxPerCycle === 'number' ? d.maxPerCycle : null
+        intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
       }));
   } catch (err) {
     console.error('[GameNews] Failed to load feeds from DB:', err?.message || err);
@@ -455,18 +453,10 @@ module.exports = async function gameNewsSystem(client, config) {
               continue;
             }
 
-            // Determine how many items we are allowed to send this cycle.
-            // Global default from config.gameNews.maxPerCycle, optionally overridden per-feed.
-            const globalMaxRaw = Number(config.gameNews?.maxPerCycle ?? 3);
-            let effectiveMax =
-              Number.isFinite(globalMaxRaw) && globalMaxRaw >= 1 && globalMaxRaw <= 10 ? globalMaxRaw : 3;
-
-            const perFeedMaxRaw = Number(feed.maxPerCycle ?? 0);
-            if (Number.isFinite(perFeedMaxRaw) && perFeedMaxRaw >= 1 && perFeedMaxRaw <= 10) {
-              effectiveMax = perFeedMaxRaw;
-            }
-
-            const safeMaxPerCycle = effectiveMax;
+            const maxPerCycle = Number(config.gameNews?.maxPerCycle ?? 3);
+            const safeMaxPerCycle = Number.isFinite(maxPerCycle) && maxPerCycle >= 1 && maxPerCycle <= 10
+              ? maxPerCycle
+              : 3;
 
             const itemsToSend = newItems.slice(-safeMaxPerCycle);
 
