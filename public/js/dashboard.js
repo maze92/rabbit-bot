@@ -3,10 +3,8 @@
  * Run with: npm test
  */
 
-const assert = require('assert');
 
 function testParseDuration() {
-  const { parseDuration } = require('../src/utils/time');
 
   assert.strictEqual(parseDuration('10m'), 10 * 60 * 1000);
   assert.strictEqual(parseDuration('2h'), 2 * 60 * 60 * 1000);
@@ -17,7 +15,6 @@ function testParseDuration() {
 }
 
 function testTrustConfig() {
-  const { getTrustConfig, getTrustLabel } = require('../src/utils/trust');
   const cfg = getTrustConfig();
 
   assert.ok(cfg, 'getTrustConfig should return a config object');
@@ -32,7 +29,6 @@ function testTrustConfig() {
 }
 
 function testI18n() {
-  const { t } = require('../src/systems/i18n');
 
   const msg = t('common.noPermission');
   assert.ok(typeof msg === 'string', 't(common.noPermission) should return a string');
@@ -48,13 +44,11 @@ function testI18n() {
 }
 
 function testLoggerModule() {
-  const logger = require('../src/systems/logger');
   assert.strictEqual(typeof logger, 'function', 'logger should export a function');
   console.log('✓ logger module shape');
 }
 
 function testAntiSpamModule() {
-  const antiSpam = require('../src/systems/antiSpam');
   assert.strictEqual(typeof antiSpam, 'function', 'antiSpam should export a function');
   console.log('✓ antiSpam module shape');
 }
