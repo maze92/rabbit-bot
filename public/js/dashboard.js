@@ -887,7 +887,7 @@
             ' • ' +
             status +
             (opened ? ' • ' + opened : '');
-          html += '<li>' + escapeHtml(line) + '</li>';
+          html += `<li>${escapeHtml(line)}</li>`;
         });
         html += '</ul>';
       }
@@ -1726,7 +1726,7 @@
         const lowT = Number.isFinite(Number(trust.lowTrustThreshold)) ? Number(trust.lowTrustThreshold) : null;
         const highT = Number.isFinite(Number(trust.highTrustThreshold)) ? Number(trust.highTrustThreshold) : null;
         if (lowT !== null && highT !== null) {
-          riskEl.textContent = '< ' + lowT + ' (risco) • > ' + highT + ' (confiança)';
+          riskEl.textContent = `< ${lowT} (risco) • > ${highT} (confiança)`;
         } else {
           riskEl.textContent = '—';
         }
