@@ -1193,118 +1193,6 @@
       listEl.appendChild(row);
     });
   }
-
-  function collectGameNewsEditorFeeds() {
-    if (!state.gamenews || !Array.isArray(state.gamenews.feeds)) return [];
-    return state.gamenews.feeds
-      .map(function (f) {
-        const name = (f.name || 'Feed').trim();
-        const feedUrl = (f.feedUrl || '').trim();
-        const channelId = (f.channelId || '').trim();
-        const enabled = f.enabled !== false;
-        const maxPerCycle =
-          typeof f.maxPerCycle === 'number' && f.maxPerCycle >= 1 && f.maxPerCycle <= 10
-            ? f.maxPerCycle
-            : null;
-        const logChannelId = (f.logChannelId || '').trim();
-        if (!feedUrl) return null;
-        return {
-          name: name || 'Feed',
-          feedUrl: feedUrl,
-          channelId: channelId,
-          enabled: enabled,
-          maxPerCycle: maxPerCycle,
-          logChannelId: logChannelId || null
-        };
-      })
-      .filter(function (x) { return !!x; });
-  }
-etElementById('gamenewsDetailPanel');
-
-  if (!feedsList || !detailEl) return;
-
-  if (!state.gamenews) {
-    state.gamenews = { feeds: [], status: [], selectedFeedId: null, channels: [] };
-  }
-  state.gamenews.feeds = [];
-  state.gamenews.status = [];
-  state.gamenews.channels = [];
-
-  if (!state.guildId) {
-    feedsList.innerHTML = '';
-    const empty = document.createElement('div');
-    empty.className = 'empty';
-    empty.textContent = t('gamenews_select_guild');
-    feedsList.appendChild(empty);
-
-    detailEl.innerHTML = '';
-    const emptyDetail = document.createElement('div');
-    emptyDetail.className = 'empty';
-    emptyDetail.textContent = t('gamenews_select_guild');
-    detailEl.appendChild(emptyDetail);
-    return;
-  }
-
-  feedsList.innerHTML = '';
-  const loading = document.createElement('div');
-  loading.className = 'empty';
-  loading.textContent = t('gamenews_loading');
-  feedsList.appendChild(loading);
-
-  detailEl.innerHTML = '';
-  const loadingDetail = document.createElement('div');
-  loadingDetail.className = 'empty';
-  loadingDetail.textContent = t('gamenews_loading');
-  detailEl.appendChild(loadingDetail);
-
-  const guildParam = '?guildId=' + encodeURIComponent(state.guildId);
-
-  let statusItems = [];
-  try {
-    const status = await apiGet('/gamenews-status' + guildParam);
-    statusItems = (status && status.items) || [];
-  } catch (err) {
-    console.error('GameNews status error', err);
-  }
-
-  let feeds = [];
-  try {
-    const feedsRes = await apiGet('/gamenews/feeds' + guildParam);
-    feeds = (feedsRes && feedsRes.items) || [];
-  } catch (err) {
-    console.error('GameNews feeds error', err);
-  }
-
-  let channels = [];
-  try {
-    const meta = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/meta');
-    channels = (meta && meta.channels) || [];
-  } catch (err) {
-    console.error('GameNews meta error', err);
-  }
-
-  state.gamenews.status = Array.isArray(statusItems) ? statusItems : [];
-  state.gamenews.feeds = Array.isArray(feeds) ? feeds.slice() : [];
-  state.gamenews.channels = Array.isArray(channels) ? channels.slice() : [];
-
-  if (!state.gamenews.feeds.length) {
-    feedsList.innerHTML = '';
-    const empty = document.createElement('div');
-    empty.className = 'empty';
-    empty.textContent = t('gamenews_editor_empty');
-    feedsList.appendChild(empty);
-
-    detailEl.innerHTML = '';
-    const emptyDetail = document.createElement('div');
-    emptyDetail.className = 'empty';
-    emptyDetail.textContent = t('gamenews_detail_empty');
-    detailEl.appendChild(emptyDetail);
-    return;
-  }
-
-  renderGameNewsUI();
-}
-
 async function loadGameNews() {
   const feedsList = document.getElementById('gamenewsFeedsList');
   const detailEl = document.getElementById('gamenewsDetailPanel');
@@ -1334,10 +1222,10 @@ async function loadGameNews() {
   }
 
   feedsList.innerHTML = '';
-  const loadingList = document.createElement('div');
-  loadingList.className = 'empty';
-  loadingList.textContent = t('gamenews_loading');
-  feedsList.appendChild(loadingList);
+  const loading = document.createElement('div');
+  loading.className = 'empty';
+  loading.textContent = t('gamenews_loading');
+  feedsList.appendChild(loading);
 
   detailEl.innerHTML = '';
   const loadingDetail = document.createElement('div');
@@ -1349,8 +1237,8 @@ async function loadGameNews() {
 
   let statusItems = [];
   try {
-    const statusRes = await apiGet('/gamenews/status' + guildParam);
-    statusItems = (statusRes && statusRes.items) || [];
+    const status = await apiGet('/gamenews-status' + guildParam);
+    statusItems = (status && status.items) || [];
   } catch (err) {
     console.error('GameNews status error', err);
   }
