@@ -537,11 +537,11 @@
     if (name === 'overview') {
       loadOverview().catch(function () {});
     } else if (name === 'logs') {
-      loadLogs().catch(function () {});
+      window.OzarkDashboard.loadLogs().catch(function () {});
     } else if (name === 'cases') {
-      loadCases().catch(function () {});
+      window.OzarkDashboard.loadCases().catch(function () {});
     } else if (name === 'gamenews') {
-      loadGameNews().catch(function () {});
+      window.OzarkDashboard.loadGameNews().catch(function () {});
     } else if (name === 'user') {
       window.OzarkDashboard.loadUsers().catch(function () {});
     } else if (name === 'config') {
@@ -1837,9 +1837,9 @@
         if (state.currentTab !== 'overview') {
           // reload current tab data when guild changes
           if (state.currentTab === 'logs') {
-            loadLogs().catch(function () {});
+            window.OzarkDashboard.loadLogs().catch(function () {});
           } else if (state.currentTab === 'gamenews') {
-            loadGameNews().catch(function () {});
+            window.OzarkDashboard.loadGameNews().catch(function () {});
           } else if (state.currentTab === 'user') {
             window.OzarkDashboard.loadUsers().catch(function () {});
           } else if (state.currentTab === 'config') {
@@ -1853,14 +1853,14 @@
     var btnReloadLogs = document.getElementById('btnReloadLogs');
     if (btnReloadLogs) {
       btnReloadLogs.addEventListener('click', function () {
-        loadLogs().catch(function () {});
+        window.OzarkDashboard.loadLogs().catch(function () {});
       });
     }
 
     var logTypeSelect = document.getElementById('logType');
     if (logTypeSelect) {
       logTypeSelect.addEventListener('change', function () {
-        loadLogs().catch(function () {});
+        window.OzarkDashboard.loadLogs().catch(function () {});
       });
     }
 
@@ -1868,7 +1868,7 @@
     if (logSearchInput) {
       logSearchInput.addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') {
-          loadLogs().catch(function () {});
+          window.OzarkDashboard.loadLogs().catch(function () {});
         }
       });
     }
