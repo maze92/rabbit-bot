@@ -543,7 +543,7 @@
     } else if (name === 'gamenews') {
       loadGameNews().catch(function () {});
     } else if (name === 'user') {
-      loadUsers().catch(function () {});
+      window.OzarkDashboard.loadUsers().catch(function () {});
     } else if (name === 'config') {
       loadGuildConfig().catch(function () {});
     }
@@ -715,7 +715,7 @@
           });
           row.classList.add('active');
 
-          loadUserHistory({
+          window.OzarkDashboard.loadUserHistory({
             id: u.id,
             username: u.username || u.tag || u.id || '',
             bot: !!u.bot
@@ -1005,7 +1005,7 @@
                       return;
                     }
                     toast(t('users_actions_reset_history') + ' OK');
-                    loadUserHistory(user).catch(function () {});
+                    window.OzarkDashboard.loadUserHistory(user).catch(function () {});
                   })
                   .catch(function (err) {
                     console.error('Reset history error', err);
@@ -1025,7 +1025,7 @@
                     }
                     toast(t('users_actions_warn') + ' OK');
                     // reload history to reflect new infraction
-                    loadUserHistory(user).catch(function () {});
+                    window.OzarkDashboard.loadUserHistory(user).catch(function () {});
                   })
                   .catch(function (err) {
                     console.error('Warn error', err);
@@ -1044,7 +1044,7 @@
                       return;
                     }
                     toast(t('users_actions_unmute') + ' OK');
-                    loadUserHistory(user).catch(function () {});
+                    window.OzarkDashboard.loadUserHistory(user).catch(function () {});
                   })
                   .catch(function (err) {
                     console.error('Unmute error', err);
@@ -1063,7 +1063,7 @@
                       return;
                     }
                     toast(t('users_actions_reset') + ' OK');
-                    loadUserHistory(user).catch(function () {});
+                    window.OzarkDashboard.loadUserHistory(user).catch(function () {});
                   })
                   .catch(function (err) {
                     console.error('Reset trust error', err);
@@ -1098,7 +1098,7 @@
                   // Feedback visual e reload de histórico
                   li.classList.add('removing');
                   toast(t('users_history_remove_success'));
-                  loadUserHistory(user).catch(function () {});
+                  window.OzarkDashboard.loadUserHistory(user).catch(function () {});
                 })
                 .catch(function (err) {
                   console.error('Remove infraction error', err);
@@ -1841,7 +1841,7 @@
           } else if (state.currentTab === 'gamenews') {
             loadGameNews().catch(function () {});
           } else if (state.currentTab === 'user') {
-            loadUsers().catch(function () {});
+            window.OzarkDashboard.loadUsers().catch(function () {});
           } else if (state.currentTab === 'config') {
             loadGuildConfig().catch(function () {});
           }
@@ -1964,6 +1964,8 @@
   window.OzarkDashboard.apiGet = apiGet;
   window.OzarkDashboard.apiPost = apiPost;
   window.OzarkDashboard.toast = toast;
+  window.OzarkDashboard.t = t;
+  window.OzarkDashboard.escapeHtml = escapeHtml;
   window.OzarkDashboard.setTab = setTab;
   window.OzarkDashboard.loadGuilds = loadGuilds;
   window.OzarkDashboard.loadUsers = loadUsers;
