@@ -1614,12 +1614,71 @@ function renderGameNewsUI() {
   }
 }
 
+
+function syncCurrentGameNewsDetailToState() {
+  if (!state.gamenews || !Array.isArray(state.gamenews.feeds)) return;
+  var detailEl = document.getElementById('gamenewsDetailPanel');
+  if (!detailEl) return;
+
+  var nameInput = detailEl.querySelector('.gn-detail-name');
+  var urlInput = detailEl.querySelector('.gn-detail-url');
+  var channelInput = detailEl.querySelector('.gn-detail-channel');
+  var enabledInput = detailEl.querySelector('.gn-detail-enabled');
+  var maxInput = detailEl.querySelector('.gn-detail-max');
+
+  var feeds = state.gamenews.feeds;
+  if (!feeds.length) return;
+
+  var selectedId = state.gamenews.selectedFeedId;
+  var feedIds = feeds.map(function (f) {
+    return f.id || f.feedUrl || f.name || '0';
+  });
+
+  var effectiveSelectedId = selectedId;
+  if (!effectiveSelectedId || feedIds.indexOf(effectiveSelectedId) === -1) {
+    effectiveSelectedId = feedIds[0];
+  }
+
+  var idx = feeds.findIndex(function (f2) {
+    var fid = f2.id || f2.feedUrl || f2.name || '0';
+    return fid === effectiveSelectedId;
+  });
+  if (idx === -1) return;
+
+  var target = feeds[idx];
+  if (nameInput) {
+    target.name = nameInput.value.trim();
+  }
+  if (urlInput) {
+    target.feedUrl = urlInput.value.trim();
+  }
+  if (channelInput) {
+    target.channelId = channelInput.value.trim();
+  }
+  if (enabledInput) {
+    target.enabled = !!enabledInput.checked;
+  }
+  if (maxInput) {
+    if (maxInput.value) {
+      var v = Number(maxInput.value.trim());
+      if (Number.isFinite(v) && v >= 1 && v <= 10) {
+        target.maxPerCycle = v;
+      } else {
+        target.maxPerCycle = null;
+      }
+    } else {
+      target.maxPerCycle = null;
+    }
+  }
+}
+
 async function saveGameNewsFeeds() {
   if (!state.guildId) {
     toast(t('gamenews_select_guild'));
     return;
   }
   try {
+    syncCurrentGameNewsDetailToState();
     const feeds = collectGameNewsEditorFeeds();
     const guildParam = '?guildId=' + encodeURIComponent(state.guildId);
     await apiPost('/gamenews/feeds' + guildParam, {
