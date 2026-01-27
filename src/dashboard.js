@@ -1586,10 +1586,10 @@ app.get('/api/logs', requireDashboardAuth, async (req, res) => {
 
         let description = '';
         if (opened && !isNaN(opened.getTime())) {
-          description += 'Aberto em ' + opened.toLocaleString();
+          description += `Aberto em ${opened.toLocaleString()}`;
         }
         if (closed && !isNaN(closed.getTime())) {
-          description += (description ? ' • ' : '') + 'Fechado em ' + closed.toLocaleString();
+          description += `${description ? ' • ' : ''}Fechado em ${closed.toLocaleString()}`;
         } else {
           description += (description ? ' • ' : '') + 'Em aberto';
         }
@@ -1754,10 +1754,10 @@ app.get('/api/logs/export.csv', requireDashboardAuth, async (req, res) => {
 
         let description = '';
         if (opened && !isNaN(opened.getTime())) {
-          description += 'Aberto em ' + opened.toLocaleString();
+          description += `Aberto em ${opened.toLocaleString()}`;
         }
         if (closed && !isNaN(closed.getTime())) {
-          description += (description ? ' • ' : '') + 'Fechado em ' + closed.toLocaleString();
+          description += `${description ? ' • ' : ''}Fechado em ${closed.toLocaleString()}`;
         } else {
           description += (description ? ' • ' : '') + 'Em aberto';
         }
