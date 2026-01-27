@@ -81,6 +81,101 @@
     return res.json();
   }
 
+
+  function createLogRow(log) {
+    const row = document.createElement('div');
+    row.className = 'list-item';
+
+    const title = log.title || 'Log';
+    const subtitleParts = [];
+
+    if (log.user && log.user.tag) {
+      subtitleParts.push('User: ' + log.user.tag);
+    }
+    if (log.executor && log.executor.tag) {
+      subtitleParts.push('Mod: ' + log.executor.tag);
+    }
+    if (log.description) {
+      subtitleParts.push(log.description);
+    }
+
+    const createdAt = log.createdAt || log.time;
+    if (createdAt) {
+      try {
+        const d = new Date(createdAt);
+        if (!isNaN(d.getTime())) {
+          subtitleParts.push(d.toLocaleString());
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    row.innerHTML = `
+        <div class="title">\${escapeHtml(title)}</div>
+        <div class="subtitle">\${escapeHtml(subtitleParts.join(' • '))}</div>
+      `;
+
+    return row;
+  }
+
+
+  function createCaseRow(c) {
+
+  function createGameNewsFeedRow(f, idx) {
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    row.dataset.index = String(idx);
+
+    row.innerHTML = `
+        <div class="row gap">
+          <div class="col">
+            <label>\${escapeHtml(t('gamenews_feed_name_label'))}</label>
+            <input type="text" class="input feed-name" value="\${escapeHtml(f.name || '')}" />
+          </div>
+          <div class="col">
+            <label>\${escapeHtml(t('gamenews_feed_url_label'))}</label>
+            <input type="text" class="input feed-url" value="\${escapeHtml(f.feedUrl || '')}" />
+          </div>
+        </div>
+        <div class="row gap" style="margin-top:6px;">
+          <div class="col">
+            <label>\${escapeHtml(t('gamenews_feed_channel_label'))}</label>
+            <input type="text" class="input feed-channel" value="\${escapeHtml(f.channelId || '')}" />
+          </div>
+          <div class="col" style="display:flex;align-items:center;gap:8px;">
+            <label>
+              <input type="checkbox" class="feed-enabled"\${f.enabled === false ? '' : ' checked'}>
+              \${escapeHtml(t('gamenews_feed_enabled_label'))}
+            </label>
+            <button type="button" class="btn btn-small btn-remove-feed">
+              \${escapeHtml(t('gamenews_feed_remove_label'))}
+            </button>
+          </div>
+        </div>
+      `;
+
+    return row;
+  }
+
+    const row = document.createElement('div');
+    row.className = 'list-item';
+
+    const title = (c.type || 'CASE') + ' • ' + (c.userId || '—');
+    const subtitleParts = [];
+
+    if (c.caseId) subtitleParts.push('#' + c.caseId);
+    if (c.reason) subtitleParts.push(c.reason);
+    if (c.createdAt) subtitleParts.push(new Date(c.createdAt).toLocaleString());
+
+    row.innerHTML = `
+          <div class="title">\${escapeHtml(title)}</div>
+          <div class="subtitle">\${escapeHtml(subtitleParts.join(' • '))}</div>
+        `;
+
+    return row;
+  }
+
   function toast(message) {
     const id = 'ozarkToast';
     let el = document.getElementById(id);
@@ -1103,37 +1198,7 @@
     }
 
     feeds.forEach(function (f, idx) {
-      const row = document.createElement('div');
-      row.className = 'list-item';
-      row.dataset.index = String(idx);
-
-            row.innerHTML = `
-        <div class="row gap">
-          <div class="col">
-            <label>${escapeHtml(t('gamenews_feed_name_label'))}</label>
-            <input type="text" class="input feed-name" value="${escapeHtml(f.name || '')}" />
-          </div>
-          <div class="col">
-            <label>${escapeHtml(t('gamenews_feed_url_label'))}</label>
-            <input type="text" class="input feed-url" value="${escapeHtml(f.feedUrl || '')}" />
-          </div>
-        </div>
-        <div class="row gap" style="margin-top:6px;">
-          <div class="col">
-            <label>${escapeHtml(t('gamenews_feed_channel_label'))}</label>
-            <input type="text" class="input feed-channel" value="${escapeHtml(f.channelId || '')}" />
-          </div>
-          <div class="col" style="display:flex;align-items:center;gap:8px;">
-            <label>
-              <input type="checkbox" class="feed-enabled"${f.enabled === false ? '' : ' checked'}>
-              ${escapeHtml(t('gamenews_feed_enabled_label'))}
-            </label>
-            <button type="button" class="btn btn-small btn-remove-feed">
-              ${escapeHtml(t('gamenews_feed_remove_label'))}
-            </button>
-          </div>
-        </div>
-      `;
+      const row = createGameNewsFeedRow(f, idx);
       listEl.appendChild(row);
     });
   }
@@ -1260,39 +1325,7 @@
     }
 
     items.forEach(function (log) {
-      const row = document.createElement('div');
-      row.className = 'list-item';
-
-      const title = log.title || 'Log';
-      const subtitleParts = [];
-
-      if (log.user && log.user.tag) {
-        subtitleParts.push('User: ' + log.user.tag);
-      }
-      if (log.executor && log.executor.tag) {
-        subtitleParts.push('Mod: ' + log.executor.tag);
-      }
-      if (log.description) {
-        subtitleParts.push(log.description);
-      }
-
-      const createdAt = log.createdAt || log.time;
-      if (createdAt) {
-        try {
-          const d = new Date(createdAt);
-          if (!isNaN(d.getTime())) {
-            subtitleParts.push(d.toLocaleString());
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      row.innerHTML = `
-        <div class="title">${escapeHtml(title)}</div>
-        <div class="subtitle">${escapeHtml(subtitleParts.join(' • '))}</div>
-      `;
-
+      const row = createLogRow(log);
       listEl.appendChild(row);
     });
   }
@@ -1391,21 +1424,7 @@
       }
 
       items.forEach(function (c) {
-        const row = document.createElement('div');
-        row.className = 'list-item';
-
-        const title = (c.type || 'CASE') + ' • ' + (c.userId || '—');
-        const subtitleParts = [];
-
-        if (c.caseId) subtitleParts.push('#' + c.caseId);
-        if (c.reason) subtitleParts.push(c.reason);
-        if (c.createdAt) subtitleParts.push(new Date(c.createdAt).toLocaleString());
-
-        row.innerHTML = `
-          <div class="title">${escapeHtml(title)}</div>
-          <div class="subtitle">${escapeHtml(subtitleParts.join(' • '))}</div>
-        `;
-
+        const row = createCaseRow(c);
         listEl.appendChild(row);
       });
     } catch (err) {
