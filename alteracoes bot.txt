@@ -1,0 +1,557 @@
+Na Tab de moderacao era bom  ter varias divisoes, em que mostra em uma seccao os 10 utilizadores com mais warns/mutes em que podemos escolher qual queremos ver,  em outra seccao os 10 utilizadores que deram invite a outros membros (em que podemos  selecionar os que deram invite e os mais recentes.
+Em outra seccao os ultimos tickets que foram recebidos, em que podemos escolher ver os ultimos recebidos, os respondidos e os que faltam responder.
+em outra seccao podemos ter um grafico com o numero de utilizadores online em que podemos escolher diario, semanal, mensal.
+
+Tambem gostava de saber se existe algum metodo para usar o bot em pt se o discord do utilizador estiver em pt e em en se o discord do utilizador estiver em pt, isso engloba mensagens que o bot envia, etc  etc;
+
+- onde diz bot online a bolinha aparece a branco, era engracado se ficasse a verde e o estado  alterasse consoante o bot, online ou offline, e nas configs ter uma opcao  para  desligar o bot do discord;
+
+- gostava de  criar uma nova funcao, alteravamos o nome da tab GameNews para Funcoes Extra e subdiviamos em varias seccoes uma da gamenews e outra incluindo seria chamada de voz temporaria, quando os utilizadores clicassem em determinado chat de voz aquilo criava  automaticamente um canal de voz desse utilizador;
+
+- vamos adicionar na tab das configuracoes uma opcao em que podemos adicionar contas para entrar na dashboard e definir o acesso e o que podem fazer na dashboard (remover infra;oes, adicionar users a dashboard, etc).
+
+- analisar o bot por completo e remover todo o codigo e ficheiros que nao estao a ser usados e que estao apenas a ocupar espaco;
+- fazer uma  melhor divisao das implementacoes, para ser mais facil implementar novas coisas  se estiver tudo bem distribuido;
+
+- quando passo por cima do nome de um utilizador aparece por baixo uma scrollbar na horizontal,  nao faz sentido, deve ser removida;
+- ao clicar em um feed deve aparecer como nos  utilizadores, a palavra loading e abrir a seccao do lado direito;
+
+
+🔍 Análise dos módulos em src/systems
+🧩 antiSpam.js
+Provável função: detetar spam, flood, repetição de mensagens, caps, etc.
+
+Possíveis problemas comuns
+
+Falta de cooldowns por utilizador
+
+Falta de whitelist para bots ou canais específicos
+
+Falta de integração com o sistema de infrações
+
+Falta de thresholds dinâmicos (ex: baseados no trust)
+
+Melhorias
+
+Integrar com infractionsService.js para gerar warns automáticos
+
+Guardar histórico de mensagens em memória com TTL
+
+Ajustar limites com base no comportamento do utilizador (trust score)
+
+🛡️ autoModeration.js
+Provável função: regras automáticas (links proibidos, palavras banidas, etc.)
+
+Possíveis problemas
+
+Regex mal otimizadas → consumo alto
+
+Falta de bypass para staff
+
+Falta de logs detalhados para dashboard
+
+Melhorias
+
+Compilar regex uma vez
+
+Criar sistema de “rules” configuráveis via dashboard
+
+Integrar com warningsService.js e infractionsService.js
+
+⚙️ automation.js
+Provável função: tarefas automáticas (limpeza, anúncios, rotinas).
+
+Possíveis problemas
+
+Timers não persistentes (reiniciar o bot perde tarefas)
+
+Falta de controlo via dashboard
+
+Execução simultânea duplicada em caso de restart rápido
+
+Melhorias
+
+Usar cron jobs persistentes
+
+Guardar tarefas em Mongo
+
+Prevenir execuções duplicadas com locks
+
+🧾 commands.js
+Provável função: carregamento e registo de comandos.
+
+Possíveis problemas
+
+Falta de validação de permissões
+
+Falta de tratamento de erros por comando
+
+Carregamento lento se fizer scan recursivo sem cache
+
+Melhorias
+
+Cache de comandos carregados
+
+Middleware global para erros
+
+Sistema de permissões centralizado
+
+🧰 configManager.js
+Provável função: gerir configs por guild.
+
+Possíveis problemas
+
+Configs guardadas em JSON local → risco de perda
+
+Falta de validação de schema
+
+Falta de fallback seguro
+
+Melhorias
+
+Usar Mongoose com schemas fortes
+
+Cache em memória com TTL
+
+API para dashboard editar configs
+
+⏳ cooldowns.js
+Provável função: cooldowns por comando/utilizador.
+
+Possíveis problemas
+
+Cooldowns não limpos → memory leak
+
+Cooldowns inconsistentes entre shards
+
+Falta de bypass para staff
+
+Melhorias
+
+Usar Map com TTL automático
+
+Guardar cooldowns críticos em Redis (se usares sharding)
+
+🌐 dashboardBridge.js
+Provável função: comunicação bot ↔ dashboard.
+
+Possíveis problemas
+
+Falta de autenticação forte
+
+Exposição de endpoints sensíveis
+
+Falta de rate limit
+
+Melhorias
+
+Token JWT com expiração
+
+Middleware de auth único
+
+Logs de acesso para auditoria
+
+🛑 errorGuard.js
+Provável função: proteção contra crashes.
+
+Possíveis problemas
+
+Apenas captura erros globais, não erros internos
+
+Falta de logs estruturados
+
+Falta de alertas (Discord DM, webhook)
+
+Melhorias
+
+Logger central com níveis
+
+Alertas automáticos para erros críticos
+
+Wrap de handlers com try/catch inteligente
+
+📰 gamenews.js
+Provável função: feeds de notícias de jogos.
+
+Possíveis problemas
+
+Falta de deduplicação de notícias
+
+Falta de controlo de intervalo por feed
+
+Timeouts não tratados
+
+Melhorias
+
+Guardar último publishedAt por feed
+
+Retry com backoff
+
+Logs de falhas por feed
+
+🏛️ guildConfigService.js
+Provável função: gestão de configs por servidor.
+
+Possíveis problemas
+
+Duplicação de lógica com configManager.js
+
+Falta de cache
+
+Falta de validação
+
+Melhorias
+
+Unificar num único serviço
+
+Cache com TTL
+
+Schema forte
+
+🌍 i18n.js
+Provável função: internacionalização.
+
+Possíveis problemas
+
+Strings hardcoded noutros ficheiros
+
+Falta de fallback
+
+Falta de suporte a pluralização
+
+Melhorias
+
+Usar JSONs por idioma
+
+Função t(key, params) central
+
+Suporte a variáveis e plurais
+
+⚖️ infractionsService.js
+Provável função: gerir warns, mutes, bans, trust score.
+
+Possíveis problemas
+
+Lógica espalhada por vários módulos
+
+Falta de normalização de tipos de infração
+
+Falta de integração com dashboard
+
+Melhorias
+
+Criar modelo único Infraction
+
+Criar TrustEngine separado
+
+API REST para dashboard consultar infrações
+
+📜 logger.js
+Provável função: logging.
+
+Possíveis problemas
+
+Logs pouco estruturados
+
+Falta de níveis (info, warn, error)
+
+Falta de output para ficheiro
+
+Melhorias
+
+Usar Winston ou Pino
+
+Logs JSON
+
+Logs separados por categoria
+
+🧹 maintenance.js
+Provável função: modo manutenção.
+
+Possíveis problemas
+
+Staff não bypassa corretamente
+
+Falta de integração com dashboard
+
+Falta de logs
+
+Melhorias
+
+Toggle via dashboard
+
+Mensagens personalizadas
+
+Logs de tentativas bloqueadas
+
+🚦 rateLimit.js
+Provável função: rate limiting interno.
+
+Possíveis problemas
+
+Rate limit global em vez de por utilizador
+
+Falta de TTL
+
+Falta de integração com antiSpam
+
+Melhorias
+
+Rate limit por comando
+
+Rate limit por canal
+
+Integração com trust score
+
+🧽 sanitize.js
+Provável função: limpar inputs.
+
+Possíveis problemas
+
+Sanitização incompleta
+
+Falta de whitelist
+
+Falta de proteção contra mentions abusivas
+
+Melhorias
+
+Sanitização de links
+
+Remoção de caracteres invisíveis
+
+Normalização Unicode
+
+📡 status.js
+Provável função: status do bot.
+
+Possíveis problemas
+
+Atualização manual
+
+Falta de rotação automática
+
+Falta de integração com métricas
+
+Melhorias
+
+Status dinâmico (tickets abertos, utilizadores online)
+
+Rotação automática
+
+Métricas via dashboard
+
+🎫 ticketThreads.js
+Provável função: sistema de tickets.
+
+Possíveis problemas
+
+Threads não fecham automaticamente
+
+Falta de logs
+
+Falta de integração com infrações
+
+Falta de painel no dashboard
+
+Melhorias
+
+Auto‑close por inatividade
+
+Logs completos
+
+Dashboard com histórico
+
+Integração com trust (ex: abuso de tickets)
+
+⚠️ warningsService.js
+Provável função: gerir warns.
+
+Possíveis problemas
+
+Duplicação com infractionsService
+
+Falta de escalonamento automático (warn → mute)
+
+Falta de dashboard
+
+Melhorias
+
+Unificar warns + infrações
+
+Escalonamento automático configurável
+
+API para dashboard
+
+
+
+
+O que significa “reformatar tudo com template literals”?
+Significa deixar de construir HTML com concatenações gigantes como:
+
+js
+html += '<div class="title">' +
+        escapeHtml(name) +
+        '</div>' +
+        '<div class="subtitle">' +
+        escapeHtml(rolesText) +
+        '</div>';
+…e passar a usar strings modernas do JavaScript, que permitem:
+
+múltiplas linhas
+
+interpolação de variáveis
+
+zero concatenações
+
+muito menos erros de aspas
+
+código mais limpo e legível
+
+Essas strings usam crases (`), não aspas.
+
+✅ Exemplo simples
+❌ Antes (concatenações perigosas)
+js
+html += '<span class="trust-badge trust-badge-' +
+        trustLevelClass +
+        '">' +
+        escapeHtml(trustLabel) +
+        '</span>';
+✅ Depois (template literal)
+js
+html += `
+  <span class="trust-badge trust-badge-${trustLevelClass}">
+    ${escapeHtml(trustLabel)}
+  </span>
+`;
+Muito mais limpo, certo?
+
+🎯 Por que é “muito mais seguro”?
+Porque:
+
+✔ Não partes strings a meio
+O teu erro atual (Unexpected token ')') acontece porque uma string ficou sem aspas.
+Com template literals, isso não acontece.
+
+✔ Não precisas de concatenar com +
+Menos risco de esquecer um + ou uma '.
+
+✔ Podes escrever HTML como HTML
+Sem ter de quebrar linha, sem ter de escapar manualmente.
+
+✔ Evita erros quando o ficheiro é truncado
+Mesmo que o editor quebre linhas, o template literal continua válido.
+
+🧱 Exemplo real do teu código reescrito
+❌ Antes (super frágil)
+js
+html += '<div class="user-trust-header">';
+html +=
+  '<div class="user-trust-score">' +
+  escapeHtml(t('users_trust_score')) +
+  ': ' +
+  String(trustVal) +
+  '</div>';
+✅ Depois (muito mais robusto)
+js
+html += `
+  <div class="user-trust-header">
+    <div class="user-trust-score">
+      ${escapeHtml(t('users_trust_score'))}: ${trustVal}
+    </div>
+  </div>
+`;
+🚀 Resultado final
+Menos erros
+
+Código mais bonito
+
+Mais fácil de manter
+
+Mais fácil de debugar
+
+Mais difícil de partir strings sem querer
+
+O plano para o novo dashboard.js (versão B — melhorada)
+Vou reescrever o ficheiro inteiro com:
+
+1. Template literals em todo o HTML
+Nada de:
+
+js
+html += '<div>' + name + '</div>';
+Tudo passa a:
+
+js
+html += `
+  <div>${escapeHtml(name)}</div>
+`;
+2. Código modular
+Em vez de funções gigantes, vamos ter:
+
+renderOverview()
+
+renderUsersList()
+
+renderUserHistory()
+
+renderGameNewsEditor()
+
+renderTickets()
+
+renderLogs()
+
+renderConfig()
+
+Cada uma responsável por uma só coisa.
+
+3. Separação clara entre:
+lógica (fetch, state, validações)
+
+renderização (HTML)
+
+eventos (clicks, selects, etc.)
+
+4. Zero duplicação
+O teu ficheiro atual repete:
+
+blocos HTML
+
+mensagens
+
+padrões de fetch
+
+padrões de erro
+
+Vou consolidar tudo.
+
+5. Sistema de i18n mais limpo
+Vou manter as tuas traduções, mas:
+
+acesso simplificado
+
+fallback automático
+
+sem repetição de código
+
+6. Estrutura final
+O novo ficheiro vai ter esta forma:
+
+Código
+dashboard.js
+ ├─ state
+ ├─ helpers (fetch, toast, escapeHtml, i18n)
+ ├─ api (funções pequenas e claras)
+ ├─ ui (renderização de tabs)
+ ├─ modules/
+ │   ├─ overview.js
+ │   ├─ users.js
+ │   ├─ userHistory.js
+ │   ├─ logs.js
+ │   ├─ cases.js
+ │   ├─ tickets.js
+ │   ├─ gamenews.js
+ │   ├─ config.js
+ └─ init()
+Tudo dentro de um único ficheiro, mas organizado como se fossem módulos.
