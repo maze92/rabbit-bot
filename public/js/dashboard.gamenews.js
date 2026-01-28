@@ -115,6 +115,13 @@
     if (!Array.isArray(state.gameNewsFeeds)) return;
     const feed = state.gameNewsFeeds[idx];
     if (!feed) return;
+    const listEl = document.getElementById('gamenewsFeedsList');
+    if (listEl) {
+      const rows = listEl.querySelectorAll('.list-item');
+      rows.forEach(function (r) { r.classList.remove('active'); });
+      const activeRow = listEl.querySelector(`.list-item[data-index="${idx}"]`);
+      if (activeRow) activeRow.classList.add('active');
+    }
     const detailEl = document.getElementById('gamenewsFeedDetailPanel');
     state.activeGameNewsFeedIndex = idx;
     if (detailEl) {

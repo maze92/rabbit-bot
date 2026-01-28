@@ -259,6 +259,7 @@
       gamenews_detail_action_save: 'Guardar',
       gamenews_detail_action_toggle: 'Ativar/Desativar',
       gamenews_detail_action_remove: 'Remover',
+      gamenews_detail_state_empty: 'Ainda não há histórico disponível para este feed.',
 
 
       gamenews_editor_title: 'Configuração de feeds',
@@ -408,6 +409,7 @@
       gamenews_detail_action_save: 'Save',
       gamenews_detail_action_toggle: 'Enable/Disable',
       gamenews_detail_action_remove: 'Remove',
+      gamenews_detail_state_empty: 'No history available for this feed yet.',
 
 
       gamenews_editor_title: 'Feeds configuration',
