@@ -338,7 +338,8 @@ h2 {
   background: rgba(240, 71, 71, 0.25);
 }
 
-#tab-user .user-detail .empty {
+#tab-user .user-detail .empty,
+#tab-gamenews .user-detail .empty {
   margin-top: 0;
 }
 
@@ -598,38 +599,6 @@ h2 {
   overflow: auto;
 }
 
-#tab-gamenews .gamenews-detail {
-  border-radius: 10px;
-  background: var(--bg-elevated);
-  padding: 12px;
-  border: 1px solid var(--border-subtle);
-  min-height: 180px;
-}
-
-#tab-gamenews .gamenews-detail .title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-#tab-gamenews .gamenews-detail .subtitle {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
-
-#tab-gamenews .gamenews-detail .history-section {
-  margin-top: 8px;
-}
-
-#tab-gamenews .gamenews-detail .history-section h3 {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-#tab-gamenews .gamenews-detail .history-section .history-hint {
-  font-size: 11px;
-  color: var(--text-muted);
   margin-bottom: 6px;
 }
 
@@ -680,5 +649,23 @@ h2 {
   font-size: 12px;
 }
 
+/* Force GameNews detail panel to match Users history panel */
+#tab-gamenews .gamenews-detail {
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: rgba(255,255,255,0.02);
+  padding: 10px 12px;
+  min-height: 120px;
+}
 
+#tab-gamenews .gamenews-detail .title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
 
+#tab-gamenews .gamenews-detail .subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
