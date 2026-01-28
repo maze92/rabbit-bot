@@ -213,7 +213,6 @@
     html += `<button type="button" class="btn xs gamenews-action btn-save" data-action="save">${escapeHtml(t('gamenews_detail_action_save') || 'Guardar')}</button>`;
     html += `<button type="button" class="btn xs gamenews-action btn-toggle" data-action="toggle-enabled">${escapeHtml(t('gamenews_detail_action_toggle') || 'Ativar/Desativar')}</button>`;
     html += `<button type="button" class="btn xs gamenews-action btn-remove" data-action="remove">${escapeHtml(t('gamenews_detail_action_remove') || 'Remover')}</button>`;
-    html += `<button type="button" class="btn xs ghost gamenews-action btn-reload" data-action="reload">${escapeHtml(t('gamenews_reload_status') || 'Recarregar estado')}</button>`;
     
     html += '</div>';
     html += '</div>'; // /history-section actions
@@ -308,8 +307,6 @@
           state.gameNewsFeeds.splice(idx, 1);
           renderGameNewsFeedsList(state.gameNewsFeeds);
           detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
-        } else if (action === 'reload') {
-          loadGameNews().catch(function () {});
         }
       });
     });
@@ -353,6 +350,9 @@
       if (Array.isArray(res.items)) {
         state.gameNewsFeeds = res.items.slice();
         renderGameNewsFeedsList(state.gameNewsFeeds);
+        if (typeof state.activeGameNewsFeedIndex === 'number') {
+          selectGameNewsFeedByIndex(state.activeGameNewsFeedIndex);
+        }
       }
     } else {
       toast(t('gamenews_error_generic') || 'Não foi possível guardar GameNews.');
