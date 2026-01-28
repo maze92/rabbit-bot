@@ -250,6 +250,10 @@
       gamenews_feed_url_label: 'URL do feed',
       gamenews_feed_channel_label: 'Canal ID',
       gamenews_feed_remove_label: 'Remover',
+      gamenews_feed_log_channel_label: 'Canal de logs (opcional)',
+      gamenews_feed_interval_label: 'Intervalo (minutos)',
+      gamenews_feed_interval_placeholder: 'Usar intervalo global',
+
       gamenews_status_last_label: 'Último envio',
       gamenews_status_state_ok: 'Ativo',
       gamenews_status_state_paused: 'Em pausa',
@@ -366,6 +370,10 @@
       gamenews_feed_url_label: 'Feed URL',
       gamenews_feed_channel_label: 'Channel ID',
       gamenews_feed_remove_label: 'Remove',
+      gamenews_feed_log_channel_label: 'Log channel (optional)',
+      gamenews_feed_interval_label: 'Interval (minutes)',
+      gamenews_feed_interval_placeholder: 'Use global interval',
+
       gamenews_status_last_label: 'Last sent',
       gamenews_status_state_ok: 'Active',
       gamenews_status_state_paused: 'Paused',
@@ -605,6 +613,7 @@
 
   
 
+  
   function collectGameNewsEditorFeeds() {
     const listEl = document.getElementById('gamenewsFeedsList');
     if (!listEl) return [];
@@ -614,16 +623,33 @@
         const name = row.querySelector('.feed-name').value.trim();
         const feedUrl = row.querySelector('.feed-url').value.trim();
         const channelId = row.querySelector('.feed-channel').value.trim();
+        const logChannelInput = row.querySelector('.feed-log-channel');
+        const intervalInput = row.querySelector('.feed-interval');
         const enabled = row.querySelector('.feed-enabled').checked;
+
+        const logChannelId = logChannelInput ? logChannelInput.value.trim() : '';
+        const intervalMinutesRaw = intervalInput ? Number(intervalInput.value) : 0;
+        const intervalMs =
+          Number.isFinite(intervalMinutesRaw) && intervalMinutesRaw > 0
+            ? Math.round(intervalMinutesRaw * 60 * 1000)
+            : null;
+
         if (!feedUrl || !channelId) return null;
-        return { name: name || 'Feed', feedUrl: feedUrl, channelId: channelId, enabled: enabled };
+
+        return {
+          name: name || 'Feed',
+          feedUrl: feedUrl,
+          channelId: channelId,
+          logChannelId: logChannelId || null,
+          enabled: enabled,
+          intervalMs: intervalMs
+        };
       })
-      .filter(function (x) { return !!x; });
+      .filter(function (x) {
+        return !!x;
+      });
   }
-
-  
-
-  async function saveGameNewsFeeds() {
+async function saveGameNewsFeeds() {
     if (!state.guildId) {
       toast(t('gamenews_select_guild'));
       return;

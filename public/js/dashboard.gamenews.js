@@ -22,6 +22,10 @@
     const channelId = `gamenews-feed-channel-${idx}`;
     const enabledId = `gamenews-feed-enabled-${idx}`;
 
+
+    const logChannelId = `gamenews-feed-log-channel-${idx}`;
+    const intervalId = `gamenews-feed-interval-${idx}`;
+
     row.innerHTML = `
       <div class="row gap">
         <div class="col">
@@ -45,7 +49,7 @@
           >
         </div>
       </div>
-      <div class="row gap" style="margin-top:6px;">
+      <div class="row gap">
         <div class="col">
           <label for="${channelId}">${escapeHtml(t('gamenews_feed_channel_label'))}</label>
           <input
@@ -54,6 +58,30 @@
             id="${channelId}"
             name="gamenews_feed_channel_${idx}"
             value="${escapeHtml(f.channelId || '')}"
+          >
+        </div>
+        <div class="col">
+          <label for="${logChannelId}">${escapeHtml(t('gamenews_feed_log_channel_label'))}</label>
+          <input
+            type="text"
+            class="input feed-log-channel"
+            id="${logChannelId}"
+            name="gamenews_feed_log_channel_${idx}"
+            value="${escapeHtml(f.logChannelId || '')}"
+          >
+        </div>
+      </div>
+      <div class="row gap">
+        <div class="col">
+          <label for="${intervalId}">${escapeHtml(t('gamenews_feed_interval_label'))}</label>
+          <input
+            type="number"
+            min="0"
+            class="input feed-interval"
+            id="${intervalId}"
+            name="gamenews_feed_interval_${idx}"
+            value="${f.intervalMs ? String(Math.round(f.intervalMs / 60000)) : ''}"
+            placeholder="${escapeHtml(t('gamenews_feed_interval_placeholder'))}"
           >
         </div>
         <div class="col" style="display:flex;align-items:center;gap:8px;">
@@ -73,6 +101,7 @@
         </div>
       </div>
     `;
+
 
     return row;
   }
