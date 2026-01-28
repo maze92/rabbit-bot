@@ -1261,7 +1261,7 @@
 
     try {
       const feeds = await apiGet('/gamenews/feeds' + guildParam);
-      renderGameNewsEditor((feeds && feeds.items) || []);
+      window.OzarkDashboard.renderGameNewsEditor((feeds && feeds.items) || []);
     } catch (err) {
       console.error('GameNews feeds error', err);
       if (feedsList) {
@@ -1285,7 +1285,7 @@
       const guildParam = '?guildId=' + encodeURIComponent(state.guildId);
       await apiPost('/gamenews/feeds' + guildParam, { guildId: state.guildId, feeds: feeds });
       toast(t('gamenews_save_success'));
-      await loadGameNews();
+      await window.OzarkDashboard.loadGameNews();
     } catch (err) {
       console.error('Failed to save GameNews feeds', err);
       toast(t('gamenews_error_generic'));
@@ -1886,7 +1886,7 @@
           channelId: '',
           enabled: true,
         });
-        renderGameNewsEditor(feeds);
+        window.OzarkDashboard.renderGameNewsEditor(feeds);
       });
     }
 
