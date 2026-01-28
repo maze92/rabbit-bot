@@ -235,6 +235,7 @@
       gamenews_hint: 'Estado dos feeds de notícias e últimas publicações.',
       gamenews_empty: 'Nenhum feed de GameNews configurado neste momento.',
       gamenews_loading: 'A carregar estado dos feeds...',
+      gamenews_reload_status: 'Recarregar estado',
       gamenews_select_guild: 'Selecione um servidor para configurar GameNews.',
       gamenews_error_generic: 'Não foi possível carregar GameNews.',
 
@@ -246,6 +247,11 @@
 
       gamenews_history_title: 'Histórico de GameNews',
       gamenews_history_hint: 'Resumo do estado dos feeds: últimos envios, erros recentes e pausas automáticas.',
+
+      gamenews_detail_title: 'Histórico do feed',
+      gamenews_detail_state_title: 'Estado do feed',
+      gamenews_detail_actions_title: 'Ações rápidas do feed',
+      gamenews_detail_empty: 'Selecione um feed na lista para ver o detalhe.',
 
       gamenews_editor_title: 'Configuração de feeds',
       gamenews_editor_hint: 'Adiciona, edita ou remove feeds e escolhe o canal para cada um.',
@@ -365,6 +371,7 @@
       gamenews_hint: 'Status of news feeds and last deliveries.',
       gamenews_empty: 'No GameNews feeds are configured at the moment.',
       gamenews_loading: 'Loading GameNews status...',
+      gamenews_reload_status: 'Reload status',
       gamenews_select_guild: 'Select a server to configure GameNews.',
       gamenews_error_generic: 'Could not load GameNews.',
 
@@ -376,6 +383,11 @@
 
       gamenews_history_title: 'GameNews history',
       gamenews_history_hint: 'Overview of feed status: last deliveries, recent errors and automatic pauses.',
+
+      gamenews_detail_title: 'Feed history',
+      gamenews_detail_state_title: 'Feed status',
+      gamenews_detail_actions_title: 'Quick actions for this feed',
+      gamenews_detail_empty: 'Select a feed in the list to see the details.',
 
       gamenews_editor_title: 'Feeds configuration',
       gamenews_editor_hint: 'Add, edit or remove feeds and choose the target channel for each one.',

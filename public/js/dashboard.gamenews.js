@@ -127,98 +127,213 @@
     return header;
   }
 
-  function renderGameNewsStatus(items) {
-    const listEl = document.getElementById('gamenewsStatusList');
-    if (!listEl) return;
-    listEl.innerHTML = '';
+  
+function selectGameNewsFeed(source) {
+  try {
+    const detailEl = document.getElementById('gamenewsFeedDetailPanel');
+    if (!detailEl) return;
 
-  const header = document.createElement('div');
-  header.className = 'section-header';
-  header.innerHTML = `<h3>${escapeHtml(t('gamenews_editor_title'))}</h3><p class="hint">${escapeHtml(t('gamenews_editor_hint'))}</p>`;
-  listEl.appendChild(header);
+    if (!state.gameNewsStatusBySource) {
+      state.gameNewsStatusBySource = {};
+    }
 
-
-    if (!items || !items.length) {
-      const empty = document.createElement('div');
-      empty.className = 'empty';
-      empty.textContent = t('gamenews_empty');
-      listEl.appendChild(empty);
+    const data = state.gameNewsStatusBySource[source];
+    if (!data) {
+      detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
       return;
     }
 
-    items.forEach(function (s) {
-      const row = document.createElement('div');
-      row.className = 'list-item';
+    state.activeGameNewsSource = source;
 
-      const lastSent = s.lastSentAt ? new Date(s.lastSentAt).toLocaleString() : '—';
-      const fails = s.failCount != null ? String(s.failCount) : '0';
+    const lastSent = data.lastSentAt ? new Date(data.lastSentAt).toLocaleString() : '—';
+    const fails = data.failCount != null ? String(data.failCount) : '0';
+    const paused = !!data.paused;
+    const enabled = data.enabled === false ? false : true;
 
-      let stateLabel;
-      if (s.enabled === false) {
-        stateLabel = t('gamenews_status_state_paused');
-      } else if (s.paused) {
-        stateLabel = t('gamenews_status_state_paused');
-      } else if (s.failCount && s.failCount > 0) {
-        stateLabel = t('gamenews_status_state_error');
-      } else {
-        stateLabel = t('gamenews_status_state_ok');
-      }
+    let stateLabel;
+    if (!enabled) {
+      stateLabel = t('gamenews_status_state_paused');
+    } else if (paused) {
+      stateLabel = t('gamenews_status_state_paused');
+    } else if (data.failCount && data.failCount > 0) {
+      stateLabel = t('gamenews_status_state_error');
+    } else {
+      stateLabel = t('gamenews_status_state_ok');
+    }
 
-      const statusText = stateLabel + ' • ' + 'Fails: ' + fails;
+    const intervalMs = data.intervalMs && Number(data.intervalMs);
+    const intervalMinutes =
+      intervalMs && intervalMs > 0 ? Math.round(intervalMs / 60000) : null;
 
-      row.innerHTML =
-        '<div class="title">' +
-        escapeHtml(s.feedName || s.source || 'Feed') +
-        '</div>' +
-        '<div class="subtitle">' +
-        escapeHtml(s.feedUrl || '') +
-        '</div>' +
-        '<div class="meta">' +
-        '<span class="badge">' + escapeHtml(statusText) + '</span>' +
-        ' ' +
-        '<span class="badge">' + escapeHtml(t('gamenews_status_last_label')) + ': ' + escapeHtml(lastSent) + '</span>' +
-        '</div>';
+    const pausedUntil =
+      data.pausedUntil ? new Date(data.pausedUntil).toLocaleString() : null;
+    const lastError = data.lastError ? String(data.lastError) : '';
 
-      listEl.appendChild(row);
+    let html = '';
+    html += `<div class="title">${escapeHtml(t('gamenews_detail_title'))}</div>`;
+    html += `<div class="subtitle">${escapeHtml(
+      data.feedName || data.source || 'Feed'
+    )} • ${escapeHtml(data.feedUrl || '')}</div>`;
+
+    html += '<div class="history-section gamenews-detail-state">';
+    html += `<h3>${escapeHtml(t('gamenews_detail_state_title'))}</h3>`;
+    html += '<div class="gamenews-detail-main">';
+
+    html += '<div class="row gap">';
+    html += `<div class="col"><strong>${escapeHtml(
+      t('gamenews_status_state_ok')
+    )}</strong>: ${escapeHtml(stateLabel)}</div>`;
+    html += `<div class="col">${escapeHtml(
+      t('gamenews_status_last_label')
+    )}: ${escapeHtml(lastSent)}</div>`;
+    html += '</div>';
+
+    html += '<div class="row gap">';
+    html += `<div class="col">Fails: ${escapeHtml(fails)}</div>`;
+    if (intervalMinutes) {
+      html += `<div class="col">Intervalo efetivo: ${String(
+        intervalMinutes
+      )} min</div>`;
+    }
+    html += '</div>';
+
+    if (pausedUntil) {
+      html += `<div class="hint">Pausado até: ${escapeHtml(
+        pausedUntil
+      )}</div>`;
+    }
+    if (lastError) {
+      html += `<div class="hint">Último erro: ${escapeHtml(lastError)}</div>`;
+    }
+
+    html += '</div>'; // gamenews-detail-main
+    html += '</div>'; // history-section gamenews-detail-state
+
+    html += '<div class="history-section gamenews-detail-actions">';
+    html += `<h3>${escapeHtml(t('gamenews_detail_actions_title'))}</h3>`;
+    html += '<div class="row gap">';
+    html +=
+      '<button type="button" class="btn btn-small gamenews-action" data-action="reload">' +
+      escapeHtml(t('gamenews_reload_status')) +
+      '</button>';
+    html += '</div>';
+    html += '</div>'; // history-section gamenews-detail-actions
+
+    detailEl.innerHTML = html;
+
+    const actionButtons = detailEl.querySelectorAll('.gamenews-action');
+    actionButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const action = btn.getAttribute('data-action');
+        if (action === 'reload') {
+          D.loadGameNews()
+            .then(function () {})
+            .catch(function (err) {
+              console.error('GameNews reload error', err);
+              toast(t('gamenews_error_generic'));
+            });
+        }
+      });
     });
+  } catch (err) {
+    console.error('GameNews detail render error', err);
+  }
+}
+
+function renderGameNewsStatus(items) {
+  const listEl = document.getElementById('gamenewsStatusList');
+  const detailEl = document.getElementById('gamenewsFeedDetailPanel');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  if (!items || !items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = t('gamenews_empty');
+    listEl.appendChild(empty);
+
+    if (detailEl) {
+      detailEl.innerHTML = `<div class="empty">${escapeHtml(
+        t('gamenews_detail_empty')
+      )}</div>`;
+    }
+    return;
   }
 
-function createGameNewsFeedRow(f, idx) {
+  if (!state.gameNewsStatusBySource) {
+    state.gameNewsStatusBySource = {};
+  } else {
+    state.gameNewsStatusBySource = {};
+  }
+
+  items.forEach(function (s) {
+    const source = s.source || s.feedName || s.feedUrl || '';
+    if (source) {
+      state.gameNewsStatusBySource[source] = s;
+    }
+
     const row = document.createElement('div');
-    row.className = 'list-item';
-    row.dataset.index = String(idx);
+    row.className = 'list-item gamenews-status-row';
+    row.dataset.source = source;
+
+    const lastSent = s.lastSentAt ? new Date(s.lastSentAt).toLocaleString() : '—';
+    const fails = s.failCount != null ? String(s.failCount) : '0';
+    const paused = !!s.paused;
+    const enabled = s.enabled === false ? false : true;
+
+    let stateLabel;
+    if (!enabled) {
+      stateLabel = t('gamenews_status_state_paused');
+    } else if (paused) {
+      stateLabel = t('gamenews_status_state_paused');
+    } else if (s.failCount && s.failCount > 0) {
+      stateLabel = t('gamenews_status_state_error');
+    } else {
+      stateLabel = t('gamenews_status_state_ok');
+    }
+
+    const intervalMs = s.intervalMs && Number(s.intervalMs);
+    const intervalMinutes =
+      intervalMs && intervalMs > 0 ? Math.round(intervalMs / 60000) : null;
 
     row.innerHTML = `
-        <div class="row gap">
-          <div class="col">
-            <label for="auto_id_1">${escapeHtml(t('gamenews_feed_name_label'))}</label>
-<input type="text" class="input feed-name" value="${escapeHtml(f.name || '')}" / name="auto_field_1" id="auto_id_1">
-          </div>
-          <div class="col">
-            <label for="auto_id_2">${escapeHtml(t('gamenews_feed_url_label'))}</label>
-<input type="text" class="input feed-url" value="${escapeHtml(f.feedUrl || '')}" / name="auto_field_2" id="auto_id_2">
+      <div class="row gap">
+        <div class="col">
+          <div class="title">${escapeHtml(s.feedName || s.source || 'Feed')}</div>
+          <div class="subtitle">${escapeHtml(s.feedUrl || '')}</div>
+        </div>
+        <div class="col">
+          <div class="badge-row">
+            <span class="badge">${escapeHtml(stateLabel)}</span>
+            <span class="badge">Fails: ${escapeHtml(fails)}</span>
+            <span class="badge">${escapeHtml(t('gamenews_status_last_label'))}: ${escapeHtml(
+              lastSent
+            )}</span>
+            ${
+              intervalMinutes
+                ? `<span class="badge">${String(intervalMinutes)} min</span>`
+                : ''
+            }
           </div>
         </div>
-        <div class="row gap" style="margin-top:6px;">
-          <div class="col">
-            <label for="auto_id_3">${escapeHtml(t('gamenews_feed_channel_label'))}</label>
-<input type="text" class="input feed-channel" value="${escapeHtml(f.channelId || '')}" / name="auto_field_3" id="auto_id_3">
-          </div>
-          <div class="col" style="display:flex;align-items:center;gap:8px;">
-            <label>
-              <input type="checkbox" class="feed-enabled"${f.enabled === false ? '' : ' checked'} name="auto_field_4" id="auto_id_4">
-              ${escapeHtml(t('gamenews_feed_enabled_label'))}
-            </label>
-            <button type="button" class="btn btn-small btn-remove-feed">
-              ${escapeHtml(t('gamenews_feed_remove_label'))}
-            </button>
-          </div>
-        </div>
-      `;
+      </div>
+    `;
 
-    return row;
+    row.addEventListener('click', function () {
+      if (source) {
+        selectGameNewsFeed(source);
+      }
+    });
+
+    listEl.appendChild(row);
+  });
+
+  const first = items[0];
+  const firstSource = first && (first.source || first.feedName || first.feedUrl);
+  if (firstSource) {
+    selectGameNewsFeed(firstSource);
   }
-
+}
 async function loadGameNews() {
       const statusList = document.getElementById('gamenewsStatusList');
       const feedsList = document.getElementById('gamenewsFeedsList');
