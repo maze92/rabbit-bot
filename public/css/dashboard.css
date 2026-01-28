@@ -651,3 +651,9 @@ h2 {
 #tab-gamenews .gamenews-detail .history-section {
   margin-top: 10px;
 }
+
+
+#tab-user .user-layout .list,
+#tab-gamenews .gamenews-layout .list {
+  overflow-x: hidden;
+}
