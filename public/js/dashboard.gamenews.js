@@ -247,26 +247,15 @@
 
     html += '</div>'; // /history-section state
 
-    // Secção Ações rápidas
-    html += '<div class="history-section gamenews-detail-actions">';
-    html += `<h3>${escapeHtml(t('gamenews_detail_actions_title') || 'Ações rápidas do feed')}</h3>`;
-    html += '<div class="row gap">';
-    html += `<button type="button" class="btn btn-small gamenews-action" data-action="save">
-      ${escapeHtml(t('gamenews_detail_action_save') || 'Guardar feed')}
-    </button>`;
-    html += `<button type="button" class="btn btn-small gamenews-action" data-action="toggle-enabled">
-      ${escapeHtml(
-        enabled
-          ? t('gamenews_detail_action_disable') || 'Desativar feed'
-          : t('gamenews_detail_action_enable') || 'Ativar feed'
-      )}
-    </button>`;
-    html += `<button type="button" class="btn btn-small gamenews-action" data-action="remove">
-      ${escapeHtml(t('gamenews_detail_action_remove') || 'Remover feed')}
-    </button>`;
-    html += `<button type="button" class="btn btn-small ghost gamenews-action" data-action="reload">
-      ${escapeHtml(t('gamenews_reload_status') || 'Recarregar estado')}
-    </button>`;
+    
+    // Secção Ações rápidas (mesmo estilo dos utilizadores)
+    html += '<div class="history-section user-actions gamenews-detail-actions">';
+    html += `<h3>${escapeHtml(t('gamenews_detail_actions_title') || t('users_actions_title') || 'Ações rápidas')}</h3>`;
+    html += '<div class="badge-row user-actions-buttons">';
+    html += `<button type="button" class="btn xs gamenews-action btn-save" data-action="save">${escapeHtml(t('gamenews_detail_action_save') || 'Guardar feed')}</button>`;
+    html += `<button type="button" class="btn xs gamenews-action btn-toggle" data-action="toggle-enabled">${escapeHtml(enabled ? (t('gamenews_detail_action_disable') || 'Desativar feed') : (t('gamenews_detail_action_enable') || 'Ativar feed'))}</button>`;
+    html += `<button type="button" class="btn xs gamenews-action btn-remove" data-action="remove">${escapeHtml(t('gamenews_detail_action_remove') || 'Remover feed')}</button>`;
+    html += `<button type="button" class="btn xs ghost gamenews-action btn-reload" data-action="reload">${escapeHtml(t('gamenews_reload_status') || 'Recarregar estado')}</button>`;
     html += '</div>';
     html += '</div>'; // /history-section actions
 
@@ -423,18 +412,8 @@
 
       renderGameNewsFeedsList(state.gameNewsFeeds);
 
-      if (feeds.length && typeof state.activeGameNewsFeedIndex === 'number') {
-        const idx = state.activeGameNewsFeedIndex;
-        if (idx >= 0 && idx < feeds.length) {
-          renderGameNewsFeedDetail(feeds[idx]);
-        }
-      } else if (feeds.length) {
-        state.activeGameNewsFeedIndex = 0;
-        renderGameNewsFeedDetail(feeds[0]);
-        // marcar primeira linha como ativa
-        const firstRow = listEl.querySelector('.list-item');
-        if (firstRow) firstRow.classList.add('active');
-      } else if (detailEl) {
+      state.activeGameNewsFeedIndex = null;
+      if (detailEl) {
         detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
       }
     } catch (err) {
