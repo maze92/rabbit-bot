@@ -129,59 +129,67 @@
             Estado e configuração dos feeds de notícias automáticos.
           </p>
 
-          <!-- Secção 1: Adicionar novo feed -->
-          <div class="history-section gamenews-add">
-            <h3 data-i18n="gamenews_add_section_title">Adicionar novo feed</h3>
-            <p class="history-hint" data-i18n="gamenews_add_section_hint">
-              Cria rapidamente um novo feed. Podes depois ajustar o canal, URL, intervalo e logs na lista de feeds configurados.
-            </p>
+          <div class="gamenews-layout">
+            <div class="gamenews-left">
+              <!-- Secção 1: Adicionar novo feed -->
+              <div class="history-section gamenews-add">
+                <h3 data-i18n="gamenews_add_section_title">Adicionar novo feed</h3>
+                <p class="history-hint" data-i18n="gamenews_add_section_hint">
+                  Cria rapidamente um novo feed. Podes depois ajustar o canal, URL, intervalo e logs na lista de feeds configurados.
+                </p>
 
-            <div class="row gap">
-              <button id="btnAddGameNewsFeed" class="btn primary" type="button" data-i18n="gamenews_add_feed">
-                Adicionar feed
-              </button>
-              <button id="btnSaveGameNewsFeeds" class="btn" type="button" data-i18n="gamenews_save_feeds">
-                Guardar alterações
-              </button>
-            </div>
-          </div>
+                <div class="row gap">
+                  <button id="btnAddGameNewsFeed" class="btn primary" type="button" data-i18n="gamenews_add_feed">
+                    Adicionar feed
+                  </button>
+                  <button id="btnSaveGameNewsFeeds" class="btn" type="button" data-i18n="gamenews_save_feeds">
+                    Guardar alterações
+                  </button>
+                </div>
+              </div>
 
-          <!-- Secção 2: Feeds configurados (edição) -->
-          <div class="history-section gamenews-feeds">
-            <h3 data-i18n="gamenews_feeds_section_title">Feeds configurados</h3>
-            <p class="history-hint" data-i18n="gamenews_feeds_section_hint">
-              Edita os feeds existentes: nome, URL, canal de envio, canal de logs e intervalo. Podes também ativar ou desativar cada feed.
-            </p>
+              <!-- Secção 2: Feeds configurados (lista) -->
+              <div class="history-section gamenews-feeds">
+                <h3 data-i18n="gamenews_feeds_section_title">Feeds configurados</h3>
+                <p class="history-hint" data-i18n="gamenews_feeds_section_hint">
+                  Adiciona, edita ou remove feeds e escolhe o canal de envio, canal de logs e intervalo por feed.
+                </p>
 
-            <div class="list" id="gamenewsFeedsList">
-              <!-- Linhas de feeds serão preenchidas via JS -->
-            </div>
-          </div>
+                <div class="list" id="gamenewsFeedsList">
+                  <div class="empty" data-i18n="gamenews_editor_empty">
+                    Nenhum feed de GameNews configurado neste momento.
+                  </div>
+                </div>
+              </div>
 
-          <!-- Secção 3: Histórico / estado dos feeds -->
-          <div class="history-section gamenews-history">
-            <h3 data-i18n="gamenews_history_title">Histórico de GameNews</h3>
-            <p class="history-hint" data-i18n="gamenews_history_hint">
-              Visão geral do estado dos feeds: últimos envios, erros recentes e pausas automáticas.
-            </p>
+              <!-- Secção 3: Estado / histórico agregado -->
+              <div class="history-section gamenews-history">
+                <h3 data-i18n="gamenews_history_title">Histórico de GameNews</h3>
+                <p class="history-hint" data-i18n="gamenews_history_hint">
+                  Visão geral do estado dos feeds: últimos envios, erros recentes e pausas automáticas.
+                </p>
 
-            <div class="list" id="gamenewsStatusList">
-              <div class="empty" data-i18n="gamenews_empty">
-                Nenhum feed de GameNews se encontra configurado neste momento.
+                <div class="list" id="gamenewsStatusList">
+                  <div class="empty" data-i18n="gamenews_empty">
+                    Nenhum feed de GameNews se encontra configurado neste momento.
+                  </div>
+                </div>
+
+                <button id="btnReloadGameNewsStatus" class="btn ghost" type="button" data-i18n="gamenews_reload_status">
+                  Recarregar estado
+                </button>
               </div>
             </div>
 
-            <button id="btnReloadGameNewsStatus" class="btn ghost" type="button" data-i18n="gamenews_reload_status">
-              Recarregar estado
-            </button>
-
-            <div class="gamenews-detail" id="gamenewsFeedDetailPanel">
-              <div class="empty" data-i18n="gamenews_detail_empty">
-                Selecione um feed na lista acima para ver o detalhe.
+            <div class="gamenews-right">
+              <div class="gamenews-detail" id="gamenewsFeedDetailPanel">
+                <div class="empty" data-i18n="gamenews_detail_empty">
+                  Selecione um feed na lista para ver e editar a configuração, bem como o histórico.
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </div></div>
       </section>
 
       <!-- Users -->

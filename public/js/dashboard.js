@@ -252,6 +252,10 @@
       gamenews_detail_state_title: 'Estado do feed',
       gamenews_detail_actions_title: 'Ações rápidas do feed',
       gamenews_detail_empty: 'Selecione um feed na lista para ver o detalhe.',
+      gamenews_detail_config_title: 'Configuração do feed',
+      gamenews_detail_config_hint: 'Altera os detalhes do feed. As alterações só são guardadas depois de clicares em "Guardar alterações".',
+      gamenews_detail_action_save: 'Guardar feed',
+      gamenews_detail_action_remove: 'Remover feed',
 
       gamenews_editor_title: 'Configuração de feeds',
       gamenews_editor_hint: 'Adiciona, edita ou remove feeds e escolhe o canal para cada um.',
@@ -388,6 +392,10 @@
       gamenews_detail_state_title: 'Feed status',
       gamenews_detail_actions_title: 'Quick actions for this feed',
       gamenews_detail_empty: 'Select a feed in the list to see the details.',
+      gamenews_detail_config_title: 'Feed configuration',
+      gamenews_detail_config_hint: 'Change this feed settings. Changes are only saved after you click "Save changes".',
+      gamenews_detail_action_save: 'Save feed',
+      gamenews_detail_action_remove: 'Remove feed',
 
       gamenews_editor_title: 'Feeds configuration',
       gamenews_editor_hint: 'Add, edit or remove feeds and choose the target channel for each one.',
