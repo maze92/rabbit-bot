@@ -286,4 +286,51 @@ async function loadGameNews() {
   // Substituir as funções no namespace pela versão deste módulo
   D.loadGameNews = loadGameNews;
   D.renderGameNewsEditor = renderGameNewsEditor;
+
+
+  function setGameNewsSubTab(name) {
+    try {
+      state.gameNewsSubTab = name;
+
+      const root = document.getElementById('tab-gamenews');
+      if (!root) return;
+
+      const buttons = root.querySelectorAll('#gamenewsSubTabs .tab');
+      buttons.forEach((btn) => {
+        const val = btn.getAttribute('data-subtab');
+        btn.classList.toggle('active', val === name);
+      });
+
+      const sections = {
+        status: document.getElementById('gamenewsSubStatus'),
+        feeds: document.getElementById('gamenewsSubFeeds'),
+        history: document.getElementById('gamenewsSubHistory')
+      };
+
+      Object.keys(sections).forEach((key) => {
+        const el = sections[key];
+        if (!el) return;
+        el.style.display = key === name ? '' : 'none';
+      });
+    } catch (err) {
+      console.error('GameNews subtab error', err);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const root = document.getElementById('tab-gamenews');
+    if (!root) return;
+
+    const buttons = root.querySelectorAll('#gamenewsSubTabs .tab');
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', function () {
+        const val = btn.getAttribute('data-subtab') || 'status';
+        setGameNewsSubTab(val);
+      });
+    });
+
+    // Estado inicial
+    setGameNewsSubTab(state.gameNewsSubTab || 'status');
+  });
+
 })();
