@@ -259,7 +259,6 @@
       gamenews_detail_action_save: 'Guardar',
       gamenews_detail_action_toggle: 'Ativar/Desativar',
       gamenews_detail_action_remove: 'Remover',
-      gamenews_detail_state_empty: 'Ainda não há histórico disponível para este feed.',
 
 
       gamenews_editor_title: 'Configuração de feeds',
@@ -409,7 +408,6 @@
       gamenews_detail_action_save: 'Save',
       gamenews_detail_action_toggle: 'Enable/Disable',
       gamenews_detail_action_remove: 'Remove',
-      gamenews_detail_state_empty: 'No history available for this feed yet.',
 
 
       gamenews_editor_title: 'Feeds configuration',
@@ -552,6 +550,33 @@
       return;
     }
     state.currentTab = name;
+
+    // Reset seleção de utilizadores / GameNews ao entrar nas tabs
+    if (name === 'user') {
+      const userDetail = document.getElementById('userDetailPanel');
+      if (userDetail) {
+        userDetail.innerHTML = `<div class="empty">${escapeHtml(t('users_detail_empty'))}</div>`;
+      }
+      const userList = document.querySelector('#tab-user .list');
+      if (userList) {
+        userList.querySelectorAll('.list-item').forEach(function (row) {
+          row.classList.remove('active');
+        });
+      }
+    } else if (name === 'gamenews') {
+      state.activeGameNewsFeedIndex = null;
+      const feedDetail = document.getElementById('gamenewsFeedDetailPanel');
+      if (feedDetail) {
+        feedDetail.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
+      }
+      const feedList = document.getElementById('gamenewsFeedsList');
+      if (feedList) {
+        feedList.querySelectorAll('.list-item').forEach(function (row) {
+          row.classList.remove('active');
+        });
+      }
+    }
+
 
     document.querySelectorAll('.section').forEach(function (sec) {
       sec.classList.remove('active');
