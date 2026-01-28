@@ -289,7 +289,7 @@ async function loadUserHistory(user) {
       html += '<div class="user-actions-fields">';
       html += `<input type="text" class="input xs user-actions-reason" placeholder="${escapeHtml(
         t('users_actions_reason_placeholder')
-      )}">`;
+      )}" name="auto_field_6">`;
       html += '</div>';
 
       html += '<div class="badge-row user-actions-buttons">';

@@ -151,21 +151,21 @@
         <div class="row gap">
           <div class="col">
             <label>${escapeHtml(t('gamenews_feed_name_label'))}</label>
-            <input type="text" class="input feed-name" value="${escapeHtml(f.name || '')}" />
+            <input type="text" class="input feed-name" value="${escapeHtml(f.name || '')}" / name="auto_field_1">
           </div>
           <div class="col">
             <label>${escapeHtml(t('gamenews_feed_url_label'))}</label>
-            <input type="text" class="input feed-url" value="${escapeHtml(f.feedUrl || '')}" />
+            <input type="text" class="input feed-url" value="${escapeHtml(f.feedUrl || '')}" / name="auto_field_2">
           </div>
         </div>
         <div class="row gap" style="margin-top:6px;">
           <div class="col">
             <label>${escapeHtml(t('gamenews_feed_channel_label'))}</label>
-            <input type="text" class="input feed-channel" value="${escapeHtml(f.channelId || '')}" />
+            <input type="text" class="input feed-channel" value="${escapeHtml(f.channelId || '')}" / name="auto_field_3">
           </div>
           <div class="col" style="display:flex;align-items:center;gap:8px;">
             <label>
-              <input type="checkbox" class="feed-enabled"${f.enabled === false ? '' : ' checked'}>
+              <input type="checkbox" class="feed-enabled"${f.enabled === false ? '' : ' checked'} name="auto_field_4">
               ${escapeHtml(t('gamenews_feed_enabled_label'))}
             </label>
             <button type="button" class="btn btn-small btn-remove-feed">
@@ -904,7 +904,7 @@
       html += '<div class="user-actions-fields">';
       html += `<input type="text" class="input xs user-actions-reason" placeholder="${escapeHtml(
         t('users_actions_reason_placeholder')
-      )}">`;
+      )}" name="auto_field_5">`;
       html += '</div>';
 
       html += '<div class="badge-row user-actions-buttons">';
