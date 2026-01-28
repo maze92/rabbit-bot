@@ -237,6 +237,16 @@
       gamenews_loading: 'A carregar estado dos feeds...',
       gamenews_select_guild: 'Selecione um servidor para configurar GameNews.',
       gamenews_error_generic: 'Não foi possível carregar GameNews.',
+
+      gamenews_add_section_title: 'Adicionar novo feed',
+      gamenews_add_section_hint: 'Cria rapidamente um novo feed. Podes depois ajustar o canal, URL, intervalo e logs na lista de feeds configurados.',
+
+      gamenews_feeds_section_title: 'Feeds configurados',
+      gamenews_feeds_section_hint: 'Adiciona, edita ou remove feeds e escolhe o canal de envio, canal de logs e intervalo por feed.',
+
+      gamenews_history_title: 'Histórico de GameNews',
+      gamenews_history_hint: 'Resumo do estado dos feeds: últimos envios, erros recentes e pausas automáticas.',
+
       gamenews_editor_title: 'Configuração de feeds',
       gamenews_editor_hint: 'Adiciona, edita ou remove feeds e escolhe o canal para cada um.',
       gamenews_add_feed: 'Adicionar feed',
@@ -357,6 +367,16 @@
       gamenews_loading: 'Loading GameNews status...',
       gamenews_select_guild: 'Select a server to configure GameNews.',
       gamenews_error_generic: 'Could not load GameNews.',
+
+      gamenews_add_section_title: 'Add new feed',
+      gamenews_add_section_hint: 'Quickly create a new feed. You can later adjust channel, URL, interval and logs in the configured feeds list.',
+
+      gamenews_feeds_section_title: 'Configured feeds',
+      gamenews_feeds_section_hint: 'Add, edit or remove feeds and choose the delivery channel, log channel and per-feed interval.',
+
+      gamenews_history_title: 'GameNews history',
+      gamenews_history_hint: 'Overview of feed status: last deliveries, recent errors and automatic pauses.',
+
       gamenews_editor_title: 'Feeds configuration',
       gamenews_editor_hint: 'Add, edit or remove feeds and choose the target channel for each one.',
       gamenews_add_feed: 'Add feed',
