@@ -671,3 +671,8 @@ h2 {
   color: var(--text-muted);
   margin-bottom: 8px;
 }
+
+/* Ajuste de alinhamento: painel da GameNews alinhado com o primeiro feed */
+#tab-gamenews .user-layout .user-detail {
+  margin-top: 32px;
+}
