@@ -134,7 +134,7 @@ function selectGameNewsFeedByIndex(idx) {
     }
     setTimeout(function () {
       renderGameNewsFeedDetail(feed);
-    }, 300);
+    }, 350);
   }
 
   function renderGameNewsFeedDetail(feed) {
