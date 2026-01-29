@@ -7,6 +7,25 @@
   <link rel="stylesheet" href="/css/dashboard.css">
 </head>
 <body>
+  <div id="loginScreen" class="login-screen hidden">
+    <div class="login-card">
+      <h1 data-i18n="login_title">Login</h1>
+      <p class="login-subtitle" data-i18n="login_subtitle">Autentica-te para aceder ao painel.</p>
+      <form id="loginForm">
+        <div class="field">
+          <label for="loginUsername" data-i18n="login_username_label">Utilizador</label>
+          <input id="loginUsername" class="input" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="loginPassword" data-i18n="login_password_label">Password</label>
+          <input id="loginPassword" type="password" class="input" autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn" id="loginSubmitBtn" data-i18n="login_submit">Entrar</button>
+        <div class="login-error" id="loginError"></div>
+      </form>
+    </div>
+  </div>
+
   <div class="app" id="appRoot">
     <!-- Top bar -->
     <header class="topbar">

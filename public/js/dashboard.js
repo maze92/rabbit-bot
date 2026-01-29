@@ -32,28 +32,22 @@
         localStorage.setItem(TOKEN_KEY, token);
       }
     } catch (e) {
+
+  function clearToken() {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+    } catch (e) {
       // ignore
     }
   }
 
-  function ensureToken() {
-    let token = getToken();
-    if (token) return token;
-
-    const msg =
-      state.lang === 'en'
-        ? 'Enter the dashboard token (DASHBOARD_TOKEN from .env):'
-        : 'Introduz o token do dashboard (DASHBOARD_TOKEN do .env):';
-    token = window.prompt(msg, '') || '';
-    token = token.trim();
-    if (!token) return '';
-    setToken(token);
-    return token;
+      // ignore
+    }
   }
 
   function getAuthHeaders() {
     const headers = {};
-    const token = ensureToken();
+    const token = getToken();
     if (token) {
       // Backend aceita tanto Authorization Bearer como x-dashboard-token.
       headers['x-dashboard-token'] = token;
@@ -188,6 +182,15 @@
       app_subtitle: 'Dashboard de moderação e gestão',
       select_guild: 'Seleciona um servidor',
       badge_bot_online: '* Bot online',
+
+        login_title: 'Login',
+        login_subtitle: 'Autentica-te para aceder ao painel.',
+        login_username_label: 'Utilizador',
+        login_password_label: 'Password',
+        login_submit: 'Entrar',
+        login_error_required: 'Preenche utilizador e password.',
+        login_error_invalid: 'Credenciais inválidas ou não autorizadas.',
+        login_error_generic: 'Erro ao tentar autenticar. Tenta novamente.',
 
       tab_overview: 'Visão geral',
       tab_logs: 'Moderação',
@@ -344,6 +347,15 @@
       app_subtitle: 'Moderation and management dashboard',
       select_guild: 'Select a server',
       badge_bot_online: '* Bot online',
+
+        login_title: 'Login',
+        login_subtitle: 'Autentica-te para aceder ao painel.',
+        login_username_label: 'Utilizador',
+        login_password_label: 'Password',
+        login_submit: 'Entrar',
+        login_error_required: 'Preenche utilizador e password.',
+        login_error_invalid: 'Credenciais inválidas ou não autorizadas.',
+        login_error_generic: 'Erro ao tentar autenticar. Tenta novamente.',
 
       tab_overview: 'Overview',
       tab_logs: 'Moderation',
@@ -1250,9 +1262,78 @@ async function saveGameNewsFeeds() {
       });
     }
 
-    // Carrega guilds e visão geral inicial
-    loadGuilds().catch(function () {});
-    setTab('overview');
+    // Login form
+    var loginScreen = document.getElementById('loginScreen');
+    var loginForm = document.getElementById('loginForm');
+    var loginUser = document.getElementById('loginUsername');
+    var loginPass = document.getElementById('loginPassword');
+    var loginError = document.getElementById('loginError');
+    var loginSubmitBtn = document.getElementById('loginSubmitBtn');
+
+    function showLogin() {
+      if (loginScreen) loginScreen.classList.remove('hidden');
+      if (loginError) loginError.textContent = '';
+      if (loginUser) loginUser.focus();
+    }
+
+    function hideLogin() {
+      if (loginScreen) loginScreen.classList.add('hidden');
+      if (loginError) loginError.textContent = '';
+    }
+
+    if (loginForm) {
+      loginForm.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        if (!loginUser || !loginPass || !loginSubmitBtn) return;
+        var u = loginUser.value.trim();
+        var p = loginPass.value;
+        if (!u || !p) {
+          if (loginError) loginError.textContent = t('login_error_required') || 'Preenche utilizador e password.';
+          return;
+        }
+        loginSubmitBtn.disabled = true;
+        loginSubmitBtn.classList.add('is-loading');
+        fetch(API_BASE + '/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        })
+          .then(function (res) { return res.json().catch(function () { return {}; }); })
+          .then(function (data) {
+            if (!data || !data.ok || !data.token) {
+              if (loginError) {
+                loginError.textContent =
+                  (data && data.error && String(data.error)) ||
+                  (t('login_error_invalid') || 'Credenciais inválidas ou não autorizadas.');
+              }
+              return;
+            }
+            setToken(data.token);
+            hideLogin();
+            // Depois de login, carrega guilds e visão geral
+            loadGuilds().catch(function () {});
+            setTab('overview');
+          })
+          .catch(function () {
+            if (loginError) {
+              loginError.textContent = t('login_error_generic') || 'Erro ao tentar autenticar. Tenta novamente.';
+            }
+          })
+          .finally(function () {
+            loginSubmitBtn.disabled = false;
+            loginSubmitBtn.classList.remove('is-loading');
+          });
+      });
+    }
+
+    // Carrega guilds e visão geral inicial, se já houver token guardado
+    if (getToken()) {
+      hideLogin();
+      loadGuilds().catch(function () {});
+      setTab('overview');
+    } else {
+      showLogin();
+    }
   });
 
   // Expose key parts on global namespace for future multi-file split
@@ -1260,6 +1341,8 @@ async function saveGameNewsFeeds() {
   window.OzarkDashboard.API_BASE = API_BASE;
   window.OzarkDashboard.getToken = getToken;
   window.OzarkDashboard.setToken = setToken;
+
+  window.OzarkDashboard.clearToken = clearToken;
   window.OzarkDashboard.apiGet = apiGet;
   window.OzarkDashboard.apiPost = apiPost;
   window.OzarkDashboard.toast = toast;
