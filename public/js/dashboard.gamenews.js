@@ -127,7 +127,7 @@
     if (detailEl) {
       detailEl.innerHTML = `<div class="empty">${escapeHtml(t('loading') || 'Loading...')}</div>`;
     }
-    setTimeout(function () { renderGameNewsFeedDetail(feed); }, 0);
+    setTimeout(function () { renderGameNewsFeedDetail(feed); }, 200);
   }
 
   function renderGameNewsFeedDetail(feed) {
