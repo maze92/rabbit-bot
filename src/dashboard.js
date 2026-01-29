@@ -39,6 +39,11 @@ const rateLimit = require('./systems/rateLimit');
 
 const JWT_SECRET = process.env.DASHBOARD_JWT_SECRET || 'ozark-dashboard-change-me';
 
+if (process.env.NODE_ENV === 'production' && !process.env.DASHBOARD_JWT_SECRET) {
+  console.warn('[Dashboard Auth] DASHBOARD_JWT_SECRET is not set in production. Please configure a strong secret.');
+}
+
+
 // ------------------------------
 // Sanitização / hardening (dashboard)
 // ------------------------------

@@ -15,7 +15,7 @@ const pendingDeletes = new Map(); // key: channelId, value: timeoutId
 
 function normalizeDelaySeconds(raw) {
   let n = parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 5) n = 10;
+  if (!Number.isFinite(n) || n < 2) n = 10;
   if (n > 600) n = 600;
   return n;
 }

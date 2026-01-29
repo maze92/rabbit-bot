@@ -283,6 +283,13 @@
       tempvoice_add_base_btn: 'Adicionar canal',
       tempvoice_detail_title: 'Configuração',
       tempvoice_detail_hint: 'Define o comportamento global das salas temporárias criadas a partir dos canais base.',
+      tempvoice_delete_btn: 'Remover',
+      tempvoice_base_list_title: 'Canais base',
+      tempvoice_base_list_hint: 'Canais de voz que funcionam como "botões" para criar salas temporárias.',
+      tempvoice_base_list_empty: 'Ainda não existem canais base configurados.',
+      tempvoice_add_base_btn: 'Adicionar canal',
+      tempvoice_detail_title: 'Configuração',
+      tempvoice_detail_hint: 'Define o comportamento global das salas temporárias criadas a partir dos canais base.',
       tempvoice_saved: 'Configuração de voz temporária guardada.',
       tempvoice_save_error: 'Falha ao guardar configuração de voz temporária.',
       gamenews_detail_config_title: 'Configuração do feed',
@@ -1267,7 +1274,7 @@ async function saveGameNewsFeeds() {
       var baseChannelIds = (state.tempVoiceBase && state.tempVoiceBase.items || []).filter(function (s) { return !!s; });
 
       var delaySeconds = parseInt(delayRaw, 10);
-      if (!Number.isFinite(delaySeconds) || delaySeconds < 5) delaySeconds = 10;
+      if (!Number.isFinite(delaySeconds) || delaySeconds < 2) delaySeconds = 10;
 
       try {
         const body = {
@@ -1352,6 +1359,10 @@ async function saveGameNewsFeeds() {
         </div>
       `;
       row.addEventListener('click', function () {
+        // mostrar estado de loading ao estilo dos feeds
+        if (typeof showPanelLoading === 'function') {
+          showPanelLoading('tempVoiceDetailPanel');
+        }
         selectTempVoiceBaseIndex(index);
       });
       listEl.appendChild(row);
@@ -1402,6 +1413,25 @@ async function saveGameNewsFeeds() {
     state.tempVoiceBase.items = state.tempVoiceBase.items.filter(function (s) { return !!s; });
     renderTempVoiceBaseList();
   }
+
+  function deleteTempVoiceBaseAt(index) {
+    if (!state.tempVoiceBase || !Array.isArray(state.tempVoiceBase.items)) return;
+    if (index < 0 || index >= state.tempVoiceBase.items.length) return;
+
+    state.tempVoiceBase.items.splice(index, 1);
+    if (state.tempVoiceBase.items.length === 0) {
+      state.tempVoiceBase.selectedIndex = -1;
+      var baseIdInput = document.getElementById('tempVoiceBaseId');
+      if (baseIdInput) baseIdInput.value = '';
+    } else if (state.tempVoiceBase.selectedIndex >= state.tempVoiceBase.items.length) {
+      state.tempVoiceBase.selectedIndex = state.tempVoiceBase.items.length - 1;
+      var baseIdInput2 = document.getElementById('tempVoiceBaseId');
+      if (baseIdInput2) baseIdInput2.value = state.tempVoiceBase.items[state.tempVoiceBase.selectedIndex] || '';
+    }
+    renderTempVoiceBaseList();
+  }
+
+
 
 
 
@@ -1483,6 +1513,18 @@ async function saveGameNewsFeeds() {
     }
 
           // Temp voice config
+      var btnDeleteTempVoiceBase = document.getElementById('btnDeleteTempVoiceBase');
+      if (btnDeleteTempVoiceBase) {
+        btnDeleteTempVoiceBase.addEventListener('click', function () {
+          if (!state.tempVoiceBase) return;
+          var idx = state.tempVoiceBase.selectedIndex;
+          if (typeof deleteTempVoiceBaseAt === 'function') {
+            deleteTempVoiceBaseAt(idx);
+          }
+        });
+      }
+
+
       // Temp voice base channels
       var btnTempVoiceAddBase = document.getElementById('btnTempVoiceAddBase');
       if (btnTempVoiceAddBase) {

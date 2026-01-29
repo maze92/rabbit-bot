@@ -104,7 +104,7 @@
               class="input"
               data-i18n-placeholder="logs_search_placeholder"
               placeholder="Procurar por utilizador, moderador ou detalhe do log"
-            >
+          
             <select id="logType" class="select">
               <option value="" data-i18n="logs_filter_all">Todos os tipos</option>
               <option value="warn">Warn</option>
@@ -187,14 +187,62 @@
   </div>
             </div>
 
-            <div class="subtab-panel" id="extras-tempvoice-panel">
-              <div class="card subcard">
-                <h2 data-i18n="tempvoice_title">Voz temporária</h2>
-                <p class="hint" data-i18n="tempvoice_hint">
-                  Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.
-                </p>
+                          <div class="subtab-panel" id="extras-tempvoice-panel">
+                <div class="card subcard">
+                  <h2 data-i18n="tempvoice_title">Voz temporária</h2>
+                  <p class="hint" data-i18n="tempvoice_hint">
+                    Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.
+                  </p>
 
-                                  <div class="master-detail">
+                  <div class="master-detail">
+                    <div class="detail-panel side-panel" id="tempVoiceDetailPanel">
+                      <h3 data-i18n="tempvoice_detail_title">Configuração</h3>
+                      <p class="hint" data-i18n="tempvoice_detail_hint">
+                        Define o comportamento global das salas temporárias criadas a partir dos canais base.
+                      </p>
+
+                      <div class="field">
+                        <label for="tempVoiceEnabled" data-i18n="tempvoice_enabled_label">Ativar voz temporária</label>
+                        <select id="tempVoiceEnabled" class="select">
+                          <option value="false" data-i18n="tempvoice_disabled">Desativado</option>
+                          <option value="true" data-i18n="tempvoice_enabled">Ativado</option>
+                        </select>
+                      </div>
+
+                      <div class="field">
+                        <label for="tempVoiceBaseId" data-i18n="tempvoice_base_channels_label">ID do canal base selecionado</label>
+                        <input id="tempVoiceBaseId" class="input" placeholder="ID do canal de voz" />
+                      </div>
+
+                      <div class="field">
+                        <label for="tempVoiceCategoryId" data-i18n="tempvoice_category_label">Categoria para criar salas temporárias</label>
+                        <input id="tempVoiceCategoryId" class="input" placeholder="ID da categoria (opcional)" />
+                      </div>
+
+                      <div class="field">
+                        <label for="tempVoiceDeleteDelay" data-i18n="tempvoice_delete_delay_label">Tempo para apagar sala vazia (segundos)</label>
+                        <input id="tempVoiceDeleteDelay" class="input" type="number" min="2" max="600" step="1" />
+                      </div>
+
+                      <div class="row gap">
+                        <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
+                          Guardar configuração
+                        </button>
+                        <button id="btnDeleteTempVoiceBase" class="btn xs danger" type="button" data-i18n="tempvoice_delete_btn">
+                          Remover
+                        </button>
+                      </div>
+
+                      <div class="field" style="margin-top: 16px;">
+                        <h4 data-i18n="tempvoice_active_title">Salas temporárias ativas</h4>
+                        <div class="list" id="tempVoiceActiveList">
+                          <div class="empty" data-i18n="tempvoice_active_empty">
+                            Não existem salas temporárias neste momento.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div class="master">
                       <h3 data-i18n="tempvoice_base_list_title">Canais base</h3>
                       <p class="hint" data-i18n="tempvoice_base_list_hint">
@@ -211,199 +259,7 @@
                         Adicionar canal
                       </button>
                     </div>
-
-                    <div class="detail-panel side-panel" id="tempVoiceDetailPanel">
-                      <h3 data-i18n="tempvoice_detail_title">Configuração</h3>
-                      <p class="hint" data-i18n="tempvoice_detail_hint">
-                        Define o comportamento global das salas temporárias criadas a partir dos canais base.
-                      </p>
-
-                      <div class="field">
-                        <label data-i18n="tempvoice_enabled_label">Ativar voz temporária</label>
-                        <select id="tempVoiceEnabled" class="select">
-                          <option value="false" data-i18n="tempvoice_disabled">Desativado</option>
-                          <option value="true" data-i18n="tempvoice_enabled">Ativado</option>
-                        </select>
-                      </div>
-
-                      <div class="field">
-                        <label data-i18n="tempvoice_base_channels_label">ID do canal base selecionado</label>
-                        <input id="tempVoiceBaseId" class="input" placeholder="ID do canal de voz" />
-                      </div>
-
-                      <div class="field">
-                        <label data-i18n="tempvoice_category_label">Categoria para criar salas temporárias</label>
-                        <input id="tempVoiceCategoryId" class="input" placeholder="ID da categoria (opcional)" />
-                      </div>
-
-                      <div class="field">
-                        <label data-i18n="tempvoice_delete_delay_label">Tempo para apagar sala vazia (segundos)</label>
-                        <input id="tempVoiceDeleteDelay" class="input" type="number" min="5" max="600" step="5" />
-                      </div>
-
-                      <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
-                        Guardar configuração
-                      </button>
-
-                      <div class="field" style="margin-top: 16px;">
-                        <h4 data-i18n="tempvoice_active_title">Salas temporárias ativas</h4>
-                        <div class="list" id="tempVoiceActiveList">
-                          <div class="empty" data-i18n="tempvoice_active_empty">
-                            Não existem salas temporárias neste momento.
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      <!-- Users -->
-      <section class="section" id="tab-user">
-        <div class="card">
-          <h2 data-i18n="users_title">Utilizadores</h2>
-          <p class="hint" data-i18n="users_hint">
-            Consulta rápida de utilizadores e histórico de moderação por utilizador.
-          </p>
-          <p class="hint users-members" id="usersMemberCount"></p>
-          <div class="user-layout">
-            <div class="list">
-              <div class="empty" data-i18n="users_empty">
-                Selecione um servidor para ver utilizadores.
-              </div>
-            </div>
-            <div class="user-detail" id="userDetailPanel">
-              <div class="empty" data-i18n="users_detail_empty">
-                Selecione um utilizador para ver o histórico de moderação e tickets.
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Config -->
-      <section class="section" id="tab-config">
-        <div class="card">
-          <h2 data-i18n="config_title">Configuração do servidor</h2>
-          <p class="hint" data-i18n="config_hint">
-            Defina canais, cargos de staff e preferências de registo para este servidor.
-          </p>
-
-          <div class="config-form">
-            <div class="row gap">
-              <div class="col">
-                <label for="configLogChannel" data-i18n="config_log_channel">Canal de logs principal</label>
-                <select id="configLogChannel" class="select"></select>
-              </div>
-              <div class="col">
-                <label for="configDashboardLogChannel" data-i18n="config_dashboard_log_channel">Canal de logs da dashboard</label>
-                <select id="configDashboardLogChannel" class="select"></select>
-              </div>
-            </div>
-
-            <div class="row gap" style="margin-top:12px;">
-              <div class="col">
-                <label for="configTicketChannel" data-i18n="config_ticket_channel">Canal de suporte (tickets)</label>
-                <select id="configTicketChannel" class="select"></select>
-                <p class="hint" data-i18n="config_ticket_channel_hint">
-                  Canal onde será publicada a mensagem de suporte com o emoji para abrir tickets.
-                </p>
-              </div>
-            </div>
-
-
-            <div class="row gap" style="margin-top:12px;">
-              <div class="col">
-                <label for="configStaffRoles" data-i18n="config_staff_roles">Cargos de staff</label>
-                <select id="configStaffRoles" class="select" multiple></select>
-                <p class="hint" data-i18n="config_staff_roles_hint">
-                  Se vazio, são usadas as roles de staff globais definidas no ficheiro de configuração.
-                </p>
-              </div>
-            </div>
-
-            <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px;">
-              <button type="button" class="btn" id="btnReloadGuildConfig" data-i18n="config_reload">Recarregar</button>
-              <button type="button" class="btn primary" id="btnSaveGuildConfig" data-i18n="config_save">Guardar configuração</button>
-            </div>
-
-
-            <div id="configStatus" class="hint" style="margin-top:8px;"></div>
-
-            <div class="trust-config-card">
-              <h3 data-i18n="config_trust_title">Sistema de confiança (Trust)</h3>
-              <p class="hint" data-i18n="config_trust_hint">
-                Valores globais usados pelo AutoMod e pelos comandos de moderação. Não é possível alterar estes valores pela dashboard.
-              </p>
-              <div class="trust-config-grid">
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_base">Nível base</div>
-                  <div class="value" id="trustBaseValue">—</div>
-                </div>
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_minmax">Mínimo / Máximo</div>
-                  <div class="value" id="trustMinMaxValue">—</div>
-                </div>
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_penalties">Penalizações</div>
-                  <div class="value" id="trustPenaltiesValue">—</div>
-                </div>
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_regen">Regeneração</div>
-                  <div class="value" id="trustRegenValue">—</div>
-                </div>
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_risk">Limiares</div>
-                  <div class="value" id="trustRiskValue">—</div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-
-  <!-- Drawer global para edições detalhadas (utilizadores, tickets, GameNews, etc.) -->
-  <div id="drawerOverlay" class="drawer-overlay" style="display:none;">
-    <div id="drawerPanel" class="drawer-panel">
-      <button type="button" id="drawerCloseBtn" class="drawer-close">&times;</button>
-      <div id="drawerContent" class="drawer-content"></div>
-    </div>
-  </div>
-
-  <script src="/js/dashboard.js" defer></script>
-  <script src="/js/dashboard.users.js" defer></script>
-  <script src="/js/dashboard.moderation.js" defer></script>
-  <script src="/js/dashboard.gamenews.js" defer></script>
-
-<!-- Moderation Action Modal -->
-<div id="modActionModal" class="modal hidden">
-  <div class="modal-backdrop"></div>
-  <div class="modal-card">
-    <h3 id="modActionTitle">Moderation</h3>
-    <div class="modal-body">
-      <label for="modActionReason">Reason</label>
-<input id="modActionReason" type="text" placeholder="" />
-
-      <div id="modActionDurationWrap" class="hidden">
-        <label for="modActionDuration">Duration</label>
-<input id="modActionDuration" type="text" placeholder="10m, 1h, 1d" />
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button id="modActionCancel" class="btn">Cancel</button>
-      <button id="modActionConfirm" class="btn primary">Confirm</button>
-    </div>
-  </div>
-</div>
-
-</body>
-</html>
+>
