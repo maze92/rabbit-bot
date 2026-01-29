@@ -1207,7 +1207,7 @@ async function saveGameNewsFeeds() {
     if (!state.guildId) return;
 
     try {
-      const res = await apiGet('/temp-voice/config', { guildId: state.guildId });
+      const res = await apiGet(`/temp-voice/config?guildId=${encodeURIComponent(state.guildId)}`);
       if (!res || !res.ok) return;
 
       var cfg = res.config || {};
@@ -1279,7 +1279,7 @@ async function saveGameNewsFeeds() {
     if (!state.guildId) return;
 
     try {
-      const res = await apiGet('/temp-voice/active', { guildId: state.guildId });
+      const res = await apiGet(`/temp-voice/active?guildId=${encodeURIComponent(state.guildId)}`);
       const listEl = document.getElementById('tempVoiceActiveList');
       if (!listEl) return;
 
