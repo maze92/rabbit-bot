@@ -111,7 +111,20 @@
   // Painel de detalhe do feed
   // ------------------------
 
-  function selectGameNewsFeedByIndex(idx) {
+  
+  function renderGameNewsFeedSkeleton() {
+    return `
+      <div class="gn-loading">
+        <div class="gn-skeleton gn-skeleton-title"></div>
+        <div class="gn-skeleton gn-skeleton-line"></div>
+        <div class="gn-skeleton gn-skeleton-line short"></div>
+        <div class="gn-skeleton gn-skeleton-line"></div>
+        <div class="gn-skeleton gn-skeleton-line short"></div>
+      </div>
+    `;
+  }
+
+function selectGameNewsFeedByIndex(idx) {
     if (!Array.isArray(state.gameNewsFeeds)) return;
     const feed = state.gameNewsFeeds[idx];
     if (!feed) return;
@@ -125,9 +138,13 @@
     const detailEl = document.getElementById('gamenewsFeedDetailPanel');
     state.activeGameNewsFeedIndex = idx;
     if (detailEl) {
-      detailEl.innerHTML = `<div class="empty">${escapeHtml(t('loading') || 'Loading...')}</div>`;
+      detailEl.innerHTML = renderGameNewsFeedSkeleton();
     }
-    setTimeout(function () { renderGameNewsFeedDetail(feed); }, 200);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        renderGameNewsFeedDetail(feed);
+      });
+    });
   }
 
   function renderGameNewsFeedDetail(feed) {
