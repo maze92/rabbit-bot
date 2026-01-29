@@ -266,168 +266,26 @@
       gamenews_detail_actions_title: 'Ações rápidas do feed',
       gamenews_detail_empty: 'Selecione um feed para ver o histórico e editar a configuração.',
 
-      tempvoice_title: 'Voz temporária',
-      tempvoice_hint: 'Cria canais de voz temporários por utilizador, que são apagados quando ficam vazios.',
-      tempvoice_enabled_label: 'Ativar voz temporária',
-      tempvoice_disabled: 'Desativado',
-      tempvoice_enabled: 'Ativado',
-      tempvoice_base_channels_label: 'Canais base (onde os utilizadores clicam para criar salas)',
-      tempvoice_category_label: 'Categoria para criar salas temporárias',
-      tempvoice_delete_delay_label: 'Tempo para apagar sala vazia (segundos)',
-      tempvoice_save_btn: 'Guardar',
-      tempvoice_active_title: 'Salas temporárias ativas',
-      tempvoice_active_empty: 'Não existem salas temporárias neste momento.',
-      tempvoice_base_list_title: 'Canais base',
-      tempvoice_base_list_hint: 'Canais de voz que funcionam como "botões" para criar salas temporárias.',
-      tempvoice_base_list_empty: 'Ainda não existem canais base configurados.',
-      tempvoice_add_base_btn: 'Adicionar',
-      tempvoice_detail_title: 'Configuração',
-      tempvoice_detail_hint: 'Define o comportamento global das salas temporárias criadas a partir dos canais base.',
-      tempvoice_delete_btn: 'Remover',
-      tempvoice_base_list_title: 'Canais base',
-      tempvoice_base_list_hint: 'Canais de voz que funcionam como "botões" para criar salas temporárias.',
-      tempvoice_base_list_empty: 'Ainda não existem canais base configurados.',
-      tempvoice_add_base_btn: 'Adicionar',
-      tempvoice_detail_title: 'Configuração',
-      tempvoice_detail_hint: 'Define o comportamento global das salas temporárias criadas a partir dos canais base.',
-      tempvoice_saved: 'Configuração de voz temporária guardada.',
-      tempvoice_save_error: 'Falha ao guardar configuração de voz temporária.',
-      gamenews_detail_config_title: 'Configuração do feed',
-      gamenews_detail_config_hint: 'Altera os detalhes do feed. As alterações só são guardadas depois de clicares em "Guardar".',
-      gamenews_detail_last_sent: 'Último envio',
-      gamenews_detail_fail_count: 'Falhas',
-      gamenews_detail_action_save: 'Guardar',
-      gamenews_detail_action_toggle: 'Ativar/Desativar',
-      gamenews_detail_action_remove: 'Remover',
-      gamenews_detail_state_empty: 'Ainda não há histórico disponível para este feed.',
-
-
-      gamenews_editor_title: 'Configuração de feeds',
-      gamenews_editor_hint: 'Adiciona, edita ou remove feeds e escolhe o canal para cada um.',
-      gamenews_add_feed: 'Adicionar',
-      gamenews_save_feeds: 'Guardar alterações',
-      gamenews_save_success: 'Feeds de GameNews guardados.',
-      gamenews_editor_empty: 'Ainda não existem feeds configurados. Adiciona o primeiro feed para começar.',
-      gamenews_feeds_count_zero: '0 feeds configurados',
-      gamenews_feeds_count_single: '1 feed configurado',
-      gamenews_feeds_count_multiple_prefix: '',
-      gamenews_feeds_count_multiple_suffix: ' feeds configurados',
-
-      gamenews_feed_name_label: 'Nome',
-      gamenews_feed_url_label: 'URL do feed',
-      gamenews_feed_channel_label: 'Canal',
-      gamenews_feed_enabled_label: 'Ativo',
-      gamenews_feed_url_label: 'URL do feed',
-      gamenews_feed_channel_label: 'Canal ID',
-      gamenews_feed_remove_label: 'Remover',
-      gamenews_feed_log_channel_label: 'Canal de logs (opcional)',
-      gamenews_feed_interval_label: 'Intervalo (minutos)',
-      gamenews_feed_interval_placeholder: 'Usar intervalo global',
-
-      gamenews_status_last_label: 'Último envio',
-      gamenews_status_state_ok: 'Ativo',
-      gamenews_status_state_paused: 'Em pausa',
-      gamenews_status_state_error: 'Em erro',
-
-      users_title: 'Utilizadores',
-      users_hint: 'Lista de utilizadores e acesso rápido ao histórico de moderação.',
-      users_empty: 'Selecione um servidor para ver utilizadores.',
-      users_detail_empty: 'Selecione um utilizador para ver o histórico de moderação e tickets.',
-      users_history_title: 'Histórico do utilizador',
-      users_history_infractions: 'Infrações recentes',
-      users_history_tickets: 'Tickets recentes',
-      users_history_none: 'Sem histórico de moderação para este utilizador.',
-      users_history_click_to_remove: 'Clique numa infração para a remover e ajustar o trust.',
-      users_history_remove_confirm: 'Tens a certeza que queres remover esta infração? Isto pode ajustar o trust e o número de avisos.',
-      users_history_remove_success: 'Infração removida com sucesso.',
-      users_trust_title: 'Nível de confiança (trust)',
-      users_trust_score: 'Trust',
-      users_trust_next_penalty_prefix: 'Próximo auto-mute estimado após mais',
-      users_trust_next_penalty_suffix: 'duração aproximada',
-      users_trust_next_penalty_simple_prefix: 'Próximo auto-mute estimado:',
-      users_trust_next_penalty_at_threshold: 'Já atingiu o limiar de auto-mute; próximo warn irá gerar um mute de aproximadamente',
-      users_trust_automation_disabled: 'Automação de mute automática está desativada para este servidor.',
-      users_actions_title: 'Ações rápidas de moderação',
-      users_actions_warn: 'Warn',
-      users_actions_unmute: 'Unmute',
-      users_actions_reset: 'Repor trust/avisos',
-      users_actions_reset_history: 'Limpar histórico',
-      users_actions_reason_placeholder: 'Motivo (opcional)',
-
-      config_title: 'Configuração do servidor',
-      config_hint: 'Define canais de logs e cargos de staff para este servidor.',
-      config_log_channel: 'Canal de logs principal',
-      config_dashboard_log_channel: 'Canal de logs da dashboard',
-      config_ticket_channel: 'Canal de suporte (tickets)',
-      config_ticket_channel_hint:
-        'Canal onde será publicada a mensagem de suporte com o emoji para criar tickets.',
-      config_staff_roles: 'Cargos de staff',
-      config_staff_roles_hint:
-        'Se vazio, são usadas as roles de staff globais definidas no ficheiro de configuração.',
-      config_reload: 'Recarregar',
-      config_save: 'Guardar configuração',
-      config_saved: 'Configuração do servidor guardada.',
-      config_loading: 'A carregar configuração...',
-
-      config_trust_title: 'Sistema de confiança (Trust)',
-      config_trust_hint: 'Valores globais usados pelo AutoMod e pelos comandos de moderação. Não é possível alterar estes valores pela dashboard.',
-      config_trust_base: 'Nível base',
-      config_trust_minmax: 'Mínimo / Máximo',
-      config_trust_penalties: 'Penalizações',
-      config_trust_regen: 'Regeneração',
-      config_trust_risk: 'Limiares',
-
-      config_error_generic: 'Não foi possível carregar a configuração.',
-    },
-
-    en: {
-      app_subtitle: 'Moderation and management dashboard',
-      select_guild: 'Select a server',
-      badge_bot_online: '* Bot online',
-
-        login_title: 'Login',
-        login_subtitle: 'Autentica-te para aceder ao painel.',
-        login_username_label: 'Utilizador',
-        login_password_label: 'Password',
-        login_submit: 'Entrar',
-        login_error_required: 'Preenche utilizador e password.',
-        login_error_invalid: 'Credenciais inválidas ou não autorizadas.',
-        login_error_generic: 'Erro ao tentar autenticar. Tenta novamente.',
-
-      tab_overview: 'Overview',
-      tab_logs: 'Moderation',
-      tab_cases: 'Cases',
-      tab_tickets: 'Tickets',
-      tab_gamenews: 'Extras',
-      extras_title: 'Extras',
-      extras_hint: 'Additional tools: news feeds and temporary voice channels.',
-      extras_feeds_tab: 'Feeds',
-      extras_tempvoice_tab: 'Temporary voice',
-        extras_title: 'Extras',
-        extras_hint: 'Ferramentas adicionais: feeds de notícias e voz temporária.',
-        extras_feeds_tab: 'Feeds',
-        extras_tempvoice_tab: 'Voz temporária',
-      tab_user: 'Users',
-      tab_config: 'Server config',
-
-      warn_select_guild: 'Select a server to access the other sections.',
-
-      logs_title: 'Moderation hub',
-      logs_hint: 'Centralised view of warns, mutes, bans, tickets and other moderation actions.',
-      logs_search_placeholder: 'Search by user, moderator or log detail',
-      logs_filter_all: 'All types',
-      logs_filter_tickets: 'Tickets (support)',
-      logs_reload: 'Reload',
-      logs_empty: 'There are no records for the current filter.',
-      logs_loading: 'Loading logs...',
-      logs_error_generic: 'Could not load logs.',
-
-      overview_title: 'Overview',
-      overview_hint: 'Quick summary of the bot moderation activity.',
-      kpi_guilds: 'Connected guilds',
-      kpi_users: 'Monitored users',
-      kpi_actions_24h: 'Moderation actions (last 24h)',
-
+              tempvoice_title: 'Voz temporária',
+        tempvoice_hint: 'Cria canais de voz temporários por utilizador, que são apagados quando ficam vazios.',
+        tempvoice_enabled_label: 'Ativar voz temporária',
+        tempvoice_disabled: 'Desativado',
+        tempvoice_enabled: 'Ativado',
+        tempvoice_base_channels_label: 'Canais base (onde os utilizadores clicam para criar salas)',
+        tempvoice_category_label: 'Categoria para criar salas temporárias',
+        tempvoice_delete_delay_label: 'Tempo para apagar sala vazia (segundos)',
+        tempvoice_save_btn: 'Guardar',
+        tempvoice_active_title: 'Salas temporárias ativas',
+        tempvoice_active_empty: 'Não existem salas temporárias neste momento.',
+        tempvoice_base_list_title: 'Canais base',
+        tempvoice_base_list_hint: 'Canais de voz que funcionam como "botões" para criar salas temporárias.',
+        tempvoice_base_list_empty: 'Ainda não existem canais base configurados.',
+        tempvoice_add_base_btn: 'Adicionar',
+        tempvoice_detail_title: 'Configurações de Canal de Voz Temporário',
+        tempvoice_detail_hint: 'Define o comportamento global das salas temporárias criadas a partir dos canais base.',
+        tempvoice_detail_empty: 'Selecione um canal base para editar as configurações.',
+        tempvoice_current_base: 'Canal base:',
+        tempvoice_delete_btn: 'Remover',
       tickets_title: 'Tickets',
       tickets_hint: 'Manage support requests opened via the bot.',
       tickets_empty: 'There are no tickets for this guild yet.',
@@ -1369,23 +1227,32 @@ async function saveGameNewsFeeds() {
     });
   }
 
-  function selectTempVoiceBaseIndex(index) {
-    var items = state.tempVoiceBase.items || [];
-    if (index < 0 || index >= items.length) {
-      state.tempVoiceBase.selectedIndex = -1;
-      var baseIdInput = document.getElementById('tempVoiceBaseId');
-      if (baseIdInput) baseIdInput.value = '';
+    function selectTempVoiceBaseIndex(index) {
+      var items = state.tempVoiceBase.items || [];
+      var emptyEl = document.getElementById('tempVoiceDetailEmpty');
+      var contentEl = document.getElementById('tempVoiceDetailContent');
+      var currentLabel = document.getElementById('tempVoiceCurrentBaseLabel');
+
+      if (index < 0 || index >= items.length) {
+        state.tempVoiceBase.selectedIndex = -1;
+        var baseIdInput = document.getElementById('tempVoiceBaseId');
+        if (baseIdInput) baseIdInput.value = '';
+        if (emptyEl) emptyEl.style.display = '';
+        if (contentEl) contentEl.style.display = 'none';
+        if (currentLabel) currentLabel.textContent = t('tempvoice_current_base') + ' (nenhum selecionado)';
+        renderTempVoiceBaseList();
+        return;
+      }
+
+      state.tempVoiceBase.selectedIndex = index;
+      var baseIdInput2 = document.getElementById('tempVoiceBaseId');
+      if (baseIdInput2) baseIdInput2.value = items[index] || '';
+      if (emptyEl) emptyEl.style.display = 'none';
+      if (contentEl) contentEl.style.display = '';
+      if (currentLabel) currentLabel.textContent = t('tempvoice_current_base') + ' ' + (items[index] || '');
       renderTempVoiceBaseList();
-      return;
     }
-
-    state.tempVoiceBase.selectedIndex = index;
-    var baseIdInput = document.getElementById('tempVoiceBaseId');
-    if (baseIdInput) baseIdInput.value = items[index] || '';
-    renderTempVoiceBaseList();
-  }
-
-  function addTempVoiceBaseChannel() {
+function addTempVoiceBaseChannel() {
     if (!state.tempVoiceBase.items) state.tempVoiceBase.items = [];
     state.tempVoiceBase.items.push('');
     state.tempVoiceBase.selectedIndex = state.tempVoiceBase.items.length - 1;
