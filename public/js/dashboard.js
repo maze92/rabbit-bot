@@ -1369,33 +1369,33 @@ async function saveGameNewsFeeds() {
     });
   }
 
-      function selectTempVoiceBaseIndex(index) {
-      var items = state.tempVoiceBase.items || [];
-      var emptyEl = document.getElementById('tempVoiceDetailEmpty');
-      var contentEl = document.getElementById('tempVoiceDetailContent');
-      var currentLabel = document.getElementById('tempVoiceCurrentBaseLabel');
+    function selectTempVoiceBaseIndex(index) {
+    var items = state.tempVoiceBase.items || [];
+    var emptyEl = document.getElementById('tempVoiceDetailEmpty');
+    var contentEl = document.getElementById('tempVoiceDetailContent');
+    var currentLabel = document.getElementById('tempVoiceCurrentBaseLabel');
 
-      if (index < 0 || index >= items.length) {
-        state.tempVoiceBase.selectedIndex = -1;
-        var baseIdInput = document.getElementById('tempVoiceBaseId');
-        if (baseIdInput) baseIdInput.value = '';
-        if (emptyEl) emptyEl.style.display = '';
-        if (contentEl) contentEl.style.display = 'none';
-        if (currentLabel) currentLabel.textContent = t('tempvoice_current_base') + ' (nenhum selecionado)';
-        renderTempVoiceBaseList();
-        return;
-      }
-
-      state.tempVoiceBase.selectedIndex = index;
-      var baseIdInput2 = document.getElementById('tempVoiceBaseId');
-      if (baseIdInput2) baseIdInput2.value = items[index] || '';
-      if (emptyEl) emptyEl.style.display = 'none';
-      if (contentEl) contentEl.style.display = '';
-      if (currentLabel) currentLabel.textContent = t('tempvoice_current_base') + ' ' + (items[index] || '');
+    if (index < 0 || index >= items.length) {
+      state.tempVoiceBase.selectedIndex = -1;
+      var baseIdInput = document.getElementById('tempVoiceBaseId');
+      if (baseIdInput) baseIdInput.value = '';
+      if (emptyEl) emptyEl.style.display = '';
+      if (contentEl) contentEl.style.display = 'none';
+      if (currentLabel) currentLabel.textContent = t('tempvoice_current_base') + ' (nenhum selecionado)';
       renderTempVoiceBaseList();
+      return;
     }
 
-'use strict';
+    state.tempVoiceBase.selectedIndex = index;
+    var baseIdInput2 = document.getElementById('tempVoiceBaseId');
+    if (baseIdInput2) baseIdInput2.value = items[index] || '';
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (contentEl) contentEl.style.display = '';
+    if (currentLabel) currentLabel.textContent = t('tempvoice_current_base') + ' ' + (items[index] || '');
+    renderTempVoiceBaseList();
+  }
+
+strict';
 
 (function () {
   // Global namespace for multi-file-friendly dashboard
