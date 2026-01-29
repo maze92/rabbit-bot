@@ -245,14 +245,16 @@ h2 {
 
 /* Users layout */
 
-#tab-user .user-layout {
+#tab-user .user-layout,
+#tab-gamenews .user-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
   gap: 12px;
   margin-top: 10px;
 }
 
-#tab-user .user-layout .list {
+#tab-user .user-layout .list,
+#tab-gamenews .user-layout .list {
   margin-top: 0;
   max-height: 460px;
   overflow: auto;
