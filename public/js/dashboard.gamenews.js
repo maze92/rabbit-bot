@@ -428,9 +428,7 @@
   // Event handlers dos botões da tab
   // ------------------------
 
-  document.addEventListener('DOMContentLoaded', function () {
-    const btnAdd = document.getElementById('btnAddGameNewsFeed');
-    if (btnAdd) {
+  if (btnAdd) {
       btnAdd.addEventListener('click', function () {
         if (!Array.isArray(state.gameNewsFeeds)) {
           state.gameNewsFeeds = [];
@@ -457,3 +455,23 @@
 
   D.loadGameNews = loadGameNews;
 })();
+
+document.addEventListener('DOMContentLoaded', function () {
+  const btnAdd = document.getElementById('btnAddGameNewsFeed');
+  if (btnAdd) {
+    btnAdd.addEventListener('click', function () {
+      if (!Array.isArray(state.gameNewsFeeds)) {
+        state.gameNewsFeeds = [];
+      }
+      state.gameNewsFeeds.push({
+        name: 'Feed',
+        feedUrl: '',
+        channelId: '',
+        logChannelId: null,
+        enabled: true,
+        intervalMs: null
+      });
+      renderGameNewsFeedsList(state.gameNewsFeeds);
+    });
+  }
+});
