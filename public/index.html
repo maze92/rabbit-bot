@@ -100,7 +100,7 @@
           
           
           
-          <div class="user-layout" id="moderationOverviewLayout">
+          <div class="user-layout moderation-panels" id="moderationOverviewLayout">
             <div class="user-detail mini-panel" id="modServerInsightsPanel">
               <div class="mini-panel-header">
                 <div>
@@ -215,6 +215,7 @@
           <div class="subtabs">
             <button class="subtab active" data-subtab="feeds" data-i18n="extras_feeds_tab">Feeds</button>
             <button class="subtab" data-subtab="tempvoice" data-i18n="extras_tempvoice_tab">Voz temporária</button>
+            <button class="subtab" data-subtab="tickets" data-i18n="extras_tickets_tab">Tickets</button>
           </div>
 
           <div class="subtab-panels">
@@ -331,7 +332,36 @@
                   </div>
                 </div>
               </div>
-          </div>
+          
+              <div class="subtab-panel" id="extras-tickets-panel">
+                <div class="card subcard">
+                  <h2 data-i18n="tickets_extras_title">Tickets</h2>
+                  <p class="hint" data-i18n="tickets_extras_hint">
+                    Configuração do canal de suporte e comportamento básico do sistema de tickets.
+                  </p>
+
+                  <div class="row gap">
+                    <div class="col">
+                      <label for="configTicketChannel" data-i18n="config_ticket_channel">Canal de suporte (tickets)</label>
+                      <select id="configTicketChannel" class="select"></select>
+                      <p class="hint" data-i18n="config_ticket_channel_hint">
+                        Canal onde será publicada a mensagem de suporte com o emoji para abrir tickets.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="card" style="margin-top:12px;">
+                    <h3 data-i18n="tickets_extras_info_title">Como funciona</h3>
+                    <p class="hint" data-i18n="tickets_extras_info_body">
+                      Quando configuras um canal de suporte, o sistema permite abrir threads de ticket a partir de uma mensagem fixa com o emoji 🎫. Cada ticket fica registado e pode ser consultado na tab de moderação.
+                    </p>
+                    <p class="hint" data-i18n="tickets_extras_logs_hint">
+                      Esta secção utiliza o sistema de logs de tickets existente. Os registos aparecem em "Análises de Tickets" e em "Registos do Servidor" na tab Hub de moderação.
+                    </p>
+                  </div>
+                </div>
+              </div>
+</div>
         </div>
       </section>
 
@@ -378,17 +408,6 @@
                 <select id="configDashboardLogChannel" class="select"></select>
               </div>
             </div>
-
-            <div class="row gap" style="margin-top:12px;">
-              <div class="col">
-                <label for="configTicketChannel" data-i18n="config_ticket_channel">Canal de suporte (tickets)</label>
-                <select id="configTicketChannel" class="select"></select>
-                <p class="hint" data-i18n="config_ticket_channel_hint">
-                  Canal onde será publicada a mensagem de suporte com o emoji para abrir tickets.
-                </p>
-              </div>
-            </div>
-
 
             <div class="row gap" style="margin-top:12px;">
               <div class="col">

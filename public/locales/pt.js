@@ -259,5 +259,31 @@ cases_error_generic: 'Não foi possível carregar os casos.',
       config_trust_regen: 'Regeneration',
       config_trust_risk: 'Thresholds',
 
+
+      tempvoice_save_error: 'Falha ao guardar configuração de voz temporária.',
+      tempvoice_saved: 'Configuração de voz temporária guardada com sucesso.',
+
+      tickets_delete_confirm: 'Tens a certeza que queres apagar este ticket?',
+      tickets_delete_success: 'Ticket apagado com sucesso.',
+      tickets_last_reply: 'Última resposta há {ago}.',
+      tickets_reopen_confirm: 'Tens a certeza que queres reabrir este ticket?',
+      tickets_reopen_success: 'Ticket reaberto com sucesso.',
+      tickets_status_answered: 'Respondido',
+      tickets_status_closed: 'Fechado',
+      tickets_status_open: 'Aberto',
+      tickets_status_reopened: 'Reaberto',
+
+      users_row_user: 'Utilizador',
+      users_row_bot: 'Bot',
+      users_ticket_closed: 'Fechado',
+      users_ticket_open: 'Aberto',
+
+      extras_tickets_tab: 'Tickets',
+      tickets_extras_title: 'Tickets',
+      tickets_extras_hint: 'Configuração do canal de suporte e comportamento básico do sistema de tickets.',
+      tickets_extras_info_title: 'Como funciona',
+      tickets_extras_info_body: 'Quando configuras um canal de suporte, o sistema permite abrir threads de ticket a partir de uma mensagem fixa com o emoji 🎫. Cada ticket fica registado e pode ser consultado na tab de moderação.',
+      tickets_extras_logs_hint: 'Esta secção utiliza o sistema de logs de tickets existente. Os registos aparecem em "Análises de Tickets" e em "Registos do Servidor" na tab Hub de moderação.',
+
       config_error_generic: 'Could not load configuration.',
 };

@@ -432,8 +432,6 @@ function renderGameNewsFeedDetail(feed) {
   async function loadGameNews() {
     const listEl = document.getElementById('gamenewsFeedsList');
     const detailEl = document.getElementById('gamenewsFeedDetailPanel');
-    const countEl = document.getElementById('gamenewsFeedCount');
-
     if (!listEl) return;
 
     if (!state.guildId) {
