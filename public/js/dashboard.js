@@ -194,7 +194,17 @@
     }, 2400);
   }
 
-  function escapeHtml(value) {
+ 
+  function showPanelLoading(panelId) {
+    var panel = document.getElementById(panelId);
+    if (!panel) return;
+    panel.classList.add('panel-loading');
+    setTimeout(function () {
+      panel.classList.remove('panel-loading');
+    }, 300);
+  }
+
+ function escapeHtml(value) {
     if (value === null || value === undefined) return '';
     return value
       .toString()
@@ -252,8 +262,8 @@
       logs_loading: 'A carregar logs...',
       loading: 'A carregar...',
 
-      logs_server_insights_title: 'Análises do servidor (últimas 24h)',
-      logs_server_insights_hint: 'Resumo rápido das ações de moderação nas últimas 24 horas.',
+      logs_server_insights_title: 'Análises do Servidor',
+      logs_server_insights_hint: 'Resumo rápido das ações de moderação.',
       logs_server_insights_empty: 'Ainda não existem dados de moderação no período selecionado.',
       logs_server_insights_no_guild: 'Seleciona um servidor para ver as análises.',
       logs_server_insights_loading: 'A carregar análises de moderação...',
@@ -265,15 +275,21 @@
       logs_server_insights_ban: 'Bans',
       logs_server_insights_other: 'Outros registos',
 
-      logs_tickets_panel_title: 'Últimos tickets (24h)',
-      logs_tickets_panel_hint: 'Lista resumida dos tickets mais recentes.',
+      logs_server_records_title: 'Registos do Servidor',
+      logs_server_records_hint: 'Resumo rápido das ações de moderação nas últimas 24 horas.',
+      logs_tickets_panel_empty_range: 'Não existem tickets no período selecionado.',
+      logs_tickets_panel_page_prev: 'Página anterior',
+      logs_tickets_panel_page_next: 'Página seguinte',
+
+      logs_tickets_panel_title: 'Análises de Tickets',
+      logs_tickets_panel_hint: 'Resumo dos tickets recebidos no período selecionado.',
       logs_tickets_panel_empty: 'Não existem tickets para mostrar.',
       logs_tickets_panel_no_guild: 'Seleciona um servidor para ver os tickets.',
       logs_tickets_panel_loading: 'A carregar tickets...',
       logs_tickets_panel_error: 'Não foi possível carregar os tickets.',
 
-      logs_top_online_title: 'Utilizadores mais tempo online',
-      logs_top_online_hint: 'Vista rápida dos utilizadores mais presentes no servidor (24h / 7d / 30d / 1 ano).',
+      logs_top_online_title: 'Registo de Utilizadores Online',
+      logs_top_online_hint: 'Vista rápida dos utilizadores mais presentes no servidor.',
       logs_top_online_soon: 'Em breve: painel alimentado por dados reais de presença.',
 
       logs_error_generic: 'Não foi possível carregar os logs.',

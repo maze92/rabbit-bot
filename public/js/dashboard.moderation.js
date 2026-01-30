@@ -17,6 +17,9 @@
 
   let logsAbortController = null;
   let casesAbortController = null;
+  let modServerRange = '24h';
+  let modTicketsRange = '24h';
+  let modTicketsPage = 1;
 
   async function loadLogs() {
     const listEl = document.getElementById('logsList');
@@ -48,7 +51,13 @@
     try {
       const params = [];
       params.push('guildId=' + encodeURIComponent(state.guildId));
-      params.push('limit=50');
+      let limit = 10;
+      const limitSelect = document.getElementById('logLimit');
+      if (limitSelect && limitSelect.value) {
+        const n = Number(limitSelect.value);
+        if (Number.isFinite(n) && n > 0) limit = n;
+      }
+      params.push('limit=' + String(limit));
       params.push('page=1');
 
       if (searchInput && searchInput.value) {
@@ -178,7 +187,7 @@ async function loadCases() {
       insightsContent.appendChild(loading);
 
       const res = await apiGet(
-        '/mod/overview?guildId=' + encodeURIComponent(guildId)
+        '/mod/overview?guildId=' + encodeURIComponent(guildId) + '&range=' + encodeURIComponent(modServerRange)
       );
 
       insightsContent.innerHTML = '';
@@ -229,7 +238,7 @@ async function loadCases() {
       insightsContent.appendChild(errBox);
     }
 
-    // Painel de últimos tickets (24h)
+    // Painel de análises de tickets (com intervalo e paginação)
     try {
       ticketsList.innerHTML = '';
       const loadingTickets = document.createElement('li');
@@ -238,24 +247,48 @@ async function loadCases() {
       ticketsList.appendChild(loadingTickets);
 
       const resTickets = await apiGet(
-        '/logs?type=tickets&limit=5&page=1&guildId=' + encodeURIComponent(guildId)
+        '/logs?type=tickets&limit=10&page=' +
+          encodeURIComponent(String(modTicketsPage)) +
+          '&guildId=' +
+          encodeURIComponent(guildId)
       );
 
-      const items = (resTickets && resTickets.items) || [];
+      const rawItems = (resTickets && resTickets.items) || [];
+
+      const now = Date.now();
+      let windowMs = 24 * 60 * 60 * 1000;
+      if (modTicketsRange === '7d') windowMs = 7 * 24 * 60 * 60 * 1000;
+      else if (modTicketsRange === '30d') windowMs = 30 * 24 * 60 * 60 * 1000;
+      else if (modTicketsRange === '1y') windowMs = 365 * 24 * 60 * 60 * 1000;
+      const cutoff = now - windowMs;
+
+      const items = rawItems.filter(function (it) {
+        const tsStr = it.createdAt || it.timestamp || it.time;
+        if (!tsStr) return true;
+        const ts = Date.parse(tsStr);
+        if (!Number.isFinite(ts)) return true;
+        return ts >= cutoff;
+      });
 
       ticketsList.innerHTML = '';
 
       if (!items.length) {
         const li = document.createElement('li');
         li.className = 'empty';
-        li.textContent = t('logs_tickets_panel_empty') || 'Não existem tickets para mostrar.';
+        li.textContent =
+          t('logs_tickets_panel_empty_range') ||
+          t('logs_tickets_panel_empty') ||
+          'Não existem tickets no período selecionado.';
         ticketsList.appendChild(li);
       } else {
         items.forEach(function (it) {
           const li = document.createElement('li');
           const title = it.title || 'Ticket';
           const desc = it.description || '';
-          li.innerHTML = '<div class="title">' + escapeHtml(String(title)) + '</div>' +
+          li.innerHTML =
+            '<div class="title">' +
+            escapeHtml(String(title)) +
+            '</div>' +
             (desc ? '<div class="subtitle">' + escapeHtml(String(desc)) + '</div>' : '');
           ticketsList.appendChild(li);
         });
@@ -269,6 +302,56 @@ async function loadCases() {
       ticketsList.appendChild(li);
     }
   }
+
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const serverRangeEl = document.getElementById('modServerInsightsRange');
+    if (serverRangeEl) {
+      serverRangeEl.addEventListener('click', function (ev) {
+        const btn = ev.target.closest('.chip');
+        if (!btn || !btn.dataset.range) return;
+        const range = btn.dataset.range;
+        if (!range) return;
+        modServerRange = range;
+        Array.from(serverRangeEl.querySelectorAll('.chip')).forEach(function (el) {
+          el.classList.toggle('chip-active', el === btn);
+        });
+        loadModerationOverview();
+      });
+    }
+
+    const ticketsRangeEl = document.getElementById('modTicketsRange');
+    if (ticketsRangeEl) {
+      ticketsRangeEl.addEventListener('click', function (ev) {
+        const btn = ev.target.closest('.chip');
+        if (!btn || !btn.dataset.range) return;
+        const range = btn.dataset.range;
+        if (!range) return;
+        modTicketsRange = range;
+        modTicketsPage = 1;
+        Array.from(ticketsRangeEl.querySelectorAll('.chip')).forEach(function (el) {
+          el.classList.toggle('chip-active', el === btn);
+        });
+        loadModerationOverview();
+      });
+    }
+
+    const btnPrev = document.getElementById('modTicketsPrevPage');
+    const btnNext = document.getElementById('modTicketsNextPage');
+    if (btnPrev && btnNext) {
+      btnPrev.addEventListener('click', function () {
+        if (modTicketsPage > 1) {
+          modTicketsPage -= 1;
+          loadModerationOverview();
+        }
+      });
+      btnNext.addEventListener('click', function () {
+        modTicketsPage += 1;
+        loadModerationOverview();
+      });
+    }
+  });
+
 
 // Substituir as funções no namespace pela versão deste módulo
   D.loadLogs = loadLogs;
