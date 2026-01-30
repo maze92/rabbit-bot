@@ -15,6 +15,18 @@
   const TOKEN_KEY = 'DASHBOARD_TOKEN';
     const LANG_KEY = 'OZARK_DASH_LANG';
 
+  // Initialize language from localStorage (if available)
+  try {
+    var storedLang = null;
+    try {
+      storedLang = localStorage.getItem('OZARK_DASH_LANG');
+    } catch (e) {}
+    if (storedLang === 'pt' || storedLang === 'en') {
+      state.lang = storedLang;
+    }
+  } catch (e) {}
+
+
   // -----------------------------
   // Small helpers
   // -----------------------------
@@ -221,6 +233,8 @@
       logs_reload: 'Recarregar',
       logs_empty: 'Não existem registos para o filtro atual.',
       logs_loading: 'A carregar logs...',
+      loading: 'A carregar...',
+
       logs_error_generic: 'Não foi possível carregar os logs.',
       overview_error_generic: 'Não foi possível carregar a visão geral.',
       guilds_error_generic: 'Não foi possível carregar a lista de servidores.',
@@ -262,6 +276,9 @@
       gamenews_history_title: 'Histórico de GameNews',
       gamenews_history_hint: 'Resumo do estado dos feeds: últimos envios, erros recentes e pausas automáticas.',
 
+      gamenews_detail_paused_until: 'Pausado até',
+      gamenews_detail_last_error: 'Último erro',
+
       gamenews_detail_title: 'Histórico do feed',
       gamenews_detail_state_title: 'Estado do feed',
       gamenews_detail_actions_title: 'Ações rápidas do feed',
@@ -288,14 +305,14 @@
         tempvoice_current_base: 'Canal base:',
         tempvoice_delete_btn: 'Remover',
       tickets_title: 'Tickets',
-      tickets_hint: 'Manage support requests opened via the bot.',
-      tickets_empty: 'There are no tickets for this guild yet.',
-      tickets_loading: 'Loading tickets...',
-      tickets_error_generic: 'Could not load tickets.',
-      tickets_reply_placeholder: 'Write the reply to send to this ticket...',
-      tickets_reply_success: 'Reply sent to ticket.',
-      tickets_close_success: 'Ticket closed.',
-      tickets_close_confirm: 'Are you sure you want to close this ticket?',
+      tickets_hint: 'Gerir pedidos de suporte abertos através do bot.',
+      tickets_empty: 'Ainda não existem tickets neste servidor.',
+      tickets_loading: 'A carregar tickets...',
+      tickets_error_generic: 'Não foi possível carregar os tickets.',
+      tickets_reply_placeholder: 'Escreve a resposta a enviar para o ticket...',
+      tickets_reply_success: 'Resposta enviada para o ticket.',
+      tickets_close_success: 'Ticket fechado.',
+      tickets_close_confirm: 'Tens a certeza que queres fechar este ticket?',
 
       gamenews_title: 'GameNews',
       gamenews_hint: 'Status of news feeds and last deliveries.',
@@ -323,32 +340,32 @@
       gamenews_detail_last_sent: 'Último envio',
       gamenews_detail_fail_count: 'Falhas',
       gamenews_detail_action_save: 'Guardar',
-      gamenews_detail_action_toggle: 'Enable/Disable',
-      gamenews_detail_action_remove: 'Remove',
-      gamenews_detail_state_empty: 'No history available for this feed yet.',
+      gamenews_detail_action_toggle: 'Ativar/Desativar',
+      gamenews_detail_action_remove: 'Remover',
+      gamenews_detail_state_empty: 'Ainda não há histórico disponível para este feed.',
 
 
-      gamenews_editor_title: 'Feeds configuration',
-      gamenews_editor_hint: 'Add, edit or remove feeds and choose the target channel for each one.',
-      gamenews_add_feed: 'Add',
-      gamenews_save_feeds: 'Save changes',
-      gamenews_save_success: 'GameNews feeds saved.',
-      gamenews_editor_empty: 'No feeds configured yet. Add your first feed to get started.',
-      gamenews_feeds_count_zero: '0 feeds configured',
-      gamenews_feeds_count_single: '1 feed configured',
+      gamenews_editor_title: 'Configuração dos feeds',
+      gamenews_editor_hint: 'Adiciona, edita ou remove feeds e escolhe o canal de destino para cada um.',
+      gamenews_add_feed: 'Adicionar',
+      gamenews_save_feeds: 'Guardar alterações',
+      gamenews_save_success: 'Feeds de GameNews guardados.',
+      gamenews_editor_empty: 'Ainda não existem feeds configurados. Adiciona o primeiro feed para começar.',
+      gamenews_feeds_count_zero: '0 feeds configurados',
+      gamenews_feeds_count_single: '1 feed configurado',
       gamenews_feeds_count_multiple_prefix: '',
-      gamenews_feeds_count_multiple_suffix: ' feeds configured',
+      gamenews_feeds_count_multiple_suffix: ' feeds configurados',
 
-      gamenews_feed_name_label: 'Name',
-      gamenews_feed_url_label: 'Feed URL',
-      gamenews_feed_channel_label: 'Channel',
-      gamenews_feed_enabled_label: 'Enabled',
-      gamenews_feed_url_label: 'Feed URL',
-      gamenews_feed_channel_label: 'Channel ID',
-      gamenews_feed_remove_label: 'Remove',
-      gamenews_feed_log_channel_label: 'Log channel (optional)',
-      gamenews_feed_interval_label: 'Interval (minutes)',
-      gamenews_feed_interval_placeholder: 'Use global interval',
+      gamenews_feed_name_label: 'Nome',
+      gamenews_feed_url_label: 'URL do feed',
+      gamenews_feed_channel_label: 'Canal',
+      gamenews_feed_enabled_label: 'Ativado',
+      gamenews_feed_url_label: 'URL do feed',
+      gamenews_feed_channel_label: 'ID do canal',
+      gamenews_feed_remove_label: 'Remover',
+      gamenews_feed_log_channel_label: 'Canal de logs (opcional)',
+      gamenews_feed_interval_label: 'Intervalo (minutos)',
+      gamenews_feed_interval_placeholder: 'Usar intervalo global',
 
       gamenews_status_last_label: 'Last sent',
       gamenews_status_state_ok: 'Active',
@@ -455,7 +472,7 @@
   // -----------------------------
 
   function setTab(name) {
-    const tabsRequiringGuild = ['logs', 'cases', 'gamenews', 'user', 'config'];
+    const tabsRequiringGuild = ['logs', 'cases', 'gamenews', 'user', 'config', 'tickets'];
     if (!state.guildId && tabsRequiringGuild.indexOf(name) !== -1) {
       // Em vez de mudar tab, certifica-nos que overview está ativo
       state.currentTab = 'overview';
@@ -542,7 +559,7 @@
       warn.style.display = hasGuild ? 'none' : 'block';
     }
 
-    const tabsRequiringGuild = ['logs', 'cases', 'gamenews', 'user', 'config'];
+    const tabsRequiringGuild = ['logs', 'cases', 'gamenews', 'user', 'config', 'tickets'];
     tabsRequiringGuild.forEach(function (name) {
       const btn = document.querySelector('.topnav button[data-tab="' + name + '"]');
       if (!btn) return;
