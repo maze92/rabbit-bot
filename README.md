@@ -1,214 +1,212 @@
 # Ozark Bot
 
-Discord bot com dashboard web moderno, focado em **moderação**, **inspeção rápida de atividade** e **gestão de conteúdos** (tickets, GameNews, canais de voz temporários), preparado para deploy em serviços como Railway.
+Ozark Bot é um bot de **moderação para Discord** com uma **dashboard web** integrada, focado em:
+
+- Moderar servidores de forma rápida e transparente.
+- Centralizar histórico de ações (warn, mute, ban, tickets, etc.).
+- Integrar notícias via RSS (GameNews).
+- Gerir canais de **voz temporária** de forma automática.
 
 > Versão atual: **v1.0.13**
 
 ---
 
-## ✨ Principais funcionalidades
+## 🧩 Stack técnica
 
-### 🔧 Moderação com histórico centralizado
+- **Node.js** 20.x
+- **discord.js** ^14.25.1
+- **Express** (API + dashboard)
+- **MongoDB** (armazenamento de configurações, infrações, tickets, etc.)
+- **Socket.io** (atualizações em tempo real na dashboard)
+- Frontend em **HTML + CSS + JavaScript vanilla**, sem frameworks pesadas.
 
-- Comandos de moderação (slash) integrados com o dashboard:
+---
+
+## ✨ Funcionalidades principais
+
+### 🔧 Moderação
+
+- Comandos slash integrados com o dashboard:
   - `warn`, `mute`, `unmute`, `clear`, `userinfo`, `help` (e outros que venhas a adicionar).
 - Histórico de ações acessível na tab **Hub de moderação**:
-  - Filtros por tipo de ação (warn, mute, ban, tickets, etc.).
-  - Pesquisa por utilizador, moderador ou detalhe.
-- Mini-painéis de resumo (dashboard):
-  - **Análises do servidor (24h)** – distribuição de ações de moderação nas últimas 24 horas.
-  - **Últimos tickets (24h)** – visão rápida dos tickets mais recentes.
+  - Filtros por tipo (warn/mute/ban/tickets).
+  - Limite configurável de registos por página.
+- Mini-painéis de análise:
+  - **Análises do Servidor** – resumo rápido das ações de moderação por intervalo (24h / 7d / 30d / 1 ano).
+  - **Análises de Tickets** – lista dos tickets mais recentes, com paginação.
+  - **Registo de Utilizadores Online** – preparado para receber dados reais de presença.
 
-> A lógica de logs é servida via `/api/logs` e, quando disponível, via modelo `DashboardLog` em MongoDB.
+### 🎟️ Sistema de Tickets
 
----
-
-### 🎫 Sistema de Tickets
-
-- Criação e gestão de tickets diretamente a partir do Discord.
+- Criação e encerramento de tickets a partir do Discord.
 - Integração com a dashboard:
-  - Listagem de tickets.
-  - Acompanhamento do estado (aberto/fechado) através de logs de moderação.
-- Preparado para integração com `TicketLog` em MongoDB (quando configurado).
+  - Últimos tickets.
+  - Relação entre tickets e utilizadores.
+- Preparado para expansão com mais estados / tipos de ticket.
+
+### 📰 GameNews (RSS)
+
+- Configuração de **feeds RSS** por servidor.
+- Envio automático de notícias para canais específicos.
+- Dashboard com:
+  - Lista de feeds configurados.
+  - Estado de cada feed (último envio, erros, etc.).
+  - Edição rápida de URL, canal, intervalo e título.
+
+### 🔊 Voz temporária
+
+- Canais de voz base que criam salas temporárias quando um utilizador entra.
+- Salas temporárias são removidas automaticamente quando ficam vazias.
+- Dashboard com:
+  - Lista de canais base.
+  - Configuração de:
+    - Categoria de criação.
+    - Canal de logs.
+    - Escolha de nome das salas (padrões dinâmicos).
+    - Delay para limpar canais e outras opções.
+  - Lista de salas temporárias ativas.
+
+### 🌐 Dashboard web
+
+- Autenticação com token (DASHBOARD_TOKEN).
+- Seleção de servidor e tabs por contexto:
+  - **Visão geral**
+  - **Utilizadores**
+  - **Hub de moderação**
+  - **Tickets** (se configurado)
+  - **GameNews**
+  - **Extras (voz temporária)**
+  - **Configuração**
+- Indicação visual de **bot online/offline** no topo da dashboard.
+
+### 🌍 Internacionalização (i18n)
+
+- Sistema de i18n centralizado no frontend.
+- Idioma atual guardado em `state.lang` e persistido no browser.
+- Ficheiros de idioma em `public/locales/` (ex.: `pt.js`), preparados para crescer para `en`, `es`, etc.
+- Suporte para placeholders e texto dinâmico no frontend via `t(key, params)`.
 
 ---
 
-### 👤 Tab de Utilizadores
+## 📦 Instalação
 
-- Lista de utilizadores do servidor (com paginação a nível de API recomendada para servidores grandes).
-- Mini-painel de **histórico de moderação por utilizador**:
-  - Avisos, mutes, bans, etc.
-  - Ações rápidas (warn, unmute, reset) com feedback imediato.
-- Indicadores de confiança ("trust") por utilizador, pensados para dar contexto rápido ao staff.
+### 1. Requisitos
 
----
+- **Node.js 20.x**
+- **MongoDB** acessível (local ou remoto)
+- Conta e bot registado em [Discord Developer Portal] com:
+  - Token do bot
+  - Intentos necessários para moderação, membros e mensagens.
 
-### 📰 GameNews (feeds RSS de jogos)
+### 2. Clonar o repositório
 
-- Gestão de feeds RSS específicos para notícias de jogos.
-- Para cada feed podes:
-  - Definir o canal onde as notícias são publicadas.
-  - Controlar intervalos de leitura e estados.
-- Integração com o backend via `/gamenews/feeds` e `/gamenews/status`.
+```bash
+git clone https://github.com/maze92/ozark-bot.git
+cd ozark-bot
+```
 
-A tab **GameNews** foi reestruturada para usar o mesmo padrão de UI que a tab de Utilizadores (lista à esquerda + painel de detalhe à direita).
+### 3. Instalar dependências
 
----
+```bash
+npm install
+```
 
-### 🔊 Canais de Voz Temporários
+### 4. Configurar variáveis de ambiente
 
-- Configuração de canais base para criação de canais temporários de voz.
-- Opções de:
-  - IDs de canais base.
-  - Delay/timeout.
-  - Comportamento de criação/eliminação.
+Cria um ficheiro `.env` na raiz com algo deste género:
 
-Interface:
+```ini
+DISCORD_TOKEN=seu_token_do_bot
+MONGODB_URI=mongodb://localhost:27017/ozark-bot
+DASHBOARD_TOKEN=token_para_dashboard
+PORT=3000
+NODE_ENV=production
+```
 
-- Painel no separador **Extras** com:
-  - Lista à esquerda de canais base configurados.
-  - Mini-painel de detalhe à direita, alinhado visualmente com o resto da dashboard.
-
-Dados persistidos em MongoDB através do modelo `TempVoiceChannel`.
-
----
-
-### 🌐 Dashboard Web
-
-- Construída em HTML/CSS/JS puro (sem frameworks pesadas).
-- Estrutura principal:
-  - `public/index.html` – layout de tabs.
-  - `public/js/dashboard.js` – core da dashboard (estado, helpers, navegação).
-  - Módulos adicionais:
-    - `public/js/dashboard.moderation.js`
-    - `public/js/dashboard.users.js`
-    - `public/js/dashboard.gamenews.js`
-- Internacionalização simples:
-  - Picker de idioma (`pt` / `en`).
-  - Textos carregados via função `t(key)` e dicionário `i18n`.
-- Indicador de estado do bot:
-  - Badge **Bot online/offline** no topo, alimentado pelo endpoint `/health` (Discord + Mongo).
+> **Nota:** nomes específicos podem variar consoante a versão do projeto. Consulta `src/config` se quiseres afinar cada detalhe.
 
 ---
 
-## 🧱 Arquitetura geral
+## ▶️ Execução
 
-### Backend (Node.js + Express + Discord.js)
+### Ambiente de desenvolvimento
 
-- Entry point: `src/index.js`
-- Configuração:
-  - `src/config/defaultConfig.js` – opções de dashboard, staff roles, tickets, GameNews, etc.
-  - Variáveis de ambiente via `.env` (exemplo abaixo).
-- Dashboard:
-  - `src/dashboard.js` – liga o Express ao frontend:
-    - `/api/guilds`, `/api/logs`, `/api/users`, `/api/tickets`, `/api/mod/overview`, etc.
-    - `/health` – usado pelo badge de estado.
-- Base de dados:
-  - MongoDB via Mongoose.
-  - Modelos em `src/database/models/` (ex: `Infraction`, `TempVoiceChannel`, etc.).
-- Bot Discord:
-  - `src/events/` / `src/slash/` – organização por eventos e comandos.
-  - Uso de `discord.js` v14.
+```bash
+npm run dev
+```
 
-### Frontend (Dashboard)
+- Inicia o bot e a API em modo desenvolvimento.
+- Mostra logs detalhados no terminal.
 
-- **Core**: `public/js/dashboard.js`
-  - Gestão de tabs.
-  - Estado global (`state`).
-  - Helpers de API (`apiGet`, `apiPost`) com tratamento de **401 → volta ao login**.
-  - i18n e toasts.
-- **Módulos específicos**:
-  - `dashboard.moderation.js` – logs, mini-painéis de moderação.
-  - `dashboard.users.js` – lista de utilizadores + histórico.
-  - `dashboard.gamenews.js` – gestão de feeds e estados.
-- **Estilos**:
-  - `public/css/dashboard.css` – tema escuro, layouts master-detail, mini-paineis, responsividade.
+### Produção
+
+```bash
+npm start
+```
+
+- Inicia o bot com `NODE_ENV=production`.
+- Ideal para deploy em serviços como **Railway**, **Render**, etc.
 
 ---
 
-## ⚙️ Requisitos
+## ⚙️ Configuração via dashboard
 
-- **Node.js**: 20.x (ver `engines` em `package.json`).
-- **MongoDB**: instância acessível (local ou remota).
-- Ambiente de build/execução compatível com:
-  - `discord.js` ^14.25.1
-  - `express` ^5.x
-  - `mongoose` ^9.x
+As principais opções de configuração vivem na tab **Configuração** da dashboard:
 
----
+- Canal de logs principal.
+- Cargos de staff.
+- Preferências de registo.
+- Opções relacionadas com GameNews e Voz temporária.
 
-## 📦 Instalação e execução (desenvolvimento)
-
-1. Clonar o repositório:
-
-   ```bash
-   git clone https://github.com/maze92/ozark-bot.git
-   cd ozark-bot
-   ```
-
-2. Instalar dependências:
-
-   ```bash
-   npm install
-   ```
-
-3. Criar `.env` com as variáveis necessárias, por exemplo:
-
-   ```bash
-   DISCORD_TOKEN=seu_token_do_bot
-   MONGO_URI=mongodb://localhost:27017/ozark-bot
-   DASHBOARD_TOKEN=uma_chave_secreta_para_login
-   PORT=3000
-   ```
-
-4. Iniciar em modo produção simples:
-
-   ```bash
-   npm start
-   ```
-
-   Por omissão, o servidor Express arranca e o bot liga-se à gateway do Discord.
+Grande parte da configuração avançada é persistida em MongoDB e exposta pela API em `/guilds/:id/config`.
 
 ---
 
-## 🚀 Deploy (ex: Railway)
+## 🧪 Testes
 
-O projeto foi pensado para funcionar bem em plataformas tipo **Railway**:
+O projeto inclui uma camada básica de testes automatizados:
 
-- `npm start` como comando principal.
-- `PORT` lido do ambiente.
-- `MONGO_URI` deve apontar para uma base de dados acessível externamente.
-- Certifica-te que o `DISCORD_TOKEN` está definido como variável de ambiente no serviço.
-
----
-
-## 🌍 Internacionalização (i18n)
-
-- Os textos na dashboard são mapeados via `data-i18n` ou pela função `t(key)` em JavaScript.
-- Idiomas suportados:
-  - `pt` – Português.
-  - `en` – Inglês.
-- O seletor de idioma (`#langPicker`) controla a língua ativa.
-- Novas traduções podem ser adicionadas diretamente no objeto `i18n` em `public/js/dashboard.js`.
+```bash
+npm test
+```
 
 ---
 
-## 🧹 Qualidade e manutenção
+## 📚 Estrutura do projeto (resumo)
 
-- Evita adicionar texto “hardcoded” diretamente no HTML/JS – sempre que possível, usa `t('chave')`.
-- Prefere **template literals** em JavaScript a concatenações clássicas:
-  - ✅ ``
-  - ❌ `'User: ' + username`
-
-- Mantém o `CHANGELOG.md` atualizado sempre que fizeres alterações relevantes:
-  - APIs novas.
-  - Alterações visíveis na UI.
-  - Quebras de compatibilidade (breaking changes).
+```text
+src/
+  index.js              # Entrypoint do bot + API
+  slash/                # Comandos slash
+  events/               # Event handlers do Discord
+  systems/              # i18n, status, error guard, etc.
+  dashboard.js          # Servidor da dashboard
+  config/               # Configuração padrão do projeto
+public/
+  index.html            # UI principal da dashboard
+  css/dashboard.css     # Estilos da dashboard
+  js/dashboard.js       # Lógica principal do frontend
+  js/dashboard.*.js     # Módulos específicos (users, moderation, gamenews, etc.)
+  locales/pt.js         # Traduções PT
+```
 
 ---
 
-## 📜 Licença
+## 🗺️ Roadmap (ideias futuras)
 
-Projeto licenciado sob **ISC**, conforme definido em `package.json`.
+- Alimentar o painel de **Registo de Utilizadores Online** com dados reais de presença.
+- Melhorar relatórios de tickets (filtros avançados, estados, exportação).
+- Suporte completo a múltiplos idiomas (`en`, `es`, …).
+- Mais widgets de saúde/status do servidor na Visão Geral.
 
-Sente-te à vontade para adaptar, reutilizar e contribuir melhorias.
+---
+
+## 📝 Changelog
+
+Todas as alterações de versão são documentadas em [`CHANGELOG.md`](./CHANGELOG.md).
+
+---
+
+## 📄 Licença
+
+Este projeto é distribuído sob a licença **MIT**. Consulta o ficheiro [`LICENSE`](./LICENSE) (se existir) ou o campo `license` em `package.json` para mais detalhes.

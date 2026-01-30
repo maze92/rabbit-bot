@@ -11,9 +11,12 @@ O formato segue uma aproximação ao [Keep a Changelog](https://keepachangelog.c
 ### Adicionado
 - Badge **Bot online/offline** no topo da dashboard, alimentado pelo endpoint `/health`.
 - Mini-painéis na tab **Hub de moderação**:
-  - Resumo de ações de moderação nas últimas 24h.
-  - Painel de últimos tickets (24h).
-  - Estrutura preparada para painel de "utilizadores mais tempo online" por intervalo (24h / 7d / 30d / 1 ano).
+  - Análises do Servidor por intervalo (24h / 7d / 30d / 1 ano).
+  - Análises de Tickets com paginação e filtro por período.
+  - Registo de Utilizadores Online preparado para dados reais de presença.
+- Secção **Registos do Servidor** com filtros de pesquisa, tipo de ação e limite configurável de registos.
+- Sistema de internacionalização (i18n) refatorado no frontend, com ficheiros dedicados em `public/locales/` e helper `t(key, params)`.
+- Melhorias de UI na secção de Voz Temporária (layout em mini-painel, alinhado com Utilizadores e GameNews).
 - Endpoint `/api/mod/overview` no backend para fornecer estatísticas rápidas de moderação e tickets.
 
 ### Alterado
