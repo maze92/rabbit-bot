@@ -643,18 +643,22 @@ function setLang(newLang) {
 
     updateTabAccess();
     if (name === 'overview') {
-      loadOverview().catch(function () {});
+      loadOverview();
+    
     } else if (name === 'logs') {
-      window.OzarkDashboard.loadLogs().catch(function () {}); else if (name === 'gamenews') {
+      window.OzarkDashboard.loadLogs().catch(function () {});
+    
+    } else if (name === 'gamenews') {
       window.OzarkDashboard.loadGameNews().catch(function () {});
-        loadTempVoiceConfig().catch(function () {});
-        loadTempVoiceActive().catch(function () {});
+      loadTempVoiceConfig().catch(function () {});
+      loadTempVoiceActive().catch(function () {});
+    
     } else if (name === 'user') {
-      window.OzarkDashboard.loadUsers().catch(function () {});
+      loadUsers();
+    
     } else if (name === 'config') {
-      loadGuildConfig().catch(function () {});
+      loadConfig();
     }
-  }
 
   function updateTabAccess() {
     const warn = document.getElementById('tabWarning');
