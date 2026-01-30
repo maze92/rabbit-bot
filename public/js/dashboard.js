@@ -645,6 +645,9 @@ function setLang(newLang) {
     if (name === 'overview') {
       loadOverview().catch(function () {});
     } else if (name === 'logs') {
+      if (window.OzarkDashboard.loadModerationOverview) {
+        window.OzarkDashboard.loadModerationOverview().catch(function () {});
+      }
       window.OzarkDashboard.loadLogs().catch(function () {});
     } else if (name === 'gamenews') {
       window.OzarkDashboard.loadGameNews().catch(function () {});

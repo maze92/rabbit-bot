@@ -1203,6 +1203,140 @@ app.post('/api/mod/remove-infraction', requireDashboardAuth, async (req, res) =>
   }
 });
 
+
+app.get('/api/mod/overview', requireDashboardAuth, async (req, res) => {
+  try {
+    const guildId = (req.query.guildId || '').toString().trim();
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'Missing guildId' });
+    }
+
+    const now = new Date();
+    const since = new Date(now.getTime() - 24 * 60 * 60 * 1000); // últimas 24h
+
+    const result = {
+      ok: true,
+      guildId,
+      windowHours: 24,
+      moderationCounts: {
+        warn: 0,
+        mute: 0,
+        unmute: 0,
+        kick: 0,
+        ban: 0,
+        other: 0
+      },
+      tickets: {
+        total: 0,
+        open: 0,
+        closed: 0
+      }
+    };
+
+    // Contagens de moderação (DashboardLog ou cache em memória)
+    try {
+      if (DashboardLog) {
+        const q = {
+          'guild.id': guildId,
+          createdAt: { $gte: since }
+        };
+
+        const docs = await DashboardLog
+          .find(q, { title: 1, createdAt: 1 })
+          .lean();
+
+        for (const doc of docs) {
+          const title = (doc.title || '').toString().toLowerCase();
+
+          if (title.includes('warn')) {
+            result.moderationCounts.warn++;
+          } else if (title.includes('mute')) {
+            // distinguir unmute por palavra
+            if (title.includes('unmute')) {
+              result.moderationCounts.unmute++;
+            } else {
+              result.moderationCounts.mute++;
+            }
+          } else if (title.includes('unmute')) {
+            result.moderationCounts.unmute++;
+          } else if (title.includes('kick')) {
+            result.moderationCounts.kick++;
+          } else if (title.includes('ban')) {
+            result.moderationCounts.ban++;
+          } else {
+            result.moderationCounts.other++;
+          }
+        }
+      } else {
+        // Fallback: logsCache (em memória)
+        const sinceMs = since.getTime();
+        const filtered = logsCache.filter((log) => {
+          if (!log) return false;
+          if (guildId && log.guild && log.guild.id !== guildId) return false;
+          if (!log.time) return false;
+          const ts = Date.parse(log.time);
+          if (Number.isNaN(ts)) return false;
+          return ts >= sinceMs;
+        });
+
+        for (const log of filtered) {
+          const title = (log.title || '').toString().toLowerCase();
+
+          if (title.includes('warn')) {
+            result.moderationCounts.warn++;
+          } else if (title.includes('mute')) {
+            if (title.includes('unmute')) {
+              result.moderationCounts.unmute++;
+            } else {
+              result.moderationCounts.mute++;
+            }
+          } else if (title.includes('unmute')) {
+            result.moderationCounts.unmute++;
+          } else if (title.includes('kick')) {
+            result.moderationCounts.kick++;
+          } else if (title.includes('ban')) {
+            result.moderationCounts.ban++;
+          } else {
+            result.moderationCounts.other++;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Dashboard] /api/mod/overview logs error:', err);
+    }
+
+    // Contagens de tickets (TicketLog, se disponível)
+    try {
+      if (TicketLog) {
+        const tq = {
+          guildId,
+          createdAt: { $gte: since }
+        };
+
+        const tickets = await TicketLog
+          .find(tq, { createdAt: 1, closedAt: 1 })
+          .lean();
+
+        result.tickets.total = tickets.length;
+        for (const t of tickets) {
+          if (t.closedAt) {
+            result.tickets.closed++;
+          } else {
+            result.tickets.open++;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Dashboard] /api/mod/overview tickets error:', err);
+    }
+
+    return res.json(result);
+  } catch (err) {
+    console.error('[Dashboard] /api/mod/overview error:', err);
+    return res.status(500).json({ ok: false, error: err?.message || 'Internal Server Error' });
+  }
+});
+
 app.get('/health', (req, res) => {
   try {
     const s = status.getStatus();

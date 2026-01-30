@@ -980,3 +980,43 @@ h2 {
 #badgeBot.status-offline {
   color: #f97373;
 }
+
+
+/* Evitar scroll horizontal na lista de canais base de voz temporária */
+#extras-tempvoice-panel .user-layout > div {
+  min-width: 0;
+}
+
+#tempVoiceBaseList .list-item .title,
+#tempVoiceBaseList .list-item .subtitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Lista simples usada nas análises de moderação e painel de tickets */
+.simple-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.simple-list li {
+  font-size: 0.8125rem;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.simple-list li .title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.simple-list li .subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.simple-list li.empty {
+  border-bottom: none;
+}

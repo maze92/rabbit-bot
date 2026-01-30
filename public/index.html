@@ -115,7 +115,33 @@
             </select>
             <button class="btn" id="btnReloadLogs" data-i18n="logs_reload">Recarregar</button>
           </div>
-          <div id="logsList" class="list">
+          
+          <div class="user-layout" id="moderationOverviewLayout">
+            <div class="user-detail mini-panel" id="modServerInsightsPanel">
+              <h3 data-i18n="logs_server_insights_title">Análises do servidor (últimas 24h)</h3>
+              <p class="hint" data-i18n="logs_server_insights_hint">
+                Resumo rápido das ações de moderação nas últimas 24 horas.
+              </p>
+              <div id="modServerInsightsContent">
+                <div class="empty" data-i18n="logs_server_insights_empty">
+                  Ainda não existem dados de moderação no período selecionado.
+                </div>
+              </div>
+            </div>
+
+            <div class="user-detail mini-panel" id="modTicketsPanel">
+              <h3 data-i18n="logs_tickets_panel_title">Últimos tickets (24h)</h3>
+              <p class="hint" data-i18n="logs_tickets_panel_hint">
+                Lista resumida dos tickets criados nas últimas 24 horas.
+              </p>
+              <ul class="simple-list" id="modTicketsList">
+                <li class="empty" data-i18n="logs_tickets_panel_empty">
+                  Não existem tickets nas últimas 24 horas.
+                </li>
+              </ul>
+            </div>
+          </div>
+<div id="logsList" class="list">
             <div class="empty" data-i18n="logs_empty">
               Não existem registos para o filtro atual.
             </div>
