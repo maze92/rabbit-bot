@@ -18,6 +18,78 @@
   
 
 
+async function loadLogs() {
+    const listEl = document.getElementById('logsList');
+    const searchInput = document.getElementById('logSearch');
+    const typeSelect = document.getElementById('logType');
+    if (!listEl || !typeSelect) return;
+
+    listEl.innerHTML = '';
+
+    if (!state.guildId) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = t('warn_select_guild');
+      listEl.appendChild(empty);
+      return;
+    }
+
+    const loading = document.createElement('div');
+    loading.className = 'empty';
+    loading.textContent = t('logs_loading');
+    listEl.appendChild(loading);
+
+    if (logsAbortController) {
+      logsAbortController.abort();
+    }
+    logsAbortController = new AbortController();
+    const signal = logsAbortController.signal;
+
+    try {
+      const params = [];
+      params.push('guildId=' + encodeURIComponent(state.guildId));
+      let limit = 10;
+      const limitSelect = document.getElementById('logLimit');
+      if (limitSelect && limitSelect.value) {
+        const n = Number(limitSelect.value);
+        if (Number.isFinite(n) && n > 0) limit = n;
+      }
+      params.push('limit=' + String(limit));
+      params.push('page=1');
+
+      if (searchInput && searchInput.value) {
+        const s = searchInput.value.toString().trim();
+        if (s) params.push('search=' + encodeURIComponent(s));
+      }
+
+      const typeValue = (typeSelect.value || '').trim();
+      if (typeValue) {
+        params.push('type=' + encodeURIComponent(typeValue));
+      }
+
+      const url = '/logs?' + params.join('&');
+      const res = await apiGet(url, { signal: signal });
+
+      listEl.innerHTML = '';
+
+      const items = (res && res.items) || [];
+      renderLogs(items);
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        return;
+      }
+      console.error('Failed to load logs', err);
+      listEl.innerHTML = '';
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = t('logs_error_generic');
+      listEl.appendChild(empty);
+    } finally {
+      logsAbortController = null;
+    }
+  }
+
+
   async function loadModerationOverview() {
     const guildId = state.guildId;
     const insightsContent = document.getElementById('modServerInsightsContent');
