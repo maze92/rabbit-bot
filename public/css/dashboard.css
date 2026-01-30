@@ -831,3 +831,22 @@ h2 {
   overflow-x: hidden;
 }
 
+
+
+#extras-tempvoice-panel .user-layout .user-detail {
+  margin-top: 10px; /* align top of config panel with left list similarly to other mini painéis */
+}
+
+
+#extras-tempvoice-panel .list .title {
+  word-break: break-all; /* permite partir IDs enormes em várias linhas */
+}
+
+#extras-tempvoice-panel .user-layout {
+  overflow-x: hidden;
+}
+
+
+#extras-tempvoice-panel .user-layout > div:first-child {
+  overflow-x: hidden;
+}

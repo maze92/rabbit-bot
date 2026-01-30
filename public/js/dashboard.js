@@ -1206,7 +1206,7 @@ async function saveGameNewsFeeds() {
 
     items.forEach(function (id, index) {
       var row = document.createElement('div');
-      row.className = 'list-item' + (index === state.tempVoiceBase.selectedIndex ? ' selected' : '');
+      row.className = 'list-item' + (index === state.tempVoiceBase.selectedIndex ? ' active' : '');
       row.dataset.index = String(index);
       row.innerHTML = `
         <div class="row space">
