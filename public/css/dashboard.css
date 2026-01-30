@@ -878,3 +878,13 @@ h2 {
 #extras-tempvoice-panel .select {
   font-size: 0.875rem;
 }
+
+
+#tempVoiceBaseList {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+#tempVoiceBaseList .list-item {
+  overflow-x: hidden;
+}
