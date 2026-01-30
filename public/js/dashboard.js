@@ -643,22 +643,19 @@ function setLang(newLang) {
 
     updateTabAccess();
     if (name === 'overview') {
-      loadOverview();
-    
+      loadOverview().catch(function () {});
     } else if (name === 'logs') {
       window.OzarkDashboard.loadLogs().catch(function () {});
-    
     } else if (name === 'gamenews') {
       window.OzarkDashboard.loadGameNews().catch(function () {});
       loadTempVoiceConfig().catch(function () {});
       loadTempVoiceActive().catch(function () {});
-    
     } else if (name === 'user') {
-      loadUsers();
-    
+      window.OzarkDashboard.loadUsers().catch(function () {});
     } else if (name === 'config') {
-      loadConfig();
+      loadGuildConfig().catch(function () {});
     }
+  }
 
   function updateTabAccess() {
     const warn = document.getElementById('tabWarning');
@@ -1655,7 +1652,7 @@ function addTempVoiceBaseChannel() {
   window.OzarkDashboard.getToken = getToken;
   window.OzarkDashboard.setToken = setToken;
   window.OzarkDashboard.clearToken = clearToken;
-  window.OzarkDashboard.apiGet = apiGet;
+window.OzarkDashboard.apiGet = apiGet;
   window.OzarkDashboard.apiPost = apiPost;
   window.OzarkDashboard.toast = toast;
   window.OzarkDashboard.t = t;
@@ -1672,4 +1669,4 @@ function addTempVoiceBaseChannel() {
 
   // GameNews
     
-}();
+})();
