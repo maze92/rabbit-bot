@@ -70,10 +70,12 @@
 
 
 
-  async function apiGet(path) {
+  async function apiGet(path, options) {
+    const opts = options || {};
     const res = await fetch(API_BASE + path, {
       method: 'GET',
       headers: getAuthHeaders(),
+      signal: opts.signal
     });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} for ${path}`);
@@ -81,11 +83,13 @@
     return res.json();
   }
 
-  async function apiPost(path, body) {
+  async function apiPost(path, body, options) {
+    const opts = options || {};
     const res = await fetch(API_BASE + path, {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
       body: JSON.stringify(body || {}),
+      signal: opts.signal
     });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} for ${path}`);
@@ -239,7 +243,9 @@
       overview_error_generic: 'Não foi possível carregar a visão geral.',
       guilds_error_generic: 'Não foi possível carregar a lista de servidores.',
       users_error_generic: 'Não foi possível carregar a lista de utilizadores.',
-      cases_error_generic: 'Não foi possível carregar os casos.',
+              cases_empty: 'Não existem casos para este servidor.',
+        cases_loading: 'A carregar casos...',
+cases_error_generic: 'Não foi possível carregar os casos.',
       tickets_error_action: 'Não foi possível executar a ação no ticket.',
       config_error_save: 'Não foi possível guardar a configuração.',
 

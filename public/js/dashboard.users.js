@@ -48,7 +48,7 @@ async function loadUsers() {
 
     const loading = document.createElement('div');
     loading.className = 'empty';
-    loading.textContent = '...';
+    loading.textContent = t('loading');
     listEl.appendChild(loading);
 
     try {
