@@ -6,6 +6,29 @@ O formato segue uma aproximação ao [Keep a Changelog](https://keepachangelog.c
 
 ---
 
+## [v1.1.0] – Trust system & Extras refinements
+
+### Adicionado
+- Sub-tab **Trust** em **Extras**, com:
+  - Painel dividido entre formulário de configuração e painel de resumo.
+  - Inputs pré-preenchidos com a configuração atual de trust do servidor.
+  - Layout responsivo e integrado com o design restante da dashboard.
+- Melhorias na tab **Configuração**:
+  - Subcards separados para **Registos e canais de logs** e **Acesso e cargos de staff**.
+  - Textos de ajuda (hints) mais claros sobre o papel de cada secção.
+- Refinamentos na tab **Hub de moderação** e mini-painéis relacionados:
+  - Ajustes de tipografia e espaçamento nos **Registos do Servidor** para leitura mais confortável.
+
+### Alterado
+- Layout da secção de **Voz Temporária** e de painéis em Extras para reduzir inconsistências com a tab de Utilizadores.
+- Estilos do Sistema de Trust para alinhar com a identidade visual da dashboard (cards, grids e hints).
+
+### Corrigido
+- Removida a maior parte das situações que causavam **scrollbar horizontal**, em especial na configuração de Voz Temporária.
+- Pequenos ajustes de i18n e alinhamento de chaves utilizadas no frontend.
+
+---
+
 ## [v1.0.13] – Dashboard & UX refinements
 
 ### Adicionado
