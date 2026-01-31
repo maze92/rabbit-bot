@@ -109,7 +109,7 @@ module.exports = async function logger(client, title, user, executor, descriptio
     if (isDashboard) {
       const forcedId = (config.dashboard && config.dashboard.dashboardLogsChannelId)
         ? String(config.dashboard.dashboardLogsChannelId)
-        : '1462751274108846274';
+        : null;
 
       const forcedChannel = resolvedGuild.channels?.cache?.get(forcedId);
       if (forcedChannel && forcedChannel.isTextBased?.()) {

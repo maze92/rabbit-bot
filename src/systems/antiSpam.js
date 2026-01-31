@@ -1,4 +1,8 @@
 // src/systems/antiSpam.js
+//
+// Simple anti-spam system with per-user sliding window and trust-aware thresholds.
+// This replaces a previous truncated implementation that used similar concepts
+// (interval, maxMessages, softActions, trust integration, etc.).
 
 const { PermissionsBitField } = require('discord.js');
 const config = require('../config/defaultConfig');
@@ -14,20 +18,53 @@ const {
 } = require('../utils/trust');
 const { incrementAntiSpamActions } = require('./status');
 
-// ------------------------
-// Helpers conteúdo / similaridade
-// ------------------------
-function normalizeForSimilarity(text) {
-  if (!text || typeof text !== 'string') return '';
+// In-memory tracking: guildId+userId -> state
+// state = { entries: [{ ts, norm }], lastActionAt, strikes, lastStrikeAt }
+const messageMap = new Map();
 
-  return text
-    .replace(/https?:\/\/\S+/gi, '')                 // remove links
-    .replace(/<:[a-zA-Z0-9_]+:[0-9]+>/g, '')           // emojis custom
-    .replace(/[`*_~>\-]+/g, ' ')                      // markdown / pontuação leve
-    .replace(/[^\w\s]/g, ' ')                        // resto de pontuação
-    .replace(/\s+/g, ' ')                             // espaços múltiplos
+// Safety limits
+const CLEANUP_INTERVAL_MS = 60 * 1000;
+const MAX_HISTORY_PER_USER = 20;
+const MAX_TEXT_LENGTH = 300;
+const MAX_LEVENSHTEIN_LENGTH = 200;
+
+// Schedule cleanup to avoid memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, state] of messageMap.entries()) {
+    const entries = Array.isArray(state.entries) ? state.entries : [];
+    const last = entries.length ? entries[entries.length - 1].ts : 0;
+    if (!last || now - last > 5 * 60 * 1000) {
+      messageMap.delete(key);
+    }
+  }
+}).unref?.();
+
+// Normaliza texto para comparação de similaridade
+function normalizeTextForSimilarity(text) {
+  if (!text) return '';
+  let s = text.toString().slice(0, MAX_TEXT_LENGTH);
+
+  s = s
+    // remover emojis custom
+    .replace(/<a?:\w+:\d+>/g, ' ')
+    // remover links
+    .replace(/https?:\/\/\S+/g, ' ')
+    // remover menções / hashtags
+    .replace(/[@#]\S+/g, ' ')
+    // remover markdown / caracteres repetidos
+    .replace(/[`_*|~>\-]+/g, ' ')
+    // resto de pontuação
+    .replace(/[^\w\s]/g, ' ')
+    // espaços múltiplos
+    .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+
+  if (s.length > MAX_LEVENSHTEIN_LENGTH) {
+    s = s.slice(0, MAX_LEVENSHTEIN_LENGTH);
+  }
+  return s;
 }
 
 // Levenshtein distance (para similaridade fuzzy)
@@ -38,318 +75,356 @@ function levenshtein(a, b) {
 
   const m = a.length;
   const n = b.length;
-  const dp = new Array(n + 1);
 
-  for (let j = 0; j <= n; j++) dp[j] = j;
+  // DP em matriz 1D (otimização simples)
+  const prev = new Array(n + 1);
+  const curr = new Array(n + 1);
+
+  for (let j = 0; j <= n; j++) prev[j] = j;
 
   for (let i = 1; i <= m; i++) {
-    let prev = dp[0];
-    dp[0] = i;
+    curr[0] = i;
+    const ca = a.charCodeAt(i - 1);
     for (let j = 1; j <= n; j++) {
-      const tmp = dp[j];
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[j] = Math.min(
-        dp[j] + 1,      // remoção
-        dp[j - 1] + 1,  // inserção
-        prev + cost     // substituição
+      const cb = b.charCodeAt(j - 1);
+      const cost = ca === cb ? 0 : 1;
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + cost
       );
-      prev = tmp;
+    }
+    for (let j = 0; j <= n; j++) {
+      prev[j] = curr[j];
     }
   }
 
-  return dp[n];
+  return prev[n];
 }
 
 function similarity(a, b) {
-  const na = normalizeForSimilarity(a);
-  const nb = normalizeForSimilarity(b);
-  if (!na || !nb) return 0;
-  if (na === nb) return 1;
-
-  const maxLen = Math.max(na.length, nb.length);
-  if (!maxLen) return 0;
-
-  const dist = levenshtein(na, nb);
+  if (!a && !b) return 1;
+  if (!a || !b) return 0;
+  const dist = levenshtein(a, b);
+  const maxLen = Math.max(a.length, b.length) || 1;
   return 1 - dist / maxLen;
 }
 
-// ------------------------
-// Estrutura em memória
-// messageMap key: guildId:userId
-// value: { entries: [{ts, content}], lastActionAt, spamStrike?: { count, firstAt } }
-// ------------------------
-const messageMap = new Map();
+function getUserKey(message) {
+  const g = message.guild;
+  const u = message.author;
+  if (!g || !u) return null;
+  return `${g.id}:${u.id}`;
+}
 
-const CLEANUP_EVERY_MS = 60_000;
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, data] of messageMap.entries()) {
-    const last = data?.entries?.[data.entries.length - 1];
-    const lastTs = last?.ts;
-    if (!lastTs || now - lastTs > 5 * 60_000) {
-      messageMap.delete(key);
-    }
-  }
-}, CLEANUP_EVERY_MS).unref?.();
-
-module.exports = async function antiSpam(message, client) {
+async function antiSpam(message, client) {
   try {
-    if (!config.antiSpam?.enabled) return;
-    if (!message?.guild) return;
-    if (!message?.author || message.author.bot) return;
-    if (!message?.member) return;
-    // Se o AutoMod já tratou esta mensagem com uma ação punitiva, evita punir a dobrar
-    if (message._autoModHandled && message._autoModActionTaken) return;
+    const antiCfg = config.antiSpam || {};
+    if (antiCfg.enabled === false) return;
+    if (!message.guild) return;
+    if (!message.author || message.author.bot) return;
+
+    const key = getUserKey(message);
+    if (!key) return;
 
     const guild = message.guild;
-    const botMember = guild.members.me;
-    if (!botMember) return;
 
-    const now = Date.now();
-    const key = `${guild.id}:${message.author.id}`;
+    // Resolver membro
+    const member = message.member || (await guild.members.fetch(message.author.id).catch(() => null));
+    if (!member) return;
 
-    const baseCfg = config.antiSpam || {};
+    // Bypass admins / bypass roles
+    if (antiCfg.bypassAdmins !== false && member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      return;
+    }
+    const bypassRoles = Array.isArray(antiCfg.bypassRoles) ? antiCfg.bypassRoles : [];
+    if (bypassRoles.length && member.roles.cache.hasAny(...bypassRoles)) {
+      return;
+    }
+
+    // Config base + override por canal
+    const baseCfg = antiCfg;
     const channelOverride = baseCfg.channels?.[message.channel.id] || null;
 
-    const intervalMs = Number(channelOverride?.interval ?? baseCfg.interval ?? 7000);
-    const maxMessages = Number(channelOverride?.maxMessages ?? baseCfg.maxMessages ?? 6);
-    const muteDurationMs = Number(channelOverride?.muteDuration ?? baseCfg.muteDuration ?? 60_000);
-    const actionCooldownMs = Number(channelOverride?.actionCooldown ?? baseCfg.actionCooldown ?? 60_000);
+    const intervalMs = Number(channelOverride?.interval ?? baseCfg.interval ?? 10_000);
+    const maxMessages = Number(channelOverride?.maxMessages ?? baseCfg.maxMessages ?? 5);
+    const muteDurationMs = Number(channelOverride?.muteDuration ?? baseCfg.muteDuration ?? 5 * 60 * 1000);
+    const actionCooldownMs = Number(channelOverride?.actionCooldown ?? baseCfg.actionCooldown ?? 2 * 60 * 1000);
 
     const minLength = Number(baseCfg.minLength ?? 6);
     const ignoreAttachments = baseCfg.ignoreAttachments ?? true;
-    const similarityThreshold = Number(baseCfg.similarityThreshold ?? 0.8);
+    const similarityThreshold = Number(baseCfg.similarityThreshold ?? 0.85);
 
-    // Soft actions (warn first, then mute on repeated spam)
-    const softCfg = baseCfg.softActions || {};
-    const softEnabled = softCfg.enabled !== false;
-    const softStrikeWindowMs = Number(softCfg.strikeWindowMs ?? 10 * 60_000);
-    const softStrikesToMute = Number(softCfg.strikesToMute ?? 2);
+    // Ignorar mensagens só com anexos (se configurado)
+    const rawContent = (message.content || '').trim();
+    const hasAttachments = message.attachments && message.attachments.size > 0;
+    if (!rawContent && hasAttachments && ignoreAttachments) {
+      return;
+    }
 
-    const safeInterval = Number.isFinite(intervalMs) && intervalMs >= 500 ? intervalMs : 7000;
-    const safeMaxBase = Number.isFinite(maxMessages) && maxMessages >= 3 ? maxMessages : 6;
-    const safeMuteBase = Number.isFinite(muteDurationMs) && muteDurationMs >= 5_000 ? muteDurationMs : 60_000;
-    const safeActionCooldown = Number.isFinite(actionCooldownMs) && actionCooldownMs >= 5_000
-      ? actionCooldownMs
-      : 60_000;
-    const safeMinLen = Number.isFinite(minLength) && minLength >= 1 ? minLength : 6;
-    const safeSim = Number.isFinite(similarityThreshold) && similarityThreshold > 0 && similarityThreshold <= 1
-      ? similarityThreshold
-      : 0.8;
+    // Mensagens muito curtas não contam para spam (mas ainda assim são registadas)
+    const isTooShort = rawContent.length > 0 && rawContent.length < minLength;
 
-    const trustCfg = getTrustConfig();
-    let trustValue = trustCfg.base;
-    let dbUserBefore = null;
+    const now = Date.now();
+    let state = messageMap.get(key);
+    if (!state) {
+      state = { entries: [], lastActionAt: 0, strikes: 0, lastStrikeAt: 0 };
+      messageMap.set(key, state);
+    }
 
-    try {
-      dbUserBefore = await warningsService.getOrCreateUser(guild.id, message.author.id);
-      if (dbUserBefore && Number.isFinite(dbUserBefore.trust)) {
-        trustValue = dbUserBefore.trust;
+    // Limpar histórico fora da janela e limitar tamanho
+    const pruned = [];
+    for (const entry of state.entries) {
+      if (now - entry.ts <= intervalMs) {
+        pruned.push(entry);
       }
-    } catch (e) {
-      console.error('[antiSpam] warningsService.getOrCreateUser error:', e);
+    }
+    state.entries = pruned;
+    if (state.entries.length > MAX_HISTORY_PER_USER) {
+      state.entries = state.entries.slice(-MAX_HISTORY_PER_USER);
     }
 
-    const effectiveMaxMessages = getEffectiveMaxMessages(
-      safeMaxBase,
-      trustCfg,
-      trustValue
-    );
+    const norm = isTooShort ? '' : normalizeTextForSimilarity(rawContent);
 
-    const bypassAdmins = baseCfg.bypassAdmins ?? true;
-    if (bypassAdmins && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    // Guardar esta mensagem no histórico
+    state.entries.push({
+      ts: now,
+      norm
+    });
+    if (state.entries.length > MAX_HISTORY_PER_USER) {
+      state.entries.shift();
+    }
+
+    // Se for demasiado curta, não considerar spam
+    if (isTooShort || !norm) {
+      messageMap.set(key, state);
       return;
     }
 
-    if (Array.isArray(baseCfg.bypassRoles) && baseCfg.bypassRoles.length > 0) {
-      const hasBypassRole = message.member.roles.cache.some(r =>
-        baseCfg.bypassRoles.includes(r.id)
-      );
-      if (hasBypassRole) return;
-    }
-
-    if (message.member.roles.highest.position >= botMember.roles.highest.position) return;
-
-    const perms = message.channel.permissionsFor(botMember);
-    if (!perms?.has(PermissionsBitField.Flags.ModerateMembers)) return;
-
-    // Ignorar mensagens com anexos/imagens se configurado
-    if (ignoreAttachments && message.attachments && message.attachments.size > 0) {
-      return;
-    }
-
-    const normalized = normalizeForSimilarity(message.content);
-    if (!normalized || normalized.length < safeMinLen) {
-      return;
-    }
-
-    const prev = messageMap.get(key);
-    if (prev?.lastActionAt && now - prev.lastActionAt < safeActionCooldown) return;
-
-    const data = prev || { entries: [], lastActionAt: 0, spamStrike: null };
-    data.entries = Array.isArray(data.entries) ? data.entries : [];
-
-    data.entries = data.entries.filter(e => now - e.ts < safeInterval);
-    data.entries.push({ ts: now, content: normalized });
-
-    messageMap.set(key, data);
-
-    const recentEntries = data.entries.filter((entry) => now - entry.ts <= safeInterval);
-
-    let similarCount = 0;
-    for (const entry of recentEntries) {
-      if (similarity(normalized, entry.content) >= safeSim) {
+    // Contar quantas mensagens semelhantes existem na janela
+    let similarCount = 1; // esta mensagem
+    for (let i = 0; i < state.entries.length - 1; i++) {
+      const e = state.entries[i];
+      if (!e.norm) continue;
+      const sim = similarity(norm, e.norm);
+      if (!isFinite(sim) || Number.isNaN(sim)) continue;
+      if (sim >= similarityThreshold) {
         similarCount++;
       }
     }
 
-    const totalRecent = recentEntries.length;
-
-    if (similarCount < effectiveMaxMessages && totalRecent < effectiveMaxMessages * 2) return;
-
-    // Trigger reached
-    data.lastActionAt = now;
-    data.entries = [];
-
-    // Soft enforcement: first trigger => WARN, second within window => MUTE
-    if (softEnabled) {
-      const windowMs = Number.isFinite(softStrikeWindowMs) && softStrikeWindowMs >= 30_000
-        ? softStrikeWindowMs
-        : 10 * 60_000;
-      const strikesToMute = Number.isFinite(softStrikesToMute) && softStrikesToMute >= 2
-        ? Math.floor(softStrikesToMute)
-        : 2;
-
-      const strike = data.spamStrike || { count: 0, firstAt: now };
-      if (!strike.firstAt || now - strike.firstAt > windowMs) {
-        strike.count = 0;
-        strike.firstAt = now;
+    // Trust integration para thresholds / duração
+    const trustCfg = getTrustConfig();
+    let trustValue = typeof trustCfg.base === 'number' ? trustCfg.base : 0;
+    try {
+      const trustUser = await warningsService.getOrCreateUser(guild.id, message.author.id);
+      if (trustUser && typeof trustUser.trust === 'number') {
+        trustValue = trustUser.trust;
       }
-      strike.count += 1;
-      data.spamStrike = strike;
-      messageMap.set(key, data);
+    } catch {
+      // se falhar, fica base
+    }
 
-      if (strike.count < strikesToMute) {
-        // WARN-only path
-        const reason = t('antispam.warnReason');
-        const maxWarnings = config.maxWarnings ?? 3;
+    const effectiveMaxMsgs = getEffectiveMaxMessages(maxMessages, trustCfg, trustValue);
+    const effectiveMuteDuration = getEffectiveMuteDuration(muteDurationMs, trustCfg, trustValue);
 
-        let dbWarn = null;
-        try {
-          dbWarn = await warningsService.addWarning(guild.id, message.author.id, 1);
-        } catch (e) {
-          console.error('[antiSpam] warningsService.addWarning error:', e);
-        }
+    if (similarCount < effectiveMaxMsgs) {
+      messageMap.set(key, state);
+      return;
+    }
 
-        const warnings = dbWarn?.warnings ?? (dbUserBefore?.warnings ?? 0) + 1;
+    // Cooldown entre punições
+    if (state.lastActionAt && now - state.lastActionAt < actionCooldownMs) {
+      messageMap.set(key, state);
+      return;
+    }
 
-        if (baseCfg.sendMessage !== false) {
-          await message.channel
-            .send(t('antispam.warnPublic', null, { userMention: `${message.author}`, warnings, maxWarnings }))
-            .catch(() => null);
-        }
+    // Soft actions (warn -> depois mute)
+    const softCfg = baseCfg.softActions || {};
+    let action = 'MUTE';
 
-        const inf = await infractionsService.create({
+    if (softCfg.enabled) {
+      const windowMs = Number(softCfg.strikeWindowMs || 10 * 60 * 1000);
+      const strikesToMute = Number(softCfg.strikesToMute || 2);
+
+      if (!state.lastStrikeAt || now - state.lastStrikeAt > windowMs) {
+        state.strikes = 0;
+      }
+
+      state.strikes = (state.strikes || 0) + 1;
+      state.lastStrikeAt = now;
+
+      if (state.strikes < strikesToMute) {
+        action = 'WARN';
+      } else {
+        action = 'MUTE';
+      }
+    }
+
+    state.lastActionAt = now;
+    messageMap.set(key, state);
+
+    const me = guild.members.me;
+    const channelPerms = message.channel?.permissionsFor?.(me);
+    const canTimeout =
+      !!me &&
+      !!channelPerms &&
+      channelPerms.has(PermissionsBitField.Flags.ModerateMembers);
+
+    const publicNotify = baseCfg.sendMessage !== false;
+
+    const baseReason =
+      t('antispam.autoReason') ||
+      'Automatic anti-spam action (repeated or similar messages).';
+
+    if (action === 'WARN' || !canTimeout) {
+      // Apenas WARN (ou fallback se não pudermos mutar)
+      let dbUser = null;
+      try {
+        dbUser = await warningsService.addWarning(guild.id, message.author.id, 1);
+      } catch (e) {
+        console.error('[antiSpam] Failed to add warning:', e);
+      }
+
+      try {
+        await infractionsService.create({
           guild,
           user: message.author,
           moderator: client.user,
           type: 'WARN',
-          reason,
+          reason: baseReason,
           duration: null,
           source: 'antispam'
-        }).catch(() => null);
+        });
+      } catch (e) {
+        console.error('[antiSpam] Failed to create infraction (WARN):', e);
+      }
 
-        const casePrefix = inf?.caseId ? `Case: **#${inf.caseId}**\n` : '';
+      if (publicNotify) {
+        try {
+          const warnMsg =
+            t('antispam.warnPublic', null, {
+              userMention: `${message.author}`,
+              warnings: dbUser?.warnings ?? 'N/A',
+              maxWarnings: effectiveMaxMsgs
+            }) ||
+            `${message.author} recebeu um aviso automático por spam.`;
+          await message.channel.send(warnMsg);
+        } catch (e) {
+          // evitar crash do bot
+        }
+      }
 
-        const trustAfter = dbWarn?.trust ?? trustValue;
-
+      try {
         await logger(
           client,
-          'Anti-Spam Warn',
+          'Anti-spam Warn',
           message.author,
           client.user,
-          casePrefix + t('log.actions.antispamWarn', null, {
-            warnings,
-            maxWarnings,
-            threshold: effectiveMaxMessages,
-            intervalMs: safeInterval,
-            similarityPct: Math.round(safeSim * 100),
-            trustAfter: trustCfg.enabled ? `${trustAfter}/${trustCfg.max}` : 'N/A'
-          }),
+          t('log.actions.antispamWarn', null, {
+            threshold: effectiveMaxMsgs,
+            intervalMs,
+            similarityPct: Math.round(similarityThreshold * 100),
+            trustAfter: trustCfg.enabled ? `${trustValue}/${trustCfg.max}` : 'N/A'
+          }) ||
+            `User exceeded spam threshold (${similarCount}/${effectiveMaxMsgs}) in #${message.channel?.name || 'unknown'}.`,
           guild
         );
-
-        try { incrementAntiSpamActions(); } catch {}
-        return;
+      } catch (e) {
+        console.error('[antiSpam] Failed to log antispam warn:', e);
       }
 
-      // Next strike => mute, then reset strike tracking
-      data.spamStrike = { count: 0, firstAt: now };
+      try {
+        incrementAntiSpamActions();
+      } catch {}
+
+      return;
     }
 
-    messageMap.set(key, data);
-
-    if (!message.member.moderatable) return;
-
-    const effectiveMute = getEffectiveMuteDuration(
-      safeMuteBase,
-      trustCfg,
-      trustValue
-    );
-
-    await message.member.timeout(effectiveMute, t('antispam.muteReason'));
-
-    if (baseCfg.sendMessage !== false) {
-      await message.channel
-        .send(t('antispam.mutePublic', null, { userMention: `${message.author}` }))
-        .catch(() => null);
+    // MUTE
+    let muteMs = effectiveMuteDuration;
+    if (!Number.isFinite(muteMs) || muteMs <= 0) {
+      muteMs = muteDurationMs;
     }
 
-    let dbUserAfter = null;
     try {
-      if (typeof warningsService.applyMutePenalty === 'function') {
-        dbUserAfter = await warningsService.applyMutePenalty(guild.id, message.author.id);
-      } else {
-        dbUserAfter = await warningsService.getOrCreateUser(guild.id, message.author.id);
-      }
+      await member.timeout(
+        muteMs,
+        `${baseReason} (timeout: ${Math.round(muteMs / 1000)}s)`
+      );
     } catch (e) {
-      console.error('[antiSpam] warningsService.applyMutePenalty error:', e);
+      console.error('[antiSpam] Failed to apply timeout:', e);
     }
 
-    const trustAfter = dbUserAfter?.trust ?? trustValue;
+    let dbUserAfterMute = null;
+    try {
+      dbUserAfterMute = await warningsService.applyMutePenalty(guild.id, message.author.id);
+    } catch (e) {
+      console.error('[antiSpam] Failed to apply mute penalty:', e);
+    }
 
-    // Cria infraction MUTE com Case ID
-    const inf = await infractionsService.create({
-      guild,
-      user: message.author,
-      moderator: client.user,
-      type: 'MUTE',
-      reason: t('antispam.muteReason'),
-      duration: effectiveMute,
-      source: 'antispam'
-    }).catch(() => null);
+    try {
+      await infractionsService.create({
+        guild,
+        user: message.author,
+        moderator: client.user,
+        type: 'MUTE',
+        reason: baseReason,
+        duration: muteMs,
+        source: 'antispam'
+      });
+    } catch (e) {
+      console.error('[antiSpam] Failed to create infraction (MUTE):', e);
+    }
 
-    const casePrefix = inf?.caseId ? `Case: **#${inf.caseId}**\n` : '';
+    if (publicNotify) {
+      try {
+        const mins = Math.max(1, Math.round(muteMs / 60000));
+        const muteMsg =
+          t('antispam.mutePublic', null, {
+            userMention: `${message.author}`,
+            minutes: mins
+          }) ||
+          `${message.author} foi silenciado automaticamente por spam durante ${mins} minutos.`;
+        await message.channel.send(muteMsg);
+      } catch (e) {
+        // swallow
+      }
+    }
 
-    await logger(
-      client,
-      'Anti-Spam Mute',
-      message.author,
-      client.user,
-      casePrefix + t('log.actions.antispamMute', null, {
-        durationSeconds: Math.round(effectiveMute / 1000),
-        threshold: effectiveMaxMessages,
-        intervalMs: safeInterval,
-        similarityPct: Math.round(safeSim * 100),
-        trustAfter: trustCfg.enabled ? `${trustAfter}/${trustCfg.max}` : 'N/A'
-      }),
-      guild
-    );
+    try {
+      await logger(
+        client,
+        'Anti-spam Mute',
+        message.author,
+        client.user,
+        t('log.actions.antispamMute', null, {
+          durationMinutes: Math.max(1, Math.round(muteMs / 60000)),
+          threshold: effectiveMaxMsgs,
+          intervalMs,
+          similarityPct: Math.round(similarityThreshold * 100),
+          trustAfter: dbUserAfterMute && trustCfg.enabled
+            ? `${dbUserAfterMute.trust}/${trustCfg.max}`
+            : trustCfg.enabled
+            ? `${trustValue}/${trustCfg.max}`
+            : 'N/A'
+        }) ||
+          `User muted automatically for spam for ${Math.max(
+            1,
+            Math.round(muteMs / 60000)
+          )} minutes.`,
+        guild
+      );
+    } catch (e) {
+      console.error('[antiSpam] Failed to log antispam mute:', e);
+    }
 
-    try { incrementAntiSpamActions(); } catch {}
-
+    try {
+      incrementAntiSpamActions();
+    } catch {}
   } catch (err) {
     console.error('[antiSpam] Error:', err);
   }
-};
+}
 
+module.exports = antiSpam;

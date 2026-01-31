@@ -5,14 +5,13 @@ const config = require('../config/defaultConfig');
 const { getGuildConfig } = require('../systems/guildConfigService');
 
 // Regras específicas de permissões:
-// - /ticket e /help: cargo 1447090621998305444 e acima disso
-// - Outros comandos de staff: apenas cargos 1385619241235120177, 1385619241235120174, 1385619241235120173
-const TICKET_HELP_BASE_ROLE_ID = '1447090621998305444';
-const HIGH_STAFF_ROLE_IDS = [
-  '1385619241235120177',
-  '1385619241235120174',
-  '1385619241235120173'
-];
+// - /ticket e /help: cargo base configurável (env TICKET_HELP_BASE_ROLE_ID ou via GuildConfig)
+// - Outros comandos de staff: roles definidos em config.staffRoles (ex.: STAFF_ROLE_IDS no .env)
+const TICKET_HELP_BASE_ROLE_ID = process.env.TICKET_HELP_BASE_ROLE_ID || null;
+
+// HIGH_STAFF_ROLE_IDS por defeito vem de config.staffRoles (override global).
+// Podem ser personalizados por guild via GuildConfig se necessário.
+const HIGH_STAFF_ROLE_IDS = Array.isArray(config.staffRoles) ? config.staffRoles : [];
 
 async function isStaff(member) {
   if (!member) return false;

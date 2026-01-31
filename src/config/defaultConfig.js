@@ -26,11 +26,12 @@ const baseConfig = {
   language: 'pt',
   logChannelName: 'log-bot',
 
-  staffRoles: [
-    '1385619241235120177',
-    '1385619241235120174',
-    '1385619241235120173'
-  ],
+  staffRoles: (process.env.STAFF_ROLE_IDS
+    ? String(process.env.STAFF_ROLE_IDS)
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+    : []),
 
   notifications: {
     dmOnWarn: true,
@@ -141,7 +142,7 @@ const baseConfig = {
     // Lista de origens permitidas para o Socket.IO (dashboard).
     allowedOrigins: ['https://ozark-bot-production.up.railway.app'],
     // Canal global de logs do Dashboard (fallback, caso a guild ainda não tenha dashboardLogChannelId definido)
-    dashboardLogsChannelId: '1462751274108846274'
+    dashboardLogsChannelId: process.env.DASHBOARD_LOG_CHANNEL_ID || null
   },
 
   tickets: {
@@ -201,17 +202,17 @@ const baseConfig = {
       {
         name: 'GameSpot/Reviews',
         feed: 'https://www.gamespot.com/feeds/reviews',
-        channelId: '1431959790174736446'
+        channelId: null
       },
       {
         name: 'GameSpot/News',
         feed: 'https://www.gamespot.com/feeds/game-news',
-        channelId: '1458675935854465219'
+        channelId: null
       },
       {
         name: 'GameSpot/NewGames',
         feed: 'https://www.gamespot.com/feeds/new-games',
-        channelId: '1460640560778838137'
+        channelId: null
       }
     ]
   },
@@ -233,7 +234,7 @@ const baseConfig = {
 
     // ✅ Recomendo pôr o ID do teu servidor (para registar rápido e evitar cache global)
     // Se deixares vazio, tenta registar GLOBAL (demora a propagar).
-    guildId: '1385619241235120168',
+    guildId: process.env.SLASH_GUILD_ID || null,
 
     // regista automaticamente no arranque
     registerOnStartup: true
