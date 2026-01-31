@@ -8,7 +8,9 @@
     lang: 'pt',
     guildId: null,
     currentTab: 'overview',
-    guilds: []
+    guilds: [],
+    dashboardUsers: [],
+    dashboardUsersEditingId: null
   };
 
   const API_BASE = '/api';
@@ -109,6 +111,36 @@
     }
     return res.json();
   }
+
+  async function apiPut(path, body, options) {
+    const opts = options || {};
+    const res = await fetch(API_BASE + path, {
+      method: 'PUT',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+      body: JSON.stringify(body || {}),
+      signal: opts.signal
+    });
+    if (!res.ok) {
+      handleAuthError(res.status);
+      throw new Error(`HTTP ${res.status} for ${path}`);
+    }
+    return res.json();
+  }
+
+  async function apiDelete(path, options) {
+    const opts = options || {};
+    const res = await fetch(API_BASE + path, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      signal: opts.signal
+    });
+    if (!res.ok) {
+      handleAuthError(res.status);
+      throw new Error(`HTTP ${res.status} for ${path}`);
+    }
+    return res.json();
+  }
+
 
   function createLogRow(log) {
     const row = document.createElement('div');
@@ -440,6 +472,7 @@ function setLang(newLang) {
       window.OzarkDashboard.loadUsers().catch(function () {});
     } else if (name === 'config') {
       loadGuildConfig().catch(function () {});
+      loadDashboardUsers().catch(function () {});
     }
   }
 
@@ -919,6 +952,320 @@ function setLang(newLang) {
       }
     }
   }
+
+  function setDashboardUserPermInputs(perms) {
+    var p = perms || {};
+    var viewLogs = document.getElementById('permViewLogs');
+    var actOnCases = document.getElementById('permActOnCases');
+    var manageTickets = document.getElementById('permManageTickets');
+    var manageGameNews = document.getElementById('permManageGameNews');
+    var viewConfig = document.getElementById('permViewConfig');
+    var editConfig = document.getElementById('permEditConfig');
+    var manageUsers = document.getElementById('permManageUsers');
+
+    if (viewLogs) viewLogs.checked = !!p.canViewLogs;
+    if (actOnCases) actOnCases.checked = !!p.canActOnCases;
+    if (manageTickets) manageTickets.checked = !!p.canManageTickets;
+    if (manageGameNews) manageGameNews.checked = !!p.canManageGameNews;
+    if (viewConfig) viewConfig.checked = !!p.canViewConfig;
+    if (editConfig) editConfig.checked = !!p.canEditConfig;
+    if (manageUsers) manageUsers.checked = !!p.canManageUsers;
+  }
+
+  function getDashboardUserPermInputs() {
+    var viewLogs = document.getElementById('permViewLogs');
+    var actOnCases = document.getElementById('permActOnCases');
+    var manageTickets = document.getElementById('permManageTickets');
+    var manageGameNews = document.getElementById('permManageGameNews');
+    var viewConfig = document.getElementById('permViewConfig');
+    var editConfig = document.getElementById('permEditConfig');
+    var manageUsers = document.getElementById('permManageUsers');
+
+    return {
+      canViewLogs: !!(viewLogs && viewLogs.checked),
+      canActOnCases: !!(actOnCases && actOnCases.checked),
+      canManageTickets: !!(manageTickets && manageTickets.checked),
+      canManageGameNews: !!(manageGameNews && manageGameNews.checked),
+      canViewConfig: !!(viewConfig && viewConfig.checked),
+      canEditConfig: !!(editConfig && editConfig.checked),
+      canManageUsers: !!(manageUsers && manageUsers.checked)
+    };
+  }
+
+  function openDashboardUserEditor(user) {
+    var editor = document.getElementById('dashboardUsersEditor');
+    if (!editor) return;
+
+    var titleEl = document.getElementById('dashboardUsersEditorTitle');
+    var usernameInput = document.getElementById('dashboardUserUsername');
+    var passwordInput = document.getElementById('dashboardUserPassword');
+    var passwordHint = document.getElementById('dashboardUserPasswordHint');
+    var roleSelect = document.getElementById('dashboardUserRole');
+
+    state.dashboardUsersEditingId = user && user.id ? String(user.id) : null;
+
+    if (user && user.id) {
+      if (titleEl) titleEl.textContent = t('config_dashboard_users_editor_edit_title') || 'Editar utilizador';
+      if (usernameInput) {
+        usernameInput.value = user.username || '';
+        usernameInput.disabled = true;
+      }
+      if (passwordInput) {
+        passwordInput.value = '';
+        passwordInput.disabled = true;
+      }
+      if (passwordHint) {
+        passwordHint.textContent =
+          t('config_dashboard_users_password_edit_hint') ||
+          'A password só pode ser alterada diretamente pelo administrador.';
+      }
+      if (roleSelect) {
+        roleSelect.value = user.role === 'ADMIN' ? 'ADMIN' : 'MOD';
+      }
+      setDashboardUserPermInputs(user.permissions || {});
+    } else {
+      if (titleEl) titleEl.textContent = t('config_dashboard_users_editor_new_title') || 'Novo utilizador';
+      if (usernameInput) {
+        usernameInput.value = '';
+        usernameInput.disabled = false;
+      }
+      if (passwordInput) {
+        passwordInput.value = '';
+        passwordInput.disabled = false;
+      }
+      if (passwordHint) {
+        passwordHint.textContent =
+          t('config_dashboard_users_password_hint') ||
+          'Define uma password para o novo utilizador.';
+      }
+      if (roleSelect) {
+        roleSelect.value = 'MOD';
+      }
+      setDashboardUserPermInputs({
+        canViewLogs: true,
+        canActOnCases: true,
+        canManageTickets: false,
+        canManageGameNews: false,
+        canViewConfig: true,
+        canEditConfig: false,
+        canManageUsers: false
+      });
+    }
+
+    editor.classList.remove('hidden');
+  }
+
+  function closeDashboardUserEditor() {
+    var editor = document.getElementById('dashboardUsersEditor');
+    if (editor) editor.classList.add('hidden');
+    state.dashboardUsersEditingId = null;
+  }
+
+  function renderDashboardUsersList() {
+    var listEl = document.getElementById('dashboardUsersList');
+    if (!listEl) return;
+    var users = state.dashboardUsers || [];
+    listEl.innerHTML = '';
+
+    if (!users.length) {
+      var empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent =
+        t('config_dashboard_users_list_empty') ||
+        'Ainda não existem utilizadores de dashboard configurados.';
+      listEl.appendChild(empty);
+      return;
+    }
+
+    users.forEach(function (u) {
+      var item = document.createElement('div');
+      item.className = 'dashboard-user-item';
+
+      var main = document.createElement('div');
+      main.className = 'dashboard-user-main';
+
+      var usernameEl = document.createElement('div');
+      usernameEl.className = 'username';
+      usernameEl.textContent = u.username || '—';
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+
+      var roleBadge = document.createElement('span');
+      roleBadge.className = 'badge-role ' + (u.role === 'ADMIN' ? 'admin' : 'mod');
+      roleBadge.textContent =
+        u.role === 'ADMIN'
+          ? (t('config_dashboard_users_role_admin') || 'Administrador')
+          : (t('config_dashboard_users_role_mod') || 'Moderador');
+
+      meta.appendChild(roleBadge);
+
+      var perms = u.permissions || {};
+      var labels = [];
+      if (perms.canViewLogs) labels.push(t('config_dashboard_users_perm_view_logs') || 'Ver logs');
+      if (perms.canActOnCases) labels.push(t('config_dashboard_users_perm_act_on_cases') || 'Agir em casos');
+      if (perms.canManageTickets) labels.push(t('config_dashboard_users_perm_manage_tickets') || 'Gerir tickets');
+      if (perms.canManageGameNews) labels.push(t('config_dashboard_users_perm_manage_gamenews') || 'Gerir GameNews');
+      if (perms.canViewConfig) labels.push(t('config_dashboard_users_perm_view_config') || 'Ver configuração');
+      if (perms.canEditConfig) labels.push(t('config_dashboard_users_perm_edit_config') || 'Editar configuração');
+      if (perms.canManageUsers) labels.push(t('config_dashboard_users_perm_manage_users') || 'Gerir utilizadores');
+
+      if (labels.length) {
+        var permsSpan = document.createElement('span');
+        permsSpan.textContent = labels.join(' • ');
+        meta.appendChild(permsSpan);
+      }
+
+      main.appendChild(usernameEl);
+      main.appendChild(meta);
+
+      var actions = document.createElement('div');
+      actions.className = 'actions';
+
+      var editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'btn small';
+      editBtn.textContent = t('config_dashboard_users_edit_button') || 'Editar';
+      editBtn.addEventListener('click', function () {
+        openDashboardUserEditor(u);
+      });
+
+      var deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'btn small danger';
+      deleteBtn.textContent = t('config_dashboard_users_delete_button') || 'Remover';
+      deleteBtn.addEventListener('click', function () {
+        confirmDeleteDashboardUser(u);
+      });
+
+      actions.appendChild(editBtn);
+      actions.appendChild(deleteBtn);
+
+      item.appendChild(main);
+      item.appendChild(actions);
+
+      listEl.appendChild(item);
+    });
+  }
+
+  async function loadDashboardUsers() {
+    var listEl = document.getElementById('dashboardUsersList');
+    var statusEl = document.getElementById('dashboardUsersStatus');
+    var addBtn = document.getElementById('btnDashboardUsersAdd');
+    var editor = document.getElementById('dashboardUsersEditor');
+    if (!listEl) return;
+
+    listEl.innerHTML =
+      '<div class="empty">' +
+      escapeHtml(t('config_dashboard_users_loading') || 'A carregar utilizadores da dashboard...') +
+      '</div>';
+    if (statusEl) statusEl.textContent = '';
+
+    try {
+      var res = await apiGet('/auth/users');
+      var users = (res && res.users) || [];
+      state.dashboardUsers = users;
+      renderDashboardUsersList();
+      if (addBtn) {
+        addBtn.disabled = false;
+        addBtn.classList.remove('disabled');
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard users', err);
+      if (statusEl) {
+        statusEl.textContent =
+          t('config_dashboard_users_no_permission') ||
+          'Não tens permissão para gerir utilizadores da dashboard.';
+      }
+      listEl.innerHTML = '';
+      if (addBtn) {
+        addBtn.disabled = true;
+        addBtn.classList.add('disabled');
+      }
+      if (editor) {
+        editor.classList.add('hidden');
+      }
+    }
+  }
+
+  async function saveDashboardUserFromEditor() {
+    var usernameInput = document.getElementById('dashboardUserUsername');
+    var passwordInput = document.getElementById('dashboardUserPassword');
+    var roleSelect = document.getElementById('dashboardUserRole');
+    var statusEl = document.getElementById('dashboardUsersStatus');
+
+    var role = roleSelect ? roleSelect.value : 'MOD';
+    var perms = getDashboardUserPermInputs();
+    var editingId = state.dashboardUsersEditingId || null;
+
+    var payload = {
+      role: role === 'ADMIN' ? 'ADMIN' : 'MOD',
+      permissions: perms
+    };
+
+    try {
+      if (!editingId) {
+        var username = usernameInput ? usernameInput.value.trim() : '';
+        var password = passwordInput ? passwordInput.value : '';
+        if (!username || !password) {
+          if (statusEl) {
+            statusEl.textContent =
+              t('config_dashboard_users_error_required') ||
+              'Preenche utilizador e password.';
+          }
+          return;
+        }
+        payload.username = username;
+        payload.password = password;
+        await apiPost('/auth/users', payload);
+      } else {
+        await apiPut('/auth/users/' + encodeURIComponent(editingId), payload);
+      }
+
+      if (statusEl) {
+        statusEl.textContent =
+          t('config_dashboard_users_save_success') ||
+          'Utilizador guardado com sucesso.';
+      }
+      closeDashboardUserEditor();
+      await loadDashboardUsers();
+    } catch (err) {
+      console.error('Failed to save dashboard user', err);
+      if (statusEl) {
+        statusEl.textContent =
+          t('config_dashboard_users_save_error') ||
+          'Não foi possível guardar o utilizador.';
+      }
+    }
+  }
+
+  async function confirmDeleteDashboardUser(user) {
+    if (!user || !user.id) return;
+    var statusEl = document.getElementById('dashboardUsersStatus');
+    var msg =
+      t('config_dashboard_users_delete_confirm') ||
+      'Tens a certeza que queres remover este utilizador?';
+    if (!window.confirm(msg)) return;
+
+    try {
+      await apiDelete('/auth/users/' + encodeURIComponent(user.id));
+      if (statusEl) {
+        statusEl.textContent =
+          t('config_dashboard_users_delete_success') ||
+          'Utilizador removido com sucesso.';
+      }
+      await loadDashboardUsers();
+    } catch (err) {
+      console.error('Failed to delete dashboard user', err);
+      if (statusEl) {
+        statusEl.textContent =
+          t('config_dashboard_users_delete_error') ||
+          'Não foi possível remover o utilizador.';
+      }
+    }
+  }
+
+
 
   async function saveGuildConfig() {
     if (!state.guildId) return;
@@ -1470,7 +1817,35 @@ function addTempVoiceBaseChannel() {
     } else {
       showLogin();
     }
-  });
+  
+
+    // Dashboard Users (Config)
+    var btnDashUsersReload = document.getElementById('btnDashboardUsersReload');
+    var btnDashUsersAdd = document.getElementById('btnDashboardUsersAdd');
+    var btnDashUsersCancel = document.getElementById('btnDashboardUsersCancel');
+    var btnDashUsersSave = document.getElementById('btnDashboardUsersSave');
+
+    if (btnDashUsersReload) {
+      btnDashUsersReload.addEventListener('click', function () {
+        loadDashboardUsers().catch(function () {});
+      });
+    }
+    if (btnDashUsersAdd) {
+      btnDashUsersAdd.addEventListener('click', function () {
+        openDashboardUserEditor(null);
+      });
+    }
+    if (btnDashUsersCancel) {
+      btnDashUsersCancel.addEventListener('click', function () {
+        closeDashboardUserEditor();
+      });
+    }
+    if (btnDashUsersSave) {
+      btnDashUsersSave.addEventListener('click', function () {
+        saveDashboardUserFromEditor();
+      });
+    }
+});
 
   // Expose key parts on global namespace for future multi-file split
   window.OzarkDashboard.state = state;
