@@ -16,6 +16,7 @@
 }
 
 html, body {
+  overflow-x: hidden;
   margin: 0;
   padding: 0;
   height: 100%;
@@ -1279,4 +1280,143 @@ h2 {
 #modServerRecordsPanel #btnReloadLogs {
   padding: 4px 10px;
   font-size: 0.8rem;
+}
+
+
+/* Forçar a remover qualquer scroll horizontal residual na dashboard */
+.section,
+.card,
+.user-layout,
+.gamenews-layout {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+
+/* === Sistema de Trust (Extras) === */
+
+#extras-trust-panel .card.subcard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#extras-trust-panel h2 {
+  font-size: 1rem;
+  margin-bottom: 2px;
+}
+
+#extras-trust-panel .hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+#extras-trust-panel .trust-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
+  gap: 14px;
+  align-items: flex-start;
+}
+
+@media (max-width: 900px) {
+  #extras-trust-panel .trust-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+#extras-trust-panel .trust-form-block,
+#extras-trust-panel .trust-preview-block {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.25);
+}
+
+#extras-trust-panel .trust-form-block h4,
+#extras-trust-panel .trust-preview-block h4 {
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+#extras-trust-panel .trust-form-block p {
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+#extras-trust-panel .trust-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+#extras-trust-panel .trust-form-row label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+#extras-trust-panel .trust-form-row .row.gap {
+  gap: 6px;
+}
+
+#extras-trust-panel .trust-form-row .input {
+  font-size: 0.82rem;
+  padding: 4px 6px;
+}
+
+#extras-trust-panel .trust-config-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+#extras-trust-panel .trust-config-item {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+#extras-trust-panel .trust-config-item .label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+#extras-trust-panel .trust-config-item .value {
+  font-size: 0.86rem;
+}
+
+
+/* === Config: Logs & Acesso === */
+
+#tab-config .card.subcard h3 {
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+#tab-config .card.subcard > .hint {
+  font-size: 0.8rem;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+}
+
+#tab-config .card.subcard .row.gap {
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+#tab-config .card.subcard label {
+  font-size: 0.8rem;
+}
+
+#tab-config .card.subcard .select {
+  font-size: 0.85rem;
+  min-height: 30px;
+}
+
+#tab-config .card.subcard .hint {
+  font-size: 0.78rem;
 }

@@ -371,59 +371,52 @@
                     Visão geral do sistema de confiança usado para avaliar o risco dos utilizadores com base no seu histórico.
                   </p>
 
-                  <div class="simple-grid two">
-                    <div>
+                  <div class="trust-layout">
+                    <div class="trust-form-block">
                       <h4 data-i18n="extras_trust_levels_title">Níveis de confiança</h4>
                       <p data-i18n="extras_trust_levels_body">
                         Os utilizadores recebem automaticamente níveis Alto, Médio ou Baixo com base nas infrações registadas.
                       </p>
 
-                      <div class="row gap" style="margin-top:8px;">
-                        <div class="col">
-                          <label for="trustBaseInput" data-i18n="config_trust_base">Base level</label>
-                          <input id="trustBaseInput" type="number" class="input" />
-                        </div>
-                        <div class="col">
-                          <label data-i18n="config_trust_minmax">Minimum / Maximum</label>
-                          <div class="row gap">
-                            <input id="trustMinInput" type="number" class="input" style="max-width:90px;" />
-                            <input id="trustMaxInput" type="number" class="input" style="max-width:90px;" />
-                          </div>
+                      <div class="trust-form-row">
+                        <label for="trustBaseInput" data-i18n="config_trust_base">Base level</label>
+                        <input id="trustBaseInput" type="number" class="input" />
+                      </div>
+
+                      <div class="trust-form-row">
+                        <label data-i18n="config_trust_minmax">Minimum / Maximum</label>
+                        <div class="row gap">
+                          <input id="trustMinInput" type="number" class="input" style="max-width:90px;" />
+                          <input id="trustMaxInput" type="number" class="input" style="max-width:90px;" />
                         </div>
                       </div>
 
-                      <div class="row gap" style="margin-top:8px;">
-                        <div class="col">
-                          <label data-i18n="config_trust_penalties">Penalties</label>
-                          <div class="row gap">
-                            <input id="trustWarnPenaltyInput" type="number" class="input" placeholder="WARN" style="max-width:90px;" />
-                            <input id="trustMutePenaltyInput" type="number" class="input" placeholder="MUTE" style="max-width:90px;" />
-                          </div>
+                      <div class="trust-form-row">
+                        <label data-i18n="config_trust_penalties">Penalties</label>
+                        <div class="row gap">
+                          <input id="trustWarnPenaltyInput" type="number" class="input" placeholder="WARN" style="max-width:90px;" />
+                          <input id="trustMutePenaltyInput" type="number" class="input" placeholder="MUTE" style="max-width:90px;" />
                         </div>
                       </div>
 
-                      <div class="row gap" style="margin-top:8px;">
-                        <div class="col">
-                          <label data-i18n="config_trust_regen">Regeneration</label>
-                          <div class="row gap">
-                            <input id="trustRegenPerDayInput" type="number" class="input" placeholder="por dia" style="max-width:90px;" />
-                            <input id="trustRegenMaxDaysInput" type="number" class="input" placeholder="máx. dias" style="max-width:90px;" />
-                          </div>
+                      <div class="trust-form-row">
+                        <label data-i18n="config_trust_regen">Regeneration</label>
+                        <div class="row gap">
+                          <input id="trustRegenPerDayInput" type="number" class="input" placeholder="por dia" style="max-width:90px;" />
+                          <input id="trustRegenMaxDaysInput" type="number" class="input" placeholder="máx. dias" style="max-width:90px;" />
                         </div>
                       </div>
 
-                      <div class="row gap" style="margin-top:8px;">
-                        <div class="col">
-                          <label data-i18n="config_trust_risk">Thresholds</label>
-                          <div class="row gap">
-                            <input id="trustLowThresholdInput" type="number" class="input" placeholder="baixo" style="max-width:90px;" />
-                            <input id="trustHighThresholdInput" type="number" class="input" placeholder="alto" style="max-width:90px;" />
-                          </div>
+                      <div class="trust-form-row">
+                        <label data-i18n="config_trust_risk">Thresholds</label>
+                        <div class="row gap">
+                          <input id="trustLowThresholdInput" type="number" class="input" placeholder="baixo" style="max-width:90px;" />
+                          <input id="trustHighThresholdInput" type="number" class="input" placeholder="alto" style="max-width:90px;" />
                         </div>
                       </div>
                     </div>
 
-                    <div>
+                    <div class="trust-preview-block">
                       <h4 data-i18n="config_trust_title">Trust system</h4>
                       <div class="trust-config-grid">
                         <div class="trust-config-item">
@@ -455,8 +448,8 @@
                   </p>
                 </div>
               </div>
-</div>
-        </div>
+
+        >
       </section>
 
 
