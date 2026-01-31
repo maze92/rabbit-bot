@@ -16,22 +16,26 @@ const { MessageFlags } = require('discord.js');
  * @param {{ ephemeral?: boolean }} [options]
  */
 function safeReply(interaction, payload = {}, options = {}) {
-  const { ephemeral = false } = options;
+  const { ephemeral = false } = options || {};
+
+  if (!interaction) return null;
 
   const finalPayload = {
     ...payload,
-    ...(ephemeral
-      ? {
-          // Default to Ephemeral if not explicitly set
-          flags: payload.flags ?? MessageFlags.Ephemeral,
-        }
-      : {}),
   };
+
+  if (ephemeral) {
+    // Default to Ephemeral if not explicitly set
+    if (finalPayload.flags == null) {
+      finalPayload.flags = MessageFlags.Ephemeral;
+    }
+  }
 
   try {
     if (interaction.deferred || interaction.replied) {
       return interaction.followUp(finalPayload).catch(() => null);
     }
+
     return interaction.reply(finalPayload).catch(() => null);
   } catch {
     return null;

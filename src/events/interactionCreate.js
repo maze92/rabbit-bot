@@ -13,6 +13,17 @@ const userinfoSlash = require('../slash/userinfo');
 const historySlash = require('../slash/history');
 const helpSlash = require('../slash/help');
 
+// Simple command registry instead of a long if/else chain
+const commandHandlers = new Map([
+  ['warn', warnSlash],
+  ['mute', muteSlash],
+  ['unmute', unmuteSlash],
+  ['clear', clearSlash],
+  ['userinfo', userinfoSlash],
+  ['history', historySlash],
+  ['help', helpSlash],
+]);
+
 module.exports = (client) => {
   client.on('interactionCreate', async (interaction) => {
     try {
@@ -44,13 +55,10 @@ module.exports = (client) => {
         console.warn('[interactionCreate] Failed to log slash command:', logErr);
       }
 
-      if (name === 'warn') return warnSlash(client, interaction);
-      if (name === 'mute') return muteSlash(client, interaction);
-      if (name === 'unmute') return unmuteSlash(client, interaction);
-      if (name === 'clear') return clearSlash(client, interaction);
-      if (name === 'userinfo') return userinfoSlash(client, interaction);
-      if (name === 'history') return historySlash(client, interaction);
-      if (name === 'help') return helpSlash(client, interaction);
+      const handler = commandHandlers.get(name);
+      if (!handler) return;
+
+      return handler(client, interaction);
     } catch (err) {
       console.error('[interactionCreate] Error:', err);
       try {
