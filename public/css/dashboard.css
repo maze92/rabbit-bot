@@ -834,8 +834,8 @@ h2 {
 
 #extras-tempvoice-panel .list .title {
   white-space: normal;
-  word-break: normal;
-  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 #extras-tempvoice-panel .user-layout {
@@ -1459,9 +1459,9 @@ h2 {
 
 #tab-config .dashboard-user-item {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   padding: 6px 8px;
   border-radius: 6px;
   background: rgba(255,255,255,0.02);
@@ -1515,8 +1515,10 @@ h2 {
 
 #tab-config .dashboard-users-editor {
   margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(255,255,255,0.12);
+  padding: 10px 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.25);
 }
 
 #tab-config .dashboard-users-editor h4 {
@@ -1542,4 +1544,31 @@ h2 {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+#extras-tempvoice-panel .subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+#extras-tempvoice-panel .tempvoice-active-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#extras-tempvoice-panel .tempvoice-active-header h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+#extras-tempvoice-panel .tempvoice-active-header .actions .btn.xs {
+  padding-inline: 8px;
+}
+
+#extras-tempvoice-panel .field label {
+  font-size: 0.875rem;
+  font-weight: 400;
 }

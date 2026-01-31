@@ -313,17 +313,18 @@
                           <input id="tempVoiceDeleteDelay" class="input" type="number" min="2" max="600" step="1" />
                         </div>
 
-                        <div class="row gap">
-                          <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
-                            Guardar
-                          </button>
-                          <button id="btnDeleteTempVoiceBase" class="btn xs danger" type="button" data-i18n="tempvoice_delete_btn">
-                            Remover
-                          </button>
-                        </div>
-
                         <div class="field" style="margin-top: 16px;">
-                          <h4 data-i18n="tempvoice_active_title">Salas temporárias ativas</h4>
+                          <div class="tempvoice-active-header">
+                            <h4 data-i18n="tempvoice_active_title">Salas temporárias ativas</h4>
+                            <div class="actions">
+                              <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
+                                Guardar
+                              </button>
+                              <button id="btnDeleteTempVoiceBase" class="btn xs danger" type="button" data-i18n="tempvoice_delete_btn">
+                                Remover
+                              </button>
+                            </div>
+                          </div>
                           <div class="list" id="tempVoiceActiveList">
                             <div class="empty" data-i18n="tempvoice_active_empty">
                               Não existem salas temporárias neste momento.
@@ -448,8 +449,6 @@
                   </p>
                 </div>
               </div>
-
-        >
       </section>
 
 
@@ -538,7 +537,7 @@
   <div class="dashboard-users-toolbar">
     <div class="left">
       <button type="button" class="btn small" id="btnDashboardUsersReload" data-i18n="config_dashboard_users_reload_button">Recarregar</button>
-      <button type="button" class="btn primary small" id="btnDashboardUsersAdd" data-i18n="config_dashboard_users_add_button">Adicionar utilizador</button>
+      <button type="button" class="btn primary small" id="btnDashboardUsersAdd" data-i18n="config_dashboard_users_add_button">Adicionar</button>
     </div>
     <div class="right">
       <span id="dashboardUsersStatus" class="hint"></span>

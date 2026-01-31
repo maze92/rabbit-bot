@@ -1141,8 +1141,8 @@ function setLang(newLang) {
       actions.appendChild(editBtn);
       actions.appendChild(deleteBtn);
 
+      main.appendChild(actions);
       item.appendChild(main);
-      item.appendChild(actions);
 
       listEl.appendChild(item);
     });
