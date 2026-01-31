@@ -701,17 +701,6 @@ function setLang(newLang) {
     }
   }
 
-  async 
-
-  // (dead ticket dashboard functions removed)
-
-      toast(t('tickets_delete_success') || 'Ticket apagado com sucesso.');
-      await loadTickets();
-    } catch (err) {
-      console.error('Failed to delete ticket', err);
-      toast(t('tickets_error_action'));
-    }
-  }
 
 // -----------------------------
   // Guild Config
