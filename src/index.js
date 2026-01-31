@@ -22,6 +22,11 @@ require('./events/voiceStateUpdate.tempVoice')(client);
 // Dashboard (Express + Socket.IO)
 const dashboard = require('./dashboard');
 
+// Allow dashboard to access the Discord client (for guild list, log tests, etc.)
+if (typeof dashboard.setClient === 'function') {
+  dashboard.setClient(client);
+}
+
 // Slash command registration
 const registerSlashCommands = require('./slash/register');
 
@@ -60,7 +65,7 @@ if (mongoose && mongoose.connection) {
 
 let startupDone = false;
 
-client.once('clientReady', async () => {
+client.once('ready', async () => {
   if (startupDone) return;
   startupDone = true;
 
