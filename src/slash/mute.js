@@ -1,6 +1,5 @@
 // src/slash/mute.js
 
-const { PermissionsBitField } = require('discord.js');
 
 const config = require('../config/defaultConfig');
 const logger = require('../systems/logger');
@@ -9,6 +8,7 @@ const warningsService = require('../systems/warningsService');
 const { t } = require('../systems/i18n');
 const { isStaff } = require('./utils');
 const { replyEphemeral, safeReply } = require('../utils/discord');
+const { ensureMutePermissions } = require('../utils/modPermissions');
 const { parseDuration, formatDuration } = require('../utils/time');
 
 
@@ -30,7 +30,6 @@ module.exports = async function muteSlash(client, interaction) {
     }
 
     const channelPerms = interaction.channel?.permissionsFor?.(botMember);
-    if (!channelPerms?.has(PermissionsBitField.Flags.ModerateMembers)) {
       return replyEphemeral(
         interaction,
         t('common.missingBotPerm', null, 'Moderate Members')
@@ -43,38 +42,8 @@ module.exports = async function muteSlash(client, interaction) {
       return replyEphemeral(interaction, t('common.cannotResolveUser'));
     }
 
-    if (target.id === interaction.user.id) {
-      return replyEphemeral(interaction, t('mute.cannotMuteSelf'));
-    }
-
-    if (target.id === client.user.id) {
-      return replyEphemeral(interaction, t('mute.cannotMuteBot'));
-    }
-
-    if (target.user.bot) {
-      return replyEphemeral(interaction, t('mute.cannotMuteBotUser'));
-    }
-
-    if (typeof target.isCommunicationDisabled === 'function' && target.isCommunicationDisabled()) {
-      return replyEphemeral(
-        interaction,
-        t('mute.alreadyMuted', null, { tag: target.user.tag })
-      );
-    }
-
-    const executorIsAdmin = executor.permissions.has(PermissionsBitField.Flags.Administrator);
-
-    if (target.roles.highest.position >= botMember.roles.highest.position) {
-      return replyEphemeral(interaction, t('mute.roleHierarchyBot'));
-    }
-
-    if (!executorIsAdmin && target.roles.highest.position >= executor.roles.highest.position) {
-      return replyEphemeral(interaction, t('mute.roleHierarchyUser'));
-    }
-
-    if (!executorIsAdmin && target.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return replyEphemeral(interaction, t('mute.cannotMuteAdmin'));
-    }
+    const canProceed = await ensureMutePermissions({ client, interaction, executor, target, botMember });
+    if (!canProceed) return;
 
     const rawDuration = (interaction.options.getString('duration') || '').trim();
     const parsed = parseDuration(rawDuration);

@@ -7,6 +7,7 @@ const warningsService = require('../systems/warningsService');
 const { t } = require('../systems/i18n');
 const { isStaff } = require('./utils');
 const { replyEphemeral, safeReply } = require('../utils/discord');
+const { ensureUnmutePermissions } = require('../utils/modPermissions');
 
 module.exports = async function unmuteSlash(client, interaction) {
   try {
@@ -38,23 +39,8 @@ module.exports = async function unmuteSlash(client, interaction) {
       return replyEphemeral(interaction, t('common.cannotResolveUser'));
     }
 
-    if (target.id === interaction.user.id) {
-      return replyEphemeral(interaction, t('unmute.cannotUnmuteSelf'));
-    }
-
-    if (target.id === client.user.id) {
-      return replyEphemeral(interaction, t('unmute.cannotUnmuteBot'));
-    }
-
-    const executorIsAdmin = executor.permissions.has(PermissionsBitField.Flags.Administrator);
-
-    if (target.roles.highest.position >= botMember.roles.highest.position) {
-      return replyEphemeral(interaction, t('unmute.roleHierarchyBot'));
-    }
-
-    if (!executorIsAdmin && target.roles.highest.position >= executor.roles.highest.position) {
-      return replyEphemeral(interaction, t('unmute.roleHierarchyUser'));
-    }
+    const canProceed = await ensureUnmutePermissions({ client, interaction, executor, target, botMember });
+    if (!canProceed) return;
 
     if (typeof target.isCommunicationDisabled === 'function' && !target.isCommunicationDisabled()) {
       return replyEphemeral(

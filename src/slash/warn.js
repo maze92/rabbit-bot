@@ -1,6 +1,5 @@
 // src/slash/warn.js
 
-const { PermissionsBitField } = require('discord.js');
 
 const config = require('../config/defaultConfig');
 const logger = require('../systems/logger');
@@ -10,6 +9,7 @@ const { handleInfractionAutomation } = require('../systems/automation');
 const { t } = require('../systems/i18n');
 const { isStaff } = require('./utils');
 const { replyEphemeral, safeReply } = require('../utils/discord');
+const { ensureWarnPermissions } = require('../utils/modPermissions');
 const { getTrustConfig, getEffectiveMaxWarnings, getEffectiveMuteDuration } = require('../utils/trust');
 
 module.exports = async function warnSlash(client, interaction) {
@@ -34,26 +34,8 @@ module.exports = async function warnSlash(client, interaction) {
       return replyEphemeral(interaction, t('common.cannotResolveUser'));
     }
 
-    if (target.id === interaction.user.id) {
-      return replyEphemeral(interaction, t('warn.cannotWarnSelf'));
-    }
-
-    if (target.id === client.user.id) {
-      return replyEphemeral(interaction, t('warn.cannotWarnBot'));
-    }
-
-    if (target.roles.highest.position >= botMember.roles.highest.position) {
-      return replyEphemeral(interaction, t('warn.roleHierarchyBot'));
-    }
-
-    const executorIsAdmin = executor.permissions.has(PermissionsBitField.Flags.Administrator);
-    if (!executorIsAdmin && target.roles.highest.position >= executor.roles.highest.position) {
-      return replyEphemeral(interaction, t('warn.roleHierarchyUser'));
-    }
-
-    if (!executorIsAdmin && target.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return replyEphemeral(interaction, t('warn.cannotWarnAdmin'));
-    }
+    const canProceed = await ensureWarnPermissions({ client, interaction, executor, target, botMember });
+    if (!canProceed) return;
 
     const reason = (interaction.options.getString('reason') || '').trim() || t('common.noReason');
 
@@ -101,7 +83,6 @@ module.exports = async function warnSlash(client, interaction) {
     if (
       dbUser.warnings >= effectiveMaxWarnings &&
       target.moderatable &&
-      guild.members.me.permissions.has(PermissionsBitField.Flags.ModerateMembers)
     ) {
       const baseMute = config.muteDuration ?? 10 * 60 * 1000;
       const effectiveMute = getEffectiveMuteDuration(baseMute, trustCfg, trustValue);
