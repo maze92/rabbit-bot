@@ -8,8 +8,12 @@ module.exports = async function registerSlashCommands(client) {
   try {
     const slashCfg = config.slash || {};
     if (slashCfg.enabled === false) return;
+    if (slashCfg.registerOnStartup === false) {
+      console.log('[slash/register] registerOnStartup=false; skipping slash registration.');
+      return;
+    }
 
-    const token = process.env.TOKEN;
+    const token = process.env.TOKEN || process.env.DISCORD_TOKEN;
     const clientId = slashCfg.clientId || process.env.CLIENT_ID || client?.user?.id;
     if (!token || !clientId) {
       console.warn('[slash/register] Missing TOKEN or CLIENT_ID (or unable to infer). Skipping slash registration.');
@@ -19,7 +23,7 @@ module.exports = async function registerSlashCommands(client) {
     const rest = new REST({ version: '10' }).setToken(token);
     const commands = buildSlashCommands(config.prefix || '!');
 
-    const guildId = slashCfg.guildId || process.env.GUILD_ID;
+    const guildId = slashCfg.guildId || process.env.SLASH_GUILD_ID || process.env.GUILD_ID;
 
     // 1) Clear ALL global commands to avoid duplicates
     try {
