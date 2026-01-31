@@ -792,7 +792,12 @@ async function resolveGuildMember(guildId, userId) {
 
 app.post('/api/mod/warn', requireDashboardAuth, async (req, res) => {
   try {
-    const { guildId: g0, userId: u0, reason: r0 } = req.body || {};
+    const body = req.body || {};
+    const parseResult = ModUnmuteSchema.safeParse(body);
+    if (!parseResult.success) {
+      return res.status(400).json({ ok: false, error: 'Invalid unmute payload' });
+    }
+    const { guildId: g0, userId: u0, reason: r0 } = parseResult.data;
     const guildId = sanitizeId(g0);
     const userId = sanitizeId(u0);
     const reason = sanitizeText(r0, { maxLen: 1000, stripHtml: true });
@@ -858,7 +863,12 @@ app.post('/api/mod/warn', requireDashboardAuth, async (req, res) => {
 });
 app.post('/api/mod/mute', requireDashboardAuth, rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'rl:mod:mute:' }), async (req, res) => {
   try {
-    const { guildId: g0, userId: u0, duration: d0, reason: r0 } = req.body || {};
+    const body = req.body || {};
+    const parseResult = ModMuteSchema.safeParse(body);
+    if (!parseResult.success) {
+      return res.status(400).json({ ok: false, error: 'Invalid mute payload' });
+    }
+    const { guildId: g0, userId: u0, duration: d0, reason: r0 } = parseResult.data;
     const guildId = sanitizeId(g0);
     const userId = sanitizeId(u0);
     const duration = sanitizeText(d0, { maxLen: 32, stripHtml: true });
@@ -952,7 +962,12 @@ app.post('/api/mod/mute', requireDashboardAuth, rateLimit({ windowMs: 60_000, ma
 
 app.post('/api/mod/unmute', requireDashboardAuth, async (req, res) => {
   try {
-    const { guildId: g0, userId: u0, reason: r0 } = req.body || {};
+    const body = req.body || {};
+    const parseResult = ModUnmuteSchema.safeParse(body);
+    if (!parseResult.success) {
+      return res.status(400).json({ ok: false, error: 'Invalid unmute payload' });
+    }
+    const { guildId: g0, userId: u0, reason: r0 } = parseResult.data;
     const guildId = sanitizeId(g0);
     const userId = sanitizeId(u0);
     const reason = sanitizeText(r0, { maxLen: 1000, stripHtml: true });
@@ -1013,7 +1028,12 @@ app.post('/api/mod/unmute', requireDashboardAuth, async (req, res) => {
 
 app.post('/api/mod/reset-trust', requireDashboardAuth, async (req, res) => {
   try {
-    const { guildId: g0, userId: u0, reason: r0 } = req.body || {};
+    const body = req.body || {};
+    const parseResult = ModUnmuteSchema.safeParse(body);
+    if (!parseResult.success) {
+      return res.status(400).json({ ok: false, error: 'Invalid unmute payload' });
+    }
+    const { guildId: g0, userId: u0, reason: r0 } = parseResult.data;
     const guildId = sanitizeId(g0);
     const userId = sanitizeId(u0);
     const reason = sanitizeText(r0, { maxLen: 1000, stripHtml: true });
@@ -1460,6 +1480,22 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, rateLimit({ window
 
     if (Array.isArray(staffRoleIds)) {
       payload.staffRoleIds = staffRoleIds.map((id) => sanitizeId(id)).filter(Boolean);
+    }
+
+    // Validação extra com Zod para garantir que o payload tem apenas valores esperados
+    const candidate = {
+      logChannelId: payload.logChannelId,
+      dashboardLogChannelId: payload.dashboardLogChannelId,
+      ticketThreadChannelId: payload.ticketThreadChannelId,
+      staffRoleIds: payload.staffRoleIds
+    };
+
+    const parseResult = GuildConfigSchema.safeParse(candidate);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Invalid guild config payload'
+      });
     }
 
     const doc = await GuildConfig.findOneAndUpdate(
