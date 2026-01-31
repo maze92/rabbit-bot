@@ -63,7 +63,7 @@ module.exports = async function userinfoSlash(client, interaction) {
 
     const guild = interaction.guild;
     const trustCfg = getTrustConfig();
-    const requesterIsStaff = isStaff(interaction.member);
+    const requesterIsStaff = await isStaff(interaction.member);
 
     const targetUser = interaction.options.getUser('user') || interaction.user;
     const member = await guild.members.fetch(targetUser.id).catch(() => null);

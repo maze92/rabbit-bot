@@ -2,7 +2,7 @@
 
 const Infraction = require('../database/models/Infraction');
 const { t } = require('../systems/i18n');
-const { isStaff } = require('../utils/staff');
+const { isStaff } = require('./utils');
 
 module.exports = async (client, interaction) => {
   try {

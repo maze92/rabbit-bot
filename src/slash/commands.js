@@ -126,6 +126,15 @@ module.exports = function buildSlashCommands(prefix) {
           'pt-BR': 'Utilizador a inspecionar',
         })
         .setRequired(true)
+    )
+    .addIntegerOption((opt) =>
+      opt
+        .setName('limit')
+        .setDescription('Number of entries to show (max 50)')
+        .setDescriptionLocalizations({
+          'pt-BR': 'Número de registos a mostrar (máx. 50)',
+        })
+        .setRequired(false)
     );
 
   const help = new SlashCommandBuilder()

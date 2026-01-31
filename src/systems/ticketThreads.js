@@ -3,6 +3,7 @@
 
 const { EmbedBuilder, ChannelType } = require('discord.js');
 const TicketLog = require('../database/models/TicketLog');
+const { isStaff } = require('../utils/staff');
 
 // Emoji a usar para abrir tickets
 const OPEN_EMOJI = '🎫';
@@ -129,8 +130,8 @@ async function handleTicketClose(reaction, user) {
         canClose = true;
       }
     } else {
-      // Se nenhum role de staff estiver definido, qualquer membro com acesso à thread pode fechar
-      canClose = true;
+      // Se nenhum role de staff estiver definido, usamos a regra global de staff
+      canClose = await isStaff(member).catch(() => false);
     }
 
     if (!canClose) {
