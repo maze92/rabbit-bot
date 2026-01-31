@@ -30,8 +30,6 @@ async function getOrCreateUser(guildId, userId) {
   if (!Number.isFinite(u.trust)) u.trust = trustCfg.base;
   if (!u.lastTrustUpdateAt) u.lastTrustUpdateAt = new Date();
 
-  // Keep trust healthy even if user is only inspected (ex: userinfo/dashboard)
-  // This prevents trust from being stuck low/high for months without new infractions.
   const now = new Date();
   const before = u.trust;
   applyTrustRegen(u, trustCfg, now);
@@ -125,14 +123,16 @@ async function resetUser(guildId, userId, baseTrust, reason) {
   const u = await getOrCreateUser(guildId, userId);
 
   u.warnings = 0;
-  // repor trust base, mas sempre dentro dos limites configurados
+
   const minTrust = typeof trustCfg.minTrust === 'number' ? trustCfg.minTrust : -100;
   const maxTrust = typeof trustCfg.maxTrust === 'number' ? trustCfg.maxTrust : 100;
-  const nextTrust = typeof baseTrust === 'number' ? baseTrust : (typeof trustCfg.base === 'number' ? trustCfg.base : 0);
+  const nextTrust =
+    typeof baseTrust === 'number'
+      ? baseTrust
+      : (typeof trustCfg.base === 'number' ? trustCfg.base : 0);
 
   u.trust = clampTrust(nextTrust, minTrust, maxTrust);
 
-  // opcional: registar um timestamp de último reset se quisermos no futuro
   await u.save();
   return u;
 }
@@ -144,8 +144,6 @@ async function resetWarnings(guildId, userId) {
   return u;
 }
 
-
-
 async function removeInfractionEffects(guildId, userId, type) {
   const trustCfg = getTrustConfig();
   const u = await getOrCreateUser(guildId, userId);
@@ -154,19 +152,19 @@ async function removeInfractionEffects(guildId, userId, type) {
     const currentWarnings = typeof u.warnings === 'number' ? u.warnings : 0;
     u.warnings = currentWarnings > 0 ? currentWarnings - 1 : 0;
 
-    const penalty = trustCfg.warnPenalty || 0;
-    if (penalty > 0) {
+    if (trustCfg.enabled && typeof trustCfg.warnPenalty === 'number') {
       u.trust = clampTrust(
-        u.trust + penalty,
+        u.trust + trustCfg.warnPenalty,
         trustCfg.min,
         trustCfg.max
       );
     }
-  } else if (type === 'MUTE') {
-    const penalty = trustCfg.mutePenalty || 0;
-    if (penalty > 0) {
+  }
+
+  if (type === 'MUTE') {
+    if (trustCfg.enabled && typeof trustCfg.mutePenalty === 'number') {
       u.trust = clampTrust(
-        u.trust + penalty,
+        u.trust + trustCfg.mutePenalty,
         trustCfg.min,
         trustCfg.max
       );
@@ -185,4 +183,3 @@ module.exports = {
   resetUser,
   removeInfractionEffects
 };
-

@@ -1,6 +1,5 @@
 // src/slash/warn.js
 
-
 const config = require('../config/defaultConfig');
 const logger = require('../systems/logger');
 const warningsService = require('../systems/warningsService');
@@ -14,9 +13,9 @@ const { getTrustConfig, getEffectiveMaxWarnings, getEffectiveMuteDuration } = re
 
 module.exports = async function warnSlash(client, interaction) {
   try {
-    if (!interaction?.guild) return;
-
     const guild = interaction.guild;
+    if (!guild) return;
+
     const executor = interaction.member;
     const botMember = guild.members.me;
 
@@ -24,7 +23,8 @@ module.exports = async function warnSlash(client, interaction) {
       return replyEphemeral(interaction, t('common.unexpectedError'));
     }
 
-    if (!(await isStaff(executor))) {
+    const staff = await isStaff(executor).catch(() => false);
+    if (!staff) {
       return replyEphemeral(interaction, t('common.noPermission'));
     }
 
@@ -34,20 +34,39 @@ module.exports = async function warnSlash(client, interaction) {
       return replyEphemeral(interaction, t('common.cannotResolveUser'));
     }
 
-    const canProceed = await ensureWarnPermissions({ client, interaction, executor, target, botMember });
+    const canProceed = await ensureWarnPermissions({
+      client,
+      interaction,
+      executor,
+      target,
+      botMember
+    });
     if (!canProceed) return;
 
-    const reason = (interaction.options.getString('reason') || '').trim() || t('common.noReason');
+    const rawReason = (interaction.options.getString('reason') || '').trim();
+    const reason = rawReason || t('common.noReason');
 
+    // Add warning and update trust/user state
     const dbUser = await warningsService.addWarning(guild.id, target.id, 1);
-    const baseMaxWarnings = config.maxWarnings ?? 3;
+
+    const baseMaxWarnings =
+      typeof config.maxWarnings === 'number' ? config.maxWarnings : 3;
 
     const trustCfg = getTrustConfig();
-    const trustValue = Number.isFinite(dbUser?.trust) ? dbUser.trust : trustCfg.base;
-    const effectiveMaxWarnings = getEffectiveMaxWarnings(baseMaxWarnings, trustCfg, trustValue);
+    const trustValue = Number.isFinite(dbUser?.trust)
+      ? dbUser.trust
+      : (typeof trustCfg.base === 'number' ? trustCfg.base : 0);
 
-    const inf = await infractionsService
-      .create({
+    const effectiveMaxWarnings = getEffectiveMaxWarnings(
+      baseMaxWarnings,
+      trustCfg,
+      trustValue
+    );
+
+    // Create WARN infraction
+    let warnInf = null;
+    try {
+      warnInf = await infractionsService.create({
         guild,
         user: target.user,
         moderator: interaction.user,
@@ -55,53 +74,72 @@ module.exports = async function warnSlash(client, interaction) {
         reason,
         duration: null,
         source: 'slash'
-      })
-      .catch(() => null);
+      });
+    } catch {
+      // ignore
+    }
 
-    // Automação (auto-mute / auto-kick) baseada nas infrações acumuladas
-    handleInfractionAutomation({
-      client,
-      guild,
-      user: target.user,
-      moderator: interaction.user,
-      type: 'WARN'
-    }).catch(() => null);
+    // Automação extra (auto-mute/afins) baseada na infração
+    try {
+      await handleInfractionAutomation({
+        client,
+        guild,
+        user: target.user,
+        moderator: interaction.user,
+        type: 'WARN'
+      });
+    } catch {
+      // ignore
+    }
 
-    // Resposta pública
+    const casePrefix = warnInf?.caseId ? `Case: **#${warnInf.caseId}**\n` : '';
+
+    // Resposta pública no canal
     await interaction
       .reply({
-        content: t('warn.channelConfirm', null, {
-          userMention: `${target}`,
-          warnings: dbUser.warnings,
-          maxWarnings: effectiveMaxWarnings,
-          reason
-        })
+        content:
+          casePrefix +
+          t('warn.channelConfirm', null, {
+            userMention: `${target}`,
+            warnings: dbUser.warnings,
+            maxWarnings: effectiveMaxWarnings,
+            reason
+          })
       })
       .catch(() => null);
 
-    // Escalonamento automático (mute) ao atingir o limite efetivo
-    if (
-      dbUser.warnings >= effectiveMaxWarnings &&
-      target.moderatable &&
-    ) {
-      const baseMute = config.muteDuration ?? 10 * 60 * 1000;
-      const effectiveMute = getEffectiveMuteDuration(baseMute, trustCfg, trustValue);
+    // Escalonamento automático: mute se atingir o limite efetivo
+    if (dbUser.warnings >= effectiveMaxWarnings && target.moderatable) {
+      const baseMute =
+        typeof config.muteDuration === 'number'
+          ? config.muteDuration
+          : 10 * 60 * 1000;
+
+      const effectiveMute = getEffectiveMuteDuration(
+        baseMute,
+        trustCfg,
+        trustValue
+      );
 
       await target.timeout(effectiveMute, t('automod.muteReason')).catch(() => null);
 
       let afterMuteUser = dbUser;
       try {
-        afterMuteUser = await warningsService.applyMutePenalty(guild.id, target.id);
+        afterMuteUser = await warningsService.applyMutePenalty(
+          guild.id,
+          target.id
+        );
       } catch {
         // ignore
       }
 
-      const trustAfterMute = Number.isFinite(afterMuteUser.trust)
+      const trustAfterMute = Number.isFinite(afterMuteUser?.trust)
         ? afterMuteUser.trust
         : trustValue;
 
-      const muteInf = await infractionsService
-        .create({
+      let muteInf = null;
+      try {
+        muteInf = await infractionsService.create({
           guild,
           user: target.user,
           moderator: interaction.user,
@@ -109,19 +147,25 @@ module.exports = async function warnSlash(client, interaction) {
           reason: t('automod.muteReason'),
           duration: effectiveMute,
           source: 'slash-escalation'
-        })
-        .catch(() => null);
+        });
+      } catch {
+        // ignore
+      }
 
       const mins = Math.max(1, Math.round(effectiveMute / 60000));
 
-      await interaction.followUp({
-        content: t('automod.mutePublic', null, {
-          userMention: `${target}`,
-          minutes: mins
+      await interaction
+        .followUp({
+          content: t('automod.mutePublic', null, {
+            userMention: `${target}`,
+            minutes: mins
+          })
         })
-      }).catch(() => null);
+        .catch(() => null);
 
-      const muteCasePrefix = muteInf?.caseId ? `Case: **#${muteInf.caseId}**\n` : '';
+      const muteCasePrefix = muteInf?.caseId
+        ? `Case: **#${muteInf.caseId}**\n`
+        : '';
 
       await logger(
         client,
@@ -131,29 +175,38 @@ module.exports = async function warnSlash(client, interaction) {
         muteCasePrefix +
           t('log.actions.automodMute', null, {
             minutes: mins,
-            trustAfter: trustCfg.enabled ? `${trustAfterMute}/${trustCfg.max}` : 'N/A'
+            trustAfter: trustCfg.enabled
+              ? `${trustAfterMute}/${trustCfg.max}`
+              : 'N/A'
           }),
         guild
       );
-
-      await warningsService.resetWarnings(guild.id, target.id).catch(() => null);
     }
 
-    await logger(
-      client,
-      'Slash Warn',
-      target.user,
-      interaction.user,
-      t('log.actions.manualWarn', null, {
-        reason,
-        warnings: dbUser.warnings,
-        maxWarnings: effectiveMaxWarnings,
-        trust: dbUser.trust ?? 'N/A'
-      }),
-      guild
-    );
+    // Log do WARN manual
+    try {
+      await logger(
+        client,
+        'Slash Warn',
+        target.user,
+        interaction.user,
+        t('log.actions.manualWarn', null, {
+          reason,
+          warnings: dbUser.warnings,
+          maxWarnings: effectiveMaxWarnings,
+          trust: dbUser.trust ?? 'N/A'
+        }),
+        guild
+      );
+    } catch {
+      // ignore
+    }
   } catch (err) {
     console.error('[slash/warn] Error:', err);
-    return safeReply(interaction, { content: t('common.unexpectedError') }, { ephemeral: true });
+    return safeReply(
+      interaction,
+      { content: t('common.unexpectedError') },
+      { ephemeral: true }
+    );
   }
 };

@@ -15,21 +15,21 @@ function getTrustConfig() {
     min: cfg.min ?? 0,
     max: cfg.max ?? 100,
 
-    // penalties / regen
+    // penalties
     warnPenalty: cfg.warnPenalty ?? 5,
     mutePenalty: cfg.mutePenalty ?? 15,
+
+    // regen
     regenPerDay: cfg.regenPerDay ?? 1,
     regenMaxDays: cfg.regenMaxDays ?? 30,
 
-    // thresholds for risk classification
+    // thresholds
     lowThreshold: cfg.lowThreshold ?? 10,
     highThreshold: cfg.highThreshold ?? 60,
 
-    // dynamic behaviour based on trust
+    // dynamic penalties / bonuses
     lowTrustWarningsPenalty: cfg.lowTrustWarningsPenalty ?? 1,
     lowTrustMessagesPenalty: cfg.lowTrustMessagesPenalty ?? 1,
-
-    // optional bonus for high-trust users (ex: anti-spam tolerance)
     highTrustMessagesBonus: cfg.highTrustMessagesBonus ?? 0,
 
     lowTrustMuteMultiplier: cfg.lowTrustMuteMultiplier ?? 1.5,
@@ -79,15 +79,14 @@ function getEffectiveMaxMessages(baseMaxMessages, trustCfg, trustValue) {
   if (!cfg.enabled) return baseMaxMessages;
 
   const tValue = Number.isFinite(trustValue) ? trustValue : cfg.base;
+  let effective = baseMaxMessages;
 
-  // Low trust => fewer messages tolerated
-  let effective = getEffectiveMaxWithPenalty(baseMaxMessages, cfg, tValue, {
-    penaltyKey: 'lowTrustMessagesPenalty',
-    minFloor: 3
-  });
-
-  // High trust => optional bonus tolerance
-  if (tValue >= cfg.highThreshold) {
+  if (tValue <= cfg.lowThreshold) {
+    const penalty = Number(cfg.lowTrustMessagesPenalty ?? 0);
+    if (Number.isFinite(penalty) && penalty > 0) {
+      effective = Math.max(1, baseMaxMessages - penalty);
+    }
+  } else if (tValue >= cfg.highThreshold) {
     const bonus = Number(cfg.highTrustMessagesBonus ?? 0);
     if (Number.isFinite(bonus) && bonus > 0) {
       effective = effective + bonus;
@@ -127,4 +126,3 @@ module.exports = {
   getEffectiveMaxMessages,
   getEffectiveMuteDuration
 };
-
