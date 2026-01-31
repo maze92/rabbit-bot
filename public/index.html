@@ -109,12 +109,12 @@
                     Resumo rápido das ações de moderação.
                   </p>
                 </div>
-                <div class="chips" id="modServerInsightsRange">
+              </div>
+              <div class="chips" id="modServerInsightsRange">
                   <button class="chip chip-active" data-range="24h">24h</button>
                   <button class="chip" data-range="7d">7d</button>
                   <button class="chip" data-range="30d">30d</button>
                   <button class="chip" data-range="1y">1 ano</button>
-                </div>
               </div>
               <div id="modServerInsightsContent">
                 <div class="empty" data-i18n="logs_server_insights_empty">
@@ -131,12 +131,12 @@
                     Vista dos tickets recebidos por período.
                   </p>
                 </div>
-                <div class="chips" id="modTicketsRange">
+              </div>
+              <div class="chips" id="modTicketsRange">
                   <button class="chip chip-active" data-range="24h">24h</button>
                   <button class="chip" data-range="7d">7d</button>
                   <button class="chip" data-range="30d">30d</button>
                   <button class="chip" data-range="1y">1 ano</button>
-                </div>
               </div>
               <ul class="simple-list" id="modTicketsList">
                 <li class="empty" data-i18n="logs_tickets_panel_empty">
@@ -167,6 +167,7 @@
               </ul>
             </div>
           </div>
+          <div class="user-detail mini-panel" id="modServerRecordsPanel">
           <h3 data-i18n="logs_server_records_title">Registos do Servidor</h3>
           <p class="hint" data-i18n="logs_server_records_hint">
             Resumo rápido das ações de moderação nas últimas 24 horas.
@@ -198,6 +199,7 @@
             <div class="empty" data-i18n="logs_empty">
               Não existem registos para o filtro atual.
             </div>
+          </div>
           </div>
 
         </div>
@@ -254,10 +256,18 @@
 
                           <div class="subtab-panel" id="extras-tempvoice-panel">
                 <div class="card subcard">
-                  <h2 data-i18n="tempvoice_title">Voz temporária</h2>
-                  <p class="hint" data-i18n="tempvoice_hint">
-                    Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.
-                  </p>
+                  <div class="panel-header-line">
+                    <div>
+                      <h2 data-i18n="tempvoice_title">Voz temporária</h2>
+                      <p class="hint" data-i18n="tempvoice_hint">
+                        Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.
+                      </p>
+                    </div>
+                    <span id="tempVoiceStatus" class="status-pill status-off">
+                      <span class="status-dot"></span>
+                      <span data-i18n="common_off">OFF</span>
+                    </span>
+                  </div>
 
                   <button id="btnTempVoiceAddBase" class="btn xs" type="button" data-i18n="tempvoice_add_base_btn">
                     Adicionar
@@ -335,10 +345,18 @@
           
               <div class="subtab-panel" id="extras-tickets-panel">
                 <div class="card subcard">
-                  <h2 data-i18n="tickets_extras_title">Tickets</h2>
-                  <p class="hint" data-i18n="tickets_extras_hint">
-                    Configuração do canal de suporte e comportamento básico do sistema de tickets.
-                  </p>
+                  <div class="panel-header-line">
+                    <div>
+                      <h2 data-i18n="tickets_extras_title">Tickets</h2>
+                      <p class="hint" data-i18n="tickets_extras_hint">
+                        Configuração do canal de suporte e comportamento básico do sistema de tickets.
+                      </p>
+                    </div>
+                    <span id="ticketsSystemStatus" class="status-pill status-off">
+                      <span class="status-dot"></span>
+                      <span data-i18n="common_off">OFF</span>
+                    </span>
+                  </div>
 
                   <div class="row gap">
                     <div class="col">

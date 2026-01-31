@@ -1109,7 +1109,7 @@ h2 {
 }
 
 
-/* Ajustes finais Voz Temporária: evitar scroll horizontal e cortar texto com reticências */
+/* Ajustes finais Voz Temporária: evitar scroll horizontal e quebrar linhas sem cortar palavras */
 #extras-tempvoice-panel .user-layout > div:first-child {
   overflow-x: hidden;
   min-width: 0;
@@ -1121,7 +1121,110 @@ h2 {
 
 #extras-tempvoice-panel .list .title,
 #extras-tempvoice-panel .list .subtitle {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+
+/* Chips (24h / 7d / 30d / 1 ano) */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.chip {
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  line-height: 1.3;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chip-active {
+  border-color: var(--accent);
+  background: rgba(88, 101, 242, 0.16);
+}
+
+/* Em ecrãs pequenos, alinhar chips à esquerda */
+@media (max-width: 768px) {
+  .chips {
+    justify-content: flex-start;
+  }
+}
+
+/* Mini painéis da tab de moderação: alturas mais consistentes */
+.moderation-panels .mini-panel {
+  min-height: 220px;
+}
+
+/* Painel de Registos do Servidor como mini painel dedicado */
+#modServerRecordsPanel {
+  margin-top: 16px;
+}
+
+#modServerRecordsPanel #logsList {
+  font-size: 0.86rem;
+  line-height: 1.3;
+}
+
+/* Status pill (ON/OFF) usado em Tickets e Voz Temporária */
+.panel-header-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.status-pill .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ed4245; /* default OFF */
+}
+
+.status-on {
+  border-color: #3ba55d;
+}
+
+.status-on .status-dot {
+  background: #3ba55d;
+}
+
+.status-off {
+  border-color: #ed4245;
+}
+
+
+/* Garantir paginação no fundo do mini painel de tickets */
+#modTicketsPanel {
+  display: flex;
+  flex-direction: column;
+}
+
+#modTicketsPanel .pagination {
+  margin-top: auto;
 }

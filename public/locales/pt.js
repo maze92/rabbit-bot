@@ -3,6 +3,8 @@ window.OzarkLocales.pt = {
 app_subtitle: 'Dashboard de moderação e gestão',
       select_guild: 'Seleciona um servidor',
       badge_bot_online: 'Bot online',
+      common_on: 'ON',
+      common_off: 'OFF',
 
         login_title: 'Login',
         login_subtitle: 'Autentica-te para aceder ao painel.',

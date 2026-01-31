@@ -185,7 +185,7 @@ async function loadLogs() {
       ticketsList.appendChild(loadingTickets);
 
       const resTickets = await apiGet(
-        '/logs?type=tickets&limit=10&page=' +
+        '/logs?type=tickets&limit=4&page=' +
           encodeURIComponent(String(modTicketsPage)) +
           '&guildId=' +
           encodeURIComponent(guildId)

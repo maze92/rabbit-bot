@@ -434,6 +434,8 @@ function setLang(newLang) {
       window.OzarkDashboard.loadGameNews().catch(function () {});
       loadTempVoiceConfig().catch(function () {});
       loadTempVoiceActive().catch(function () {});
+      // Garantir que canais/roles de configuração estão disponíveis para Tickets/Extras
+      loadGuildConfig().catch(function () {});
     } else if (name === 'user') {
       window.OzarkDashboard.loadUsers().catch(function () {});
     } else if (name === 'config') {
