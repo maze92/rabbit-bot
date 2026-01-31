@@ -838,6 +838,16 @@ function setLang(newLang) {
       const regenEl = document.getElementById('trustRegenValue');
       const riskEl = document.getElementById('trustRiskValue');
 
+      const baseInput = document.getElementById('trustBaseInput');
+      const minInput = document.getElementById('trustMinInput');
+      const maxInput = document.getElementById('trustMaxInput');
+      const warnInput = document.getElementById('trustWarnPenaltyInput');
+      const muteInput = document.getElementById('trustMutePenaltyInput');
+      const regenPerDayInput = document.getElementById('trustRegenPerDayInput');
+      const regenMaxDaysInput = document.getElementById('trustRegenMaxDaysInput');
+      const lowThresholdInput = document.getElementById('trustLowThresholdInput');
+      const highThresholdInput = document.getElementById('trustHighThresholdInput');
+
       if (trust && baseEl && minMaxEl && penaltiesEl && regenEl && riskEl) {
         const base = Number.isFinite(Number(trust.base)) ? Number(trust.base) : null;
         const min = Number.isFinite(Number(trust.min)) ? Number(trust.min) : null;
@@ -846,12 +856,20 @@ function setLang(newLang) {
         baseEl.textContent = base !== null ? String(base) : '—';
         minMaxEl.textContent = min !== null && max !== null ? min + ' / ' + max : '—';
 
+        if (baseInput) baseInput.value = base !== null ? String(base) : '';
+
+        if (minInput) minInput.value = min !== null ? String(min) : '';
+        if (maxInput) maxInput.value = max !== null ? String(max) : '';
+
         const warnPenalty = Number.isFinite(Number(trust.warnPenalty)) ? Number(trust.warnPenalty) : null;
         const mutePenalty = Number.isFinite(Number(trust.mutePenalty)) ? Number(trust.mutePenalty) : null;
         penaltiesEl.textContent =
           warnPenalty !== null && mutePenalty !== null
             ? 'WARN: -' + warnPenalty + ' • MUTE: -' + mutePenalty
             : '—';
+
+        if (warnInput) warnInput.value = warnPenalty !== null ? String(warnPenalty) : '';
+        if (muteInput) muteInput.value = mutePenalty !== null ? String(mutePenalty) : '';
 
         const regenPerDay = Number.isFinite(Number(trust.regenPerDay)) ? Number(trust.regenPerDay) : null;
         const regenMaxDays = Number.isFinite(Number(trust.regenMaxDays)) ? Number(trust.regenMaxDays) : null;
@@ -860,6 +878,9 @@ function setLang(newLang) {
             ? regenPerDay + ' / dia até ' + regenMaxDays + ' dias'
             : '—';
 
+        if (regenPerDayInput) regenPerDayInput.value = regenPerDay !== null ? String(regenPerDay) : '';
+        if (regenMaxDaysInput) regenMaxDaysInput.value = regenMaxDays !== null ? String(regenMaxDays) : '';
+
         const lowT = Number.isFinite(Number(trust.lowTrustThreshold)) ? Number(trust.lowTrustThreshold) : null;
         const highT = Number.isFinite(Number(trust.highTrustThreshold)) ? Number(trust.highTrustThreshold) : null;
         if (lowT !== null && highT !== null) {
@@ -867,12 +888,25 @@ function setLang(newLang) {
         } else {
           riskEl.textContent = '—';
         }
+
+        if (lowThresholdInput) lowThresholdInput.value = lowT !== null ? String(lowT) : '';
+        if (highThresholdInput) highThresholdInput.value = highT !== null ? String(highT) : '';
       } else if (baseEl && minMaxEl && penaltiesEl && regenEl && riskEl) {
         baseEl.textContent = '—';
         minMaxEl.textContent = '—';
         penaltiesEl.textContent = '—';
         regenEl.textContent = '—';
         riskEl.textContent = '—';
+
+        if (baseInput) baseInput.value = '';
+        if (minInput) minInput.value = '';
+        if (maxInput) maxInput.value = '';
+        if (warnInput) warnInput.value = '';
+        if (muteInput) muteInput.value = '';
+        if (regenPerDayInput) regenPerDayInput.value = '';
+        if (regenMaxDaysInput) regenMaxDaysInput.value = '';
+        if (lowThresholdInput) lowThresholdInput.value = '';
+        if (highThresholdInput) highThresholdInput.value = '';
       }
 
       if (statusEl) {

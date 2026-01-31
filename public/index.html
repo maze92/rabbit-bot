@@ -375,19 +375,83 @@
                     <div>
                       <h4 data-i18n="extras_trust_levels_title">Níveis de confiança</h4>
                       <p data-i18n="extras_trust_levels_body">
-                        Os utilizadores recebem um nível de confiança automático (Alto, Médio, Baixo) com base nas infrações registadas.
+                        Os utilizadores recebem automaticamente níveis Alto, Médio ou Baixo com base nas infrações registadas.
                       </p>
+
+                      <div class="row gap" style="margin-top:8px;">
+                        <div class="col">
+                          <label for="trustBaseInput" data-i18n="config_trust_base">Base level</label>
+                          <input id="trustBaseInput" type="number" class="input" />
+                        </div>
+                        <div class="col">
+                          <label data-i18n="config_trust_minmax">Minimum / Maximum</label>
+                          <div class="row gap">
+                            <input id="trustMinInput" type="number" class="input" style="max-width:90px;" />
+                            <input id="trustMaxInput" type="number" class="input" style="max-width:90px;" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="row gap" style="margin-top:8px;">
+                        <div class="col">
+                          <label data-i18n="config_trust_penalties">Penalties</label>
+                          <div class="row gap">
+                            <input id="trustWarnPenaltyInput" type="number" class="input" placeholder="WARN" style="max-width:90px;" />
+                            <input id="trustMutePenaltyInput" type="number" class="input" placeholder="MUTE" style="max-width:90px;" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="row gap" style="margin-top:8px;">
+                        <div class="col">
+                          <label data-i18n="config_trust_regen">Regeneration</label>
+                          <div class="row gap">
+                            <input id="trustRegenPerDayInput" type="number" class="input" placeholder="por dia" style="max-width:90px;" />
+                            <input id="trustRegenMaxDaysInput" type="number" class="input" placeholder="máx. dias" style="max-width:90px;" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="row gap" style="margin-top:8px;">
+                        <div class="col">
+                          <label data-i18n="config_trust_risk">Thresholds</label>
+                          <div class="row gap">
+                            <input id="trustLowThresholdInput" type="number" class="input" placeholder="baixo" style="max-width:90px;" />
+                            <input id="trustHighThresholdInput" type="number" class="input" placeholder="alto" style="max-width:90px;" />
+                          </div>
+                        </div>
+                      </div>
                     </div>
+
                     <div>
-                      <h4 data-i18n="extras_trust_usage_title">Como é usado</h4>
-                      <p data-i18n="extras_trust_usage_body">
-                        Estes níveis são usados na tab de Utilizadores para destacar contas de risco e apoiar decisões rápidas de moderação.
-                      </p>
+                      <h4 data-i18n="config_trust_title">Trust system</h4>
+                      <div class="trust-config-grid">
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="config_trust_base">Base level</div>
+                          <div class="value" id="trustBaseValue">—</div>
+                        </div>
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="config_trust_minmax">Minimum / Maximum</div>
+                          <div class="value" id="trustMinMaxValue">—</div>
+                        </div>
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="config_trust_penalties">Penalties</div>
+                          <div class="value" id="trustPenaltiesValue">—</div>
+                        </div>
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="config_trust_regen">Regeneration</div>
+                          <div class="value" id="trustRegenValue">—</div>
+                        </div>
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="config_trust_risk">Thresholds</div>
+                          <div class="value" id="trustRiskValue">—</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   <p class="hint" style="margin-top: 12px;" data-i18n="extras_trust_edit_hint">
-                    A configuração detalhada continua disponível na tab Configuração. No futuro esta secção permitirá editar estes valores diretamente.
+                    A configuração detalhada continua disponível na tab Configuração. Estes campos ainda são apenas de pré-visualização; em breve poderão ser guardados pela dashboard.
                   </p>
                 </div>
               </div>
@@ -428,6 +492,12 @@
           </p>
 
           <div class="config-form">
+            <div class="card subcard">
+              <h3 data-i18n="config_logs_section_title">Registos e canais de logs</h3>
+              <p class="hint" data-i18n="config_logs_section_hint">
+                Defina os canais onde serão enviados os registos principais e os logs da própria dashboard.
+              </p>
+
             <div class="row gap">
               <div class="col">
                 <label for="configLogChannel" data-i18n="config_log_channel">Canal de logs principal</label>
@@ -439,6 +509,14 @@
               </div>
             </div>
 
+            </div>
+
+            <div class="card subcard">
+              <h3 data-i18n="config_access_section_title">Acesso e cargos de staff</h3>
+              <p class="hint" data-i18n="config_access_section_hint">
+                Controla que cargos do Discord podem aceder à dashboard. No futuro será possível gerir utilizadores dedicados.
+              </p>
+
             <div class="row gap" style="margin-top:12px;">
               <div class="col">
                 <label for="configStaffRoles" data-i18n="config_staff_roles">Cargos de staff</label>
@@ -448,6 +526,7 @@
                 </p>
               </div>
             </div>
+</div>
 
             <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px;">
               <button type="button" class="btn" id="btnReloadGuildConfig" data-i18n="config_reload">Recarregar</button>
@@ -457,37 +536,7 @@
 
             <div id="configStatus" class="hint" style="margin-top:8px;"></div>
 
-            <div class="trust-config-card">
-              <h3 data-i18n="config_trust_title">Sistema de confiança (Trust)</h3>
-              <p class="hint" data-i18n="config_trust_hint">
-                Valores globais usados pelo AutoMod e pelos comandos de moderação. Não é possível alterar estes valores pela dashboard.
-              </p>
-              <div class="trust-config-grid">
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_base">Nível base</div>
-                  <div class="value" id="trustBaseValue">—</div>
-                </div>
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_minmax">Mínimo / Máximo</div>
-                  <div class="value" id="trustMinMaxValue">—</div>
-                </div>
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_penalties">Penalizações</div>
-                  <div class="value" id="trustPenaltiesValue">—</div>
-                </div>
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_regen">Regeneração</div>
-                  <div class="value" id="trustRegenValue">—</div>
-                </div>
-                <div class="trust-config-item">
-                  <div class="label" data-i18n="config_trust_risk">Limiares</div>
-                  <div class="value" id="trustRiskValue">—</div>
-                </div>
-              </div>
-            </div>
-
-
-          <div class="card subcard">
+                      <div class="card subcard">
             <h3 data-i18n="config_dashboard_users_title">Utilizadores da Dashboard</h3>
             <p class="hint" data-i18n="config_dashboard_users_hint">
               Planeamento de acesso dedicado à dashboard. No futuro aqui poderás criar utilizadores e definir permissões sem depender apenas de cargos do Discord.

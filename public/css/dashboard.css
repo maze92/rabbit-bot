@@ -1237,3 +1237,46 @@ h2 {
 #extras-tempvoice-panel .list {
   overflow-x: hidden;
 }
+
+
+/* Evitar scroll horizontal causado por selects largos na Voz Temporária */
+#extras-tempvoice-panel select,
+#extras-tempvoice-panel .select,
+#extras-tempvoice-panel .input {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+
+/* Ajustes de UI para Registos do Servidor */
+#modServerRecordsPanel h3 {
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+#modServerRecordsPanel .hint {
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+}
+
+#modServerRecordsPanel .row.gap {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+#modServerRecordsPanel #logSearch {
+  flex: 1;
+  min-width: 160px;
+}
+
+#modServerRecordsPanel #logType,
+#modServerRecordsPanel #logLimit {
+  min-width: 110px;
+}
+
+#modServerRecordsPanel #btnReloadLogs {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
