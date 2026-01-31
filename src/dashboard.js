@@ -1490,10 +1490,16 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, rateLimit({ window
 // Dashboard Auth API (JWT + roles)
 // ------------------------------
 
-app.post('/api/auth/login', express.json(), async (req, res) => {
+app.post('/api/auth/login', rateLimit({ windowMs: 60_000, max: 5, keyPrefix: 'rl:auth:' }), express.json(), async (req, res) => {
   try {
     const { username, password } = req.body || {};
-    console.log('[Dashboard Auth] Login attempt', username);
+    const safeUsername = sanitizeText(username, { maxLen: 64, stripHtml: true });
+    const safePassword = typeof password === 'string' ? password : '';
+    console.log('[Dashboard Auth] Login attempt', safeUsername);
+
+    if (!safeUsername || !safePassword) {
+      return res.status(400).json({ ok: false, error: 'Invalid credentials' });
+    }
     if (!username || !password) {
       return res.status(400).json({ ok: false, error: 'MISSING_CREDENTIALS' });
     }
