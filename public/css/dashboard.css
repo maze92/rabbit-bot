@@ -1228,3 +1228,12 @@ h2 {
 #modTicketsPanel .pagination {
   margin-top: auto;
 }
+
+
+/* Garantir que não existe scroll horizontal na lista de Voz Temporária */
+#extras-tempvoice-panel,
+#extras-tempvoice-panel .user-layout,
+#extras-tempvoice-panel .user-layout > div,
+#extras-tempvoice-panel .list {
+  overflow-x: hidden;
+}

@@ -218,6 +218,7 @@
             <button class="subtab active" data-subtab="feeds" data-i18n="extras_feeds_tab">Feeds</button>
             <button class="subtab" data-subtab="tempvoice" data-i18n="extras_tempvoice_tab">Voz temporária</button>
             <button class="subtab" data-subtab="tickets" data-i18n="extras_tickets_tab">Tickets</button>
+            <button class="subtab" data-subtab="trust" data-i18n="extras_trust_tab">Trust system</button>
           </div>
 
           <div class="subtab-panels">
@@ -256,18 +257,10 @@
 
                           <div class="subtab-panel" id="extras-tempvoice-panel">
                 <div class="card subcard">
-                  <div class="panel-header-line">
-                    <div>
-                      <h2 data-i18n="tempvoice_title">Voz temporária</h2>
-                      <p class="hint" data-i18n="tempvoice_hint">
-                        Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.
-                      </p>
-                    </div>
-                    <span id="tempVoiceStatus" class="status-pill status-off">
-                      <span class="status-dot"></span>
-                      <span data-i18n="common_off">OFF</span>
-                    </span>
-                  </div>
+                  <h2 data-i18n="tempvoice_title">Voz temporária</h2>
+                  <p class="hint" data-i18n="tempvoice_hint">
+                    Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.
+                  </p>
 
                   <button id="btnTempVoiceAddBase" class="btn xs" type="button" data-i18n="tempvoice_add_base_btn">
                     Adicionar
@@ -345,18 +338,10 @@
           
               <div class="subtab-panel" id="extras-tickets-panel">
                 <div class="card subcard">
-                  <div class="panel-header-line">
-                    <div>
-                      <h2 data-i18n="tickets_extras_title">Tickets</h2>
-                      <p class="hint" data-i18n="tickets_extras_hint">
-                        Configuração do canal de suporte e comportamento básico do sistema de tickets.
-                      </p>
-                    </div>
-                    <span id="ticketsSystemStatus" class="status-pill status-off">
-                      <span class="status-dot"></span>
-                      <span data-i18n="common_off">OFF</span>
-                    </span>
-                  </div>
+                  <h2 data-i18n="tickets_extras_title">Tickets</h2>
+                  <p class="hint" data-i18n="tickets_extras_hint">
+                    Configuração do canal de suporte e comportamento básico do sistema de tickets.
+                  </p>
 
                   <div class="row gap">
                     <div class="col">
@@ -377,6 +362,33 @@
                       Esta secção utiliza o sistema de logs de tickets existente. Os registos aparecem em "Análises de Tickets" e em "Registos do Servidor" na tab Hub de moderação.
                     </p>
                   </div>
+                </div>
+              </div>
+              <div class="subtab-panel" id="extras-trust-panel">
+                <div class="card subcard">
+                  <h2 data-i18n="extras_trust_title">Sistema de Trust</h2>
+                  <p class="hint" data-i18n="extras_trust_hint">
+                    Visão geral do sistema de confiança usado para avaliar o risco dos utilizadores com base no seu histórico.
+                  </p>
+
+                  <div class="simple-grid two">
+                    <div>
+                      <h4 data-i18n="extras_trust_levels_title">Níveis de confiança</h4>
+                      <p data-i18n="extras_trust_levels_body">
+                        Os utilizadores recebem um nível de confiança automático (Alto, Médio, Baixo) com base nas infrações registadas.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 data-i18n="extras_trust_usage_title">Como é usado</h4>
+                      <p data-i18n="extras_trust_usage_body">
+                        Estes níveis são usados na tab de Utilizadores para destacar contas de risco e apoiar decisões rápidas de moderação.
+                      </p>
+                    </div>
+                  </div>
+
+                  <p class="hint" style="margin-top: 12px;" data-i18n="extras_trust_edit_hint">
+                    A configuração detalhada continua disponível na tab Configuração. No futuro esta secção permitirá editar estes valores diretamente.
+                  </p>
                 </div>
               </div>
 </div>
@@ -473,6 +485,29 @@
                 </div>
               </div>
             </div>
+
+
+          <div class="card subcard">
+            <h3 data-i18n="config_dashboard_users_title">Utilizadores da Dashboard</h3>
+            <p class="hint" data-i18n="config_dashboard_users_hint">
+              Planeamento de acesso dedicado à dashboard. No futuro aqui poderás criar utilizadores e definir permissões sem depender apenas de cargos do Discord.
+            </p>
+
+            <div class="simple-grid two">
+              <div>
+                <h4 data-i18n="config_dashboard_users_current_title">Modelo atual</h4>
+                <p data-i18n="config_dashboard_users_current_body">
+                  Atualmente o acesso é controlado pelos cargos configurados em "Cargos de staff". Qualquer utilizador com esses cargos pode entrar na dashboard.
+                </p>
+              </div>
+              <div>
+                <h4 data-i18n="config_dashboard_users_future_title">Plano futuro</h4>
+                <p data-i18n="config_dashboard_users_future_body">
+                  Esta secção irá permitir criar contas específicas de dashboard, escolher permissões (apenas leitura, moderador, admin) e gerar tokens temporários.
+                </p>
+              </div>
+            </div>
+          </div>
 
           </div>
         </div>
