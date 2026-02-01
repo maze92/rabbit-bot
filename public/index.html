@@ -308,6 +308,11 @@
                           <input id="tempVoiceCategoryId" class="input" placeholder="ID da categoria (opcional)" />
                         </div>
 
+                        <div class="field">
+                          <label for="tempVoiceDeleteDelay" data-i18n="tempvoice_delete_delay_label">Tempo para apagar sala vazia (segundos)</label>
+                          <input id="tempVoiceDeleteDelay" class="input" type="number" min="2" max="600" step="1" />
+                        </div>
+
                         <div class="config-actions-row tempvoice-actions-row">
                           <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
                             Guardar
@@ -325,13 +330,6 @@
                             </div>
                           </div>
                         </div>
-
-                        <div class="field">
-                          <label for="tempVoiceDeleteDelay" data-i18n="tempvoice_delete_delay_label">Tempo para apagar sala vazia (segundos)</label>
-                          <input id="tempVoiceDeleteDelay" class="input" type="number" min="2" max="600" step="1" />
-                        </div>
-                    </div>
-                  </div>
                 </div>
               </div>
           

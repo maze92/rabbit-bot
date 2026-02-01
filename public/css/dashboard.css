@@ -1080,7 +1080,7 @@ h2 {
 
 .pagination {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 4px;
   margin-top: 8px;
 }
@@ -1126,7 +1126,7 @@ h2 {
   flex-wrap: wrap;
   gap: 4px;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .chip {
@@ -1534,7 +1534,7 @@ h2 {
 #tab-config .dashboard-users-editor-actions {
   margin-top: 10px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
 }
 
@@ -1579,7 +1579,7 @@ h2 {
   margin-top: 4px;
   display: flex;
   gap: 6px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 
@@ -1618,7 +1618,7 @@ h2 {
 #tab-config .config-actions-row {
   margin-top: 16px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
 }
 
@@ -1657,7 +1657,7 @@ h2 {
 #extras-tickets-panel .config-actions-row {
   margin-top: 16px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
 }
 
@@ -1699,6 +1699,6 @@ h2 {
 #extras-tempvoice-panel .tempvoice-actions-row {
   margin-top: 12px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
 }
