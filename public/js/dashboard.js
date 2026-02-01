@@ -363,27 +363,8 @@ const API_BASE = '/api';
   }
 
 
-  
-                // Criar wrapper e flag se ainda não existirem
-        var newWrap = document.createElement('span');
-        newWrap.className = 'lang-picker-wrap';
 
-        var parent = select.parentElement;
-        if (!parent) return;
-
-        parent.insertBefore(newWrap, select);
-        newWrap.appendChild(select);
-
-        var flag = document.createElement('span');
-        flag.className = 'lang-picker-flag';
-        flag.setAttribute('aria-hidden', 'true');
-        newWrap.insertBefore(flag, select);
-
-        updateLangFlag(state.lang || select.value || 'pt');
-      } catch (e) {
-        // evitar crash da dashboard
-      }
-    }
+}
 
 function setLang(newLang) {
       state.lang = (newLang || 'pt').toLowerCase();
@@ -392,21 +373,14 @@ function setLang(newLang) {
         localStorage.setItem(LANG_KEY, state.lang);
       } catch (e) {}
 
-      // keep picker in sync
-      if (lp && lp.value !== state.lang) lp.value = state.lang;
-
-      try {
-        updateLangFlag(state.lang);
-      } catch (e) {}
-
-      if (window.OzarkDashboard && window.OzarkDashboard.I18n) {
+      if (window.OzarkDashboard && window.OzarkDashboard.I18n && typeof window.OzarkDashboard.I18n.init === 'function') {
         window.OzarkDashboard.I18n.init(state.lang).then(function () {
           applyI18n();
         });
       } else {
         applyI18n();
       }
-
+    }
       const msg = state.lang === 'en' ? 'Language updated.' : 'Idioma alterado.';
       toast(msg);
     }
