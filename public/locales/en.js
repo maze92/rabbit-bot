@@ -211,5 +211,7 @@ window.OzarkLocales.en = {
   'common_no_reason_provided': 'No reason provided.',
   'extras_trust_info_title': "How it works",
   'extras_trust_info_body': "The trust system assigns each user a score between 0 and 100. WARNs and MUTEs decrease it (penalties). Over time, without infractions, the score regenerates. Low scores mean higher risk and stricter automoderation; high scores mean more trusted users.",
-  'tempvoice_max_users_label': "Max users per room"
+  'tempvoice_max_users_label': "Max users per room",
+  'config_guild_settings_title': "Server preferences",
+  'config_guild_settings_hint': "Set the primary language and timezone used by the dashboard for this guild."
 };

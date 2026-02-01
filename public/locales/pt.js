@@ -256,5 +256,7 @@ window.OzarkLocales.pt = {
   'common_no_reason_provided': 'Sem motivo especificado.',
   'extras_trust_info_title': "Como funciona",
   'extras_trust_info_body': "O sistema de confiança (Trust) atribui um valor entre 0 e 100 a cada utilizador. WARN e MUTE reduzem esse valor (penalizações). Com o tempo, sem infrações, o valor recupera (regeneração). Valores baixos indicam maior risco e tornam a automoderação mais rígida; valores altos indicam utilizadores de menor risco.",
-  'tempvoice_max_users_label': "Limite máximo de utilizadores por sala"
+  'tempvoice_max_users_label': "Limite máximo de utilizadores por sala",
+  'config_guild_settings_title': "Preferências do servidor",
+  'config_guild_settings_hint': "Defina o idioma principal e a timezone usados pela dashboard para este servidor."
 };
