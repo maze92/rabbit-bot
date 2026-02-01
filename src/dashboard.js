@@ -834,9 +834,9 @@ async function resolveGuildMember(guildId, userId) {
 app.post('/api/mod/warn', requireDashboardAuth, async (req, res) => {
   try {
     const body = req.body || {};
-    const parseResult = ModUnmuteSchema.safeParse(body);
+    const parseResult = ModWarnSchema.safeParse(body);
     if (!parseResult.success) {
-      return res.status(400).json({ ok: false, error: 'Invalid unmute payload' });
+      return res.status(400).json({ ok: false, error: 'Invalid warn payload' });
     }
     const { guildId: g0, userId: u0, reason: r0 } = parseResult.data;
     const guildId = sanitizeId(g0);
@@ -1004,9 +1004,9 @@ app.post('/api/mod/mute', requireDashboardAuth, rateLimit({ windowMs: 60_000, ma
 app.post('/api/mod/unmute', requireDashboardAuth, async (req, res) => {
   try {
     const body = req.body || {};
-    const parseResult = ModUnmuteSchema.safeParse(body);
+    const parseResult = ModWarnSchema.safeParse(body);
     if (!parseResult.success) {
-      return res.status(400).json({ ok: false, error: 'Invalid unmute payload' });
+      return res.status(400).json({ ok: false, error: 'Invalid warn payload' });
     }
     const { guildId: g0, userId: u0, reason: r0 } = parseResult.data;
     const guildId = sanitizeId(g0);
@@ -1070,9 +1070,9 @@ app.post('/api/mod/unmute', requireDashboardAuth, async (req, res) => {
 app.post('/api/mod/reset-trust', requireDashboardAuth, async (req, res) => {
   try {
     const body = req.body || {};
-    const parseResult = ModUnmuteSchema.safeParse(body);
+    const parseResult = ModWarnSchema.safeParse(body);
     if (!parseResult.success) {
-      return res.status(400).json({ ok: false, error: 'Invalid unmute payload' });
+      return res.status(400).json({ ok: false, error: 'Invalid warn payload' });
     }
     const { guildId: g0, userId: u0, reason: r0 } = parseResult.data;
     const guildId = sanitizeId(g0);
