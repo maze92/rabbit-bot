@@ -90,11 +90,22 @@
       headers: getAuthHeaders(),
       signal: opts.signal
     });
+    let payload = null;
+    try {
+      // Tentar ler JSON mesmo em erro, para extrair mensagem da API
+      payload = await res.json();
+    } catch (e) {
+      payload = null;
+    }
     if (!res.ok) {
       handleAuthError(res.status);
-      throw new Error(`HTTP ${res.status} for ${path}`);
+      const msg = payload && (payload.error || payload.message);
+      const err = new Error(msg || `HTTP ${res.status} for ${path}`);
+      err.status = res.status;
+      if (msg) err.apiMessage = msg;
+      throw err;
     }
-    return res.json();
+    return payload;
   }
 
   async function apiPost(path, body, options) {
@@ -105,11 +116,21 @@
       body: JSON.stringify(body || {}),
       signal: opts.signal
     });
+    let payload = null;
+    try {
+      payload = await res.json();
+    } catch (e) {
+      payload = null;
+    }
     if (!res.ok) {
       handleAuthError(res.status);
-      throw new Error(`HTTP ${res.status} for ${path}`);
+      const msg = payload && (payload.error || payload.message);
+      const err = new Error(msg || `HTTP ${res.status} for ${path}`);
+      err.status = res.status;
+      if (msg) err.apiMessage = msg;
+      throw err;
     }
-    return res.json();
+    return payload;
   }
 
   async function apiPut(path, body, options) {
@@ -134,11 +155,21 @@
       headers: getAuthHeaders(),
       signal: opts.signal
     });
+    let payload = null;
+    try {
+      payload = await res.json();
+    } catch (e) {
+      payload = null;
+    }
     if (!res.ok) {
       handleAuthError(res.status);
-      throw new Error(`HTTP ${res.status} for ${path}`);
+      const msg = payload && (payload.error || payload.message);
+      const err = new Error(msg || `HTTP ${res.status} for ${path}`);
+      err.status = res.status;
+      if (msg) err.apiMessage = msg;
+      throw err;
     }
-    return res.json();
+    return payload;
   }
 
 
@@ -517,7 +548,7 @@ function setLang(newLang) {
       actionsEl.textContent = String(data.actions24h ?? 0);
     } catch (err) {
       console.error('Overview load error', err);
-      toast(t('overview_error_generic'));
+      toast(err && err.apiMessage ? err.apiMessage : t('overview_error_generic'));
     }
   }
 
@@ -558,7 +589,7 @@ function setLang(newLang) {
       }
     } catch (err) {
       console.error('Failed to load guilds', err);
-      toast(t('guilds_error_generic'));
+      toast(err && err.apiMessage ? err.apiMessage : t('guilds_error_generic'));
     }
   }
 
