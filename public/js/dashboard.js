@@ -1465,7 +1465,8 @@ function addTempVoiceBaseChannel() {
     // Bot status badge
     refreshBotStatusBadge();
     setInterval(refreshBotStatusBadge, 20000);
-// i18n inicial
+
+      // i18n inicial
       (function initLang() {
         var lang = 'pt';
         try {
@@ -1473,30 +1474,19 @@ function addTempVoiceBaseChannel() {
           if (stored) lang = stored;
         } catch (e) {}
 
-        if (lp && lp.value) lang = lp.value;
-
-        // stored wins over picker default
-        try {
-          var stored2 = localStorage.getItem(LANG_KEY);
-          if (stored2) lang = stored2;
-        } catch (e) {}
-
         state.lang = (lang || 'pt').toLowerCase();
-        if (lp) lp.value = state.lang;
-      })();
 
-      if (window.OzarkDashboard && window.OzarkDashboard.I18n) {
-        window.OzarkDashboard.I18n.init(state.lang).then(function () {
+        window.OzarkDashboard = window.OzarkDashboard || {};
+        window.OzarkDashboard.I18n = window.OzarkDashboard.I18n || {};
+
+        if (typeof window.OzarkDashboard.I18n.init === 'function') {
+          window.OzarkDashboard.I18n.init(state.lang).then(function () {
+            applyI18n();
+          });
+        } else {
           applyI18n();
-        });
-      } else {
-        applyI18n();
-      }
-        ensureLangPickerFlag();
-
-    // Lang picker
-      });
-    }
+        }
+      })();
 
     // Tabs
     document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
