@@ -4,7 +4,6 @@ const { PermissionsBitField } = require('discord.js');
 
 const logger = require('../systems/logger');
 const { t } = require('../systems/i18n');
-const { getGuildLanguage } = require('../systems/langService');
 const { isStaff } = require('./utils');
 const { replyEphemeral, safeReply } = require('../utils/discord');
 
@@ -13,20 +12,19 @@ module.exports = async function clearSlash(client, interaction) {
     if (!interaction?.guild) return;
 
     const guild = interaction.guild;
-    const lang = await getGuildLanguage(guild && guild.id);
     const executor = interaction.member;
     const botMember = guild.members.me;
     if (!executor || !botMember) {
-      return replyEphemeral(interaction, t('common.unexpectedError', lang));
+      return replyEphemeral(interaction, t('common.unexpectedError'));
     }
 
     if (!(await isStaff(executor))) {
-      return replyEphemeral(interaction, t('common.noPermission', lang));
+      return replyEphemeral(interaction, t('common.noPermission'));
     }
 
     const perms = interaction.channel?.permissionsFor?.(botMember);
     if (!perms?.has(PermissionsBitField.Flags.ManageMessages)) {
-      return replyEphemeral(interaction, t('clear.noPerm', lang));
+      return replyEphemeral(interaction, t('clear.noPerm'));
     }
 
     const amount = interaction.options.getInteger('amount', true);
@@ -41,14 +39,14 @@ module.exports = async function clearSlash(client, interaction) {
     }
 
     if (!deleted) {
-      return replyEphemeral(interaction, t('clear.tooOldOrNoPerm', lang));
+      return replyEphemeral(interaction, t('clear.tooOldOrNoPerm'));
     }
 
     const deletedCount = deleted.size || 0;
 
     await replyEphemeral(
       interaction,
-      t('clear.success', lang, { count: deletedCount })
+      t('clear.success', null, { count: deletedCount })
     );
 
     await logger(
@@ -56,7 +54,7 @@ module.exports = async function clearSlash(client, interaction) {
       'Slash Clear Messages',
       null,
       interaction.user,
-      t('log.actions.clear', lang, {
+      t('log.actions.clear', null, {
         count: deletedCount,
         channelId: interaction.channel.id
       }),
@@ -64,6 +62,6 @@ module.exports = async function clearSlash(client, interaction) {
     );
   } catch (err) {
     console.error('[slash/clear] Error:', err);
-    return safeReply(interaction, { content: t('common.unexpectedError', lang) }, { ephemeral: true });
+    return safeReply(interaction, { content: t('common.unexpectedError') }, { ephemeral: true });
   }
 };

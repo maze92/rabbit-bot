@@ -41,11 +41,6 @@
           <option value="" data-i18n="select_guild">Selecione um servidor</option>
         </select>
 
-        <select id="langPicker" class="select" title="Idioma">
-          <option value="pt">🇵🇹 PT</option>
-          <option value="en">🇬🇧 EN</option>
-        </select>
-
         <span class="badge" id="badgeBot" data-i18n="badge_bot_online">● Bot online</span>
       </div>
     </header>
@@ -54,7 +49,7 @@
     <div class="tabs" id="tabs">
       <button class="tab active" data-tab="overview" data-i18n="tab_overview">Visão geral</button>
       <button class="tab" data-tab="logs" data-i18n="tab_logs">Moderação</button>
-      <button class="tab" data-tab="gamenews" data-i18n="tab_gamenews">GameNews</button>
+      <button class="tab" data-tab="gamenews" data-i18n="tab_gamenews">Funcionalidades</button>
       <button class="tab" data-tab="user" data-i18n="tab_user">Utilizadores</button>
       <button class="tab" data-tab="config" data-i18n="tab_config">Configuração</button>
     </div>
@@ -591,6 +586,30 @@
         </div>
       </div>
     </div>
+
+
+            <div class="card subcard">
+              <details class="config-advanced">
+                <summary data-i18n="config_json_section_title">Avançado: importar/exportar configuração</summary>
+                <p class="hint" data-i18n="config_json_section_hint">
+                  Exporta a configuração atual deste servidor para JSON ou aplica rapidamente uma configuração já preparada.
+                </p>
+
+                <div class="row gap">
+                  <div class="col">
+                    <label data-i18n="config_json_export_label">Exportar configuração atual</label>
+                    <textarea id="configJsonExport" class="input" rows="6" readonly></textarea>
+                    <button type="button" class="btn small" id="configJsonExportBtn" data-i18n="config_json_export_btn">Gerar JSON</button>
+                  </div>
+                  <div class="col">
+                    <label for="configJsonImport" data-i18n="config_json_import_label">Importar configuração (JSON)</label>
+                    <textarea id="configJsonImport" class="input" rows="6"></textarea>
+                    <button type="button" class="btn small primary" id="configJsonImportBtn" data-i18n="config_json_import_btn">Aplicar JSON</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+
 
     <div class="dashboard-users-editor-actions">
       <button type="button" class="btn" id="btnDashboardUsersCancel" data-i18n="common_cancel">Cancelar</button>

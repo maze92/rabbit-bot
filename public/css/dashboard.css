@@ -1693,3 +1693,90 @@ h2 {
   margin-top: 8px;
   display: block;
 }
+
+
+/* UX refinements */
+.card > h2,
+.card.subcard > h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0;
+}
+
+.card > h2 + .hint,
+.card.subcard > h3 + .hint {
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-muted);
+}
+
+.config-form .card.subcard {
+  margin-bottom: 1rem;
+}
+
+.config-advanced summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.config-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.config-advanced summary::before {
+  content: '▾';
+  display: inline-block;
+  margin-right: 0.4rem;
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease-out;
+  opacity: 0.8;
+}
+
+.config-advanced[open] summary::before {
+  transform: rotate(0deg);
+}
+
+.config-advanced .row.gap .col textarea.input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.8rem;
+}
+
+.card.subcard .row.gap + .row.gap {
+  margin-top: 0.75rem;
+}
+
+/* Make config labels and inputs more aligned */
+.config-form .field,
+.config-form .col {
+  min-width: 0;
+}
+
+.config-form .field .input,
+.config-form .field .select,
+.config-form .col .input,
+.config-form .col .select {
+  width: 100%;
+}
+
+/* Dashboard users editor */
+.dashboard-users-editor-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Badges on tabs and section titles if emojis present */
+.tabs .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Trust/moderação preview alignment */
+.trust-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem 1rem;
+}

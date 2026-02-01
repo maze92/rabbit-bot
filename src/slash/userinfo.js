@@ -7,14 +7,13 @@ const warningsService = require('../systems/warningsService');
 const Infraction = require('../database/models/Infraction');
 const logger = require('../systems/logger');
 const { t } = require('../systems/i18n');
-const { getGuildLanguage } = require('../systems/langService');
 const { isStaff } = require('./utils');
 const { getTrustConfig, getTrustLabel } = require('../utils/trust');
 const { replyEphemeral, safeReply } = require('../utils/discord');
 
 function truncate(str, max = 90) {
   const s = String(str || '').trim();
-  if (!s) return t('common.noReason', lang);
+  if (!s) return t('common.noReason');
   if (s.length <= max) return s;
   return s.slice(0, Math.max(0, max - 1)) + '…';
 }
@@ -34,7 +33,7 @@ function formatInfractionLine(inf) {
       : '';
 
   const ts = formatRelativeTime(inf?.createdAt);
-  const reason = truncate(inf?.reason || t('common.noReason', lang), 80);
+  const reason = truncate(inf?.reason || t('common.noReason'), 80);
 
   return `• **${type}**${duration} — ${ts}\n  └ ${reason}`;
 }
@@ -56,7 +55,7 @@ function joinFieldSafe(lines, maxLen = 1024) {
     if (total + (out.length ? 1 : 0) + ell.length <= maxLen) out.push(ell);
   }
 
-  return out.join('\n') || t('userinfo.noRecentInfractions', lang);
+  return out.join('\n') || t('userinfo.noRecentInfractions');
 }
 
 module.exports = async function userinfoSlash(client, interaction) {
@@ -64,14 +63,13 @@ module.exports = async function userinfoSlash(client, interaction) {
     if (!interaction?.guild) return;
 
     const guild = interaction.guild;
-    const lang = await getGuildLanguage(guild && guild.id);
     const trustCfg = getTrustConfig();
     const requesterIsStaff = await isStaff(interaction.member);
 
     const targetUser = interaction.options.getUser('user') || interaction.user;
     const member = await guild.members.fetch(targetUser.id).catch(() => null);
     if (!member?.user) {
-      return replyEphemeral(interaction, t('common.cannotResolveUser', lang));
+      return replyEphemeral(interaction, t('common.cannotResolveUser'));
     }
 
     const user = member.user;
@@ -108,37 +106,37 @@ module.exports = async function userinfoSlash(client, interaction) {
       ? `<t:${Math.floor(member.joinedAt.getTime() / 1000)}:F>`
       : 'Unknown';
 
-    let trustFieldValue = t('userinfo.trustDisabled', lang);
+    let trustFieldValue = t('userinfo.trustDisabled');
     if (trustCfg.enabled) {
       trustFieldValue = requesterIsStaff
-        ? t('userinfo.trustStaff', lang, { trustValue, trustMax: trustCfg.max, trustLabel })
-        : t('userinfo.trustPublic', lang);
+        ? t('userinfo.trustStaff', null, { trustValue, trustMax: trustCfg.max, trustLabel })
+        : t('userinfo.trustPublic');
     }
 
-    let recentFieldValue = t('userinfo.recentStaffOnly', lang);
+    let recentFieldValue = t('userinfo.recentStaffOnly');
     if (requesterIsStaff) {
       const lines = (recentInfractions || []).map(formatInfractionLine);
       recentFieldValue = joinFieldSafe(lines, 1024);
     }
 
     const embed = new EmbedBuilder()
-      .setTitle(t('userinfo.title', lang, { tag: user.tag }))
+      .setTitle(t('userinfo.title', null, { tag: user.tag }))
       .setColor('Blue')
       .setThumbnail(user.displayAvatarURL({ size: 256 }))
       .addFields(
         {
-          name: t('userinfo.fieldUser', lang),
-          value: t('userinfo.tagAndId', lang, { tag: user.tag, id: user.id }),
+          name: t('userinfo.fieldUser'),
+          value: t('userinfo.tagAndId', null, { tag: user.tag, id: user.id }),
           inline: false
         },
         {
-          name: t('userinfo.fieldAccount', lang),
-          value: t('userinfo.accountDates', lang, { createdAt, joinedAt }),
+          name: t('userinfo.fieldAccount'),
+          value: t('userinfo.accountDates', null, { createdAt, joinedAt }),
           inline: false
         },
         {
-          name: t('userinfo.fieldWarnings', lang),
-          value: t('userinfo.warningsBlock', lang, {
+          name: t('userinfo.fieldWarnings'),
+          value: t('userinfo.warningsBlock', null, {
             warnings,
             maxWarnings: config.maxWarnings ?? 3,
             infractionsCount
@@ -146,17 +144,17 @@ module.exports = async function userinfoSlash(client, interaction) {
           inline: false
         },
         {
-          name: t('userinfo.fieldTrust', lang),
+          name: t('userinfo.fieldTrust'),
           value: trustFieldValue,
           inline: false
         },
         {
-          name: t('userinfo.fieldRecent', lang),
+          name: t('userinfo.fieldRecent'),
           value: recentFieldValue,
           inline: false
         }
       )
-      .setFooter({ text: t('userinfo.requestedBy', lang, { tag: interaction.user.tag }) })
+      .setFooter({ text: t('userinfo.requestedBy', null, { tag: interaction.user.tag }) })
       .setTimestamp(new Date());
 
     // Resposta pública (sem ephemeral)
@@ -167,7 +165,7 @@ module.exports = async function userinfoSlash(client, interaction) {
       'Slash User Info',
       user,
       interaction.user,
-      t('log.actions.userinfo', lang, {
+      t('log.actions.userinfo', null, {
         tag: user.tag,
         id: user.id,
         warnings,
@@ -180,7 +178,7 @@ module.exports = async function userinfoSlash(client, interaction) {
     );
   } catch (err) {
     console.error('[slash/userinfo] Error:', err);
-    return safeReply(interaction, { content: t('common.unexpectedError', lang) }, { ephemeral: true });
+    return safeReply(interaction, { content: t('common.unexpectedError') }, { ephemeral: true });
   }
 };
 

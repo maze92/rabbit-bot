@@ -364,45 +364,7 @@ const API_BASE = '/api';
 
 
   
-    function updateLangFlag(lang) {
-      try {
-        var select = document.getElementById('langPicker');
-        if (!select) return;
-
-        var wrap = select.parentElement;
-        if (!wrap || !wrap.classList.contains('lang-picker-wrap')) return;
-
-        var flag = wrap.querySelector('.lang-picker-flag');
-        if (!flag) return;
-
-        // Reset classes e usar apenas emoji
-        flag.className = 'lang-picker-flag';
-        var key = (lang || '').toLowerCase();
-
-        if (key === 'pt') {
-          flag.textContent = '🇵🇹';
-        } else if (key === 'en') {
-          flag.textContent = '🇬🇧';
-        } else {
-          flag.textContent = '🏳️';
-        }
-      } catch (e) {
-        // não rebentar o dashboard por causa da flag
-      }
-    }
-
-    function ensureLangPickerFlag() {
-      try {
-        var select = document.getElementById('langPicker');
-        if (!select) return;
-
-        var wrap = select.parentElement;
-        if (wrap && wrap.classList.contains('lang-picker-wrap')) {
-          updateLangFlag(state.lang || select.value || 'pt');
-          return;
-        }
-
-        // Criar wrapper e flag se ainda não existirem
+                // Criar wrapper e flag se ainda não existirem
         var newWrap = document.createElement('span');
         newWrap.className = 'lang-picker-wrap';
 
@@ -431,7 +393,6 @@ function setLang(newLang) {
       } catch (e) {}
 
       // keep picker in sync
-      var lp = document.getElementById('langPicker');
       if (lp && lp.value !== state.lang) lp.value = state.lang;
 
       try {
@@ -907,8 +868,8 @@ function setLang(newLang) {
         if (regenPerDayInput) regenPerDayInput.value = regenPerDay !== null ? String(regenPerDay) : '';
         if (regenMaxDaysInput) regenMaxDaysInput.value = regenMaxDays !== null ? String(regenMaxDays) : '';
 
-        const lowT = Number.isFinite(Number(trust.lowTrustThreshold)) ? Number(trust.lowTrustThreshold) : null;
-        const highT = Number.isFinite(Number(trust.highTrustThreshold)) ? Number(trust.highTrustThreshold) : null;
+        const lowT = Number.isFinite(Number(trust.lowTrustThreshold || trust.lowThreshold)) ? Number(trust.lowTrustThreshold || trust.lowThreshold) : null;
+        const highT = Number.isFinite(Number(trust.highTrustThreshold || trust.highThreshold)) ? Number(trust.highTrustThreshold || trust.highThreshold) : null;
         if (lowT !== null && highT !== null) {
           riskEl.textContent = `< ${lowT} (risco) • > ${highT} (confiança)`;
         } else {
@@ -1538,7 +1499,6 @@ function addTempVoiceBaseChannel() {
           if (stored) lang = stored;
         } catch (e) {}
 
-        var lp = document.getElementById('langPicker');
         if (lp && lp.value) lang = lp.value;
 
         // stored wins over picker default
@@ -1561,10 +1521,6 @@ function addTempVoiceBaseChannel() {
         ensureLangPickerFlag();
 
     // Lang picker
-    var langPicker = document.getElementById('langPicker');
-    if (langPicker) {
-      langPicker.addEventListener('change', function () {
-        setLang(langPicker.value);
       });
     }
 
@@ -1921,3 +1877,27 @@ window.OzarkDashboard.apiGet = apiGet;
       }
     }
 
+
+// Wire JSON import/export buttons (safe even if DOMContentLoaded already ran)
+(function () {
+  if (typeof document === 'undefined') return;
+  function bindJsonButtons() {
+    var btnExport = document.getElementById('configJsonExportBtn');
+    var btnImport = document.getElementById('configJsonImportBtn');
+    if (btnExport && typeof exportGuildConfigJson === 'function') {
+      btnExport.addEventListener('click', function () {
+        exportGuildConfigJson().catch(function () {});
+      }, { once: true });
+    }
+    if (btnImport && typeof importGuildConfigJson === 'function') {
+      btnImport.addEventListener('click', function () {
+        importGuildConfigJson().catch(function () {});
+      }, { once: true });
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindJsonButtons);
+  } else {
+    bindJsonButtons();
+  }
+})();
