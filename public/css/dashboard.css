@@ -1665,3 +1665,31 @@ h2 {
 #extras-feeds-panel .gamenews-layout {
   margin-top: 8px;
 }
+
+
+/* === Config tab layout & helpers (v2) === */
+
+#tab-config .config-form {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+#tab-config .config-form > .card.subcard {
+  height: 100%;
+}
+
+/* Spacing helpers inside config tab */
+#tab-config .row.row-spaced-top {
+  margin-top: 12px;
+}
+
+#tab-config .row.row-tight-top {
+  margin-top: 8px;
+}
+
+#tab-config #configStatus.hint.hint-spaced-top {
+  margin-top: 8px;
+  display: block;
+}
