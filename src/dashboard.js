@@ -113,6 +113,22 @@ const ModWarnSchema = z.object({
 });
 
 const ModUnmuteSchema = z.object({
+const CasesSearchQuerySchema = z.object({
+  guildId: z.string().min(1).max(32),
+  q: z.string().max(100).optional(),
+  userId: z.string().max(32).optional(),
+  type: z.string().max(32).optional(),
+  source: z.string().max(32).optional(),
+  page: z.string().regex(/^\d+$/).optional(),
+  limit: z.string().regex(/^\d+$/).optional()
+});
+
+const LogsQuerySchema = z.object({
+  guildId: z.string().min(1).max(32),
+  page: z.string().regex(/^\d+$/).optional(),
+  limit: z.string().regex(/^\d+$/).optional()
+});
+
   guildId: z.string().min(1).max(32),
   userId: z.string().min(1).max(32),
   reason: z.string().max(1000).optional()
@@ -1804,6 +1820,10 @@ app.delete('/api/auth/users/:id', requireDashboardAuth, async (req, res) => {
 
 
 app.get('/api/logs', requireDashboardAuth, async (req, res) => {
+  const parsed = LogsQuerySchema.safeParse(req.query || {});
+  if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid query' });
+  const query = parsed.data;
+
   try {
     const page = Math.max(parseInt(req.query.page || '1', 10), 1);
     const limitRaw = parseInt(req.query.limit || '50', 10);

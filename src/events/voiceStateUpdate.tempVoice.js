@@ -12,6 +12,7 @@ const GuildConfig = require('../database/models/GuildConfig');
 const TempVoiceChannel = require('../database/models/TempVoiceChannel');
 
 const pendingDeletes = new Map(); // key: channelId, value: timeoutId
+const creationLocks = new Set(); // userIds currently creating a temp voice channel
 
 function normalizeDelaySeconds(raw) {
   let n = parseInt(raw, 10);
@@ -22,105 +23,116 @@ function normalizeDelaySeconds(raw) {
 
 async function handleJoin(client, newState, cfg) {
   const guild = newState.guild;
-  if (!guild) return;
+    if (!guild) return;
 
-  const user = await guild.members.fetch(newState.id).catch(() => null);
-  if (!user || user.user.bot) return;
+    const userId = newState.id;
+    if (creationLocks.has(userId)) return;
+    creationLocks.add(userId);
 
-  const baseId = newState.channelId;
-  const baseChannel = guild.channels.cache.get(baseId);
-  if (!baseChannel || baseChannel.type !== ChannelType.GuildVoice) return;
+    try {
+  const guild = newState.guild;
+    if (!guild) return;
 
-  // Verifica se este canal é um dos canais base
-  const baseIds = Array.isArray(cfg.baseChannelIds) ? cfg.baseChannelIds : [];
-  if (!baseIds.includes(baseId)) return;
+    const user = await guild.members.fetch(newState.id).catch(() => null);
+    if (!user || user.user.bot) return;
 
-  // Verifica se já existe canal temporário para este utilizador nesta guild
-  const existing = await TempVoiceChannel.findOne({ guildId: guild.id, ownerId: user.id }).lean();
-  if (existing) {
-    // Se o canal ainda existir, move o user para lá
-    const ch = guild.channels.cache.get(existing.channelId);
-    if (ch && ch.type === ChannelType.GuildVoice) {
-      await newState.setChannel(ch).catch(() => {});
-      return;
+    const baseId = newState.channelId;
+    const baseChannel = guild.channels.cache.get(baseId);
+    if (!baseChannel || baseChannel.type !== ChannelType.GuildVoice) return;
+
+    // Verifica se este canal é um dos canais base
+    const baseIds = Array.isArray(cfg.baseChannelIds) ? cfg.baseChannelIds : [];
+    if (!baseIds.includes(baseId)) return;
+
+    // Verifica se já existe canal temporário para este utilizador nesta guild
+    const existing = await TempVoiceChannel.findOne({ guildId: guild.id, ownerId: user.id }).lean();
+    if (existing) {
+      // Se o canal ainda existir, move o user para lá
+      const ch = guild.channels.cache.get(existing.channelId);
+      if (ch && ch.type === ChannelType.GuildVoice) {
+        await newState.setChannel(ch).catch(() => {});
+        return;
+      }
     }
-  }
 
-  // Definir categoria onde criar
-  let parentId = cfg.categoryId || null;
-  if (parentId) {
-    const parent = guild.channels.cache.get(parentId);
-    if (!parent || parent.type !== ChannelType.GuildCategory) {
-      parentId = null;
+    // Definir categoria onde criar
+    let parentId = cfg.categoryId || null;
+    if (parentId) {
+      const parent = guild.channels.cache.get(parentId);
+      if (!parent || parent.type !== ChannelType.GuildCategory) {
+        parentId = null;
+      }
     }
-  }
 
-  // Nome do canal temporário
-  const baseName = 'channel';
-  let seq = 1;
-  try {
-    const existingChannels = guild.channels.cache.filter(
-      (c) => c.type === ChannelType.GuildVoice && c.name.startsWith(baseName + '-')
-    );
-    if (existingChannels.size > 0) {
-      const nums = [];
-      for (const ch of existingChannels.values()) {
-        const parts = ch.name.split('-');
-        if (parts.length >= 2) {
-          const maybeNum = parseInt(parts[1], 10);
-          if (Number.isFinite(maybeNum)) nums.push(maybeNum);
+    // Nome do canal temporário
+    const baseName = 'channel';
+    let seq = 1;
+    try {
+      const existingChannels = guild.channels.cache.filter(
+        (c) => c.type === ChannelType.GuildVoice && c.name.startsWith(baseName + '-')
+      );
+      if (existingChannels.size > 0) {
+        const nums = [];
+        for (const ch of existingChannels.values()) {
+          const parts = ch.name.split('-');
+          if (parts.length >= 2) {
+            const maybeNum = parseInt(parts[1], 10);
+            if (Number.isFinite(maybeNum)) nums.push(maybeNum);
+          }
+        }
+        if (nums.length) {
+          seq = Math.max(...nums) + 1;
         }
       }
-      if (nums.length) {
-        seq = Math.max(...nums) + 1;
+    } catch {
+      // ignore
+    }
+
+    const channelName = `${baseName}-${seq}`;
+
+    // Permissões: o owner pode gerenciar a sala, etc.
+    const permissionOverwrites = [
+      {
+        id: guild.roles.everyone.id,
+        allow: [],
+        deny: []
+      },
+      {
+        id: user.id,
+        allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers],
+        deny: []
       }
+    ];
+
+    const created = await guild.channels.create({
+      name: channelName,
+      type: ChannelType.GuildVoice,
+      parent: parentId || undefined,
+      permissionOverwrites
+    }).catch(() => null);
+
+    if (!created) return;
+
+    // Registar na DB
+    await TempVoiceChannel.create({
+      guildId: guild.id,
+      channelId: created.id,
+      ownerId: user.id,
+      baseChannelId: baseId
+    }).catch(() => {});
+
+    // Mover user
+    await newState.setChannel(created).catch(() => {});
+
+    // Se havia timer de delete para este canal (não devia, mas por via das dúvidas), limpa
+    const timeoutId = pendingDeletes.get(created.id);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      pendingDeletes.delete(created.id);
     }
-  } catch {
-    // ignore
-  }
-
-  const channelName = `${baseName}-${seq}`;
-
-  // Permissões: o owner pode gerenciar a sala, etc.
-  const permissionOverwrites = [
-    {
-      id: guild.roles.everyone.id,
-      allow: [],
-      deny: []
-    },
-    {
-      id: user.id,
-      allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers],
-      deny: []
+    } finally {
+      creationLocks.delete(userId);
     }
-  ];
-
-  const created = await guild.channels.create({
-    name: channelName,
-    type: ChannelType.GuildVoice,
-    parent: parentId || undefined,
-    permissionOverwrites
-  }).catch(() => null);
-
-  if (!created) return;
-
-  // Registar na DB
-  await TempVoiceChannel.create({
-    guildId: guild.id,
-    channelId: created.id,
-    ownerId: user.id,
-    baseChannelId: baseId
-  }).catch(() => {});
-
-  // Mover user
-  await newState.setChannel(created).catch(() => {});
-
-  // Se havia timer de delete para este canal (não devia, mas por via das dúvidas), limpa
-  const timeoutId = pendingDeletes.get(created.id);
-  if (timeoutId) {
-    clearTimeout(timeoutId);
-    pendingDeletes.delete(created.id);
-  }
 }
 
 async function scheduleDeleteChannel(channel, delaySeconds) {
