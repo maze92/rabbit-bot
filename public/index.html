@@ -308,27 +308,28 @@
                           <input id="tempVoiceCategoryId" class="input" placeholder="ID da categoria (opcional)" />
                         </div>
 
+                        <div class="field">
+                          <label for="tempVoiceDeleteDelay" data-i18n="tempvoice_delete_delay_label">Tempo para apagar sala vazia (segundos)</label>
+                          <input id="tempVoiceDeleteDelay" class="input" type="number" min="2" max="600" step="1" />
+                        </div>
+
                         <div class="field field-spaced-top">
-                          <h4 data-i18n="tempvoice_active_title">Salas temporárias ativas</h4>
+                          <div class="tempvoice-active-header">
+                            <h4 data-i18n="tempvoice_active_title">Salas temporárias ativas</h4>
+                            <div class="actions">
+                              <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
+                                Guardar
+                              </button>
+                              <button id="btnDeleteTempVoiceBase" class="btn xs danger" type="button" data-i18n="tempvoice_delete_btn">
+                                Remover
+                              </button>
+                            </div>
+                          </div>
                           <div class="list" id="tempVoiceActiveList">
                             <div class="empty" data-i18n="tempvoice_active_empty">
                               Não existem salas temporárias neste momento.
                             </div>
                           </div>
-                        </div>
-
-                        <div class="config-actions-row tempvoice-actions-row">
-                          <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
-                            Guardar
-                          </button>
-                          <button id="btnDeleteTempVoiceBase" class="btn xs danger" type="button" data-i18n="tempvoice_delete_btn">
-                            Remover
-                          </button>
-                        </div>
-
-                        <div class="field">
-                          <label for="tempVoiceDeleteDelay" data-i18n="tempvoice_delete_delay_label">Tempo para apagar sala vazia (segundos)</label>
-                          <input id="tempVoiceDeleteDelay" class="input" type="number" min="2" max="600" step="1" />
                         </div>
                       </div>
                     </div>
@@ -508,7 +509,7 @@
                 Controla que cargos do Discord podem aceder à dashboard. No futuro será possível gerir utilizadores dedicados.
               </p>
 
-            <div class="row gap row-spaced-top">
+            <div class="row gap" style="margin-top:12px;">
               <div class="col">
                 <label for="configStaffRoles" data-i18n="config_staff_roles">Cargos de staff</label>
                 <select id="configStaffRoles" class="select" multiple></select>
@@ -525,7 +526,7 @@
             </div>
 
 
-            <div id="configStatus" class="hint hint-spaced-top"></div>
+            <div id="configStatus" class="hint" style="margin-top:8px;"></div>
 
                       <div class="card subcard">
   <h3 data-i18n="config_dashboard_users_title">Utilizadores da Dashboard</h3>
@@ -564,7 +565,7 @@
       </div>
     </div>
 
-    <div class="row gap row-tight-top">
+    <div class="row gap" style="margin-top:8px;">
       <div class="col">
         <label for="dashboardUserRole" data-i18n="config_dashboard_users_role">Perfil</label>
         <select id="dashboardUserRole" class="select">
