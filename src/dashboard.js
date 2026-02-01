@@ -7,6 +7,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 const { ChannelType } = require('discord.js');
 const helmet = require('helmet');
+const cors = require('cors');
 const { z } = require('zod');
 
 const status = require('./systems/status');
@@ -39,7 +40,6 @@ const jwt = require('jsonwebtoken');
 const DashboardUserModel = require('./database/models/DashboardUser');
 const rateLimit = require('./systems/rateLimit');
 
-const JWT_SECRET = process.env.DASHBOARD_JWT_SECRET || 'ozark-dashboard-change-me';
 
 if (process.env.NODE_ENV === 'production' && !process.env.DASHBOARD_JWT_SECRET) {
   console.warn('[Dashboard Auth] DASHBOARD_JWT_SECRET is not set in production. Please configure a strong secret.');
@@ -214,6 +214,21 @@ try {
 }
 
 const app = express();
+
+const isProd = process.env.NODE_ENV === 'production';
+
+// Enforce a strong JWT secret in production
+if (isProd && (!process.env.DASHBOARD_JWT_SECRET || process.env.DASHBOARD_JWT_SECRET.length < 32)) {
+  throw new Error('[Dashboard Auth] DASHBOARD_JWT_SECRET is missing or too weak in production. It must be at least 32 characters.');
+}
+
+const JWT_SECRET = process.env.DASHBOARD_JWT_SECRET || 'ozark-dashboard-change-me';
+
+if (!isProd && !process.env.DASHBOARD_JWT_SECRET) {
+  console.warn('[Dashboard Auth] Using default JWT secret in non-production. Set DASHBOARD_JWT_SECRET for better security.');
+}
+
+
 const server = http.createServer(app);
 
 app.set('trust proxy', 1);
@@ -221,6 +236,8 @@ app.set('trust proxy', 1);
 // Basic security headers for dashboard API
 // We disable the default CSP for now to avoid breaking inline scripts/styles.
 app.use(helmet({ contentSecurityPolicy: false }));
+
+app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : undefined, credentials: false }));
 
 app.use(express.json({ limit: '256kb' }));
 
@@ -1637,7 +1654,7 @@ app.post('/api/auth/login', rateLimit({ windowMs: 60_000, max: 5, keyPrefix: 'rl
       username: user.username
     };
 
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
     return res.json({
       ok: true,
