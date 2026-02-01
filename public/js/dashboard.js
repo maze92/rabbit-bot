@@ -723,6 +723,16 @@ function setLang(newLang) {
       const roles = (meta && meta.roles) || [];
       const conf = cfg && cfg.config ? cfg.config : {};
 
+      // Server language / timezone (guild-level settings)
+      state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
+      state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
+
+      const langSelect = document.getElementById('configServerLanguage');
+      const tzSelect = document.getElementById('configServerTimezone');
+      if (langSelect) langSelect.value = state.guildLanguage || 'auto';
+      if (tzSelect) tzSelect.value = state.guildTimezone || '';
+
+
       const logSelect = document.getElementById('configLogChannel');
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
       const ticketSelect = document.getElementById('configTicketChannel');
@@ -1777,6 +1787,16 @@ function addTempVoiceBaseChannel() {
       const cfg = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/config');
       const conf = cfg && cfg.config ? cfg.config : {};
 
+      // Server language / timezone (guild-level settings)
+      state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
+      state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
+
+      const langSelect = document.getElementById('configServerLanguage');
+      const tzSelect = document.getElementById('configServerTimezone');
+      if (langSelect) langSelect.value = state.guildLanguage || 'auto';
+      if (tzSelect) tzSelect.value = state.guildTimezone || '';
+
+
       state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
       state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
 
@@ -1786,7 +1806,13 @@ function addTempVoiceBaseChannel() {
       if (tzSelect) tzSelect.value = state.guildTimezone || '';
 
       const payload = {
+        language: (langSelect && langSelect.value) ? langSelect.value : state.guildLanguage || 'auto',
+        timezone: (tzSelect && tzSelect.value && tzSelect.value.trim()) ? tzSelect.value.trim() : state.guildTimezone || null,
         logChannelId: conf.logChannelId || null,
+        dashboardLogChannelId: conf.dashboardLogChannelId || null,
+        ticketThreadChannelId: conf.ticketThreadChannelId || null,
+        staffRoleIds: Array.isArray(conf.staffRoleIds) ? conf.staffRoleIds : []
+      };
         dashboardLogChannelId: conf.dashboardLogChannelId || null,
         ticketThreadChannelId: conf.ticketThreadChannelId || null,
         staffRoleIds: Array.isArray(conf.staffRoleIds) ? conf.staffRoleIds : []
@@ -1829,6 +1855,12 @@ function addTempVoiceBaseChannel() {
     try {
       await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', payload);
       toast(t('config_saved'));
+      // Update in-memory guild language/timezone and dashboard UI language
+      state.guildLanguage = payload.language || 'auto';
+      state.guildTimezone = payload.timezone || null;
+      if (state.guildLanguage && state.guildLanguage !== 'auto') {
+        setLang(state.guildLanguage);
+      }
       await loadGuildConfig();
     } catch (err) {
       console.error('Failed to import guild config JSON', err);
