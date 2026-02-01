@@ -1665,3 +1665,40 @@ h2 {
 #extras-feeds-panel .gamenews-layout {
   margin-top: 8px;
 }
+
+
+/* === Config tab layout & helpers === */
+
+#tab-config .config-form {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+#tab-config .config-form > .card.subcard {
+  height: 100%;
+}
+
+/* Spacing helpers inside config tab */
+#tab-config .row.row-spaced-top {
+  margin-top: 12px;
+}
+
+#tab-config .row.row-tight-top {
+  margin-top: 8px;
+}
+
+#tab-config #configStatus.hint.hint-spaced-top {
+  margin-top: 8px;
+  display: block;
+}
+
+
+/* TempVoice detail: align actions row similar to config/tickets */
+#extras-tempvoice-panel .tempvoice-actions-row {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
