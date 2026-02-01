@@ -1608,3 +1608,16 @@ h2 {
 #langPicker {
   padding-left: 32px;
 }
+
+
+/* === Small UX polish: tempvoice & config buttons === */
+#extras-tempvoice-panel .field.field-spaced-top {
+  margin-top: 16px;
+}
+
+#tab-config .config-actions-row {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
