@@ -377,7 +377,7 @@ async function loadUserHistory(user) {
                 container.querySelector('.user-actions-reason') || null;
 
               const reasonRaw = reasonInput && reasonInput.value ? reasonInput.value : '';
-              const reason = reasonRaw.trim() || null;
+              const reason = reasonRaw.trim() || 'No reason provided';
 
               if (action === 'reset-history') {
                 apiPost('/mod/reset-history', {
