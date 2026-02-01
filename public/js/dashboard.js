@@ -364,7 +364,6 @@ const API_BASE = '/api';
 
 
 
-})();
 
 function setLang(newLang) {
   state.lang = (newLang || 'pt').toLowerCase();
