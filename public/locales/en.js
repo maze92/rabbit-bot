@@ -208,7 +208,7 @@ window.OzarkLocales.en = {
 
   'users_history_error_generic': 'Failed to load user history.',
   'guilds_loading_option': 'Loading servers...',
-  'common_no_reason_provided': 'No reason provided.',,
+  'common_no_reason_provided': 'No reason provided.',
   'extras_trust_info_title': "How it works",
   'extras_trust_info_body': "The trust system assigns each user a score between 0 and 100. WARNs and MUTEs decrease it (penalties). Over time, without infractions, the score regenerates. Low scores mean higher risk and stricter automoderation; high scores mean more trusted users.",
   'tempvoice_max_users_label': "Max users per room"

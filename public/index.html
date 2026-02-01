@@ -531,8 +531,10 @@
         <input id="dashboardUserUsername" type="text" class="input" />
       </div>
       <div class="col">
-        <label for="dashboardUserPassword" data-i18n="config_dashboard_users_password">Password</label>
-        <input id="dashboardUserPassword" type="password" class="input" autocomplete="new-password" />
+        <form id="dashboardUserForm" autocomplete="off" onsubmit="return false;">
+          <label for="dashboardUserPassword" data-i18n="config_dashboard_users_password">Password</label>
+          <input id="dashboardUserPassword" type="password" class="input" autocomplete="new-password" />
+        </form>
         <p class="hint" id="dashboardUserPasswordHint" data-i18n="config_dashboard_users_password_hint">
           Define uma password para o novo utilizador.
         </p>
