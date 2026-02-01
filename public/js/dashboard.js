@@ -1758,7 +1758,7 @@ function addTempVoiceBaseChannel() {
   window.OzarkDashboard.getToken = getToken;
   window.OzarkDashboard.setToken = setToken;
   window.OzarkDashboard.clearToken = clearToken;
-window.OzarkDashboard.apiGet = apiGet;
+  window.OzarkDashboard.apiGet = apiGet;
   window.OzarkDashboard.apiPost = apiPost;
   window.OzarkDashboard.toast = toast;
   window.OzarkDashboard.t = t;
@@ -1766,82 +1766,81 @@ window.OzarkDashboard.apiGet = apiGet;
   window.OzarkDashboard.setTab = setTab;
   window.OzarkDashboard.loadGuilds = loadGuilds;
 
-  // Users
-
   // Moderation (logs / cases)
   window.OzarkDashboard.createLogRow = createLogRow;
   window.OzarkDashboard.createCaseRow = createCaseRow;
   window.OzarkDashboard.renderLogs = renderLogs;
 
-  // GameNews
-    
-})();
+  // JSON import/export helpers for guild config
+  async function exportGuildConfigJson() {
+    if (!state.guildId) return;
+    try {
+      const cfg = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/config');
+      const conf = cfg && cfg.config ? cfg.config : {};
 
-    async function exportGuildConfigJson() {
-      if (!state.guildId) return;
-      try {
-        const cfg = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/config');
-        const conf = cfg && cfg.config ? cfg.config : {};
+      state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
+      state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
 
-        state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
-        state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
-
-        const langSelect = document.getElementById('configServerLanguage');
-        const tzSelect = document.getElementById('configServerTimezone');
-        if (langSelect) langSelect.value = state.guildLanguage || 'auto';
-        if (tzSelect) tzSelect.value = state.guildTimezone || '';
-
-        const payload = {
-          logChannelId: conf.logChannelId || null,
-          dashboardLogChannelId: conf.dashboardLogChannelId || null,
-          ticketThreadChannelId: conf.ticketThreadChannelId || null,
-          staffRoleIds: Array.isArray(conf.staffRoleIds) ? conf.staffRoleIds : []
-        };
-        const ta = document.getElementById('configJsonExport');
-        if (ta) {
-          ta.value = JSON.stringify(payload, null, 2);
-        }
-        toast(t('config_saved'));
-      } catch (err) {
-        console.error('Failed to export guild config JSON', err);
-        toast(t('config_error_generic'));
-      }
-    }
-
-    async function importGuildConfigJson() {
-      if (!state.guildId) return;
-      const ta = document.getElementById('configJsonImport');
-      if (!ta || !ta.value.trim()) {
-        toast(t('config_error_generic'));
-        return;
-      }
-
-      let parsed = null;
-      try {
-        parsed = JSON.parse(ta.value);
-      } catch (e) {
-        console.error('Invalid JSON for import', e);
-        toast(t('config_error_generic'));
-        return;
-      }
+      const langSelect = document.getElementById('configServerLanguage');
+      const tzSelect = document.getElementById('configServerTimezone');
+      if (langSelect) langSelect.value = state.guildLanguage || 'auto';
+      if (tzSelect) tzSelect.value = state.guildTimezone || '';
 
       const payload = {
-        logChannelId: parsed.logChannelId || null,
-        dashboardLogChannelId: parsed.dashboardLogChannelId || null,
-        ticketThreadChannelId: parsed.ticketThreadChannelId || null,
-        staffRoleIds: Array.isArray(parsed.staffRoleIds) ? parsed.staffRoleIds.filter(Boolean) : []
+        logChannelId: conf.logChannelId || null,
+        dashboardLogChannelId: conf.dashboardLogChannelId || null,
+        ticketThreadChannelId: conf.ticketThreadChannelId || null,
+        staffRoleIds: Array.isArray(conf.staffRoleIds) ? conf.staffRoleIds : []
       };
-
-      try {
-        await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', payload);
-        toast(t('config_saved'));
-        await loadGuildConfig();
-      } catch (err) {
-        console.error('Failed to import guild config JSON', err);
-        toast(t('config_error_save'));
+      const ta = document.getElementById('configJsonExport');
+      if (ta) {
+        ta.value = JSON.stringify(payload, null, 2);
       }
+      toast(t('config_saved'));
+    } catch (err) {
+      console.error('Failed to export guild config JSON', err);
+      toast(t('config_error_generic'));
+    }
+  }
+
+  async function importGuildConfigJson() {
+    if (!state.guildId) return;
+    const ta = document.getElementById('configJsonImport');
+    if (!ta || !ta.value.trim()) {
+      toast(t('config_error_generic'));
+      return;
     }
 
+    let parsed = null;
+    try {
+      parsed = JSON.parse(ta.value);
+    } catch (e) {
+      console.error('Invalid JSON for import', e);
+      toast(t('config_error_generic'));
+      return;
+    }
+
+    const payload = {
+      logChannelId: parsed.logChannelId || null,
+      dashboardLogChannelId: parsed.dashboardLogChannelId || null,
+      ticketThreadChannelId: parsed.ticketThreadChannelId || null,
+      staffRoleIds: Array.isArray(parsed.staffRoleIds) ? parsed.staffRoleIds.filter(Boolean) : []
+    };
+
+    try {
+      await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', payload);
+      toast(t('config_saved'));
+      await loadGuildConfig();
+    } catch (err) {
+      console.error('Failed to import guild config JSON', err);
+      toast(t('config_error_save'));
+    }
+  }
+
+  window.OzarkDashboard.exportGuildConfigJson = exportGuildConfigJson;
+  window.OzarkDashboard.importGuildConfigJson = importGuildConfigJson;
+
+})(); // close main dashboard IIFE
 
 // Wire JSON import/export buttons (safe even if DOMContentLoaded already ran)
 (function () {
@@ -1849,14 +1848,14 @@ window.OzarkDashboard.apiGet = apiGet;
   function bindJsonButtons() {
     var btnExport = document.getElementById('configJsonExportBtn');
     var btnImport = document.getElementById('configJsonImportBtn');
-    if (btnExport && typeof exportGuildConfigJson === 'function') {
+    if (btnExport && window.OzarkDashboard && typeof window.OzarkDashboard.exportGuildConfigJson === 'function') {
       btnExport.addEventListener('click', function () {
-        exportGuildConfigJson().catch(function () {});
+        window.OzarkDashboard.exportGuildConfigJson().catch(function () {});
       }, { once: true });
     }
-    if (btnImport && typeof importGuildConfigJson === 'function') {
+    if (btnImport && window.OzarkDashboard && typeof window.OzarkDashboard.importGuildConfigJson === 'function') {
       btnImport.addEventListener('click', function () {
-        importGuildConfigJson().catch(function () {});
+        window.OzarkDashboard.importGuildConfigJson().catch(function () {});
       }, { once: true });
     }
   }
