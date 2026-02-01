@@ -209,7 +209,7 @@
             <!-- Extras -->
       <section class="section" id="tab-gamenews">
         <div class="card">
-          <h2 data-i18n="extras_title">Extras</h2>
+          <h2 data-i18n="extras_title">Funcionalidades</h2>
           <p class="hint" data-i18n="extras_hint">
             Ferramentas adicionais do bot: feeds de notícias e voz temporária.
           </p>
@@ -218,7 +218,7 @@
             <button class="subtab active" data-subtab="feeds" data-i18n="extras_feeds_tab">Feeds</button>
             <button class="subtab" data-subtab="tempvoice" data-i18n="extras_tempvoice_tab">Voz temporária</button>
             <button class="subtab" data-subtab="tickets" data-i18n="extras_tickets_tab">Tickets</button>
-            <button class="subtab" data-subtab="trust" data-i18n="extras_trust_tab">Trust system</button>
+            <button class="subtab" data-subtab="trust" data-i18n="extras_trust_tab">Moderação</button>
           </div>
 
           <div class="subtab-panels">
@@ -483,7 +483,32 @@
             Defina canais, cargos de staff e preferências de registo para este servidor.
           </p>
 
-          <div class="config-form">
+<div class="config-form">
+            <div class="card subcard">
+              <h3 data-i18n="config_general_section_title">Definições gerais</h3>
+              <p class="hint" data-i18n="config_general_section_hint">
+                Idioma principal e fuso horário usados para logs, tickets e mensagens do bot neste servidor.
+              </p>
+
+              <div class="row gap">
+                <div class="col">
+                  <label for="configServerLanguage" data-i18n="config_server_language_label">Idioma principal do servidor</label>
+                  <select id="configServerLanguage" class="select">
+                    <option value="auto" data-i18n="config_server_language_auto">Automático</option>
+                    <option value="pt" data-i18n="config_server_language_pt">Português</option>
+                    <option value="en" data-i18n="config_server_language_en">Inglês</option>
+                  </select>
+                </div>
+                <div class="col">
+                  <label for="configServerTimezone" data-i18n="config_server_timezone_label">Timezone do servidor</label>
+                  <input id="configServerTimezone" class="input" placeholder="Ex: Europe/Lisbon" />
+                  <p class="hint" data-i18n="config_server_timezone_hint">
+                    Use um identificador IANA válido (ex.: Europe/Lisbon, UTC). Afeta apenas a apresentação de datas na dashboard.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div class="card subcard">
               <h3 data-i18n="config_logs_section_title">Registos e canais de logs</h3>
               <p class="hint" data-i18n="config_logs_section_hint">
