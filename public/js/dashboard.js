@@ -727,10 +727,6 @@ function setLang(newLang) {
       state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
       state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
 
-      const langSelect = document.getElementById('configServerLanguage');
-      const tzSelect = document.getElementById('configServerTimezone');
-      if (langSelect) langSelect.value = state.guildLanguage || 'auto';
-      if (tzSelect) tzSelect.value = state.guildTimezone || '';
 
 
       const logSelect = document.getElementById('configLogChannel');
@@ -739,6 +735,8 @@ function setLang(newLang) {
       const staffSelect = document.getElementById('configStaffRoles');
       const langSelect = document.getElementById('configServerLanguage');
       const tzSelect = document.getElementById('configServerTimezone');
+      if (langSelect) langSelect.value = state.guildLanguage || 'auto';
+      if (tzSelect) tzSelect.value = state.guildTimezone || '';
 
       if (logSelect) {
         logSelect.innerHTML = '';
@@ -1791,19 +1789,11 @@ function addTempVoiceBaseChannel() {
       state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
       state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
 
-      const langSelect = document.getElementById('configServerLanguage');
-      const tzSelect = document.getElementById('configServerTimezone');
-      if (langSelect) langSelect.value = state.guildLanguage || 'auto';
-      if (tzSelect) tzSelect.value = state.guildTimezone || '';
 
 
       state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
       state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
 
-      const langSelect = document.getElementById('configServerLanguage');
-      const tzSelect = document.getElementById('configServerTimezone');
-      if (langSelect) langSelect.value = state.guildLanguage || 'auto';
-      if (tzSelect) tzSelect.value = state.guildTimezone || '';
 
       const payload = {
         language: (langSelect && langSelect.value) ? langSelect.value : state.guildLanguage || 'auto',
