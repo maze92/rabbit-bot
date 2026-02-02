@@ -1807,74 +1807,108 @@ function addTempVoiceBaseChannel() {
   window.OzarkDashboard.renderLogs = renderLogs;
 
   // JSON import/export helpers for guild config
-  async function exportGuildConfigJson() {
-    if (!state.guildId) return;
-    try {
-      const cfg = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/config');
-      const conf = cfg && cfg.config ? cfg.config : {};
+  
+async function exportGuildConfigJson() {
+  if (!state.guildId) return;
+  if (typeof document === 'undefined') return;
 
-      // Server language / timezone (guild-level settings)
-      state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
-      state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
-
-
-
-      state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
-      state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
-
-
-      const payload = {
-        logChannelId: conf.logChannelId || null,
-        dashboardLogChannelId: conf.dashboardLogChannelId || null,
-        ticketThreadChannelId: conf.ticketThreadChannelId || null,
-        staffRoleIds: Array.isArray(conf.staffRoleIds) ? conf.staffRoleIds : []
-      };
-      toast(t('config_saved'));
-    } catch (err) {
-      console.error('Failed to export guild config JSON', err);
-      toast(t('config_error_generic'));
-    }
-  }
-
-  async function importGuildConfigJson() {
-    if (!state.guildId) return;
-    const ta = document.getElementById('configJsonImport');
-    if (!ta || !ta.value.trim()) {
-      toast(t('config_error_generic'));
-      return;
-    }
-
-    let parsed = null;
-    try {
-      parsed = JSON.parse(ta.value);
-    } catch (e) {
-      console.error('Invalid JSON for import', e);
-      toast(t('config_error_generic'));
-      return;
-    }
+  try {
+    const cfg = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/config');
+    const conf = cfg && cfg.config ? cfg.config : {};
 
     const payload = {
-      logChannelId: parsed.logChannelId || null,
-      dashboardLogChannelId: parsed.dashboardLogChannelId || null,
-      ticketThreadChannelId: parsed.ticketThreadChannelId || null,
-      staffRoleIds: Array.isArray(parsed.staffRoleIds) ? parsed.staffRoleIds.filter(Boolean) : []
+      guildId: conf.guildId || state.guildId || null,
+      language: typeof conf.language === 'string' ? conf.language : 'auto',
+      timezone: (typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null,
+      logChannelId: conf.logChannelId || null,
+      dashboardLogChannelId: conf.dashboardLogChannelId || null,
+      ticketThreadChannelId: conf.ticketThreadChannelId || null,
+      staffRoleIds: Array.isArray(conf.staffRoleIds) ? conf.staffRoleIds : []
     };
 
-    try {
-      await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', payload);
-      toast(t('config_saved'));
-      // Update in-memory guild language/timezone and dashboard UI language
-      state.guildLanguage = payload.language || 'auto';
-      state.guildTimezone = payload.timezone || null;
-      if (state.guildLanguage && state.guildLanguage !== 'auto') {
-        setLang(state.guildLanguage);
-      }
-      await loadGuildConfig();
-    } catch (err) {
-      console.error('Failed to import guild config JSON', err);
-      toast(t('config_error_save'));
+    const json = JSON.stringify(payload, null, 2);
+
+    const ta = document.getElementById('configJsonExport');
+    if (ta) {
+      ta.value = json;
     }
+
+    try {
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ozark-guild-config-' + (payload.guildId || 'unknown') + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.warn('Unable to trigger automatic JSON download:', e);
+    }
+
+    toast(t('config_saved'));
+  } catch (err) {
+    console.error('Failed to export guild config JSON', err);
+    toast(t('config_error_generic'));
   }
+}
+
+
+async function importGuildConfigJson() {
+  if (!state.guildId) return;
+  if (typeof document === 'undefined') return;
+
+  const ta = document.getElementById('configJsonImport');
+  if (!ta || !ta.value.trim()) {
+    toast(t('config_error_generic'));
+    return;
+  }
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(ta.value);
+  } catch (e) {
+    console.error('Invalid JSON for import', e);
+    toast(t('config_error_generic'));
+    return;
+  }
+
+  const payload = {
+    logChannelId: parsed.logChannelId || null,
+    dashboardLogChannelId: parsed.dashboardLogChannelId || null,
+    ticketThreadChannelId: parsed.ticketThreadChannelId || null,
+    staffRoleIds: Array.isArray(parsed.staffRoleIds) ? parsed.staffRoleIds.filter(Boolean) : []
+  };
+
+  if (typeof parsed.language === 'string') {
+    payload.language = parsed.language;
+  }
+  if (typeof parsed.timezone === 'string') {
+    payload.timezone = parsed.timezone;
+  }
+
+  try {
+    await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', payload);
+    toast(t('config_saved'));
+
+    if (payload.language) {
+      state.guildLanguage = payload.language;
+    }
+    if (Object.prototype.hasOwnProperty.call(payload, 'timezone')) {
+      state.guildTimezone = payload.timezone;
+    }
+
+    if (state.guildLanguage && state.guildLanguage !== 'auto') {
+      setLang(state.guildLanguage);
+    }
+
+    await loadGuildConfig();
+  } catch (err) {
+    console.error('Failed to import guild config JSON', err);
+    toast(t('config_error_save'));
+  }
+}
 
   window.OzarkDashboard.exportGuildConfigJson = exportGuildConfigJson;
   window.OzarkDashboard.importGuildConfigJson = importGuildConfigJson;

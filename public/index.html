@@ -307,28 +307,34 @@
                           <label for="tempVoiceDeleteDelay" data-i18n="tempvoice_delete_delay_label">Tempo para apagar sala vazia (segundos)</label>
                           <input id="tempVoiceDeleteDelay" class="input" type="number" min="2" max="600" step="1" />
                         </div>
+                        
                         <div class="field">
                           <label for="tempVoiceMaxUsers" data-i18n="tempvoice_max_users_label">Limite máximo de utilizadores por sala</label>
                           <input id="tempVoiceMaxUsers" class="input" type="number" min="1" max="99" step="1" placeholder="(opcional)" />
                         </div>
 
                         <div class="field field-spaced-top">
+                          <div class="actions tempvoice-actions-top">
+                            <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
+                              Guardar
+                            </button>
+                            <button id="btnDeleteTempVoiceBase" class="btn xs danger" type="button" data-i18n="tempvoice_delete_btn">
+                              Remover
+                            </button>
+                          </div>
+                        </div>
+
+                        <div class="field field-spaced-top">
                           <div class="tempvoice-active-header">
                             <h4 data-i18n="tempvoice_active_title">Salas temporárias ativas</h4>
-                            <div class="actions">
-                              <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
-                                Guardar
-                              </button>
-                              <button id="btnDeleteTempVoiceBase" class="btn xs danger" type="button" data-i18n="tempvoice_delete_btn">
-                                Remover
-                              </button>
-                            </div>
                           </div>
                           <div class="list" id="tempVoiceActiveList">
                             <div class="empty" data-i18n="tempvoice_active_empty">
                               Não existem salas temporárias neste momento.
                             </div>
                           </div>
+                        </div>
+
                         </div>
                       </div>
                     </div>
@@ -380,38 +386,38 @@
 
                       <div class="trust-form-row">
                         <label for="trustBaseInput" data-i18n="config_trust_base">Base level</label>
-                        <input id="trustBaseInput" type="number" class="input" readonly disabled />
+                        <input id="trustBaseInput" type="number" class="input" value="50" readonly disabled />
                       </div>
 
                       <div class="trust-form-row">
                         <label data-i18n="config_trust_minmax">Minimum / Maximum</label>
                         <div class="row gap">
-                          <input id="trustMinInput" type="number" class="input" style="max-width:90px;" readonly disabled />
-                          <input id="trustMaxInput" type="number" class="input" style="max-width:90px;" readonly disabled />
+                          <input id="trustMinInput" type="number" class="input" style="max-width:90px;" value="0" readonly disabled />
+                          <input id="trustMaxInput" type="number" class="input" style="max-width:90px;" value="100" readonly disabled />
                         </div>
                       </div>
 
                       <div class="trust-form-row">
                         <label data-i18n="config_trust_penalties">Penalties</label>
                         <div class="row gap">
-                          <input id="trustWarnPenaltyInput" type="number" class="input" placeholder="WARN" style="max-width:90px;" readonly disabled />
-                          <input id="trustMutePenaltyInput" type="number" class="input" placeholder="MUTE" style="max-width:90px;" readonly disabled />
+                          <input id="trustWarnPenaltyInput" type="number" class="input" placeholder="WARN" style="max-width:90px;" value="10" readonly disabled />
+                          <input id="trustMutePenaltyInput" type="number" class="input" placeholder="MUTE" style="max-width:90px;" value="25" readonly disabled />
                         </div>
                       </div>
 
                       <div class="trust-form-row">
                         <label data-i18n="config_trust_regen">Regeneration</label>
                         <div class="row gap">
-                          <input id="trustRegenPerDayInput" type="number" class="input" placeholder="por dia" style="max-width:90px;" readonly disabled />
-                          <input id="trustRegenMaxDaysInput" type="number" class="input" placeholder="máx. dias" style="max-width:90px;" readonly disabled />
+                          <input id="trustRegenPerDayInput" type="number" class="input" placeholder="por dia" style="max-width:90px;" value="5" readonly disabled />
+                          <input id="trustRegenMaxDaysInput" type="number" class="input" placeholder="máx. dias" style="max-width:90px;" value="14" readonly disabled />
                         </div>
                       </div>
 
                       <div class="trust-form-row">
                         <label data-i18n="config_trust_risk">Thresholds</label>
                         <div class="row gap">
-                          <input id="trustLowThresholdInput" type="number" class="input" placeholder="baixo" style="max-width:90px;" readonly disabled />
-                          <input id="trustHighThresholdInput" type="number" class="input" placeholder="alto" style="max-width:90px;" readonly disabled />
+                          <input id="trustLowThresholdInput" type="number" class="input" placeholder="baixo" style="max-width:90px;" value="30" readonly disabled />
+                          <input id="trustHighThresholdInput" type="number" class="input" placeholder="alto" style="max-width:90px;" value="70" readonly disabled />
                         </div>
                       </div>
                     </div>
@@ -509,7 +515,7 @@
                 Controla que cargos do Discord podem aceder à dashboard. No futuro será possível gerir utilizadores dedicados.
               </p>
 
-            <div class="row gap" style="margin-top:12px;">
+            <div class="row gap staff-roles-row">
               <div class="col">
                 <label for="configStaffRoles" data-i18n="config_staff_roles">Cargos de staff</label>
                 <select id="configStaffRoles" class="select" multiple></select>
@@ -520,13 +526,7 @@
             </div>
 </div>
 
-            <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px;">
-              <button type="button" class="btn" id="btnReloadGuildConfig" data-i18n="config_reload">Recarregar</button>
-              <button type="button" class="btn primary" id="btnSaveGuildConfig" data-i18n="config_save">Guardar configuração</button>
-            </div>
-
-
-            <div id="configStatus" class="hint" style="margin-top:8px;"></div>
+            
 
                       <div class="card subcard">
               <details class="config-advanced">
@@ -559,7 +559,13 @@
 
   <div class="dashboard-users-toolbar">
     <div class="left">
-      <button type="button" class="btn small" id="btnDashboardUsersReload" data-i18n="config_dashboard_users_reload_button">Recarregar</button>
+      <button type="button" class="b
+            <div class="config-actions-footer">
+              <button type="button" class="btn small" id="btnReloadGuildConfig" data-i18n="config_reload">Recarregar</button>
+              <button type="button" class="btn small primary" id="btnSaveGuildConfig" data-i18n="config_save">Guardar configuração</button>
+            </div>
+            <div id="configStatus" class="hint" style="margin-top:8px;"></div>
+tn small" id="btnDashboardUsersReload" data-i18n="config_dashboard_users_reload_button">Recarregar</button>
       <button type="button" class="btn primary small" id="btnDashboardUsersAdd" data-i18n="config_dashboard_users_add_button">Adicionar</button>
     </div>
     <div class="right">

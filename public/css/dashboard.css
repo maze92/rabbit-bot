@@ -1780,3 +1780,60 @@ h2 {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0.5rem 1rem;
 }
+
+
+.config-actions-footer {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn.small {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.tempvoice-actions-top {
+  justify-content: flex-start;
+}
+
+
+#tab-config .card.subcard > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#tab-config .card.subcard > h3::before {
+  content: '⚙️';
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+
+#tab-config .config-form > .card.subcard:first-of-type {
+  border-left: 3px solid rgba(255, 255, 255, 0.15);
+  padding-left: 14px;
+}
+
+#tab-config .staff-roles-row {
+  margin-top: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+#tab-config .staff-roles-row .hint {
+  margin-top: 4px;
+}
+
+#tab-config details.config-advanced {
+  margin-top: 16px;
+  padding: 8px 12px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+#tab-config details.config-advanced > summary {
+  cursor: pointer;
+  font-weight: 500;
+}
