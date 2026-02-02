@@ -529,6 +529,29 @@
             <div id="configStatus" class="hint" style="margin-top:8px;"></div>
 
                       <div class="card subcard">
+              <details class="config-advanced">
+                <summary data-i18n="config_json_section_title">Avançado: importar/exportar configuração</summary>
+                <p class="hint" data-i18n="config_json_section_hint">
+                  Exporta a configuração atual deste servidor para JSON ou aplica rapidamente uma configuração já preparada.
+                </p>
+
+                <div class="row gap">
+                  <div class="col">
+                    <label data-i18n="config_json_export_label">Exportar configuração atual</label>
+                    <textarea id="configJsonExport" class="input" rows="6" readonly></textarea>
+                    <button type="button" class="btn small" id="configJsonExportBtn" data-i18n="config_json_export_btn">Gerar JSON</button>
+                  </div>
+                  <div class="col">
+                    <label for="configJsonImport" data-i18n="config_json_import_label">Importar configuração (JSON)</label>
+                    <textarea id="configJsonImport" class="input" rows="6"></textarea>
+                    <button type="button" class="btn small primary" id="configJsonImportBtn" data-i18n="config_json_import_btn">Aplicar JSON</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+
+
+<div class="card subcard">
   <h3 data-i18n="config_dashboard_users_title">Utilizadores da Dashboard</h3>
   <p class="hint" data-i18n="config_dashboard_users_hint">
     Planeamento de acesso dedicado à dashboard. Aqui podes criar utilizadores específicos e definir permissões sem depender apenas de cargos do Discord.
@@ -588,30 +611,7 @@
     </div>
 
 
-            <div class="card subcard">
-              <details class="config-advanced">
-                <summary data-i18n="config_json_section_title">Avançado: importar/exportar configuração</summary>
-                <p class="hint" data-i18n="config_json_section_hint">
-                  Exporta a configuração atual deste servidor para JSON ou aplica rapidamente uma configuração já preparada.
-                </p>
-
-                <div class="row gap">
-                  <div class="col">
-                    <label data-i18n="config_json_export_label">Exportar configuração atual</label>
-                    <textarea id="configJsonExport" class="input" rows="6" readonly></textarea>
-                    <button type="button" class="btn small" id="configJsonExportBtn" data-i18n="config_json_export_btn">Gerar JSON</button>
-                  </div>
-                  <div class="col">
-                    <label for="configJsonImport" data-i18n="config_json_import_label">Importar configuração (JSON)</label>
-                    <textarea id="configJsonImport" class="input" rows="6"></textarea>
-                    <button type="button" class="btn small primary" id="configJsonImportBtn" data-i18n="config_json_import_btn">Aplicar JSON</button>
-                  </div>
-                </div>
-              </details>
-            </div>
-
-
-    <div class="dashboard-users-editor-actions">
+                <div class="dashboard-users-editor-actions">
       <button type="button" class="btn" id="btnDashboardUsersCancel" data-i18n="common_cancel">Cancelar</button>
       <button type="button" class="btn primary" id="btnDashboardUsersSave" data-i18n="common_save">Guardar</button>
     </div>

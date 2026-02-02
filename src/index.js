@@ -87,19 +87,15 @@ client.once('clientReady', async () => {
       console.error('[Startup] Failed to start maintenance scheduler:', err);
     }
 
-    // Start Game News system (if enabled in config)
-    try {
-      if (config.gameNews?.enabled) {
+          // Start Game News system (delegates "enabled" check to the module itself)
+      try {
         await startGameNews(client, config);
         console.log('📰 Game News system started.');
         status.setGameNewsRunning(true);
-      } else {
+      } catch (err) {
+        console.error('[Startup] Failed to start Game News system:', err);
         status.setGameNewsRunning(false);
       }
-    } catch (err) {
-      console.error('[Startup] Failed to start Game News system:', err);
-      status.setGameNewsRunning(false);
-    }
 
     // Basic presence as a fallback; can be refined later
     try {
