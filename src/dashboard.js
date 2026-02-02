@@ -1509,7 +1509,6 @@ app.get('/api/guilds/:guildId/config', requireDashboardAuth, async (req, res) =>
     const trustConfig = config.trust || null;
 
     if (!doc) {
-    if (!doc) {
       return res.json({
         ok: true,
         config: {
