@@ -1798,6 +1798,7 @@ function addTempVoiceBaseChannel() {
   window.OzarkDashboard.toast = toast;
   window.OzarkDashboard.t = t;
   window.OzarkDashboard.escapeHtml = escapeHtml;
+  window.OzarkDashboard.formatDateTime = formatDateTime;
   window.OzarkDashboard.setTab = setTab;
   window.OzarkDashboard.loadGuilds = loadGuilds;
 

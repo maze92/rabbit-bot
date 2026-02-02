@@ -25,22 +25,28 @@
   }
 
       function makeStatusKey(obj) {
-      if (!obj) return '';
-      var feedUrl = '';
-      var channelId = '';
-      var name = '';
-      try {
-        feedUrl = (obj.feedUrl != null ? String(obj.feedUrl) : '').trim();
-      } catch (e) {}
-      try {
-        channelId = (obj.channelId != null ? String(obj.channelId) : '').trim();
-      } catch (e) {}
-      try {
-        name = obj.name != null ? String(obj.name) : '';
-      } catch (e) {}
-      var right = channelId || name;
-      return (feedUrl || '') + '|' + (right || '');
-    }
+  if (!obj) return '';
+  let feedUrl = '';
+  let channelId = '';
+  let name = '';
+
+  try {
+    feedUrl = (obj.feedUrl != null ? String(obj.feedUrl) : '').trim();
+  } catch (e) {}
+  try {
+    channelId = (obj.channelId != null ? String(obj.channelId) : '').trim();
+  } catch (e) {}
+  try {
+    name = obj.name != null ? String(obj.name) : '';
+  } catch (e) {}
+
+  return JSON.stringify({
+    feedUrl,
+    channelId,
+    name
+  });
+}
+
 
     function buildStatusIndex(items) {
       const idx = {};
@@ -54,22 +60,26 @@
     }
 
 function formatDateTimeShort(value) {
-    if (!value) return '';
-    try {
-      const d = new Date(value);
-      if (Number.isNaN(d.getTime())) return '';
-      return d.toLocaleString();
-    } catch (e) {
-      return '';
+  if (!value) return '';
+  try {
+    if (D && typeof D.formatDateTime === 'function') {
+      return D.formatDateTime(value);
     }
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleString();
+  } catch (e) {
+    return '';
   }
+}
 
-  function formatIntervalMinutes(ms) {
-    if (!ms || typeof ms !== 'number' || !Number.isFinite(ms) || ms <= 0) return '';
-    const mins = ms / 60000;
-    if (Number.isInteger(mins)) return String(mins);
-    return String(Math.round(mins * 10) / 10);
-  }
+function formatIntervalMinutes(ms) {
+  if (!ms || typeof ms !== 'number' || !Number.isFinite(ms) || ms <= 0) return '';
+  const mins = ms / 60000;
+  if (Number.isInteger(mins)) return String(mins);
+  return String(Math.round(mins * 10) / 10);
+}
+
 
   // ------------------------
   // Render da lista de feeds
@@ -138,20 +148,25 @@ function formatDateTimeShort(value) {
   }
 
   function selectGameNewsFeedByIndex(idx) {
+      const numericIdx = Number(idx);
+      if (!Number.isInteger(numericIdx) || numericIdx < 0) return;
       if (!Array.isArray(state.gameNewsFeeds)) return;
-      const feed = state.gameNewsFeeds[idx];
+
+      const feed = state.gameNewsFeeds[numericIdx];
       if (!feed) return;
+
       const listEl = document.getElementById('gamenewsFeedsList');
       if (listEl) {
         const rows = listEl.querySelectorAll('.list-item');
         rows.forEach(function (r) {
           r.classList.remove('active');
         });
-        const activeRow = listEl.querySelector(`.list-item[data-index="${idx}"]`);
+        const activeRow = listEl.querySelector(`.list-item[data-index="${numericIdx}"]`);
         if (activeRow) activeRow.classList.add('active');
       }
+
       const detailEl = document.getElementById('gamenewsFeedDetailPanel');
-      state.activeGameNewsFeedIndex = idx;
+      state.activeGameNewsFeedIndex = numericIdx;
       if (detailEl) {
         detailEl.innerHTML = renderGameNewsFeedSkeleton();
       }
@@ -159,11 +174,16 @@ function formatDateTimeShort(value) {
       if (_gameNewsDetailTimeout) {
         clearTimeout(_gameNewsDetailTimeout);
       }
+
       _gameNewsDetailTimeout = setTimeout(function () {
-        renderGameNewsFeedDetail(feed);
+        if (!Array.isArray(state.gameNewsFeeds)) return;
+        const currentFeed = state.gameNewsFeeds[numericIdx];
+        if (!currentFeed) return;
+        renderGameNewsFeedDetail(currentFeed);
         _gameNewsDetailTimeout = null;
       }, 350);
     }
+
 
 
 function renderGameNewsFeedDetail(feed) {
@@ -314,15 +334,28 @@ function renderGameNewsFeedDetail(feed) {
       target.logChannelId = logEl ? logEl.value.trim() || null : target.logChannelId;
 
       if (intEl) {
-        const mins = Number(intEl.value);
-        if (Number.isFinite(mins) && mins > 0) {
-          target.intervalMs = Math.round(mins * 60 * 1000);
-        } else {
+        const raw = intEl.value.trim();
+        if (!raw) {
           target.intervalMs = null;
+        } else {
+          const mins = Number(raw.replace(',', '.'));
+          const MIN = 1;             // 1 minuto
+          const MAX = 7 * 24 * 60;   // 7 dias em minutos
+
+          if (Number.isFinite(mins) && mins > 0) {
+            const clamped = Math.max(MIN, Math.min(MAX, mins));
+            target.intervalMs = Math.round(clamped * 60 * 1000);
+            if (clamped !== mins) {
+              intEl.value = String(clamped);
+            }
+          } else {
+            target.intervalMs = null;
+          }
         }
       }
 
     }
+
 
     detailEl
       .querySelectorAll(
