@@ -2457,7 +2457,9 @@ app.post('/api/gamenews/test', requireDashboardAuth, async (req, res) => {
     }
 
     const guildId = sanitizeId(req.body?.guildId || req.query.guildId || '');
-    const feedId = sanitizeId(req.body?.feedId || req.params?.feedId || '');
+    const rawFeedId = (req.body?.feedId || req.params?.feedId || '').toString().trim();
+    const feedId = rawFeedId.slice(0, 64); // allow hex ObjectId
+
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
     }
