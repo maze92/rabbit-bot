@@ -1,6 +1,6 @@
 {
   "name": "ozark-bot",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Production-ready Discord moderation bot with dashboard, Trust Score system and RSS integration",
   "main": "src/index.js",
   "scripts": {

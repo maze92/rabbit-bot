@@ -81,3 +81,21 @@ Versões intermédias (ex: 1.0.1–1.0.12) focaram-se sobretudo em:
 - Melhorias na robustez do bot (tratamento de erros, estados de conexão, etc.).
 
 Para detalhes finos dessas versões, consultar o histórico de commits.
+
+---
+
+## [v1.1.1] – Refactor de Trust, GameNews e logging
+
+### Alterado
+- Centralizada a formatação do texto de Trust em `src/utils/trust.js` (`formatTrustText`), garantindo mensagens consistentes em logs, infrações e dashboard.
+- Atualizado o fluxo de autenticação da dashboard:
+  - `DASHBOARD_TOKEN` deixa de ser aceite em produção (apenas JWT).
+  - Em desenvolvimento, o `DASHBOARD_TOKEN` continua disponível, mas com aviso explícito nos logs.
+- Simplificada a rota `/api/gamenews-status`, que passa a delegar para o motor interno de GameNews (`systems/gamenews.getDashboardStatus`), evitando duplicação de lógica com a camada de sistema.
+
+### Melhorado
+- Adicionado utilitário de logging leve em `src/utils/log.js`, usado em:
+  - `systems/gamenews` (envio de logs de feed).
+  - `systems/antiSpam`, `systems/autoModeration` e `systems/automation` para substituir `catch {}` silenciosos.
+- Logs técnicos de falhas em GameNews e automação passam a ter contexto claro (ex.: `GameNews sendFeedLog`, `AntiSpam`, `AutoModeration`, `Automation`).
+
