@@ -49,6 +49,8 @@ const FEED_HEADERS = {
 };
 
 let started = false;
+let lastHeartbeatAt = 0;
+
 let isRunning = false;
 
 function sleep(ms) {
@@ -110,12 +112,51 @@ function isItemTooOld(item, maxAgeDays) {
   return ageMs > maxMs;
 }
 
-async function getOrCreateFeedRecord(feedName) {
-  let record = await GameNews.findOne({ source: feedName });
+
+function makeFeedSourceKey(feed) {
+  // Stable key to avoid collisions between feeds that share the same "name".
+  // Keep it ASCII and deterministic.
+  const g = (feed && feed.guildId ? String(feed.guildId) : '').trim();
+  const u = (feed && (feed.feed || feed.feedUrl) ? String(feed.feed || feed.feedUrl) : '').trim();
+  const c = (feed && feed.channelId ? String(feed.channelId) : '').trim();
+  // JSON is unambiguous and avoids delimiter collisions.
+  return JSON.stringify({ guildId: g || null, feedUrl: u || null, channelId: c || null });
+}
+
+async function getOrCreateFeedRecord(feed) {
+  const sourceKey = makeFeedSourceKey(feed);
+  const legacyName = feed && feed.name ? String(feed.name) : null;
+
+  let record = await GameNews.findOne({ source: sourceKey });
+
+  // Backward compatibility: if an older record exists keyed by name, keep it,
+  // but do NOT reuse it for other feeds; create a proper per-feed record instead.
+  if (!record && legacyName) {
+    const legacy = await GameNews.findOne({ source: legacyName });
+    if (legacy) {
+      // Create a fresh per-feed record (state starts empty to avoid cross-feed interference).
+      // This may cause one-time re-sends for this feed; acceptable for correctness.
+      record = await GameNews.create({
+        source: sourceKey,
+        guildId: feed.guildId || null,
+        feedUrl: feed.feed || feed.feedUrl || null,
+        channelId: feed.channelId || null,
+        name: legacyName,
+        lastHashes: [],
+        failCount: 0,
+        pausedUntil: null,
+        lastSentAt: null
+      });
+    }
+  }
 
   if (!record) {
     record = await GameNews.create({
-      source: feedName,
+      source: sourceKey,
+      guildId: feed.guildId || null,
+      feedUrl: feed.feed || feed.feedUrl || null,
+      channelId: feed.channelId || null,
+      name: legacyName || null,
       lastHashes: [],
       failCount: 0,
       pausedUntil: null,
@@ -312,6 +353,13 @@ async function getEffectiveFeeds(config) {
 
 async function buildStatusPayload(config) {
   const feeds = await getEffectiveFeeds(config);
+          if (!Array.isArray(feeds) || feeds.length === 0) {
+            const now = Date.now();
+            if (!lastHeartbeatAt || now - lastHeartbeatAt > 10 * 60 * 1000) {
+              console.log('[GameNews] No feeds configured/enabled yet. Waiting...');
+              lastHeartbeatAt = now;
+            }
+          }
   if (!feeds.length) return [];
 
   const names = feeds.map(f => f?.name).filter(Boolean);
@@ -416,7 +464,7 @@ async function gameNewsSystem(client, config) {
 
           let record = null;
           try {
-            record = await getOrCreateFeedRecord(feedName);
+            record = await getOrCreateFeedRecord(feed);
           } catch (err) {
             console.error(`[GameNews] DB error for feed ${feedName}:`, err?.message || err);
             continue;
@@ -612,7 +660,7 @@ async function testSendGameNews({ client, config, guildId, feedId }) {
   }
 
   // Load / create GameNews record for this source
-  const record = await getOrCreateFeedRecord(feed.name);
+  const record = await getOrCreateFeedRecord(feed);
 
   const newItems = getNewItemsByHashes(items, record.lastHashes);
   const candidates = newItems.length ? newItems : [items[0]];

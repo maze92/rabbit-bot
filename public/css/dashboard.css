@@ -1839,3 +1839,30 @@ h2 {
   cursor: pointer;
   font-weight: 500;
 }
+
+
+/* Users tab robustness */
+#tab-user .user-actions-fields .input,
+#tab-user .user-actions-fields input {
+  width: 100%;
+}
+
+#tab-user .user-detail {
+  overflow: auto;
+}
+
+#tab-user .history-section ul {
+  margin: 6px 0 0 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 980px) {
+  .user-layout {
+    grid-template-columns: 1fr !important;
+  }
+  #tab-user .user-layout .list,
+  #tab-user .user-detail {
+    max-height: none;
+  }
+}
+
