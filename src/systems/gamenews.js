@@ -459,27 +459,19 @@ async function gameNewsSystem(client, config) {
               .map((x) => x.it);
 
             const lastSentAt = record.lastSentAt ? new Date(record.lastSentAt) : null;
-            const freshItems = lastSentAt
-              ? items.filter((it) => {
-                  const d = getItemDate(it);
-                  return d && !Number.isNaN(d.getTime()) && d.getTime() > lastSentAt.getTime();
-                })
-              : items;
+            const newItemsFromAll = getNewItemsByHashes(items, record.lastHashes);
 
-            if (freshItems.length === 0) {
-              await registerFeedSuccess(record).catch(() => null);
-              continue;
-            }
+              const recentNewItems = newItemsFromAll.filter((it) => !isItemTooOld(it, safeMaxAgeDays));
 
+              if (recentNewItems.length === 0) {
+                await registerFeedSuccess(record).catch(() => null);
+                continue;
+              }
+
+              const newItems = recentNewItems;
             const channel = await client.channels.fetch(feed.channelId).catch(() => null);
             if (!channel) {
               console.warn(`[GameNews] Channel not found: ${feed.channelId} (${feedName})`);
-              await registerFeedSuccess(record).catch(() => null);
-              continue;
-            }
-
-            const newItems = getNewItemsByHashes(freshItems, record.lastHashes);
-            if (newItems.length === 0) {
               await registerFeedSuccess(record).catch(() => null);
               continue;
             }
