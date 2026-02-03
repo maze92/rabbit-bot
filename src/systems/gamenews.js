@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { URL } = require('url');
 const { EmbedBuilder } = require('discord.js');
 
+const { logError, logWarn } = require('../utils/log.js');
 const GameNews = require('../database/models/GameNews');
 let GameNewsFeed = null;
 try {
@@ -739,10 +740,9 @@ async function sendFeedLog(client, feed, message) {
 
     await channel.send(String(message).slice(0, 1800));
   } catch (e) {
-    // silent
+    logWarn('GameNews sendFeedLog', e);
   }
 }
 
 module.exports = gameNewsSystem;
 module.exports.testSendGameNews = testSendGameNews;
-

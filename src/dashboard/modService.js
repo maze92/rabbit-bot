@@ -2,7 +2,7 @@ const warningsService = require('../systems/warningsService');
 const infractionsService = require('../systems/infractionsService');
 const logger = require('../systems/logger');
 const { handleInfractionAutomation } = require('../systems/automation');
-const { getTrustConfig } = require('../utils/trust');
+const { getTrustConfig, formatTrustText } = require('../utils/trust');
 
 class ModError extends Error {
   constructor(code, message) {
@@ -98,9 +98,7 @@ async function dashboardWarn({ client, guildId, userId, reason, actor }) {
   const trust = dbUser?.trust;
   const warnings = dbUser?.warnings ?? null;
 
-  const trustText = (trustCfg.enabled && trust != null)
-    ? `Trust: **${trust}/${trustCfg.max}**`
-    : (trust != null ? `Trust: **${trust}**` : '');
+  const trustText = formatTrustText(trust, trustCfg);
   const warnsText = warnings != null ? `Warnings: **${warnings}**` : '';
 
   const trustTextLog = trustText ? `\n${trustText}` : '';

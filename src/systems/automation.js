@@ -9,6 +9,7 @@ const warningsService = require('./warningsService');
 const logger = require('./logger');
 const { t } = require('./i18n');
 
+const { logError, logWarn } = require('../utils/log.js');
 /**
  * Lida com automação após criação de uma infração (por exemplo, WARN).
  * Atualmente só trata de auto-mute escalonado; não faz kicks/bans.

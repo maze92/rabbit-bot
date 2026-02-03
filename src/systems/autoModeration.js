@@ -3,6 +3,7 @@
 const { PermissionsBitField } = require('discord.js');
 const config = require('../config/defaultConfig');
 
+const { logError, logWarn } = require('../utils/log.js');
 const logger = require('./logger');
 const warningsService = require('./warningsService');
 const infractionsService = require('./infractionsService');
@@ -223,4 +224,3 @@ module.exports = async function autoModeration(message, client) {
     console.error('[AutoMod] Critical error:', err);
   }
 };
-

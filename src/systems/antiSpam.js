@@ -7,6 +7,7 @@
 const { PermissionsBitField } = require('discord.js');
 const config = require('../config/defaultConfig');
 
+const { logError, logWarn } = require('../utils/log.js');
 const infractionsService = require('./infractionsService');
 const logger = require('./logger');
 const warningsService = require('./warningsService');

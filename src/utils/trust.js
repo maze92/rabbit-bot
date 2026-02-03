@@ -116,7 +116,17 @@ function getEffectiveMuteDuration(baseMs, trustCfg, trustValue) {
   if (!Number.isFinite(duration) || duration < MIN_MS) duration = MIN_MS;
   if (duration > MAX_MS) duration = MAX_MS;
 
+
   return duration;
+}
+
+function formatTrustText(trustValue, trustCfg = getTrustConfig()) {
+  if (trustValue == null) return '';
+  if (!trustCfg.enabled) {
+    return `Trust: **${trustValue}**`;
+  }
+  const max = trustCfg.max ?? 100;
+  return `Trust: **${trustValue}/${max}**`;
 }
 
 module.exports = {
@@ -124,5 +134,7 @@ module.exports = {
   getTrustLabel,
   getEffectiveMaxWarnings,
   getEffectiveMaxMessages,
-  getEffectiveMuteDuration
+  getEffectiveMuteDuration,
+  formatTrustText
 };
+

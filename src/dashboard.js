@@ -21,7 +21,7 @@ const logger = require('./systems/logger');
 const { ModError, dashboardWarn } = require('./dashboard/modService');
 const dashboardBridge = require('./systems/dashboardBridge');
 const { parseDuration, formatDuration } = require('./utils/time');
-const { getTrustConfig, getTrustLabel, getEffectiveMaxMessages, getEffectiveMuteDuration } = require('./utils/trust');
+const { getTrustConfig, getTrustLabel, getEffectiveMaxMessages, getEffectiveMuteDuration, formatTrustText } = require('./utils/trust');
 const { isStaff } = require('./utils/staff');
 
 let DashboardLog = null;
@@ -46,9 +46,13 @@ if (process.env.NODE_ENV === 'production' && !process.env.DASHBOARD_JWT_SECRET) 
   console.warn('[Dashboard Auth] DASHBOARD_JWT_SECRET is not set in production. Please configure a strong secret.');
 }
 
-// Warn if legacy static DASHBOARD_TOKEN is being used in production.
-if (process.env.NODE_ENV === 'production' && process.env.DASHBOARD_TOKEN) {
-  console.warn('[Dashboard Auth] Legacy DASHBOARD_TOKEN is enabled in production. This is not recommended. Prefer JWT login with username/password or future Discord OAuth2.');
+// Warn if legacy static DASHBOARD_TOKEN is set; in production it will be ignored.
+if (process.env.DASHBOARD_TOKEN) {
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('[Dashboard Auth] Legacy DASHBOARD_TOKEN is set but will be ignored in production. Use JWT login with username/password instead.');
+  } else {
+    console.warn('[Dashboard Auth] Legacy DASHBOARD_TOKEN is enabled (development mode). Consider migrating to JWT login.');
+  }
 }
 
 // ------------------------------
@@ -329,7 +333,7 @@ async function decodeDashboardToken(rawToken) {
   if (!rawToken) return null;
 
   // Legacy static token path – keep for backwards compat.
-  if (process.env.DASHBOARD_TOKEN && rawToken === process.env.DASHBOARD_TOKEN) {
+  if (process.env.NODE_ENV !== 'production' && process.env.DASHBOARD_TOKEN && rawToken === process.env.DASHBOARD_TOKEN) {
     return {
       _id: null,
       username: 'admin',
@@ -1011,9 +1015,7 @@ app.post('/api/mod/mute', requireDashboardAuth, rateLimit({ windowMs: 60_000, ma
 
     const trustCfg = getTrustConfig();
     const trust = dbUser?.trust;
-    const trustText = (trustCfg.enabled && trust != null)
-      ? `Trust: **${trust}/${trustCfg.max}**`
-      : (trust != null ? `Trust: **${trust}**` : '');
+    const trustText = formatTrustText(trust, trustCfg);
 
     await infractionsService.create({
       guild,
