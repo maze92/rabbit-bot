@@ -363,7 +363,7 @@ async function emitStatusToDashboard(config) {
   }
 }
 
-module.exports = async function gameNewsSystem(client, config) {
+async function gameNewsSystem(client, config) {
   try {
     if (!config?.gameNews?.enabled) {
       console.log('[GameNews] Game News system is disabled in config.');
@@ -552,6 +552,120 @@ module.exports = async function gameNewsSystem(client, config) {
     console.error('[GameNews] Critical error starting system:', err);
   }
 };
+
+
+async function testSendGameNews({ client, config, guildId, feedId }) {
+  if (!client) {
+    throw new Error('Discord client not available');
+  }
+
+  const cfg = config && config.gameNews ? config : { gameNews: {} };
+  if (!cfg.gameNews || cfg.gameNews.enabled === false) {
+    throw new Error('GameNews system is disabled in config');
+  }
+
+  if (!GameNewsFeed) {
+    throw new Error('GameNewsFeed model not available');
+  }
+
+  const safeGuildId = (guildId || '').toString().trim();
+  const safeFeedId = (feedId || '').toString().trim();
+
+  if (!safeGuildId) {
+    throw new Error('guildId is required');
+  }
+  if (!safeFeedId) {
+    throw new Error('feedId is required');
+  }
+
+  const doc = await GameNewsFeed.findOne({ _id: safeFeedId, guildId: safeGuildId }).lean();
+  if (!doc) {
+    throw new Error('Feed not found for this guild');
+  }
+
+  const feed = {
+    guildId: doc.guildId || null,
+    name: doc.name || 'Feed',
+    feed: doc.feedUrl,
+    channelId: doc.channelId,
+    logChannelId: doc.logChannelId || null,
+    enabled: doc.enabled !== false,
+    intervalMs: typeof doc.intervalMs === 'number' ? doc.intervalMs : null
+  };
+
+  if (!feed.enabled) {
+    throw new Error('Feed is disabled');
+  }
+  if (!feed.feed || !feed.channelId) {
+    throw new Error('Feed URL or channelId missing');
+  }
+
+  // Resolve runtime config pieces similar to main loop
+  const keepHashes = Number(cfg.gameNews.keepHashes ?? 10);
+  const safeKeep =
+    Number.isFinite(keepHashes) && keepHashes >= 5 && keepHashes <= 50 ? keepHashes : 10;
+
+  const maxAgeDays = Number(cfg.gameNews.maxAgeDays ?? 7);
+  const safeMaxAgeDays =
+    Number.isFinite(maxAgeDays) && maxAgeDays >= 1 && maxAgeDays <= 365 ? maxAgeDays : 7;
+
+  const retryCfg = cfg.gameNews.retry || { attempts: 2, baseDelayMs: 1200, jitterMs: 800 };
+
+  // Fetch RSS feed once
+  const parsed = await parseWithRetry(feed.feed, retryCfg);
+  const items = Array.isArray(parsed?.items) ? parsed.items.slice() : [];
+
+  if (!items.length) {
+    throw new Error('RSS feed returned no items');
+  }
+
+  // Load / create GameNews record for this source
+  const record = await getOrCreateFeedRecord(feed.name);
+
+  const newItems = getNewItemsByHashes(items, record.lastHashes);
+  const candidates = newItems.length ? newItems : [items[0]];
+
+  let chosen = null;
+  for (const it of candidates) {
+    if (!isItemTooOld(it, safeMaxAgeDays)) {
+      chosen = it;
+      break;
+    }
+  }
+
+  if (!chosen) {
+    throw new Error('No recent items found for this feed (all older than maxAgeDays)');
+  }
+
+  const channel =
+    client.channels.cache.get(feed.channelId) ||
+    (await client.channels.fetch(feed.channelId).catch(() => null));
+
+  if (!channel || !channel.isTextBased?.()) {
+    throw new Error('Configured channel not found or not text-based');
+  }
+  if (!hasSendPerm(channel, client)) {
+    throw new Error('Missing permission to send messages in the configured channel');
+  }
+
+  await sendOneNewsAndUpdate({
+    client,
+    feed,
+    channel,
+    record,
+    item: chosen,
+    keepN: safeKeep,
+    config: cfg
+  });
+
+  return {
+    ok: true,
+    feedName: feed.name,
+    title: chosen.title || null,
+    link: chosen.link || null
+  };
+}
+
 async function sendFeedLog(client, feed, message) {
   try {
     if (!feed?.logChannelId) return;
@@ -567,5 +681,6 @@ async function sendFeedLog(client, feed, message) {
   }
 }
 
-
+module.exports = gameNewsSystem;
+module.exports.testSendGameNews = testSendGameNews;
 

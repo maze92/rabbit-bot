@@ -13,6 +13,7 @@ const { z } = require('zod');
 const status = require('./systems/status');
 const config = require('./config/defaultConfig');
 const configManager = require('./systems/configManager');
+const gameNewsSystem = require('./systems/gamenews');
 
 const warningsService = require('./systems/warningsService');
 const infractionsService = require('./systems/infractionsService');
@@ -2445,6 +2446,63 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
   }
 });
 
+
+
+
+// Manual GameNews test: send one recent news item for a specific feed.
+app.post('/api/gamenews/test', requireDashboardAuth, async (req, res) => {
+  try {
+    if (!_client) {
+      return res.status(503).json({ ok: false, error: 'Bot client not ready' });
+    }
+
+    const guildId = sanitizeId(req.body?.guildId || req.query.guildId || '');
+    const feedId = sanitizeId(req.body?.feedId || req.params?.feedId || '');
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+    if (!feedId) {
+      return res.status(400).json({ ok: false, error: 'feedId is required' });
+    }
+
+    if (!gameNewsSystem || typeof gameNewsSystem.testSendGameNews !== 'function') {
+      return res.status(503).json({ ok: false, error: 'GameNews test not available on this deployment' });
+    }
+
+    const mergedCfg = configManager.getPublicConfig
+      ? configManager.getPublicConfig()
+      : config;
+
+    const result = await gameNewsSystem.testSendGameNews({
+      client: _client,
+      config: mergedCfg,
+      guildId,
+      feedId
+    });
+
+    await recordAudit({
+      req,
+      action: 'gamenews.feed.test',
+      guildId,
+      targetUserId: null,
+      actor: getActorFromRequest(req),
+      payload: { feedId, feedName: result?.feedName || null }
+    });
+
+    return res.json({
+      ok: true,
+      result: {
+        feedName: result.feedName,
+        title: result.title,
+        link: result.link
+      }
+    });
+  } catch (err) {
+    console.error('[Dashboard] /api/gamenews/test error:', err);
+    const message = err && err.message ? String(err.message) : 'Internal Server Error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
 
 io.use(async (socket, next) => {
   try {

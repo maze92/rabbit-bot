@@ -273,11 +273,13 @@ function renderGameNewsFeedDetail(feed) {
     html += `<h3>${escapeHtml(t('gamenews_detail_actions_title') || t('users_actions_title'))}</h3>`;
     html += '<div class="badge-row user-actions-buttons">';
     html += `<button type="button" class="btn xs gamenews-action btn-save" data-action="save">${escapeHtml(t('gamenews_detail_action_save'))}</button>`;
-    html += `<button type="button" class="btn xs gamenews-action btn-toggle" data-action="toggle-enabled">${escapeHtml(t('gamenews_detail_action_toggle'))}</button>`;
+    html += `<button type="button" class="btn xs gamenews-action btn-toggle-enabled" data-action="toggle-enabled">${escapeHtml(t('gamenews_detail_action_toggle'))}</button>`;
+    html += `<button type="button" class="btn xs gamenews-action btn-test" data-action="test">${escapeHtml(t('gamenews_detail_action_test') || 'Testar')}</button>`;
     html += `<button type="button" class="btn xs gamenews-action btn-remove" data-action="remove">${escapeHtml(t('gamenews_detail_action_remove'))}</button>`;
-    
+
     html += '</div>';
     html += '</div>'; // /history-section actions
+
 
 
 // Secção Estado / histórico
@@ -377,6 +379,28 @@ function renderGameNewsFeedDetail(feed) {
         } else if (action === 'toggle-enabled') {
           target.enabled = !target.enabled;
           saveGameNewsFeeds().catch(function () {});
+        } else if (action === 'test') {
+          // Manual test: ask backend to send one recent news item for this feed
+          const guildParam = getGuildParam();
+          const feedId = target.id || target._id || target._mongoId || null;
+          if (!feedId) {
+            toast(t('gamenews_test_missing_id') || 'Não foi possível identificar este feed.');
+            return;
+          }
+          apiPost('/gamenews/test' + guildParam, {
+            guildId: state.guildId,
+            feedId: feedId
+          })
+            .then(function (res) {
+              if (res && res.ok) {
+                toast(t('gamenews_test_success') || 'Teste enviado. Verifica o canal no Discord.');
+              } else {
+                toast(t('gamenews_test_error') || 'Falha ao testar o feed.');
+              }
+            })
+            .catch(function () {
+              toast(t('gamenews_test_error') || 'Falha ao testar o feed.');
+            });
         } else if (action === 'remove') {
           // Remove do state e volta a carregar lista + detalhe
           state.gameNewsFeeds.splice(idx, 1);
