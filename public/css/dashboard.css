@@ -1866,3 +1866,40 @@ h2 {
   }
 }
 
+
+
+/* Config: Dashboard Users layout */
+#tab-config .dashboard-users-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 10px;
+}
+
+@media (max-width: 1024px) {
+  #tab-config .dashboard-users-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Ensure editor and list don't overflow */
+#tab-config .dashboard-users-list {
+  width: 100%;
+}
+
+#tab-config .dashboard-users-editor {
+  width: 100%;
+}
+
+/* Config: Acesso e cargos de staff layout */
+#tab-config .staff-roles-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+#tab-config .staff-roles-row .col {
+  flex: 1 1 260px;
+  min-width: 0;
+}

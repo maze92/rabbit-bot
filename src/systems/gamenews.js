@@ -507,16 +507,33 @@ async function gameNewsSystem(client, config) {
               .map((x) => x.it);
 
             const lastSentAt = record.lastSentAt ? new Date(record.lastSentAt) : null;
-            const newItemsFromAll = getNewItemsByHashes(items, record.lastHashes);
+            const newItemsFromAll = getNewItemsByHashes(items, record.lastHashes || []);
 
-              const recentNewItems = newItemsFromAll.filter((it) => !isItemTooOld(it, safeMaxAgeDays));
+            // Prefer new items by hash; if none, allow a one-time send of the most recent item
+            let candidateItems = newItemsFromAll;
 
-              if (recentNewItems.length === 0) {
-                await registerFeedSuccess(record).catch(() => null);
-                continue;
+            if (!candidateItems || candidateItems.length === 0) {
+              if (!record.lastHashes || record.lastHashes.length === 0) {
+                // First run for this feed: send the most recent item so the system "warms up"
+                if (items.length > 0) {
+                  candidateItems = [items[items.length - 1]];
+                }
               }
+            }
 
-              const newItems = recentNewItems;
+            if (!candidateItems || candidateItems.length === 0) {
+              await registerFeedSuccess(record).catch(() => null);
+              continue;
+            }
+
+            // Apply maxAgeDays as a soft filter: if everything is too old, still send the newest one once.
+            let recentNewItems = candidateItems.filter((it) => !isItemTooOld(it, safeMaxAgeDays));
+
+            if (!recentNewItems || recentNewItems.length === 0) {
+              recentNewItems = candidateItems.slice(-1);
+            }
+
+            const newItems = recentNewItems;
             const channel = await client.channels.fetch(feed.channelId).catch(() => null);
             if (!channel) {
               console.warn(`[GameNews] Channel not found: ${feed.channelId} (${feedName})`);
@@ -574,6 +591,11 @@ async function gameNewsSystem(client, config) {
         }
       } finally {
         isRunning = false;
+        try {
+          console.log('[GameNews] Cycle completed.');
+        } catch (e) {
+          // ignore logging errors
+        }
         emitStatusToDashboard(config).catch(() => null);
       }
     };
