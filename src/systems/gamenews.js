@@ -281,47 +281,7 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
       ch.guild
     );
   }
-}
-
-
-  const embed = new EmbedBuilder()
-    .setTitle(item.title || 'New article')
-    .setURL(item.link || null)
-    .setDescription(finalDescription)
-    .setColor(0xe60012)
-    .setFooter({ text: feed.name })
-    .setTimestamp(getItemDate(item));
-
-  if (item.enclosure?.url) embed.setThumbnail(item.enclosure.url);
-
-  await channel.send({ embeds: [embed] });
-
-  pushHashAndTrim(record, hash, keepN);
-
-  record.lastSentAt = new Date();
-
-  record.failCount = 0;
-  if (record.pausedUntil && record.pausedUntil.getTime() <= Date.now()) {
-    record.pausedUntil = null;
-  }
-
-  await record.save();
-
-  if (config?.gameNews?.logEnabled !== false) {
-    await logger(
-      client,
-      'Game News',
-      null,
-      client.user,
-      `Sent: **${feed.name}** -> **${item.title || 'Untitled'}**`,
-      channel.guild
-    );
-  }
-
-  console.log(`[GameNews] Sent: ${feed.name} -> ${item.title}`);
-}
-
-async function getFeedsFromDb() {
+}async function getFeedsFromDb() {
   if (!GameNewsFeed) return [];
   try {
     const docs = await GameNewsFeed.find({}).lean();
@@ -595,12 +555,17 @@ module.exports = async function gameNewsSystem(client, config) {
 async function sendFeedLog(client, feed, message) {
   try {
     if (!feed?.logChannelId) return;
-    const channel = client.channels.cache.get(feed.logChannelId) || await client.channels.fetch(feed.logChannelId).catch(() => null);
+    const channel =
+      client.channels.cache.get(feed.logChannelId) ||
+      (await client.channels.fetch(feed.logChannelId).catch(() => null));
+
     if (!channel || !channel.isTextBased?.() || !hasSendPerm(channel, client)) return;
+
     await channel.send(String(message).slice(0, 1800));
   } catch (e) {
     // silent
   }
 }
+
 
 
