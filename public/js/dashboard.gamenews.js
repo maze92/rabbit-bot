@@ -115,7 +115,7 @@ function formatIntervalMinutes(ms) {
         <div class="user-row-header">
           <div class="title">${escapeHtml(name)}</div>
           <div class="user-type-badge ${enabled ? 'human' : 'bot'}">
-            ${escapeHtml(enabled ? 'ON' : 'OFF')}
+            ${escapeHtml(enabled ? (t('gamenews_feed_status_on')) : (t('gamenews_feed_status_off')))}
           </div>
         </div>
         <div class="subtitle">
