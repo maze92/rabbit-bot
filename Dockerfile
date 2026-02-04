@@ -1,17 +1,27 @@
-# Usar a versão do Node que o Koyeb já estava usando
-FROM node:20
+# Imagem base leve com Node 20
+FROM node:20-alpine
 
-# Criar pasta do app
-WORKDIR /usr/src/app
+# Diretório de trabalho dentro do container
+WORKDIR /app
 
-# Copiar arquivos de dependências
+# Copiar apenas ficheiros de dependências primeiro (cache de layers)
 COPY package*.json ./
 
-# Aqui está o segredo: usar o install comum, ignorando o lock quebrado
+# Instalar dependências
+# - npm install em vez de npm ci para não rebentar com lockfile "não perfeito"
 RUN npm install
 
-# Copiar o resto dos arquivos do seu bot
+# Copiar o resto do código
 COPY . .
 
-# Comando para ligar o bot (ajuste se o seu arquivo principal não for index.js)
-CMD ["node", "src/index.js"]
+# Definir ambiente de produção
+ENV NODE_ENV=production
+
+# Porta default dentro do container (Koyeb injeta PORT, mas isto não atrapalha)
+ENV PORT=8000
+
+# Expor a porta (puramente informativo para orquestradores)
+EXPOSE 8000
+
+# Comando de arranque
+CMD ["npm", "start"]
