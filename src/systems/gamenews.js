@@ -39,7 +39,7 @@ async function fetchWithTimeout(parser, url, timeoutMs) {
   }
 }
 
-const dashboard = require('../dashboard');
+const dashboardBridge = require('./dashboardBridge');
 
 const parser = new Parser({ timeout: 15000 });
 
@@ -403,9 +403,9 @@ async function buildStatusPayload(config) {
 
 async function emitStatusToDashboard(config) {
   try {
-    if (!dashboard?.sendToDashboard) return;
     const payload = await buildStatusPayload(config);
-    dashboard.sendToDashboard('gamenews_status', payload);
+    // Usa a bridge para evitar dependência circular com o módulo dashboard.
+    dashboardBridge.emit('gamenews_status', payload);
   } catch (err) {
     console.error('[GameNews] Failed emitting status to dashboard:', err?.message || err);
   }
@@ -745,4 +745,3 @@ async function sendFeedLog(client, feed, message) {
 
 module.exports = gameNewsSystem;
 module.exports.testSendGameNews = testSendGameNews;
-
