@@ -13,7 +13,7 @@ const io = new Server(server, {
 
 let botClient = null;
 
-// Called from index.js once the Discord client is ready
+// Called from index.js once the Discord client is available
 function setClient(client) {
   botClient = client;
 }
@@ -23,8 +23,15 @@ function initializeDashboard() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
-  // Serve dashboard static frontend from /public
-  app.use(express.static(path.join(__dirname, '../public')));
+  const publicDir = path.join(__dirname, '../public');
+
+  // Explicit root handler to avoid any ambiguity
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
+  });
+
+  // Serve all static assets (JS, CSS, etc.) from public/
+  app.use(express.static(publicDir));
 
   // Health endpoint used by the status badge in the UI
   app.get('/health', (req, res) => {
