@@ -19,6 +19,39 @@ const DashboardAudit = require('./database/models/DashboardAudit');
 
 
 const app = express();
+// -----------------------------
+// Dashboard auth middleware
+// -----------------------------
+function getDashboardJwtSecret() {
+  return (
+    process.env.DASHBOARD_JWT_SECRET ||
+    process.env.JWT_SECRET ||
+    'change-me-dashboard-secret'
+  );
+}
+
+function requireDashboardAuth(req, res, next) {
+  if (!config.dashboard || config.dashboard.requireAuth === false) {
+    return next();
+  }
+
+  const headerToken =
+    req.headers['x-dashboard-token'] ||
+    (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+
+  if (!headerToken) {
+    return res.status(401).json({ ok: false, error: 'Missing dashboard token.' });
+  }
+
+  try {
+    const payload = jwt.verify(headerToken, getDashboardJwtSecret());
+    req.dashboardUser = payload;
+    return next();
+  } catch (err) {
+    console.error('[Dashboard] Invalid dashboard token', err);
+    return res.status(401).json({ ok: false, error: 'Invalid or expired token.' });
+  }
+}
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' }
@@ -73,7 +106,7 @@ function initializeDashboard() {
   });
 
   // List guilds for the server selector in the UI
-  app.get('/api/guilds', (req, res) => {
+  app.get('/api/guilds', requireDashboardAuth, (req, res) => {
     if (!botClient) {
       return res
         .status(503)
@@ -89,7 +122,7 @@ function initializeDashboard() {
   });
 
   // Simple overview: number of guilds and users
-  app.get('/api/overview', (req, res) => {
+  app.get('/api/overview', requireDashboardAuth, (req, res) => {
     if (!botClient) {
       return res.json({
         ok: true,
@@ -115,7 +148,7 @@ function initializeDashboard() {
   });
 
   // Meta of a specific guild for UI headers, etc.
-  app.get('/api/guilds/:guildId/meta', (req, res) => {
+  app.get('/api/guilds/:guildId/meta', requireDashboardAuth, (req, res) => {
     const { guildId } = req.params;
 
     if (!botClient) {
@@ -152,7 +185,7 @@ function initializeDashboard() {
   });
 
   // Minimal tickets endpoint so the Tickets tab doesn't 404
-  app.get('/api/tickets', (req, res) => {
+  app.get('/api/tickets', requireDashboardAuth, (req, res) => {
     const guildId = req.query.guildId;
 
     if (!guildId) {
@@ -170,7 +203,7 @@ function initializeDashboard() {
   });
 
   // Guild configuration (stub)
-  app.get('/api/guilds/:guildId/config', (req, res) => {
+  app.get('/api/guilds/:guildId/config', requireDashboardAuth, (req, res) => {
     const { guildId } = req.params;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -184,7 +217,7 @@ function initializeDashboard() {
     });
   });
 
-  app.post('/api/guilds/:guildId/config', (req, res) => {
+  app.post('/api/guilds/:guildId/config', requireDashboardAuth, (req, res) => {
     const { guildId } = req.params;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -274,7 +307,7 @@ function initializeDashboard() {
   });
 
   // Temporary voice configuration (stub)
-  app.get('/api/temp-voice/config', (req, res) => {
+  app.get('/api/temp-voice/config', requireDashboardAuth, (req, res) => {
     const guildId = req.query.guildId;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -288,7 +321,7 @@ function initializeDashboard() {
     });
   });
 
-  app.post('/api/temp-voice/config', (req, res) => {
+  app.post('/api/temp-voice/config', requireDashboardAuth, (req, res) => {
     const payload = req.body || {};
     // TODO: validate and persist.
     res.json({
@@ -297,7 +330,7 @@ function initializeDashboard() {
     });
   });
 
-  app.get('/api/temp-voice/active', (req, res) => {
+  app.get('/api/temp-voice/active', requireDashboardAuth, (req, res) => {
     const guildId = req.query.guildId;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -312,7 +345,7 @@ function initializeDashboard() {
   });
 
   // GameNews status (stub)
-  app.get('/api/gamenews-status', (req, res) => {
+  app.get('/api/gamenews-status', requireDashboardAuth, (req, res) => {
     const guildId = req.query.guildId;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -326,7 +359,7 @@ function initializeDashboard() {
   });
 
   // GameNews feeds (stub)
-  app.get('/api/gamenews/feeds', (req, res) => {
+  app.get('/api/gamenews/feeds', requireDashboardAuth, (req, res) => {
     const guildId = req.query.guildId;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -340,7 +373,7 @@ function initializeDashboard() {
   });
 
   // Moderation overview (stub)
-  app.get('/api/mod/overview', (req, res) => {
+  app.get('/api/mod/overview', requireDashboardAuth, (req, res) => {
     const guildId = req.query.guildId;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -361,7 +394,7 @@ function initializeDashboard() {
   });
 
   // Cases list and details (stub)
-  app.get('/api/cases', (req, res) => {
+  app.get('/api/cases', requireDashboardAuth, (req, res) => {
     const guildId = req.query.guildId;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -379,7 +412,7 @@ function initializeDashboard() {
     });
   });
 
-  app.get('/api/cases/:caseId', (req, res) => {
+  app.get('/api/cases/:caseId', requireDashboardAuth, (req, res) => {
     const { caseId } = req.params;
 
     if (!caseId) {
@@ -396,7 +429,7 @@ function initializeDashboard() {
   });
 
   // Guild users listing
-  app.get('/api/guilds/:guildId/users', async (req, res) => {
+  app.get('/api/guilds/:guildId/users', requireDashboardAuth, async (req, res) => {
     const { guildId } = req.params;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -417,7 +450,8 @@ function initializeDashboard() {
       // If cache is empty, try a one-off fetch to populate it.
       if (!members || members.size === 0) {
         try {
-          members = await guild.members.fetch({ withPresences: false });
+        members = await guild.members.fetch();
+      
         } catch (fetchErr) {
           console.error('[Dashboard] Failed to fetch guild members', fetchErr);
           members = guild.members.cache;
@@ -446,7 +480,7 @@ function initializeDashboard() {
   });
 
   // Single user + DB info (stub)
-  app.get('/api/user', (req, res) => {
+  app.get('/api/user', requireDashboardAuth, (req, res) => {
     const guildId = req.query.guildId;
     const userId = req.query.userId;
     if (!guildId || !userId) {
@@ -493,7 +527,7 @@ function initializeDashboard() {
   });
 
   // User history (infractions, counts, tickets) - real data
-  app.get('/api/guilds/:guildId/users/:userId/history', async (req, res) => {
+  app.get('/api/guilds/:guildId/users/:userId/history', requireDashboardAuth, async (req, res) => {
     const { guildId, userId } = req.params;
     if (!guildId || !userId) {
       return res
@@ -554,7 +588,7 @@ function initializeDashboard() {
 
 
   // Guild full config/meta combined (stub used by some frontend calls)
-  app.get('/api/guilds/:guildId', (req, res) => {
+  app.get('/api/guilds/:guildId', requireDashboardAuth, (req, res) => {
     const { guildId } = req.params;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -590,7 +624,7 @@ function initializeDashboard() {
   });
 
   // Logs endpoint (DashboardAudit data)
-  app.get('/api/logs', async (req, res) => {
+  app.get('/api/logs', requireDashboardAuth, async (req, res) => {
     const guildId = req.query.guildId;
     if (!guildId) {
       return res
@@ -638,17 +672,28 @@ function initializeDashboard() {
         .lean()
         .exec();
 
-      const items = docs.map((doc) => ({
-        id: String(doc._id),
-        at: doc.at,
-        route: doc.route,
-        method: doc.method,
-        action: doc.action,
-        actor: doc.actor,
-        type: doc.type || null,
-        targetUserId: doc.targetUserId || null,
-        details: doc.details || null
-      }));
+      const items = docs.map((doc) => {
+        const d = (doc.details && typeof doc.details === 'object') ? doc.details : {};
+        const title = d.title || doc.action || 'Log';
+        const user = d.user || null;
+        const executor = d.executor || null;
+        const description = d.description || d.details || null;
+
+        return {
+          id: doc._id.toString(),
+          at: doc.at,
+          guildId: doc.guildId,
+          route: doc.route,
+          method: doc.method,
+          type: doc.type || null,
+          targetUserId: doc.targetUserId || null,
+          actor: doc.actor || null,
+          title,
+          user,
+          executor,
+          description
+        };
+      });
 
       res.json({
         ok: true,
@@ -666,7 +711,7 @@ function initializeDashboard() {
   });
 
   // GameNews test endpoint (stub)
-  app.post('/api/gamenews/test', (req, res) => {
+  app.post('/api/gamenews/test', requireDashboardAuth, (req, res) => {
     const guildId = req.body && req.body.guildId;
     const feedId = req.body && req.body.feedId;
     if (!guildId || !feedId) {
@@ -687,11 +732,11 @@ function initializeDashboard() {
     res.json({ ok: true });
   }
 
-  app.post('/api/mod/warn', (req, res) => moderationOk(req, res));
-  app.post('/api/mod/unmute', (req, res) => moderationOk(req, res));
-  app.post('/api/mod/reset-trust', (req, res) => moderationOk(req, res));
-  app.post('/api/mod/reset-history', (req, res) => moderationOk(req, res));
-  app.post('/api/mod/remove-infraction', (req, res) => moderationOk(req, res));
+  app.post('/api/mod/warn', requireDashboardAuth, (req, res) => moderationOk(req, res));
+  app.post('/api/mod/unmute', requireDashboardAuth, (req, res) => moderationOk(req, res));
+  app.post('/api/mod/reset-trust', requireDashboardAuth, (req, res) => moderationOk(req, res));
+  app.post('/api/mod/reset-history', requireDashboardAuth, (req, res) => moderationOk(req, res));
+  app.post('/api/mod/remove-infraction', requireDashboardAuth, (req, res) => moderationOk(req, res));
 
 
   // Favicon stub to avoid 404 noise

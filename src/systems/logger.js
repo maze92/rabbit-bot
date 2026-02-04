@@ -4,6 +4,7 @@ const { EmbedBuilder } = require('discord.js');
 const config = require('../config/defaultConfig');
 const dashboardBridge = require('./dashboardBridge');
 const GuildConfig = require('../database/models/GuildConfig');
+const DashboardAudit = require('../database/models/DashboardAudit');
 const { t } = require('./i18n');
 
 function normalizeActor(actor) {
@@ -192,6 +193,26 @@ module.exports = async function logger(client, title, user, executor, descriptio
       guild: { id: resolvedGuild.id, name: resolvedGuild.name },
       time: new Date().toISOString()
     });
+
+    if (DashboardAudit && resolvedGuild && resolvedGuild.id) {
+      DashboardAudit.create({
+        guildId: resolvedGuild.id,
+        route: 'mod',
+        method: 'LOG',
+        actor: nExec ? nExec.id : null,
+        targetUserId: nUser ? nUser.id : null,
+        type: 'mod',
+        details: {
+          title: finalTitle || 'Log',
+          user: nUser,
+          executor: nExec,
+          description: decoratedDescription || '',
+          time: new Date().toISOString()
+        }
+      }).catch((err) => {
+        console.error('[Logger] Failed to persist DashboardAudit log:', err);
+      });
+    }
   } catch (err) {
     console.error('[Logger] Error:', err);
   }
