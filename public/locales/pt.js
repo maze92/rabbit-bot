@@ -76,7 +76,7 @@ window.OzarkLocales.pt = {
   'config_save': 'Save configuration',
   'config_saved': 'Guardar',
   'config_staff_roles': 'Staff roles',
-  'config_staff_roles_hint': 'Se estiver vazio, são usados os staffRoles globais do ficheiro de configuração.',
+  'config_staff_roles_hint': 'Escolhe os cargos de staff que podem usar os comandos de moderação e aceder à dashboard.',
   'config_ticket_channel': 'Canal de Suporte',
   'config_ticket_channel_hint': 'Canal onde será enviada a mensagem de suporte com a reação para criar tickets.',
   'config_title': 'Server configuration',
