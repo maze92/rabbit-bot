@@ -14,4 +14,4 @@ RUN npm install
 COPY . .
 
 # Comando para ligar o bot (ajuste se o seu arquivo principal não for index.js)
-CMD ["node", "index.js"]
+CMD ["node", "src/index.js"]
