@@ -327,6 +327,100 @@ function initializeDashboard() {
     });
   });
 
+
+
+  // Guild users listing
+  app.get('/api/guilds/:guildId/users', async (req, res) => {
+    const { guildId } = req.params;
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+    if (!botClient) {
+      return res.status(503).json({ ok: false, error: 'Bot client not ready' });
+    }
+
+    const guild = botClient.guilds.cache.get(guildId);
+    if (!guild) {
+      return res.status(404).json({ ok: false, error: 'Guild not found' });
+    }
+
+    try {
+      const members = await guild.members.fetch();
+      const items = members.map(m => {
+        const roles = Array.from(m.roles.cache.values())
+          .filter(r => r.id !== guild.id)
+          .map(r => ({ id: r.id, name: r.name }));
+
+        return {
+          id: m.id,
+          username: m.user && m.user.username,
+          tag: m.user && m.user.tag,
+          bot: !!(m.user && m.user.bot),
+          roles
+        };
+      });
+
+      res.json({ ok: true, items });
+    } catch (err) {
+      console.error('[Dashboard] Failed to fetch guild members', err);
+      res.status(500).json({ ok: false, error: 'Failed to fetch guild members' });
+    }
+  });
+
+  // GameNews status (stub)
+  app.get('/api/gamenews-status', (req, res) => {
+    const guildId = req.query.guildId;
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+
+    // TODO: wire to real GameNews tracking data.
+    res.json({
+      ok: true,
+      items: []
+    });
+  });
+
+  // GameNews feeds (stub)
+  app.get('/api/gamenews/feeds', (req, res) => {
+    const guildId = req.query.guildId;
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+
+    // TODO: load real feeds for this guild from database.
+    res.json({
+      ok: true,
+      items: []
+    });
+  });
+
+  // Moderation overview (stub)
+  app.get('/api/mod/overview', (req, res) => {
+    const guildId = req.query.guildId;
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+
+    // TODO: compute real moderation stats for the given time range.
+    res.json({
+      ok: true,
+      moderationCounts: {
+        warn: 0,
+        mute: 0,
+        unmute: 0,
+        kick: 0,
+        ban: 0,
+        other: 0
+      }
+    });
+  });
+
+  // Favicon stub to avoid 404 noise
+  app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
+  });
+
   return server;
 }
 
