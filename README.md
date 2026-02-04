@@ -7,7 +7,7 @@ Ozark Bot é um bot de **moderação para Discord** com uma **dashboard web** in
 - Integrar notícias via RSS (GameNews).
 - Gerir canais de **voz temporária** de forma automática.
 
-> Versão atual: **v1.1.2**
+> Versão atual: **v1.1.0**
 
 ---
 
@@ -210,15 +210,3 @@ Todas as alterações de versão são documentadas em [`CHANGELOG.md`](./CHANGEL
 ## 📄 Licença
 
 Este projeto é distribuído sob a licença **MIT**. Consulta o ficheiro [`LICENSE`](./LICENSE) (se existir) ou o campo `license` em `package.json` para mais detalhes.
-
-## Notas sobre Trust, GameNews e logging
-
-A partir da versão `v1.1.1`:
-
-- O texto de Trust é formatado de forma consistente por `src/utils/trust.js` (`formatTrustText`), evitando mensagens divergentes entre logs, painéis e descrições de casos.
-- A autenticação da dashboard em produção exige JWT (`DASHBOARD_JWT_SECRET` forte); o `DASHBOARD_TOKEN` legado passa a ser ignorado em produção (apenas disponível em desenvolvimento, com aviso nos logs).
-- O status de GameNews apresentado na dashboard é calculado pelo próprio motor de GameNews (`systems/gamenews.getDashboardStatus`), reduzindo duplicação de lógica.
-- Foi introduzido um utilitário de logging leve em `src/utils/log.js`, usado para evitar `catch {}` totalmente silenciosos nos sistemas de GameNews, AntiSpam, AutoModeration e Automation.
-
-Estas alterações foram feitas para facilitar debug em produção, manter as mensagens consistentes e preparar o projeto para futuras melhorias (testes automatizados, routers dedicados, etc.).
-
