@@ -106,68 +106,60 @@ function initializeDashboard() {
     });
   });
 
-  // List guilds for the server selector in the UI
-  app.get('/api/guilds', requireDashboardAuth, (req, res) => {
-    try {
-      if (!botClient) {
-        return res
-          .status(503)
-          .json({ ok: false, error: 'Bot client not ready' });
-      }
-
-      const client = botClient;
-      const guilds = client.guilds && client.guilds.cache
-        ? Array.from(client.guilds.cache.values())
-        : [];
-
-      const items = guilds.map((g) => ({
-        id: g.id,
-        name: g.name
-      }));
-
-      return res.json({ ok: true, items });
-    } catch (err) {
-      console.error('[Dashboard] /api/guilds failed:', err);
-      return res.status(500).json({ ok: false, error: 'Failed to load guilds' });
-    }
-  });
+// List guilds for the server selector in the UI
+app.get('/api/guilds', requireDashboardAuth, (req, res) => {
+  try {
+    if (!botClient) {
+      return res
+        .status(503)
+        .json({ ok: false, error: 'Bot client not ready' });
     }
 
-    const items = botClient.guilds.cache.map(g => ({
+    const client = botClient;
+    const guilds = client.guilds && client.guilds.cache
+      ? Array.from(client.guilds.cache.values())
+      : [];
+
+    const items = guilds.map((g) => ({
       id: g.id,
       name: g.name
     }));
 
-    res.json({ ok: true, items });
-  });
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error('[Dashboard] /api/guilds failed:', err);
+    return res.status(500).json({ ok: false, error: 'Failed to load guilds' });
+  }
+});
 
-  // Simple overview: number of guilds and users
-  app.get('/api/overview', requireDashboardAuth, (req, res) => {
-    if (!botClient) {
-      return res.json({
-        ok: true,
-        guilds: 0,
-        users: 0,
-        actions24h: 0
-      });
-    }
-
-    const guilds = botClient.guilds.cache.size;
-    let users = 0;
-
-    botClient.guilds.cache.forEach(g => {
-      users += g.memberCount || 0;
-    });
-
-    res.json({
+// Simple overview: number of guilds and users
+// Simple overview: number of guilds and users
+app.get('/api/overview', requireDashboardAuth, (req, res) => {
+  if (!botClient) {
+    return res.json({
       ok: true,
-      guilds,
-      users,
+      guilds: 0,
+      users: 0,
       actions24h: 0
     });
+  }
+
+  const guilds = botClient.guilds.cache.size;
+  let users = 0;
+
+  botClient.guilds.cache.forEach((g) => {
+    users += g.memberCount || 0;
   });
 
-  // Meta of a specific guild for UI headers, etc.
+  return res.json({
+    ok: true,
+    guilds,
+    users,
+    actions24h: 0
+  });
+});
+
+
   app.get('/api/guilds/:guildId/meta', requireDashboardAuth, (req, res) => {
     const { guildId } = req.params;
 
