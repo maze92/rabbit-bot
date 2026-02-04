@@ -207,12 +207,6 @@ function initializeDashboard() {
     });
   });
 
-    // TODO: create/update dashboard users.
-    res.json({
-      ok: true,
-      saved: payload
-    });
-  });
 
   // Simple login endpoint for dashboard
   app.post('/api/auth/login', (req, res) => {
@@ -221,17 +215,11 @@ function initializeDashboard() {
     const password = body.password || '';
 
     const expectedUser =
-      process.env.DASHBOARD_LOGIN_USER ||
-      process.env.DASHBOARD_USER ||
-      process.env.ADMIN_USER ||
-      process.env.ADMIN_USERNAME ||
+      process.env.DASHBOARD_ADMIN_USER ||
       'admin';
 
     const expectedPass =
-      process.env.DASHBOARD_LOGIN_PASS ||
-      process.env.DASHBOARD_PASS ||
-      process.env.ADMIN_PASS ||
-      process.env.ADMIN_PASSWORD ||
+      process.env.DASHBOARD_ADMIN_PASS ||
       'admin';
 
     const staticToken = process.env.DASHBOARD_TOKEN || null;
