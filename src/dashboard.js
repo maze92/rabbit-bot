@@ -2,57 +2,65 @@
 
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
+const { Server } = require('socket.io');
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new socketIo.Server(server, {
+const io = new Server(server, {
   cors: { origin: '*' }
 });
 
-// Bot client (Discord.js) injected from index.js
 let botClient = null;
 
+/**
+ * Chamado a partir do index.js depois de o client do Discord estar pronto.
+ */
 function setClient(client) {
   botClient = client;
 }
 
+/**
+ * Inicializa a dashboard:
+ * - middleware base
+ * - ficheiros estáticos (public/)
+ * - endpoints mínimos usados pelo frontend no load
+ */
 function initializeDashboard() {
-  // Basic middleware
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
-  // Static files (public/index.html + assets)
+  // Serve a pasta public (index.html, JS, CSS) na root "/"
   app.use(express.static(path.join(__dirname, '../public')));
 
-  // Health endpoint used by the frontend badge
+  // Endpoint de health usado para o badge de status do bot
   app.get('/health', (req, res) => {
-    const discordReady = !!(botClient && botClient.isReady && botClient.isReady());
+    const discordReady =
+      !!(botClient && typeof botClient.isReady === 'function' && botClient.isReady());
+
     res.json({
       ok: true,
       discordReady
     });
   });
 
-  // Minimal guilds listing for the guild selector
+  // Lista de guilds para o selector de servidores na dashboard
   app.get('/api/guilds', (req, res) => {
     if (!botClient) {
-      return res.status(503).json({ ok: false, error: 'Bot client not ready' });
+      return res
+        .status(503)
+        .json({ ok: false, error: 'Bot client not ready' });
     }
-    try {
-      const items = botClient.guilds.cache.map(g => ({
-        id: g.id,
-        name: g.name
-      }));
-      res.json({ ok: true, items });
-    } catch (err) {
-      console.error('[Dashboard] /api/guilds error', err);
-      res.status(500).json({ ok: false, error: 'Internal Server Error' });
-    }
+
+    const items = botClient.guilds.cache.map(g => ({
+      id: g.id,
+      name: g.name
+    }));
+
+    res.json({ ok: true, items });
   });
 
-  // Overview metrics (very minimal)
+  // Overview simples: nº de servidores e utilizadores
   app.get('/api/overview', (req, res) => {
     if (!botClient) {
       return res.json({
@@ -62,32 +70,37 @@ function initializeDashboard() {
         actions24h: 0
       });
     }
-    try {
-      const guilds = botClient.guilds.cache.size;
-      let users = 0;
-      botClient.guilds.cache.forEach(g => {
-        users += g.memberCount || 0;
-      });
-      res.json({
-        ok: true,
-        guilds,
-        users,
-        actions24h: 0
-      });
-    } catch (err) {
-      console.error('[Dashboard] /api/overview error', err);
-      res.status(500).json({ ok: false, error: 'Internal Server Error' });
-    }
+
+    const guilds = botClient.guilds.cache.size;
+    let users = 0;
+
+    botClient.guilds.cache.forEach(g => {
+      users += g.memberCount || 0;
+    });
+
+    res.json({
+      ok: true,
+      guilds,
+      users,
+      actions24h: 0
+    });
   });
 
   return server;
 }
 
-// Placeholder: no-op, kept for compatibility with previous code
+/**
+ * Compatibilidade: nesta versão mínima não criamos admin default.
+ */
 async function ensureDefaultDashboardAdmin() {
   return;
 }
 
+/**
+ * Usado pelo sistema de GameNews / outros para enviar eventos em tempo-real
+ * para a dashboard via WebSocket. Mesmo que não uses ainda, evita warnings
+ * de propriedade inexistente.
+ */
 function sendToDashboard(event, payload) {
   try {
     io.emit(event, payload);
