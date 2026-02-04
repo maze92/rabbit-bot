@@ -207,12 +207,68 @@ function initializeDashboard() {
     });
   });
 
-  app.post('/api/auth/users', (req, res) => {
-    const payload = req.body || {};
     // TODO: create/update dashboard users.
     res.json({
       ok: true,
       saved: payload
+    });
+  });
+
+  // Simple login endpoint for dashboard
+  app.post('/api/auth/login', (req, res) => {
+    const body = req.body || {};
+    const username = (body.username || '').trim();
+    const password = body.password || '';
+
+    const expectedUser =
+      process.env.DASHBOARD_LOGIN_USER ||
+      process.env.DASHBOARD_USER ||
+      process.env.ADMIN_USER ||
+      process.env.ADMIN_USERNAME ||
+      'admin';
+
+    const expectedPass =
+      process.env.DASHBOARD_LOGIN_PASS ||
+      process.env.DASHBOARD_PASS ||
+      process.env.ADMIN_PASS ||
+      process.env.ADMIN_PASSWORD ||
+      'admin';
+
+    const staticToken = process.env.DASHBOARD_TOKEN || null;
+
+    if (!staticToken) {
+      return res.status(500).json({
+        ok: false,
+        error: 'Dashboard token is not configured on the server.'
+      });
+    }
+
+    if (!username || !password) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Username and password are required.'
+      });
+    }
+
+    if (expectedUser && username !== expectedUser) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Invalid credentials.'
+      });
+    }
+
+    if (expectedPass && password !== expectedPass) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Invalid credentials.'
+      });
+    }
+
+    // In this version we use a static token from env; backend endpoints
+    // currently do not enforce it, but the frontend uses it to gate access.
+    res.json({
+      ok: true,
+      token: staticToken
     });
   });
 

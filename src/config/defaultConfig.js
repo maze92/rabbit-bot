@@ -140,7 +140,7 @@ const baseConfig = {
     maxDbLogs: 1000,
     requireAuth: true,
     // Lista de origens permitidas para o Socket.IO (dashboard).
-    allowedOrigins: ['https://ozark-bot-production.up.railway.app'],
+    allowedOrigins: ['https://ozark-bot-production.up.railway.app', 'https://ozark-bot.koyeb.app'],
     // Canal global de logs do Dashboard (fallback, caso a guild ainda não tenha dashboardLogChannelId definido)
     dashboardLogsChannelId: process.env.DASHBOARD_LOG_CHANNEL_ID || null
   },
