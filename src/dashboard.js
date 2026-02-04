@@ -428,6 +428,91 @@ function initializeDashboard() {
     });
   });
 
+
+
+  // Guild full config/meta combined (stub used by some frontend calls)
+  app.get('/api/guilds/:guildId', (req, res) => {
+    const { guildId } = req.params;
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+
+    if (!botClient) {
+      return res.status(503).json({ ok: false, error: 'Bot client not ready' });
+    }
+
+    const guild = botClient.guilds.cache.get(guildId);
+    if (!guild) {
+      return res.status(404).json({ ok: false, error: 'Guild not found' });
+    }
+
+    let iconUrl = null;
+    try {
+      if (typeof guild.iconURL === 'function') {
+        iconUrl = guild.iconURL({ size: 128 });
+      }
+    } catch {
+      iconUrl = null;
+    }
+
+    res.json({
+      ok: true,
+      guild: {
+        id: guild.id,
+        name: guild.name,
+        iconUrl,
+        memberCount: guild.memberCount ?? null
+      }
+    });
+  });
+
+  // Logs endpoint (stub)
+  app.get('/api/logs', (req, res) => {
+    const guildId = req.query.guildId;
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+
+    // Query params: type, limit, page, userId, action, etc.
+    // For now we simply return an empty list with basic paging metadata.
+    res.json({
+      ok: true,
+      items: [],
+      page: 1,
+      totalPages: 1,
+      totalItems: 0
+    });
+  });
+
+  // GameNews test endpoint (stub)
+  app.post('/api/gamenews/test', (req, res) => {
+    const guildId = req.body && req.body.guildId;
+    const feedId = req.body && req.body.feedId;
+    if (!guildId || !feedId) {
+      return res.status(400).json({ ok: false, error: 'guildId and feedId are required' });
+    }
+
+    // TODO: actually trigger a test delivery for this feed.
+    res.json({
+      ok: true,
+      guildId,
+      feedId,
+      delivered: false
+    });
+  });
+
+  // Moderation actions (stubs)
+  function moderationOk(req, res) {
+    res.json({ ok: true });
+  }
+
+  app.post('/api/mod/warn', (req, res) => moderationOk(req, res));
+  app.post('/api/mod/unmute', (req, res) => moderationOk(req, res));
+  app.post('/api/mod/reset-trust', (req, res) => moderationOk(req, res));
+  app.post('/api/mod/reset-history', (req, res) => moderationOk(req, res));
+  app.post('/api/mod/remove-infraction', (req, res) => moderationOk(req, res));
+
+
   // Favicon stub to avoid 404 noise
   app.get('/favicon.ico', (req, res) => {
     res.status(204).end();
