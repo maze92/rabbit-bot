@@ -60,7 +60,6 @@ if (mongoose && mongoose.connection) {
 }
 
 // -----------------------------
-// Orchestr// -----------------------------
 // Orchestrated Discord "ready"
 // -----------------------------
 
@@ -136,6 +135,11 @@ client.on('shardResume', async () => {
 // -----------------------------
 // Dashboard HTTP server
 // -----------------------------
+
+// MUITO IMPORTANTE: inicializar a dashboard (rotas + static + /health, etc.)
+if (typeof dashboard.initializeDashboard === 'function') {
+  dashboard.initializeDashboard();
+}
 
 const portFromConfig = config.dashboard?.port;
 const PORT = Number(process.env.PORT || portFromConfig || 3000);
