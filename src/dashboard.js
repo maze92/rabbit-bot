@@ -334,7 +334,7 @@ function initializeDashboard() {
   });
 
   // Guild users listing
-  app.get('/api/guilds/:guildId/users', (req, res) => {
+  app.get('/api/guilds/:guildId/users', async (req, res) => {
     const { guildId } = req.params;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -350,7 +350,18 @@ function initializeDashboard() {
     }
 
     try {
-      const members = guild.members.cache;
+      let members = guild.members.cache;
+
+      // If cache is empty, try a one-off fetch to populate it.
+      if (!members || members.size === 0) {
+        try {
+          members = await guild.members.fetch({ withPresences: false });
+        } catch (fetchErr) {
+          console.error('[Dashboard] Failed to fetch guild members', fetchErr);
+          members = guild.members.cache;
+        }
+      }
+
       const items = Array.from(members.values()).map(m => {
         const roles = Array.from(m.roles.cache.values())
           .filter(r => r.id !== guild.id)
@@ -367,7 +378,7 @@ function initializeDashboard() {
 
       res.json({ ok: true, items });
     } catch (err) {
-      console.error('[Dashboard] Failed to read guild members from cache', err);
+      console.error('[Dashboard] Failed to read guild members', err);
       res.status(500).json({ ok: false, error: 'Failed to read guild members' });
     }
   });
