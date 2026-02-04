@@ -330,7 +330,7 @@ function initializeDashboard() {
 
 
   // Guild users listing
-  app.get('/api/guilds/:guildId/users', async (req, res) => {
+  app.get('/api/guilds/:guildId/users', (req, res) => {
     const { guildId } = req.params;
     if (!guildId) {
       return res.status(400).json({ ok: false, error: 'guildId is required' });
@@ -341,12 +341,13 @@ function initializeDashboard() {
 
     const guild = botClient.guilds.cache.get(guildId);
     if (!guild) {
-      return res.status(404).json({ ok: false, error: 'Guild not found' });
+      return res.status(404).json({
+        ok: false, error: 'Guild not found' });
     }
 
     try {
-      const members = await guild.members.fetch();
-      const items = members.map(m => {
+      const members = guild.members.cache;
+      const items = Array.from(members.values()).map(m => {
         const roles = Array.from(m.roles.cache.values())
           .filter(r => r.id !== guild.id)
           .map(r => ({ id: r.id, name: r.name }));
@@ -362,19 +363,10 @@ function initializeDashboard() {
 
       res.json({ ok: true, items });
     } catch (err) {
-      console.error('[Dashboard] Failed to fetch guild members', err);
-      res.status(500).json({ ok: false, error: 'Failed to fetch guild members' });
+      console.error('[Dashboard] Failed to read guild members from cache', err);
+      res.status(500).json({ ok: false, error: 'Failed to read guild members' });
     }
-  });
-
-  // GameNews status (stub)
-  app.get('/api/gamenews-status', (req, res) => {
-    const guildId = req.query.guildId;
-    if (!guildId) {
-      return res.status(400).json({ ok: false, error: 'guildId is required' });
-    }
-
-    // TODO: wire to real GameNews tracking data.
+  });s tracking data.
     res.json({
       ok: true,
       items: []
@@ -419,6 +411,71 @@ function initializeDashboard() {
   // Favicon stub to avoid 404 noise
   app.get('/favicon.ico', (req, res) => {
     res.status(204).end();
+  });
+
+
+
+  // Single user + DB info (stub)
+  app.get('/api/user', (req, res) => {
+    const guildId = req.query.guildId;
+    const userId = req.query.userId;
+    if (!guildId || !userId) {
+      return res.status(400).json({ ok: false, error: 'guildId and userId are required' });
+    }
+    if (!botClient) {
+      return res.status(503).json({ ok: false, error: 'Bot client not ready' });
+    }
+
+    const guild = botClient.guilds.cache.get(guildId);
+    if (!guild) {
+      return res.status(404).json({ ok: false, error: 'Guild not found' });
+    }
+
+    const member = guild.members.cache.get(userId);
+    if (!member) {
+      return res.status(404).json({ ok: false, error: 'User not found in guild' });
+    }
+
+    const roles = Array.from(member.roles.cache.values())
+      .filter(r => r.id !== guild.id)
+      .map(r => ({ id: r.id, name: r.name }));
+
+    // TODO: load real DB info (trust, warnings, etc.). For now, provide a minimal stub.
+    const db = {
+      trust: undefined,
+      trustLabel: '',
+      warnings: 0
+    };
+
+    res.json({
+      ok: true,
+      guildId,
+      userId,
+      user: {
+        id: member.id,
+        username: member.user && member.user.username,
+        tag: member.user && member.user.tag,
+        bot: !!(member.user && member.user.bot),
+        roles
+      },
+      db
+    });
+  });
+
+  // User history (infractions, counts, tickets) - stub
+  app.get('/api/guilds/:guildId/users/:userId/history', (req, res) => {
+    const { guildId, userId } = req.params;
+    if (!guildId || !userId) {
+      return res.status(400).json({ ok: false, error: 'guildId and userId are required' });
+    }
+
+    // TODO: plug into infractions/tickets collections.
+    res.json({
+      ok: true,
+      infractions: [],
+      counts: {},
+      tickets: []
+    });
   });
 
   return server;
