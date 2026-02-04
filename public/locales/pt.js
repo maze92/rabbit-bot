@@ -259,4 +259,6 @@ window.OzarkLocales.pt = {
   'tempvoice_max_users_label': "Limite máximo de utilizadores por sala",
   'config_guild_settings_title': "⚙️ Preferências do servidor",
   'config_guild_settings_hint': "Defina o idioma principal e a timezone usados pela dashboard para este servidor."
+  'gamenews_feed_status_on': 'Ativo',
+  'gamenews_feed_status_off': 'Desativado',
 };
