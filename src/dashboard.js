@@ -231,6 +231,102 @@ function initializeDashboard() {
     });
   });
 
+
+
+  // -----------------------------
+  // Users (stub)
+  // -----------------------------
+  app.get('/api/users', (req, res) => {
+    const guildId = req.query.guildId;
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+
+    // TODO: load real users from Discord cache + DB enrichment.
+    res.json({
+      ok: true,
+      items: []
+    });
+  });
+
+  app.get('/api/users/:userId', (req, res) => {
+    const { userId } = req.params;
+    const guildId = req.query.guildId;
+
+    if (!guildId || !userId) {
+      return res.status(400).json({ ok: false, error: 'guildId and userId are required' });
+    }
+
+    // TODO: load real user profile and stats.
+    res.json({
+      ok: true,
+      user: {
+        id: userId
+      }
+    });
+  });
+
+  // -----------------------------
+  // Logs (stub)
+  // -----------------------------
+  app.get('/api/logs', (req, res) => {
+    const guildId = req.query.guildId;
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+
+    // Optional filters
+    const { type, limit } = req.query;
+
+    // TODO: load logs from database.
+    res.json({
+      ok: true,
+      items: [],
+      meta: {
+        type: type || null,
+        limit: limit ? Number(limit) : null
+      }
+    });
+  });
+
+  // -----------------------------
+  // Cases (stub)
+  // -----------------------------
+  app.get('/api/cases', (req, res) => {
+    const guildId = req.query.guildId;
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+
+    // Optional filter by userId
+    const { userId } = req.query;
+
+    // TODO: load cases from database.
+    res.json({
+      ok: true,
+      items: [],
+      meta: {
+        userId: userId || null
+      }
+    });
+  });
+
+  app.get('/api/cases/:caseId', (req, res) => {
+    const { caseId } = req.params;
+
+    if (!caseId) {
+      return res.status(400).json({ ok: false, error: 'caseId is required' });
+    }
+
+    // TODO: load real case details.
+    res.json({
+      ok: true,
+      case: {
+        id: caseId
+      }
+    });
+  });
+
   return server;
 }
 
