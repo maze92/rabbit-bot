@@ -156,12 +156,19 @@ const LogsQuerySchema = z.object({
 });
 
 const GameNewsFeedSchema = z.object({
-  name: z.string().min(1).max(100),
-  feed: z.string().url(),
-  channelId: z.string().regex(/^\d+$/).nullable().optional(),
+  name: z.string().trim().min(1).max(64),
+
+  // canonical field is feedUrl; we still accept legacy "feed" and normalize on write
+  feedUrl: z.string().trim().url().max(2048),
+  feed: z.string().trim().url().max(2048).optional(),
+
+  channelId: z.string().trim().min(10).max(32),
+  logChannelId: z.string().trim().min(10).max(32).nullable().optional(),
+
   enabled: z.boolean().optional(),
-  language: z.string().min(2).max(10).optional()
+  intervalMs: z.number().int().positive().max(7 * 24 * 60 * 60 * 1000).nullable().optional()
 }).strict();
+
 
 
 
@@ -2292,7 +2299,7 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
         guildId: s.guildId || null,
         source: s.name,
         feedName: s.name,
-        feedUrl: s.feedUrl,
+        feedUrl: (s.feedUrl || s.feed),
         channelId: s.channelId,
         logChannelId: s.logChannelId || null,
         enabled: s.enabled !== false,
@@ -2349,7 +2356,7 @@ app.get('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       id: d._id.toString(),
       guildId: d.guildId || null,
       name: d.name || 'Feed',
-      feedUrl: d.feedUrl,
+      feedUrl: (d.feedUrl || d.feed),
       channelId: d.channelId,
       logChannelId: d.logChannelId || null,
       enabled: d.enabled !== false,
@@ -2382,7 +2389,8 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
 
       const candidate = {
         name: typeof f.name === 'string' && f.name.trim() ? f.name : 'Feed',
-        feed: f.feedUrl,
+        feedUrl: (f.feedUrl || f.feed),
+          feed: f.feed,
         channelId: f.channelId ?? null,
         enabled: f.enabled !== false,
         language: typeof f.language === 'string' ? f.language : undefined

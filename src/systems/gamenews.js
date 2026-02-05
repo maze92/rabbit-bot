@@ -326,18 +326,45 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
   if (!GameNewsFeed) return [];
   try {
     const docs = await GameNewsFeed.find({}).lean();
-    return docs
-      .filter((d) => d && d.feedUrl && d.channelId)
-      .map((d) => ({
+
+    // Backward-compat: older documents may use { feed } and/or { channel }.
+    // We normalize in-memory and opportunistically migrate to the new fields.
+    const out = [];
+    for (const d of docs) {
+      if (!d) continue;
+
+      const feedUrl = d.feedUrl || d.feed || d.url || null;
+      const channelId = d.channelId || d.channel || d.targetChannelId || null;
+
+      if (!feedUrl || !channelId) continue;
+
+      // Opportunistic one-way migration (safe no-op if already migrated)
+      if ((d.feed && !d.feedUrl) || (d.channel && !d.channelId)) {
+        try {
+          const $set = {};
+          if (d.feed && !d.feedUrl) $set.feedUrl = d.feed;
+          if (d.channel && !d.channelId) $set.channelId = d.channel;
+          if (Object.keys($set).length) {
+            await GameNewsFeed.updateOne({ _id: d._id }, { $set }).exec();
+          }
+        } catch (e) {
+          // ignore migration errors; do not block startup
+        }
+      }
+
+      out.push({
         guildId: d.guildId || null,
         name: d.name || 'Feed',
-        feed: d.feedUrl,
-        channelId: d.channelId,
+        feed: feedUrl,
+        channelId,
         logChannelId: d.logChannelId || null,
         enabled: d.enabled !== false,
         // Per-feed interval override (ms). Falls back to config.gameNews.interval when null/invalid.
         intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
-      }));
+      });
+    }
+
+    return out;
   } catch (err) {
     console.error('[GameNews] Failed to load feeds from DB:', err?.message || err);
     return [];
