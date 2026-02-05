@@ -1620,7 +1620,7 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, rateLimit({ window
 // Dashboard Auth API (JWT + roles)
 // ------------------------------
 
-app.post('/api/auth/login', rateLimit({ windowMs: 60_000, max: 5, keyPrefix: 'rl:auth:' }), express.json(), async (req, res) => {
+app.post('/api/auth/login', express.json(), async (req, res) => {
   try {
     const { username, password } = req.body || {};
     const safeUsername = sanitizeText(username, { maxLen: 64, stripHtml: true });
