@@ -255,7 +255,7 @@ window.OzarkLocales.pt = {
   'guilds_loading_option': 'A carregar servidores...',
   'common_no_reason_provided': 'Sem motivo especificado.',
   'extras_trust_info_title': "Como funciona",
-  'extras_trust_info_body': "O sistema de confiança (Trust) atribui um score entre 0 e 100 a cada utilizador. Penalizações como WARN e MUTE reduzem esse score; com o tempo, sem novas infrações, o valor regenera gradualmente. Scores baixos indicam maior risco e tornam a automoderação mais rígida; scores altos indicam um utilizador estável e permitem uma abordagem mais permissiva.",
+  'extras_trust_info_body': "O sistema de confiança (Trust) atribui a cada utilizador uma pontuação dinâmica entre 0 e 100, baseada no histórico recente de avisos e silenciamentos. Penalizações reduzem esse valor; com bom comportamento, a pontuação regenera ao longo do tempo. Pontuações baixas indicam utilizadores de maior risco e tornam a automoderação mais rígida; pontuações altas indicam utilizadores estáveis e permitem uma abordagem mais permissiva.",
   'tempvoice_max_users_label': "Limite máximo de utilizadores por sala",
   'config_guild_settings_title': "⚙️ Preferências do servidor",
   'config_guild_settings_hint': "Defina o idioma principal e a timezone usados pela dashboard para este servidor.",
