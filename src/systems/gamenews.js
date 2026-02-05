@@ -353,12 +353,68 @@ async function getEffectiveFeeds(config) {
 
 async function buildStatusPayload(config) {
   const feeds = await getEffectiveFeeds(config);
-          if (!Array.isArray(feeds) || feeds.length === 0) {
-            const now = Date.now();
-            if (!lastHeartbeatAt || now - lastHeartbeatAt > 10 * 60 * 1000) {
-              console.log('[GameNews] No feeds configured/enabled yet. Waiting...');
-              lastHeartbeatAt = now;
-            }
+  if (!Array.isArray(feeds) || feeds.length === 0) return [];
+
+  const baseIntervalMs = Number(config.gameNews?.interval ?? 30 * 60 * 1000);
+  const now = Date.now();
+
+  // Build stable source keys for each feed (guildId + feedUrl + channelId).
+  const sourceKeys = feeds.map((f) => makeFeedSourceKey(f));
+
+  // Also include legacy name-based keys as a fallback, in case the DB still has old docs.
+  const legacyNames = feeds.map((f) => f?.name).filter(Boolean);
+
+  const queryKeys = Array.from(new Set([...sourceKeys, ...legacyNames]));
+  const docs = await GameNews.find({ source: { $in: queryKeys } }).lean();
+
+  const bySource = new Map();
+  const byName = new Map();
+  for (const d of docs) {
+    if (d.source) bySource.set(d.source, d);
+    if (d.name) byName.set(d.name, d);
+  }
+
+  return feeds.map((f, idx) => {
+    const sourceKey = sourceKeys[idx];
+    let d = bySource.get(sourceKey) || null;
+
+    // Legacy fallback: if we don't have a record for the stable key yet,
+    // try to fall back to an old name-based record.
+    if (!d && f.name) {
+      d = bySource.get(f.name) || byName.get(f.name) || null;
+    }
+
+    const pausedUntil = d?.pausedUntil ? new Date(d.pausedUntil) : null;
+    const paused = pausedUntil ? pausedUntil.getTime() > now : false;
+
+    const intervalOverride = Number(f.intervalMs ?? 0);
+    const safeBase =
+      Number.isFinite(baseIntervalMs) && baseIntervalMs > 0 ? baseIntervalMs : 30 * 60 * 1000;
+    const effectiveIntervalMs =
+      Number.isFinite(intervalOverride) && intervalOverride > 0 ? intervalOverride : safeBase;
+
+    return {
+      // Use the stable source key so the dashboard can uniquely identify feeds.
+      source: sourceKey,
+      feedName: f.name,
+      feedUrl: f.feed || f.feedUrl,
+      channelId: f.channelId,
+
+      failCount: d?.failCount ?? 0,
+      pausedUntil: d?.pausedUntil ?? null,
+      lastSentAt: d?.lastSentAt ?? null,
+      lastHashesCount: Array.isArray(d?.lastHashes) ? d.lastHashes.length : 0,
+
+      paused,
+      updatedAt: d?.updatedAt ?? null,
+
+      intervalMs: effectiveIntervalMs,
+      intervalOverrideMs:
+        Number.isFinite(intervalOverride) && intervalOverride > 0 ? intervalOverride : null
+    };
+  });
+}
+
           }
   if (!feeds.length) return [];
 
