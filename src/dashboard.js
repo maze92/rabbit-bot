@@ -2463,16 +2463,6 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
   }
 });
 
-    return res.json({ ok: true, items });
-  } catch (err) {
-    console.error('[Dashboard] /api/gamenews/feeds POST error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
-});
-
-
-
-
 // Manual GameNews test: send one recent news item for a specific feed.
 app.post('/api/gamenews/test', requireDashboardAuth, async (req, res) => {
   try {
