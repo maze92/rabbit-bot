@@ -2370,7 +2370,8 @@ app.get('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
   }
 });
 
-app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'rl:gamenews:feeds:' }), async (req, res) => {
+
+app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
   try {
     if (!GameNewsFeed) {
       return res.status(503).json({ ok: false, error: 'GameNewsFeed model not available on this deployment.' });
@@ -2389,10 +2390,13 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
 
       const candidate = {
         name: typeof f.name === 'string' && f.name.trim() ? f.name : 'Feed',
-        feedUrl: (f.feedUrl || f.feed),
-          feed: f.feed,
+        // canonical field is feedUrl; fall back to legacy "feed"
+        feedUrl: typeof f.feedUrl === 'string' && f.feedUrl.trim() ? f.feedUrl : (f.feed || ''),
+        feed: typeof f.feed === 'string' && f.feed.trim() ? f.feed : undefined,
         channelId: f.channelId ?? null,
+        logChannelId: f.logChannelId ?? null,
         enabled: f.enabled !== false,
+        intervalMs: typeof f.intervalMs === 'number' ? f.intervalMs : null,
         language: typeof f.language === 'string' ? f.language : undefined
       };
 
@@ -2404,19 +2408,28 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
       const parsed = parsedResult.data;
 
       const name = sanitizeText(parsed.name || 'Feed', { maxLen: 64, stripHtml: true }) || 'Feed';
-      const feedUrl = sanitizeText(parsed.feed, { maxLen: 512, stripHtml: true });
+      const feedUrl = sanitizeText(parsed.feedUrl, { maxLen: 512, stripHtml: true });
       const channelId = sanitizeId(parsed.channelId);
-      const logChannelId = sanitizeId(f.logChannelId) || null;
+      const logChannelId = sanitizeId(parsed.logChannelId) || null;
       const enabled = parsed.enabled !== false;
 
-      const intervalRaw = Number(f.intervalMs ?? 0);
+      const intervalRaw = Number(parsed.intervalMs ?? 0);
       const intervalMs = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : null;
 
       if (!feedUrl || !channelId) continue;
-      sanitized.push({ guildId, name, feedUrl, channelId, logChannelId, enabled, intervalMs });
+
+      sanitized.push({
+        guildId,
+        name,
+        feedUrl,
+        feed: feedUrl,
+        channelId,
+        logChannelId,
+        enabled,
+        intervalMs
+      });
     }
 
-    // Replace all docs for this guild only.
     await GameNewsFeed.deleteMany({ guildId });
     if (sanitized.length) {
       await GameNewsFeed.insertMany(sanitized);
@@ -2427,7 +2440,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
       id: d._id.toString(),
       guildId: d.guildId || null,
       name: d.name || 'Feed',
-      feedUrl: d.feedUrl,
+      feedUrl: d.feedUrl || d.feed,
       channelId: d.channelId,
       logChannelId: d.logChannelId || null,
       enabled: d.enabled !== false,
@@ -2442,6 +2455,13 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, rateLimit({ windowMs: 60_0
       actor: getActorFromRequest(req),
       payload: { count: items.length }
     });
+
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error('[Dashboard] /api/gamenews/feeds POST error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
+  }
+});
 
     return res.json({ ok: true, items });
   } catch (err) {
