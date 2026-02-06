@@ -28,7 +28,7 @@ function registerTicketsRoutes(opts) {
     rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'rl:tickets:list:' }),
     async (req, res) => {
       try {
-        const { TicketModel } = _getModels ? _getModels() : {};
+        const { TicketModel, TicketLogModel } = _getModels ? _getModels() : {};
         if (!TicketModel) return res.status(503).json({ ok: false, error: 'Ticket model not available' });
 
         const guildId = (req.query.guildId || '').toString().trim();
@@ -81,7 +81,7 @@ function registerTicketsRoutes(opts) {
     rateLimit({ windowMs: 60_000, max: 240, keyPrefix: 'rl:tickets:msgs:' }),
     async (req, res) => {
       try {
-        const { TicketModel } = _getModels ? _getModels() : {};
+        const { TicketModel, TicketLogModel } = _getModels ? _getModels() : {};
         if (!TicketModel) return res.status(503).json({ ok: false, error: 'Ticket model not available' });
 
         const ticketId = (req.params.ticketId || '').toString().trim();
@@ -122,6 +122,13 @@ function registerTicketsRoutes(opts) {
         const msgs = await ch.messages.fetch({ limit });
         const items = Array.from(msgs.values())
           .sort((a, b) => a.createdTimestamp - b.createdTimestamp)
+          // Hide bot/system noise by default so operators see the user's context.
+          .filter((m) => {
+            if (!m) return false;
+            if (m.author && m.author.bot) return false;
+            const raw = (m.content || '').toString().trim();
+            return raw.length > 0;
+          })
           .map((m) => {
             const authorUsername = m.author ? (m.author.username || '') : '';
             const authorId = m.author ? m.author.id : '';
@@ -169,6 +176,7 @@ function registerTicketsRoutes(opts) {
         if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
 
         const actor = (getActorFromRequest && getActorFromRequest(req)) || 'dashboard';
+        const closedAt = new Date();
 
         // Update DB
         await TicketModel.updateOne(
@@ -176,12 +184,22 @@ function registerTicketsRoutes(opts) {
           {
             $set: {
               status: 'closed',
-              closedAt: new Date(),
+              closedAt,
               closedById: actor,
               closedByUsername: actor
             }
           }
         );
+
+        // Keep legacy analytics consistent: TicketLog is used by /api/mod/overview.
+        if (TicketLogModel) {
+          try {
+            await TicketLogModel.updateOne(
+              { $or: [{ ticketId: ticketId }, { channelId: ticket.channelId }] },
+              { $set: { closedAt, closedById: actor, closedByUsername: actor } }
+            );
+          } catch (e) {}
+        }
 
         // Try to archive/lock thread
         const client = _getClient ? _getClient() : null;
@@ -249,6 +267,15 @@ function registerTicketsRoutes(opts) {
             }
           }
         );
+
+        if (TicketLogModel) {
+          try {
+            await TicketLogModel.updateOne(
+              { $or: [{ ticketId: ticketId }, { channelId: ticket.channelId }] },
+              { $set: { closedAt: null, closedById: null, closedByUsername: null } }
+            );
+          } catch (e) {}
+        }
 
         const client = _getClient ? _getClient() : null;
         if (client) {

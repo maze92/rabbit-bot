@@ -1011,7 +1011,7 @@ registerTicketsRoutes({
   getActorFromRequest,
   recordAudit,
   _getClient: () => _client,
-  _getModels: () => ({ TicketModel: Ticket })
+  _getModels: () => ({ TicketModel: Ticket, TicketLogModel: TicketLog })
 });
 
 app.get('/api/case', requireDashboardAuth, async (req, res) => {

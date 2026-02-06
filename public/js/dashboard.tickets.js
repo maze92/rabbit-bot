@@ -141,9 +141,12 @@
     const canClose = ticket.status !== 'closed';
     const canReopen = ticket.status === 'closed';
 
+    // Keep the header minimal: avoid repeating the same info shown in the list.
     panel.innerHTML = `
-      <div class="title">${escapeHtml(t('tickets_detail_title'))}</div>
-      <div class="subtitle">#${escapeHtml(num)} • ${escapeHtml(subject)}</div>
+      <div class="user-row-header" style="margin-bottom:10px;">
+        <div class="title">#${escapeHtml(num)} • ${escapeHtml(subject)}</div>
+        <div class="user-type-badge ${ticket.status === 'closed' ? 'bot' : 'human'}">${escapeHtml(status)}</div>
+      </div>
 
       <div class="history-section">
         <h3>${escapeHtml(t('tickets_detail_messages'))}</h3>
@@ -157,11 +160,9 @@
         <div class="row gap">
           <div class="badge">${escapeHtml(t('tickets_detail_user'))}: ${escapeHtml(username)}</div>
           <div class="badge">${escapeHtml(t('tickets_detail_status'))}: ${escapeHtml(status)}</div>
+          <div class="badge">${escapeHtml(t('tickets_detail_created'))}: ${escapeHtml(created || '-')}</div>
+          ${closedAt ? `<div class="badge">${escapeHtml(t('tickets_detail_closed'))}: ${escapeHtml(closedAt)}</div>` : ''}
         </div>
-        <div class="row" style="margin-top:6px;">
-          <div class="col"><strong>${escapeHtml(t('tickets_detail_created'))}:</strong> ${escapeHtml(created || '-')}</div>
-        </div>
-        ${closedAt ? `<div class="row"><div class="col"><strong>${escapeHtml(t('tickets_detail_closed'))}:</strong> ${escapeHtml(closedAt)}</div></div>` : ''}
       </div>
 
       <div class="history-section user-actions">
@@ -192,16 +193,23 @@
           box.innerHTML = `<div class="empty">${escapeHtml(t('tickets_messages_empty'))}</div>`;
           return;
         }
-        box.innerHTML = items.map((m) => {
+        // Filter out bot/system/empty messages on the UI too (backend also filters, but keep it defensive).
+        const visible = items.filter((m) => !m?.isBot && String(m?.content || '').trim().length > 0);
+        if (!visible.length) {
+          box.innerHTML = `<div class="empty">${escapeHtml(t('tickets_messages_empty'))}</div>`;
+          return;
+        }
+
+        box.innerHTML = visible.map((m) => {
           const who = m.authorUsername || m.authorId || '';
           const when = m.createdAt ? fmtDate(m.createdAt) : '';
           const content = (m.content || '').toString();
           return `
             <div class="ticket-msg">
               <div class="ticket-msg-meta">
-                <strong>${escapeHtml(who)}</strong>${when ? ' • ' + escapeHtml(when) : ''}${m.isBot ? ' • bot' : ''}
+                <strong>${escapeHtml(who)}</strong>${when ? ' • ' + escapeHtml(when) : ''}
               </div>
-              <div class="ticket-msg-body">${escapeHtml(content) || '<span style="opacity:0.7">(sem texto)</span>'}</div>
+              <div class="ticket-msg-body">${escapeHtml(content)}</div>
             </div>
           `;
         }).join('');

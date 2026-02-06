@@ -26,12 +26,36 @@ function markRecentOpen(key) {
 }
 
 async function getNextTicketNumber(guildId) {
+  // Ensure the counter starts from the current max ticketNumber + 1.
+  // This avoids collisions when there are already tickets in the DB
+  // but the counter document doesn't exist yet (fresh deploy, new model, etc.).
+  const existingCounter = await TicketCounter.findOne({ guildId }).lean();
+  if (!existingCounter) {
+    const maxTicket = await Ticket.findOne({ guildId })
+      .sort({ ticketNumber: -1 })
+      .select('ticketNumber')
+      .lean();
+    const startFrom = (maxTicket && typeof maxTicket.ticketNumber === 'number')
+      ? Math.max(1, maxTicket.ticketNumber + 1)
+      : 1;
+    // Upsert without increment: set the initial value only if missing.
+    await TicketCounter.updateOne(
+      { guildId },
+      { $setOnInsert: { nextTicketNumber: startFrom } },
+      { upsert: true }
+    );
+  }
+
+  // Allocate one number atomically. We store the "next" value in the doc,
+  // so the allocated ticketNumber is (nextTicketNumber - 1).
   const doc = await TicketCounter.findOneAndUpdate(
     { guildId },
     { $inc: { nextTicketNumber: 1 } },
-    { new: true, upsert: true }
+    { new: true }
   ).lean();
-  return Math.max(1, (doc?.nextTicketNumber || 1) - 1);
+
+  const next = doc && typeof doc.nextTicketNumber === 'number' ? doc.nextTicketNumber : 2;
+  return Math.max(1, next - 1);
 }
 
 // Emoji a usar para abrir tickets
@@ -89,29 +113,50 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
     await thread.members.add(user.id).catch(() => {});
 
     // Persistir ticket (para dashboard e replies)
+    // We retry a few times in case of a rare race on ticketNumber.
     let ticketDoc;
-    try {
-      ticketDoc = await Ticket.create({
-      ticketNumber,
-      guildId: guild.id,
-      channelId: thread.id,
-      userId: user.id,
-      username: user.username || user.tag || user.id,
-      status: 'open',
-      createdAt: new Date(),
-      lastMessageAt: new Date()
-      });
-    } catch (err) {
-      if (err && (err.code === 11000 || String(err.message || '').includes('E11000'))) {
-        try { await thread.setArchived(true, 'Duplicate ticket create'); } catch (e) {}
-        return;
+    let createdTicketNumber = ticketNumber;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        ticketDoc = await Ticket.create({
+          ticketNumber: createdTicketNumber,
+          guildId: guild.id,
+          channelId: thread.id,
+          userId: user.id,
+          username: user.username || user.tag || user.id,
+          status: 'open',
+          createdAt: new Date(),
+          lastMessageAt: new Date()
+        });
+        break;
+      } catch (err) {
+        const isDup = err && (err.code === 11000 || String(err.message || '').includes('E11000'));
+        if (!isDup) throw err;
+
+        // If it's a duplicate open-ticket for the same user, just archive the thread.
+        const msg = String(err.message || '');
+        const isDupOpenTicket = msg.includes('guildId_1_userId_1_status_1');
+        if (isDupOpenTicket) {
+          try { await thread.setArchived(true, 'Duplicate open ticket'); } catch (e) {}
+          return;
+        }
+
+        // Otherwise assume it's a ticketNumber collision; allocate a new number and rename the thread.
+        createdTicketNumber = await getNextTicketNumber(guild.id);
+        const newName = `ticket-${String(createdTicketNumber).padStart(3, '0')}`;
+        try { await thread.setName(newName).catch(() => {}); } catch (e) {}
+        // Continue loop and retry create.
       }
-      throw err;
+    }
+
+    if (!ticketDoc) {
+      try { await thread.setArchived(true, 'Failed to create ticket'); } catch (e) {}
+      return;
     }
 
     // Registar log (mantido por compatibilidade, agora com ligações)
     await TicketLog.create({
-      ticketNumber,
+      ticketNumber: createdTicketNumber,
       ticketId: ticketDoc._id,
       guildId: guild.id,
       channelId: thread.id,
