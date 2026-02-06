@@ -404,25 +404,46 @@ function renderGameNewsFeedDetail(feed) {
           // Manual test: ask backend to send one recent news item for this feed
           const guildParam = getGuildParam();
 
-          const feedId = target.id || target._id || target._mongoId || null;
-          if (!feedId) {
-            toast(t('gamenews_test_missing_id') || 'Não foi possível identificar este feed.');
-            return;
-          }
-          apiPost('/gamenews/test' + guildParam, {
-            guildId: state.guildId,
-            feedId: feedId
-          })
-            .then(function (res) {
+          // If this feed has no DB id yet, force-save first so the backend can identify it.
+          const initialFeedId = target.id || target._id || target._mongoId || null;
+
+          const runTest = function (feedId) {
+            return apiPost('/gamenews/test' + guildParam, {
+              guildId: state.guildId,
+              feedId: feedId
+            }).then(function (res) {
               if (res && res.ok) {
                 toast(t('gamenews_test_success') || 'Teste enviado. Verifica o canal no Discord.');
               } else {
                 toast(t('gamenews_test_error') || 'Falha ao testar o feed.');
               }
-            })
-            .catch(function () {
-              toast(t('gamenews_test_error') || 'Falha ao testar o feed.');
             });
+          };
+
+          (async function () {
+            try {
+              btn.disabled = true;
+              if (initialFeedId) {
+                await runTest(initialFeedId);
+                return;
+              }
+
+              toast(t('gamenews_test_requires_save') || 'Guarda o feed antes de testar. A guardar agora...');
+              await saveGameNewsFeeds();
+
+              // After save, try to locate the matching feed in updated state.
+              const current = Array.isArray(state.gameNewsFeeds) ? state.gameNewsFeeds[idx] : null;
+              const savedId = current && (current.id || current._id || current._mongoId) ? (current.id || current._id || current._mongoId) : null;
+              if (!savedId) {
+                throw new Error('Missing feed id after save');
+              }
+              await runTest(savedId);
+            } catch (e) {
+              toast((e && e.apiMessage) || (e && e.message) || (t('gamenews_test_error') || 'Falha ao testar o feed.'));
+            } finally {
+              btn.disabled = false;
+            }
+          })();
         } else if (action === 'remove') {
           // Remove do state, ajusta seleção e persiste na BD
           state.gameNewsFeeds.splice(idx, 1);
@@ -461,18 +482,32 @@ function renderGameNewsFeedDetail(feed) {
       .map(function (f) {
         if (!f) return null;
         const name = f.name || 'Feed';
-        const feedUrl = (f.feedUrl != null ? String(f.feedUrl) : '').trim();
-        const channelId = (f.channelId != null ? String(f.channelId) : '').trim();
+        let feedUrl = (f.feedUrl != null ? String(f.feedUrl) : '').trim();
+        const channelIdRaw = (f.channelId != null ? String(f.channelId) : '').trim();
         const rawLogChannelId = (f.logChannelId != null ? String(f.logChannelId) : '');
-        const logChannelId = rawLogChannelId.trim();
+        const logChannelIdRaw = rawLogChannelId.trim();
         const enabled = f.enabled !== false;
         const intervalMs =
           typeof f.intervalMs === 'number' && f.intervalMs > 0 ? f.intervalMs : null;
 
-        if (!feedUrl || !channelId) {
+        if (!feedUrl || !channelIdRaw) {
           hadInvalid = true;
           return null;
         }
+
+        // Normalize common inputs: allow missing protocol and Discord mention formats.
+        if (feedUrl && !/^https?:\/\//i.test(feedUrl) && /\./.test(feedUrl) && !/\s/.test(feedUrl)) {
+          feedUrl = `https://${feedUrl}`;
+        }
+
+        const extractId = function (s) {
+          if (!s) return '';
+          const m = String(s).match(/\d{10,32}/);
+          return m ? m[0] : '';
+        };
+
+        const channelId = extractId(channelIdRaw) || channelIdRaw;
+        const logChannelId = extractId(logChannelIdRaw) || logChannelIdRaw;
 
         // Basic client-side validation to prevent accidental data loss.
         // Backend enforces URL validity too, but we give immediate feedback.
@@ -488,6 +523,11 @@ function renderGameNewsFeedDetail(feed) {
         }
 
         if (!/^[0-9]{10,32}$/.test(channelId)) {
+          hadInvalidChannel = true;
+          return null;
+        }
+
+        if (logChannelId && !/^[0-9]{10,32}$/.test(logChannelId)) {
           hadInvalidChannel = true;
           return null;
         }
@@ -529,11 +569,20 @@ function renderGameNewsFeedDetail(feed) {
     if (res && res.ok) {
       toast(t('gamenews_save_success'));
       // Atualizar state.gameNewsFeeds com o que vier da DB
-      if (Array.isArray(res.items)) {
-        state.gameNewsFeeds = res.items.slice();
+      const returnedFeeds =
+        (res && Array.isArray(res.items) && res.items) ||
+        (res && Array.isArray(res.feeds) && res.feeds) ||
+        null;
+
+      if (returnedFeeds) {
+        state.gameNewsFeeds = returnedFeeds.slice();
         renderGameNewsFeedsList(state.gameNewsFeeds);
-        if (typeof state.activeGameNewsFeedIndex === 'number') {
-          selectGameNewsFeedByIndex(state.activeGameNewsFeedIndex);
+        // Clamp active index if needed
+        let idx = typeof state.activeGameNewsFeedIndex === 'number' ? state.activeGameNewsFeedIndex : 0;
+        if (idx < 0) idx = 0;
+        if (idx >= state.gameNewsFeeds.length) idx = state.gameNewsFeeds.length - 1;
+        if (idx >= 0 && state.gameNewsFeeds.length) {
+          selectGameNewsFeedByIndex(idx);
         }
       }
     } else {

@@ -145,6 +145,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
     const feeds = Array.isArray(req.body?.feeds) ? req.body.feeds : [];
     const sanitized = [];
     let invalidCount = 0;
+    const invalidDetails = [];
 
     for (const f of feeds) {
       if (!f) continue;
@@ -156,13 +157,26 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       const normalizedChannelId = rawChannelId || null;
       const normalizedLogChannelId = rawLogChannelId || null;
 
+      // Accept Discord channel mention formats like <#123> by pre-sanitizing to digits.
+      // This improves UX because many users paste mentions from Discord.
+      const channelIdForSchema = normalizedChannelId ? (sanitizeId(normalizedChannelId) || normalizedChannelId) : null;
+      const logChannelIdForSchema = normalizedLogChannelId ? (sanitizeId(normalizedLogChannelId) || normalizedLogChannelId) : null;
+
+      // Normalize RSS URL before validation (many users omit protocol).
+      let feedUrlForSchema = typeof f.feedUrl === 'string' && f.feedUrl.trim()
+        ? f.feedUrl.trim()
+        : (typeof f.feed === 'string' ? f.feed.trim() : '');
+      if (feedUrlForSchema && !/^https?:\/\//i.test(feedUrlForSchema) && /\./.test(feedUrlForSchema) && !/\s/.test(feedUrlForSchema)) {
+        feedUrlForSchema = `https://${feedUrlForSchema}`;
+      }
+
       const candidate = {
         name: typeof f.name === 'string' && f.name.trim() ? f.name : 'Feed',
         // canonical field is feedUrl; fall back to legacy "feed"
-        feedUrl: typeof f.feedUrl === 'string' && f.feedUrl.trim() ? f.feedUrl : (f.feed || ''),
+        feedUrl: feedUrlForSchema,
         feed: typeof f.feed === 'string' && f.feed.trim() ? f.feed : undefined,
-        channelId: normalizedChannelId,
-        logChannelId: normalizedLogChannelId,
+        channelId: channelIdForSchema,
+        logChannelId: logChannelIdForSchema,
         enabled: f.enabled !== false,
         intervalMs: typeof f.intervalMs === 'number' ? f.intervalMs : null,
         language: typeof f.language === 'string' ? f.language : undefined
@@ -171,13 +185,29 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       const parsedResult = GameNewsFeedSchema.safeParse(candidate);
       if (!parsedResult.success) {
         invalidCount++;
+        // Collect a few validation errors to help the dashboard diagnose 400s.
+        if (invalidDetails.length < 5) {
+          try {
+            invalidDetails.push({
+              name: candidate.name || null,
+              feedUrl: candidate.feedUrl || null,
+              channelId: candidate.channelId || null,
+              issues: parsedResult.error.issues.map((i) => ({ path: i.path.join('.'), code: i.code, message: i.message })).slice(0, 5)
+            });
+          } catch (_) {}
+        }
         continue;
       }
 
       const parsed = parsedResult.data;
 
       const name = sanitizeText(parsed.name || 'Feed', { maxLen: 64, stripHtml: true }) || 'Feed';
-      const feedUrl = sanitizeText(parsed.feedUrl, { maxLen: 512, stripHtml: true });
+      let feedUrl = sanitizeText(parsed.feedUrl, { maxLen: 512, stripHtml: true });
+      // If the user omitted the protocol (common), try to auto-fix.
+      // Only do this for "domain-like" values (contains a dot, no spaces).
+      if (feedUrl && !/^https?:\/\//i.test(feedUrl) && /\./.test(feedUrl) && !/\s/.test(feedUrl)) {
+        feedUrl = `https://${feedUrl}`;
+      }
       const channelId = sanitizeId(parsed.channelId);
       const logChannelId = sanitizeId(parsed.logChannelId) || null;
       const enabled = parsed.enabled !== false;
@@ -224,13 +254,18 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       return res.json({ ok: true, items: [] });
     }
 
-    // If some (or all) items were invalid, fail the request and keep existing DB state intact.
-    // The frontend should correct input rather than silently dropping/clearing feeds.
-    if (invalidCount > 0) {
+    // If ALL items were invalid, fail the request and keep existing DB state intact.
+    // If SOME were invalid but at least one is valid, proceed and return a warning.
+    const warnings = [];
+    if (invalidCount > 0 && sanitized.length === 0) {
       return res.status(400).json({
         ok: false,
-        error: 'One or more feeds are invalid. Check the URL (must include http/https) and channel IDs.'
+        error: 'All provided feeds are invalid. Check the URL (include http/https) and channel IDs (numeric or <#mention>).',
+        details: invalidDetails
       });
+    }
+    if (invalidCount > 0) {
+      warnings.push('Some feeds were ignored because they were invalid.');
     }
 
     await GameNewsFeed.deleteMany({ guildId });
@@ -261,7 +296,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       gameNewsSystem.invalidateFeedsCache();
     }
 
-    return res.json({ ok: true, items });
+    return res.json({ ok: true, items, warnings });
   } catch (err) {
     console.error('[Dashboard] /api/gamenews/feeds POST error:', err);
     return res.status(500).json({ ok: false, error: 'Internal Server Error' });
