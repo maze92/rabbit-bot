@@ -159,9 +159,18 @@ async function handleClientReady() {
   }
 }
 
-// discord.js v15 renames the 'ready' event to 'clientReady'.
-// Listen only to 'clientReady' to avoid the deprecation warning on v14+ and remain forward-compatible.
-client.once('clientReady', handleClientReady);
+// discord.js v15 renames the "ready" event to "clientReady".
+// Attach the correct event name based on the installed discord.js major version
+// to avoid deprecation warnings and ensure the handler runs on v14 and v15+.
+let readyEventName = 'ready';
+try {
+  const v = require('discord.js/package.json').version || '14.0.0';
+  const major = parseInt(String(v).split('.')[0], 10);
+  if (Number.isFinite(major) && major >= 15) readyEventName = 'clientReady';
+} catch (e) {
+  // ignore
+}
+client.once(readyEventName, handleClientReady);
 
 // Keep presence consistent on shard resume
 client.on('shardResume', async () => {

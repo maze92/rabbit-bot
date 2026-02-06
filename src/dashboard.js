@@ -415,6 +415,11 @@ function setClient(client) {
 const _rateBuckets = new Map();
 
 
+// Serve UI explicitly at / to avoid any edge cases with platform routers/static defaults
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ✅ Global rate limit for all /api routes
