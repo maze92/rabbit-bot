@@ -144,6 +144,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
 
     const feeds = Array.isArray(req.body?.feeds) ? req.body.feeds : [];
     const sanitized = [];
+    let invalidCount = 0;
 
     for (const f of feeds) {
       if (!f) continue;
@@ -162,6 +163,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
 
       const parsedResult = GameNewsFeedSchema.safeParse(candidate);
       if (!parsedResult.success) {
+        invalidCount++;
         continue;
       }
 
@@ -176,7 +178,10 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       const intervalRaw = Number(parsed.intervalMs ?? 0);
       const intervalMs = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : null;
 
-      if (!feedUrl || !channelId) continue;
+      if (!feedUrl || !channelId) {
+        invalidCount++;
+        continue;
+      }
 
       sanitized.push({
         guildId,
@@ -191,8 +196,9 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
     }
 
     // Allow an explicit "empty" save to mean "remove all feeds".
-    // (The dashboard supports deleting the last feed; refusing would look like a bug.)
-    if (!sanitized.length) {
+    // IMPORTANT: Only clear when the client explicitly sent an empty list.
+    // If the client sent feeds but all were invalid, do NOT clear (would look like data loss).
+    if (!feeds.length) {
       await GameNewsFeed.deleteMany({ guildId });
 
       await recordAudit({
@@ -209,6 +215,15 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       }
 
       return res.json({ ok: true, items: [] });
+    }
+
+    // If some (or all) items were invalid, fail the request and keep existing DB state intact.
+    // The frontend should correct input rather than silently dropping/clearing feeds.
+    if (invalidCount > 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'One or more feeds are invalid. Check the URL (must include http/https) and channel IDs.'
+      });
     }
 
     await GameNewsFeed.deleteMany({ guildId });

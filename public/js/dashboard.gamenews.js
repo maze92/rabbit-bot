@@ -454,6 +454,8 @@ function renderGameNewsFeedDetail(feed) {
 
     const feeds = Array.isArray(state.gameNewsFeeds) ? state.gameNewsFeeds : [];
     let hadInvalid = false;
+    let hadInvalidUrl = false;
+    let hadInvalidChannel = false;
 
     const payloadFeeds = feeds
       .map(function (f) {
@@ -472,6 +474,24 @@ function renderGameNewsFeedDetail(feed) {
           return null;
         }
 
+        // Basic client-side validation to prevent accidental data loss.
+        // Backend enforces URL validity too, but we give immediate feedback.
+        try {
+          const u = new URL(feedUrl);
+          if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+            hadInvalidUrl = true;
+            return null;
+          }
+        } catch (e) {
+          hadInvalidUrl = true;
+          return null;
+        }
+
+        if (!/^[0-9]{10,32}$/.test(channelId)) {
+          hadInvalidChannel = true;
+          return null;
+        }
+
         return {
           name: name,
           feedUrl: feedUrl,
@@ -485,10 +505,16 @@ function renderGameNewsFeedDetail(feed) {
         return !!x;
       });
 
+    if (hadInvalidUrl) {
+      toast(t('gamenews_validation_invalid_url'));
+      return;
+    }
+    if (hadInvalidChannel) {
+      toast(t('gamenews_validation_invalid_channel'));
+      return;
+    }
     if (hadInvalid) {
-      toast(
-        t('gamenews_validation_missing')
-      );
+      toast(t('gamenews_validation_missing'));
       return;
     }
 
@@ -503,21 +529,11 @@ function renderGameNewsFeedDetail(feed) {
     if (res && res.ok) {
       toast(t('gamenews_save_success'));
       // Atualizar state.gameNewsFeeds com o que vier da DB
-      // Compat: algumas versões do backend podem responder com `feeds` em vez de `items`.
-      const returnedFeeds =
-        (res && Array.isArray(res.items) && res.items) ||
-        (res && Array.isArray(res.feeds) && res.feeds) ||
-        null;
-
-      if (returnedFeeds) {
-        state.gameNewsFeeds = returnedFeeds.slice();
+      if (Array.isArray(res.items)) {
+        state.gameNewsFeeds = res.items.slice();
         renderGameNewsFeedsList(state.gameNewsFeeds);
-        // Se o índice ativo ficou inválido (ex.: removeste feeds), faz clamp.
-        let idx = typeof state.activeGameNewsFeedIndex === 'number' ? state.activeGameNewsFeedIndex : null;
-        if (idx !== null) {
-          if (idx < 0) idx = 0;
-          if (idx >= state.gameNewsFeeds.length) idx = state.gameNewsFeeds.length - 1;
-          if (idx >= 0) selectGameNewsFeedByIndex(idx);
+        if (typeof state.activeGameNewsFeedIndex === 'number') {
+          selectGameNewsFeedByIndex(state.activeGameNewsFeedIndex);
         }
       }
     } else {
@@ -558,12 +574,7 @@ function renderGameNewsFeedDetail(feed) {
         const feedsRes = results[0];
         const statusRes = results[1];
 
-        // Compat: backend pode devolver `items` ou `feeds`.
-        const feedsRaw =
-          (feedsRes && Array.isArray(feedsRes.items) && feedsRes.items) ||
-          (feedsRes && Array.isArray(feedsRes.feeds) && feedsRes.feeds) ||
-          [];
-        const feeds = feedsRaw.slice();
+        const feeds = (feedsRes && Array.isArray(feedsRes.items) ? feedsRes.items : []).slice();
         const statusItems = statusRes && Array.isArray(statusRes.items) ? statusRes.items : [];
 
         state.gameNewsFeeds = feeds;

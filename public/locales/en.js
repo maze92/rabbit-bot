@@ -122,6 +122,8 @@ window.OzarkLocales.en = {
   'gamenews_test_success': 'Test completed: request sent to the bot.',
   'gamenews_title': 'GameNews',
   'gamenews_validation_missing': 'Fill in the feed URL and channel ID for all feeds before saving.',
+  'gamenews_validation_invalid_url': 'Invalid feed URL. Use a full URL starting with http:// or https://',
+  'gamenews_validation_invalid_channel': 'Invalid channel ID. Use the numeric Discord ID (10–32 digits).',
   'guilds_error_generic': 'Failed to load servers.',
   'guilds_loading_option': 'Loading…',
   'kpi_actions_24h': 'Moderation actions (last 24h)',

@@ -122,6 +122,8 @@ window.OzarkLocales.pt = {
   'gamenews_test_success': 'Teste concluído: pedido enviado ao bot.',
   'gamenews_title': 'GameNews',
   'gamenews_validation_missing': 'Preenche o URL do feed e o ID do canal em todos os feeds antes de guardar.',
+  'gamenews_validation_invalid_url': 'URL do feed inválido. Usa um URL completo começando por http:// ou https://',
+  'gamenews_validation_invalid_channel': 'ID do canal inválido. Usa o ID numérico do Discord (10–32 dígitos).',
   'guilds_error_generic': 'Não foi possível carregar os servidores.',
   'guilds_loading_option': 'A carregar…',
   'kpi_actions_24h': 'Ações de moderação (últimas 24h)',
