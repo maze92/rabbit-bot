@@ -442,6 +442,9 @@ async function loadUserHistory(user) {
                     toast(t('cases_error_generic'));
                   });
               } else if (action === 'reset') {
+                // Prevent accidental double-click spam (backend also rate-limits).
+                if (state._resetTrustInFlight) return;
+                state._resetTrustInFlight = true;
                 apiPost('/mod/reset-trust', {
                   guildId: state.guildId,
                   userId: user.id,
@@ -459,6 +462,9 @@ async function loadUserHistory(user) {
                   .catch(function (err) {
                     console.error('Reset trust error', err);
                     toast(t('cases_error_generic'));
+                  })
+                  .finally(function () {
+                    state._resetTrustInFlight = false;
                   });
               }
             });

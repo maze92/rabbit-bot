@@ -27,7 +27,8 @@ function registerModRoutes({
   const rlWarn = rateLimit({ windowMs: 60_000, max: 30, keyPrefix: 'rl:mod:warn:' });
   const rlMute = rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'rl:mod:mute:' });
   const rlUnmute = rateLimit({ windowMs: 60_000, max: 30, keyPrefix: 'rl:mod:unmute:' });
-  const rlReset = rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'rl:mod:reset:' });
+  // Reset trust can be used in short bursts (bulk-cleanups). Keep protection, but avoid breaking UX.
+  const rlReset = rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'rl:mod:reset:' });
   const rlRemoveInf = rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'rl:mod:removeInf:' });
   const rlOverview = rateLimit({ windowMs: 20_000, max: 30, keyPrefix: 'rl:mod:overview:' });
 

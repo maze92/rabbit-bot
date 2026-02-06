@@ -190,24 +190,25 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
       });
     }
 
-    // Defensive: never wipe feeds if nothing valid was provided.
-    const existingDocs = await GameNewsFeed.find({ guildId }).sort({ createdAt: 1 }).lean();
-
+    // Allow an explicit "empty" save to mean "remove all feeds".
+    // (The dashboard supports deleting the last feed; refusing would look like a bug.)
     if (!sanitized.length) {
-      return res.status(400).json({
-        ok: false,
-        error: 'No valid feeds provided',
-        items: existingDocs.map((d) => ({
-          id: d._id.toString(),
-          guildId: d.guildId || null,
-          name: d.name || 'Feed',
-          feedUrl: d.feedUrl || d.feed,
-          channelId: d.channelId,
-          logChannelId: d.logChannelId || null,
-          enabled: d.enabled !== false,
-          intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
-        }))
+      await GameNewsFeed.deleteMany({ guildId });
+
+      await recordAudit({
+        req,
+        action: 'gamenews.feeds.clear',
+        guildId,
+        targetUserId: null,
+        actor: getActorFromRequest(req),
+        payload: { count: 0 }
       });
+
+      if (gameNewsSystem && typeof gameNewsSystem.invalidateFeedsCache === 'function') {
+        gameNewsSystem.invalidateFeedsCache();
+      }
+
+      return res.json({ ok: true, items: [] });
     }
 
     await GameNewsFeed.deleteMany({ guildId });
