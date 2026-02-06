@@ -16,6 +16,9 @@ const { registerGameNewsRoutes } = require('./dashboard/routes/gamenews');
 
 const { registerModRoutes } = require('./dashboard/routes/mod');
 const { registerConfigRoutes } = require('./dashboard/routes/config');
+const { registerLogsRoutes } = require('./dashboard/routes/logs');
+const { registerCasesRoutes } = require('./dashboard/routes/cases');
+const { registerTicketsRoutes } = require('./dashboard/routes/tickets');
 
 const status = require('./systems/status');
 const config = require('./config/defaultConfig');
@@ -967,366 +970,41 @@ registerConfigRoutes({
   config
 });
 
-app.get('/api/logs', requireDashboardAuth, async (req, res) => {
-  const parsed = LogsQuerySchema.safeParse(req.query || {});
-  if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid query' });
-  const query = parsed.data;
-
-  try {
-    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
-    const limitRaw = parseInt(req.query.limit || '50', 10);
-    const limit = Math.min(Math.max(limitRaw, 1), 200);
-
-    const search = (req.query.search || '').toString().trim();
-    const type = (req.query.type || '').toString().trim().toLowerCase();
-    const guildId = (req.query.guildId || '').toString().trim();
-
-    // Special mode: ticket logs
-    if (type === 'tickets') {
-      if (!TicketLog) {
-        return res.status(503).json({ ok: false, error: 'TicketLog model not available' });
-      }
-
-      const qTickets = {};
-      if (guildId) qTickets.guildId = guildId;
-
-      if (search) {
-        const s = search.toString();
-        qTickets.$or = [
-          { username: { $regex: s, $options: 'i' } },
-          { userId: { $regex: s, $options: 'i' } }
-        ];
-      }
-
-      const total = await TicketLog.countDocuments(qTickets);
-      const docs = await TicketLog
-        .find(qTickets)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean();
-
-      const items = docs.map((doc) => {
-        const opened = doc.createdAt ? new Date(doc.createdAt) : null;
-        const closed = doc.closedAt ? new Date(doc.closedAt) : null;
-
-        let description = '';
-        if (opened && !isNaN(opened.getTime())) {
-          description += `Aberto em ${opened.toLocaleString()}`;
-        }
-        if (closed && !isNaN(closed.getTime())) {
-          description += `${description ? ' • ' : ''}Fechado em ${closed.toLocaleString()}`;
-        } else {
-          description += (description ? ' • ' : '') + 'Em aberto';
-        }
-
-        return {
-          title: `Ticket #${String(doc.ticketNumber).padStart(3, '0')} • ${doc.username || doc.userId}`,
-          description,
-          user: {
-            id: doc.userId,
-            tag: doc.username || doc.userId
-          },
-          executor: doc.closedById
-            ? { id: doc.closedById, tag: doc.closedByUsername || doc.closedById }
-            : null,
-          guild: {
-            id: doc.guildId,
-            name: null
-          },
-          createdAt: doc.createdAt,
-          time: doc.createdAt ? new Date(doc.createdAt).toISOString() : null
-        };
-      });
-
-      return res.json({
-        ok: true,
-        source: 'tickets',
-        page,
-        limit,
-        total,
-        items
-      });
-    }
-
-
-    if (!DashboardLog) {
-      let filtered = logsCache.slice();
-
-      if (guildId) filtered = filtered.filter(l => l?.guild?.id === guildId);
-      if (type) filtered = filtered.filter(l => (l.title || '').toLowerCase().includes(type));
-
-      if (search) {
-        const s = search.toLowerCase();
-        filtered = filtered.filter(l =>
-          (l.title || '').toLowerCase().includes(s) ||
-          (l.description || '').toLowerCase().includes(s) ||
-          (l.user?.tag || '').toLowerCase().includes(s) ||
-          (l.executor?.tag || '').toLowerCase().includes(s)
-        );
-      }
-
-      filtered.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
-      const start = (page - 1) * limit;
-      const items = filtered.slice(start, start + limit);
-
-      return res.json({
-        ok: true,
-        source: 'memory',
-        page,
-        limit,
-        total: filtered.length,
-        items
-      });
-    }
-
-    const q = {};
-
-    if (guildId) q['guild.id'] = guildId;
-    if (type) q.title = { $regex: type, $options: 'i' };
-
-    if (search) {
-      q.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { 'user.tag': { $regex: search, $options: 'i' } },
-        { 'executor.tag': { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const total = await DashboardLog.countDocuments(q);
-    const items = await DashboardLog
-      .find(q)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
-
-    return res.json({
-      ok: true,
-      source: 'mongo',
-      page,
-      limit,
-      total,
-      items
-    });
-  } catch (err) {
-    console.error('[Dashboard] /api/logs error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
+registerLogsRoutes({
+  app,
+  requireDashboardAuth,
+  rateLimit,
+  sanitizeId,
+  recordAudit,
+  getActorFromRequest,
+  LogsQuerySchema,
+  _getModels: () => ({ DashboardLog, TicketLog }),
+  _getLogsCache: () => logsCache,
+  _setLogsCache: (next) => { logsCache = next; }
 });
 
-app.post('/api/logs/clear', requireDashboardAuth, rateLimit({ windowMs: 60_000, max: 5, keyPrefix: 'rl:logs:clear:' }), async (req, res) => {
-  try {
-    await recordAudit({
-      req,
-      action: 'logs.clear',
-      guildId: null,
-      targetUserId: null,
-      actor: getActorFromRequest(req),
-      payload: null
-    });
-
-    if (DashboardLog) {
-      await DashboardLog.deleteMany({});
-    }
-
-    logsCache = [];
-    io.emit('logs', logsCache);
-
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error('[Dashboard] /api/logs/clear error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
+registerCasesRoutes({
+  app,
+  requireDashboardAuth,
+  rateLimit,
+  sanitizeId,
+  recordAudit,
+  getActorFromRequest,
+  CasesSearchQuerySchema,
+  _getModels: () => ({ Infraction })
 });
 
-
-// Export logs to CSV (supports same filters as /api/logs)
-app.get('/api/logs/export.csv', requireDashboardAuth, async (req, res) => {
-  try {
-    const search = (req.query.search || '').toString().trim();
-    const type = (req.query.type || '').toString().trim().toLowerCase();
-    const guildId = (req.query.guildId || '').toString().trim();
-
-    // Special mode: ticket logs
-    if (type === 'tickets') {
-      if (!TicketLog) {
-        return res.status(503).json({ ok: false, error: 'TicketLog model not available' });
-      }
-
-      const qTickets = {};
-      if (guildId) qTickets.guildId = guildId;
-
-      if (search) {
-        const s = search.toString();
-        qTickets.$or = [
-          { username: { $regex: s, $options: 'i' } },
-          { userId: { $regex: s, $options: 'i' } }
-        ];
-      }
-
-      const total = await TicketLog.countDocuments(qTickets);
-      const docs = await TicketLog
-        .find(qTickets)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean();
-
-      const items = docs.map((doc) => {
-        const opened = doc.createdAt ? new Date(doc.createdAt) : null;
-        const closed = doc.closedAt ? new Date(doc.closedAt) : null;
-
-        let description = '';
-        if (opened && !isNaN(opened.getTime())) {
-          description += `Aberto em ${opened.toLocaleString()}`;
-        }
-        if (closed && !isNaN(closed.getTime())) {
-          description += `${description ? ' • ' : ''}Fechado em ${closed.toLocaleString()}`;
-        } else {
-          description += (description ? ' • ' : '') + 'Em aberto';
-        }
-
-        return {
-          title: `Ticket #${String(doc.ticketNumber).padStart(3, '0')} • ${doc.username || doc.userId}`,
-          description,
-          user: {
-            id: doc.userId,
-            tag: doc.username || doc.userId
-          },
-          executor: doc.closedById
-            ? { id: doc.closedById, tag: doc.closedByUsername || doc.closedById }
-            : null,
-          guild: {
-            id: doc.guildId,
-            name: null
-          },
-          createdAt: doc.createdAt,
-          time: doc.createdAt ? new Date(doc.createdAt).toISOString() : null
-        };
-      });
-
-      return res.json({
-        ok: true,
-        source: 'tickets',
-        page,
-        limit,
-        total,
-        items
-      });
-    }
-
-
-    const csvEscape = (v) => {
-      const s = String(v ?? '');
-      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-      return s;
-    };
-
-    let items = [];
-
-    if (!DashboardLog) {
-      let filtered = logsCache.slice();
-      if (guildId) filtered = filtered.filter(l => l?.guild?.id === guildId);
-      if (type) filtered = filtered.filter(l => (l.title || '').toLowerCase().includes(type));
-      if (search) {
-        const s = search.toLowerCase();
-        filtered = filtered.filter(l =>
-          (l.title || '').toLowerCase().includes(s) ||
-          (l.description || '').toLowerCase().includes(s) ||
-          (l.user?.tag || '').toLowerCase().includes(s) ||
-          (l.executor?.tag || '').toLowerCase().includes(s)
-        );
-      }
-      filtered.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
-      items = filtered;
-    } else {
-      const q = {};
-      if (guildId) q['guild.id'] = guildId;
-      if (type) q.title = { $regex: type, $options: 'i' };
-      if (search) {
-        q.$or = [
-          { title: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
-          { 'user.tag': { $regex: search, $options: 'i' } },
-          { 'executor.tag': { $regex: search, $options: 'i' } }
-        ];
-      }
-      items = await DashboardLog.find(q).sort({ createdAt: -1 }).lean();
-    }
-
-    const header = ['time','guildId','guildName','title','userId','userTag','executorId','executorTag','description'];
-    const rows = [header.join(',')];
-    for (const l of items) {
-      rows.push([
-        csvEscape(l.time || l.createdAt || ''),
-        csvEscape(l.guild?.id || ''),
-        csvEscape(l.guild?.name || ''),
-        csvEscape(l.title || ''),
-        csvEscape(l.user?.id || ''),
-        csvEscape(l.user?.tag || ''),
-        csvEscape(l.executor?.id || ''),
-        csvEscape(l.executor?.tag || ''),
-        csvEscape(l.description || '')
-      ].join(','));
-    }
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="ozark-logs.csv"');
-    return res.status(200).send(rows.join('\n'));
-  } catch (err) {
-    console.error('[Dashboard] /api/logs/export.csv error:', err);
-    return res.status(500).send('Internal Server Error');
-  }
-});
-
-// Cases API (Infractions with Case IDs)
-app.get('/api/cases', requireDashboardAuth, async (req, res) => {
-  try {
-    const guildId = (req.query.guildId || '').toString().trim();
-    if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
-
-    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit || '25', 10) || 25, 1), 100);
-
-    const q = (req.query.q || '').toString().trim();
-    const userId = (req.query.userId || '').toString().trim();
-    const type = (req.query.type || '').toString().trim();
-    const source = (req.query.source || '').toString().trim();
-
-    const result = await infractionsService.searchCases({ guildId, q, userId, type, source, page, limit });
-    return res.json({ ok: true, page, limit, total: result.total, items: result.items });
-  } catch (err) {
-    console.error('[Dashboard] /api/cases error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
-});
-
-// Clear all cases for a guild (dangerous; requires explicit action from dashboard)
-app.post('/api/cases/clear', requireDashboardAuth, rateLimit({ windowMs: 60_000, max: 3, keyPrefix: 'rl:cases:clear:' }), async (req, res) => {
-  try {
-    const guildId = (req.body?.guildId || '').toString().trim();
-    if (!guildId) {
-      return res.status(400).json({ ok: false, error: 'guildId is required' });
-    }
-
-    await recordAudit({
-      req,
-      action: 'cases.clear',
-      guildId,
-      targetUserId: null,
-      actor: getActorFromRequest(req),
-      payload: null
-    });
-
-    const result = await infractionsService.clearCasesForGuild(guildId).catch(() => ({ deleted: 0 }));
-
-    return res.json({ ok: true, deleted: result.deleted || 0 });
-  } catch (err) {
-    console.error('[Dashboard] /api/cases/clear error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
+registerTicketsRoutes({
+  app,
+  requireDashboardAuth,
+  rateLimit,
+  sanitizeText,
+  getActorFromRequest,
+  recordAudit,
+  _getClient: () => _client,
+  // There is no persistent Ticket model in this codebase (only TicketLog).
+  // Keep endpoint stubbed with a clear 503 response.
+  _getModels: () => ({ TicketModel: null })
 });
 
 app.get('/api/case', requireDashboardAuth, async (req, res) => {
@@ -1510,84 +1188,6 @@ function sendToDashboard(event, data) {
 dashboardBridge.setSender(sendToDashboard);
 
 
-// Reply to a ticket from the dashboard
-app.post('/api/tickets/:ticketId/reply', requireDashboardAuth, async (req, res) => {
-  try {
-    if (!TicketModel) {
-      return res.status(503).json({ ok: false, error: 'Ticket model not available' });
-    }
-
-    const ticketId = (req.params.ticketId || '').toString().trim();
-    const rawGuildId = (req.body?.guildId || '').toString().trim();
-    const content = sanitizeText(req.body?.content || '', { maxLen: 2000, stripHtml: true });
-
-    if (!ticketId) {
-      return res.status(400).json({ ok: false, error: 'ticketId is required' });
-    }
-    if (!content) {
-      return res.status(400).json({ ok: false, error: 'content is required' });
-    }
-
-    const ticket = await TicketModel.findById(ticketId).lean();
-    if (!ticket) {
-      return res.status(404).json({ ok: false, error: 'Ticket not found' });
-    }
-
-    const guildId = rawGuildId || (ticket.guildId || '');
-    if (!guildId) {
-      return res.status(400).json({ ok: false, error: 'guildId is required' });
-    }
-
-    if (!_client) {
-      return res.status(503).json({ ok: false, error: 'Client not available' });
-    }
-
-    const guild = _client.guilds.cache.get(guildId);
-    if (!guild) {
-      return res.status(404).json({ ok: false, error: 'Guild not found' });
-    }
-
-    const channelId = ticket.channelId;
-    if (!channelId) {
-      return res.status(404).json({ ok: false, error: 'Ticket channel not found' });
-    }
-
-    const channel = guild.channels.cache.get(channelId);
-    if (!channel || !channel.isTextBased?.()) {
-      return res.status(404).json({ ok: false, error: 'Ticket channel not found or not text-based' });
-    }
-
-    const actor = getActorFromRequest(req) || 'dashboard';
-    const prefix = '[Dashboard reply]';
-
-    await channel.send(`${prefix} ${content}`);
-
-    try {
-      await TicketModel.updateOne({ _id: ticketId }, { $set: {
-        lastMessageAt: new Date(),
-        lastResponderId: actor,
-        lastResponderName: actor,
-        lastResponderAt: new Date()
-      } });
-    } catch (e) {
-      console.warn('[Dashboard] Failed to update ticket lastMessageAt:', e?.message || e);
-    }
-
-    await recordAudit({
-      req,
-      action: 'ticket.reply',
-      guildId,
-      targetUserId: ticket.userId,
-      actor,
-      payload: { ticketId }
-    });
-
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error('[Dashboard] /api/tickets/:ticketId/reply error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
-});
 app.get('/api/audit/config', requireDashboardAuth, async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10) || 20, 1), 100);
