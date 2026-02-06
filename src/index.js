@@ -159,14 +159,14 @@ async function handleClientReady() {
   }
 }
 
-// discord.js v15 renames the "ready" event to "clientReady".
-// Attach the correct event name based on the installed discord.js major version
-// to avoid deprecation warnings and ensure the handler runs on v14 and v15+.
-let readyEventName = 'ready';
+// discord.js v14+ exposes the "clientReady" event name ("ready" is deprecated and
+// emits a deprecation warning). Use clientReady to avoid noisy logs.
+let readyEventName = 'clientReady';
 try {
   const v = require('discord.js/package.json').version || '14.0.0';
   const major = parseInt(String(v).split('.')[0], 10);
-  if (Number.isFinite(major) && major >= 15) readyEventName = 'clientReady';
+  // For older majors (very unlikely in this repo), fall back to the legacy name.
+  if (Number.isFinite(major) && major < 14) readyEventName = 'ready';
 } catch (e) {
   // ignore
 }

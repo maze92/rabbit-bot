@@ -141,10 +141,11 @@
     const canClose = ticket.status !== 'closed';
     const canReopen = ticket.status === 'closed';
 
-    // Keep the header minimal: avoid repeating the same info shown in the list.
+    // Keep the header minimal: the list already shows "#N • subject".
+    // Here we show only a generic title + status badge.
     panel.innerHTML = `
       <div class="user-row-header" style="margin-bottom:10px;">
-        <div class="title">#${escapeHtml(num)} • ${escapeHtml(subject)}</div>
+        <div class="title">${escapeHtml(t('tickets_detail_title'))}</div>
         <div class="user-type-badge ${ticket.status === 'closed' ? 'bot' : 'human'}">${escapeHtml(status)}</div>
       </div>
 
@@ -194,20 +195,25 @@
           return;
         }
         // Filter out bot/system/empty messages on the UI too (backend also filters, but keep it defensive).
-        const visible = items.filter((m) => !m?.isBot && String(m?.content || '').trim().length > 0);
+        const visible = items.filter((m) => {
+          const c = String(m?.content || '').trim();
+          if (!c) return false;
+          if (!m?.isBot) return true;
+          return !!m?.isStaffReply;
+        });
         if (!visible.length) {
           box.innerHTML = `<div class="empty">${escapeHtml(t('tickets_messages_empty'))}</div>`;
           return;
         }
 
         box.innerHTML = visible.map((m) => {
-          const who = m.authorUsername || m.authorId || '';
+          const who = m.isStaffReply ? (t('tickets_staff_label') || 'Staff') : (m.authorUsername || m.authorId || '');
           const when = m.createdAt ? fmtDate(m.createdAt) : '';
           const content = (m.content || '').toString();
           return `
             <div class="ticket-msg">
               <div class="ticket-msg-meta">
-                <strong>${escapeHtml(who)}</strong>${when ? ' • ' + escapeHtml(when) : ''}
+                 <strong>${escapeHtml(who)}</strong>${m.isStaffReply ? ' <span class="ticket-msg-badge">' + escapeHtml(t('tickets_staff_badge') || 'Dashboard') + '</span>' : ''}${when ? ' • ' + escapeHtml(when) : ''}
               </div>
               <div class="ticket-msg-body">${escapeHtml(content)}</div>
             </div>

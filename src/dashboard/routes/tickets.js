@@ -125,20 +125,33 @@ function registerTicketsRoutes(opts) {
           // Hide bot/system noise by default so operators see the user's context.
           .filter((m) => {
             if (!m) return false;
-            if (m.author && m.author.bot) return false;
             const raw = (m.content || '').toString().trim();
-            return raw.length > 0;
+            if (!raw) return false;
+
+            // Hide generic bot/system noise, but KEEP dashboard staff replies.
+            const isBot = !!(m.author && m.author.bot);
+            if (isBot) {
+              const pfx = 'Resposta da equipa:';
+              return raw.startsWith(pfx);
+            }
+            return true;
           })
           .map((m) => {
             const authorUsername = m.author ? (m.author.username || '') : '';
             const authorId = m.author ? m.author.id : '';
             const raw = (m.content || '').toString();
-            const clean = sanitizeText ? sanitizeText(raw, { maxLen: 2000, stripHtml: true }) : raw.slice(0, 2000);
+            const pfx = 'Resposta da equipa:';
+            const isStaffReply = raw.trim().startsWith(pfx);
+            const rawForDisplay = isStaffReply ? raw.trim().slice(pfx.length).trimStart() : raw;
+            const clean = sanitizeText
+              ? sanitizeText(rawForDisplay, { maxLen: 2000, stripHtml: true })
+              : rawForDisplay.slice(0, 2000);
             return {
               id: m.id,
               authorId,
               authorUsername,
               isBot: !!(m.author && m.author.bot),
+              isStaffReply: !!isStaffReply,
               createdAt: m.createdAt ? m.createdAt.toISOString() : null,
               content: clean
             };
@@ -163,7 +176,7 @@ function registerTicketsRoutes(opts) {
     rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'rl:tickets:close:' }),
     async (req, res) => {
       try {
-        const { TicketModel } = _getModels ? _getModels() : {};
+        const { TicketModel, TicketLogModel } = _getModels ? _getModels() : {};
         if (!TicketModel) return res.status(503).json({ ok: false, error: 'Ticket model not available' });
 
         const ticketId = (req.params.ticketId || '').toString().trim();
@@ -228,7 +241,20 @@ function registerTicketsRoutes(opts) {
           });
         }
 
-        return res.json({ ok: true });
+        return res.json({
+          ok: true,
+          message: sent
+            ? {
+                id: sent.id,
+                authorId: sent.author?.id || null,
+                authorUsername: sent.author?.username || null,
+                isBot: true,
+                isStaffReply: true,
+                createdAt: sent.createdAt ? sent.createdAt.toISOString() : null,
+                content: content
+              }
+            : null
+        });
       } catch (err) {
         console.error('[Dashboard] POST /api/tickets/:ticketId/close error:', err);
         return res.status(500).json({ ok: false, error: 'Internal Server Error' });
@@ -242,7 +268,7 @@ function registerTicketsRoutes(opts) {
     rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'rl:tickets:reopen:' }),
     async (req, res) => {
       try {
-        const { TicketModel } = _getModels ? _getModels() : {};
+        const { TicketModel, TicketLogModel } = _getModels ? _getModels() : {};
         if (!TicketModel) return res.status(503).json({ ok: false, error: 'Ticket model not available' });
 
         const ticketId = (req.params.ticketId || '').toString().trim();
@@ -365,9 +391,9 @@ function registerTicketsRoutes(opts) {
         }
 
         const actor = (getActorFromRequest && getActorFromRequest(req)) || 'dashboard';
-        const prefix = '[Dashboard reply]';
+        const prefix = 'Resposta da equipa:';
 
-        await channel.send(`${prefix} ${content}`);
+        const sent = await channel.send(`${prefix} ${content}`);
 
         try {
           await TicketModel.updateOne(
