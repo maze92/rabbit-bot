@@ -503,11 +503,21 @@ function renderGameNewsFeedDetail(feed) {
     if (res && res.ok) {
       toast(t('gamenews_save_success'));
       // Atualizar state.gameNewsFeeds com o que vier da DB
-      if (Array.isArray(res.items)) {
-        state.gameNewsFeeds = res.items.slice();
+      // Compat: algumas versões do backend podem responder com `feeds` em vez de `items`.
+      const returnedFeeds =
+        (res && Array.isArray(res.items) && res.items) ||
+        (res && Array.isArray(res.feeds) && res.feeds) ||
+        null;
+
+      if (returnedFeeds) {
+        state.gameNewsFeeds = returnedFeeds.slice();
         renderGameNewsFeedsList(state.gameNewsFeeds);
-        if (typeof state.activeGameNewsFeedIndex === 'number') {
-          selectGameNewsFeedByIndex(state.activeGameNewsFeedIndex);
+        // Se o índice ativo ficou inválido (ex.: removeste feeds), faz clamp.
+        let idx = typeof state.activeGameNewsFeedIndex === 'number' ? state.activeGameNewsFeedIndex : null;
+        if (idx !== null) {
+          if (idx < 0) idx = 0;
+          if (idx >= state.gameNewsFeeds.length) idx = state.gameNewsFeeds.length - 1;
+          if (idx >= 0) selectGameNewsFeedByIndex(idx);
         }
       }
     } else {
@@ -548,7 +558,12 @@ function renderGameNewsFeedDetail(feed) {
         const feedsRes = results[0];
         const statusRes = results[1];
 
-        const feeds = (feedsRes && Array.isArray(feedsRes.items) ? feedsRes.items : []).slice();
+        // Compat: backend pode devolver `items` ou `feeds`.
+        const feedsRaw =
+          (feedsRes && Array.isArray(feedsRes.items) && feedsRes.items) ||
+          (feedsRes && Array.isArray(feedsRes.feeds) && feedsRes.feeds) ||
+          [];
+        const feeds = feedsRaw.slice();
         const statusItems = statusRes && Array.isArray(statusRes.items) ? statusRes.items : [];
 
         state.gameNewsFeeds = feeds;
