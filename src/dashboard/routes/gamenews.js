@@ -258,6 +258,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
     // If SOME were invalid but at least one is valid, proceed and return a warning.
     const warnings = [];
     if (invalidCount > 0 && sanitized.length === 0) {
+      try { console.warn('[Dashboard] /api/gamenews/feeds invalid payload', { guildId, invalidCount, details: invalidDetails }); } catch (_) {}
       return res.status(400).json({
         ok: false,
         error: 'All provided feeds are invalid. Check the URL (include http/https) and channel IDs (numeric or <#mention>).',

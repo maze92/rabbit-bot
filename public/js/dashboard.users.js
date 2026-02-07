@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
-async function loadUserHistory(user) {(user) {
+async function loadUserHistory(user) {
     const detailEl = document.getElementById('userDetailPanel');
     if (!detailEl) return;
 

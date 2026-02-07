@@ -179,24 +179,21 @@ const GameNewsFeedSchema = z.object({
   name: z.string().trim().min(1).max(64),
 
   // canonical field is feedUrl; we still accept legacy "feed" and normalize on write
-  // NOTE: zod's .url() is stricter than what many RSS endpoints accept in practice.
-  // We only enforce http/https, a reasonable max length, and disallow whitespace.
+  // NOTE: zod's .url() is stricter than what many RSS endpoints accept in practice
+  // (e.g., hostnames with underscores or other legacy formats). We validate protocol
+  // and basic structure here and let the downstream fetcher fail gracefully if needed.
   feedUrl: z
     .string()
     .trim()
     .min(8)
     .max(2048)
-    .refine((v) => /^https?:\/\//i.test(v) && !/\s/.test(v), {
-      message: 'Invalid URL'
-    }),
+    .refine((v) => /^https?:\/\/\S+$/i.test(v), { message: 'Invalid URL' }),
   feed: z
     .string()
     .trim()
     .min(8)
     .max(2048)
-    .refine((v) => /^https?:\/\//i.test(v) && !/\s/.test(v), {
-      message: 'Invalid URL'
-    })
+    .refine((v) => /^https?:\/\/\S+$/i.test(v), { message: 'Invalid URL' })
     .optional(),
 
   channelId: z.string().trim().min(10).max(32),
@@ -448,12 +445,27 @@ app.get('/', (req, res) => {
 
 app.use(express.static(path.join(__dirname, '../public'), {
   etag: true,
-  maxAge: '1h',
+  // IMPORTANT: During active development / rapid deploys, aggressive maxAge caching breaks updates
+  // (browsers keep stale JS and you end up with phantom syntax errors).
+  maxAge: 0,
   setHeaders(res, filePath) {
-    // Avoid aggressive caching for the HTML shell
-    if (filePath && filePath.endsWith('index.html')) {
+    if (!filePath) return;
+
+    // Never cache the HTML shell
+    if (filePath.endsWith('index.html')) {
       res.setHeader('Cache-Control', 'no-store');
+      return;
     }
+
+    // Never cache dashboard JS/CSS to avoid stale client bugs after deploy
+    const fp = filePath.replace(/\/g, '/');
+    if (/\/js\/.*\.js$/.test(fp) || /\/css\/.*\.css$/.test(fp)) {
+      res.setHeader('Cache-Control', 'no-store');
+      return;
+    }
+
+    // Default: allow revalidation
+    res.setHeader('Cache-Control', 'no-cache');
   }
 }));
 

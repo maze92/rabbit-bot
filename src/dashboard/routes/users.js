@@ -40,25 +40,16 @@ function registerUsersRoutes({
         const search = (req.query.search || '').toString().trim();
         const sync = String(req.query.sync || '') === '1';
 
-        // Auto-sync once if the member cache is empty.
-        // Discord.js does not guarantee a populated member cache after restart unless you fetch.
-        // Without this, the Users tab can look "empty" even though the bot is connected.
-        const autoSync = !search && !sync && guild.members.cache.size === 0;
-
-        // Sync mode (explicit) or autoSync: full fetch, guarded to avoid gateway spam.
-        if (sync || autoSync) {
+        // Sync mode (explicit): full fetch, but guarded to avoid gateway spam
+        if (sync) {
           const now = Date.now();
           const last = guildMembersLastFetch.get(guildId) || 0;
-          // In autoSync mode, don't hard-fail the request; just skip the fetch if too soon.
-          const tooSoon = now - last < 2 * 60 * 1000;
-          if (sync && tooSoon) {
+          if (now - last < 2 * 60 * 1000) {
             return res.status(429).json({ ok: false, error: 'Too many requests' });
           }
           try {
-            if (!tooSoon) {
-              await guild.members.fetch();
-              guildMembersLastFetch.set(guildId, Date.now());
-            }
+            await guild.members.fetch();
+            guildMembersLastFetch.set(guildId, Date.now());
           } catch (e) {
             console.warn('[Dashboard] Failed to sync member list for guild', guildId, e);
           }

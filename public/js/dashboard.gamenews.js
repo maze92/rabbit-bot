@@ -143,10 +143,9 @@ function validateFeedConfig(feed) {
   if (!feedUrl) {
     errors.feedUrl = t('gamenews_validation_url_required');
   } else {
-    // Be permissive client-side. Many RSS endpoints have querystrings/paths that
-    // are valid for fetch but can still trip strict URL validators.
-    // Server-side validation will be the source of truth.
-    if (!/^https?:\/\//i.test(feedUrl) || /\s/.test(feedUrl)) {
+    // Be permissive: some valid RSS endpoints fail stricter URL parsing.
+    // Backend also validates protocol and rejects whitespace.
+    if (!/^https?:\/\/\S+$/i.test(feedUrl)) {
       errors.feedUrl = t('gamenews_validation_url_invalid');
     }
   }
@@ -637,9 +636,9 @@ function renderGameNewsFeedDetail(feed) {
         const channelId = extractId(channelIdRaw) || channelIdRaw;
         const logChannelId = extractId(logChannelIdRaw) || logChannelIdRaw;
 
-        // Basic client-side validation: keep it permissive.
-        // Backend is the source of truth; here we only block obvious invalid input.
-        if (!/^https?:\/\//i.test(feedUrl) || /\s/.test(feedUrl)) {
+        // Basic client-side validation to prevent accidental data loss.
+        // Be permissive; backend enforces protocol and rejects whitespace.
+        if (!/^https?:\/\/\S+$/i.test(feedUrl)) {
           hadInvalidUrl = true;
           return null;
         }
@@ -686,8 +685,23 @@ function renderGameNewsFeedDetail(feed) {
     };
 
     const guildParam = getGuildParam();
+    let res = null;
+    try {
+      res = await apiPost('/gamenews/feeds' + guildParam, body);
+    } catch (err) {
+      // Surface backend validation details (helps diagnose 400s without opening DevTools)
+      const details = err && err.payload && err.payload.details;
+      if (Array.isArray(details) && details.length) {
+        const first = details[0];
+        const issue = first && Array.isArray(first.issues) && first.issues.length ? first.issues[0] : null;
+        const msg = issue && issue.message ? String(issue.message) : null;
+        toast(msg ? (t('gamenews_error_generic') + ': ' + msg) : ((err && err.apiMessage) || t('gamenews_error_generic')));
+      } else {
+        toast((err && err.apiMessage) || t('gamenews_error_generic'));
+      }
+      return;
+    }
 
-    const res = await apiPost('/gamenews/feeds' + guildParam, body);
     if (res && res.ok) {
       toast(t('gamenews_save_success'));
       // Atualizar state.gameNewsFeeds com o que vier da DB

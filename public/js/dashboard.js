@@ -130,6 +130,7 @@ const API_BASE = '/api';
       const err = new Error(msg || `HTTP ${res.status} for ${path}`);
       err.status = res.status;
       if (msg) err.apiMessage = msg;
+      err.payload = payload;
       throw err;
     }
     return payload;
@@ -155,6 +156,7 @@ const API_BASE = '/api';
       const err = new Error(msg || `HTTP ${res.status} for ${path}`);
       err.status = res.status;
       if (msg) err.apiMessage = msg;
+      err.payload = payload;
       throw err;
     }
     return payload;
@@ -194,6 +196,7 @@ const API_BASE = '/api';
       const err = new Error(msg || `HTTP ${res.status} for ${path}`);
       err.status = res.status;
       if (msg) err.apiMessage = msg;
+      err.payload = payload;
       throw err;
     }
     return payload;
