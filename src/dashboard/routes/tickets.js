@@ -236,8 +236,9 @@ function registerTicketsRoutes(opts) {
             // Hide generic bot/system noise, but KEEP dashboard staff replies.
             const isBot = !!(m.author && m.author.bot);
             if (isBot) {
-              const pfx = 'Resposta da equipa:';
-              return raw.startsWith(pfx);
+              const pfxA = 'Resposta da equipa:';
+              const pfxB = '**Resposta da equipa:**';
+              return raw.startsWith(pfxA) || raw.startsWith(pfxB);
             }
             return true;
           })
@@ -245,9 +246,15 @@ function registerTicketsRoutes(opts) {
             const authorUsername = m.author ? (m.author.username || '') : '';
             const authorId = m.author ? m.author.id : '';
             const raw = (m.content || '').toString();
-            const pfx = 'Resposta da equipa:';
-            const isStaffReply = raw.trim().startsWith(pfx);
-            const rawForDisplay = isStaffReply ? raw.trim().slice(pfx.length).trimStart() : raw;
+            const pfxA = 'Resposta da equipa:';
+            const pfxB = '**Resposta da equipa:**';
+            const trimmed = raw.trim();
+            const isStaffReply = trimmed.startsWith(pfxA) || trimmed.startsWith(pfxB);
+            let rawForDisplay = raw;
+            if (isStaffReply) {
+              if (trimmed.startsWith(pfxB)) rawForDisplay = trimmed.slice(pfxB.length).trimStart();
+              else rawForDisplay = trimmed.slice(pfxA.length).trimStart();
+            }
             const clean = sanitizeText
               ? sanitizeText(rawForDisplay, { maxLen: 2000, stripHtml: true })
               : rawForDisplay.slice(0, 2000);
@@ -483,9 +490,11 @@ function registerTicketsRoutes(opts) {
         }
 
         const actor = (getActorFromRequest && getActorFromRequest(req)) || 'dashboard';
-        const prefix = 'Resposta da equipa:';
+        // Make staff replies visually distinct in Discord while still allowing the dashboard
+        // to detect and show them (see /messages filtering).
+        const prefix = '**Resposta da equipa:**';
 
-        const sent = await channel.send(`${prefix} ${content}`);
+        await channel.send(`${prefix}\n${content}`);
 
         try {
           await TicketModel.updateOne(
