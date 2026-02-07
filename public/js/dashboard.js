@@ -776,6 +776,10 @@ function setLang(newLang) {
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
       const ticketSelect = document.getElementById('configTicketChannel');
       const staffSelect = document.getElementById('configStaffRoles');
+      const staffTicketsSelect = document.getElementById('configStaffRolesTickets');
+      const staffModerationSelect = document.getElementById('configStaffRolesModeration');
+      const staffGameNewsSelect = document.getElementById('configStaffRolesGameNews');
+      const staffLogsSelect = document.getElementById('configStaffRolesLogs');
       const langSelect = document.getElementById('configServerLanguage');
       const tzSelect = document.getElementById('configServerTimezone');
       if (langSelect) langSelect.value = state.guildLanguage || 'auto';
@@ -829,18 +833,26 @@ function setLang(newLang) {
         });
       }
 
-      if (staffSelect) {
-        staffSelect.innerHTML = '';
+      function fillRoleMultiSelect(sel, selectedIds) {
+        if (!sel) return;
+        const selected = Array.isArray(selectedIds) ? selectedIds : [];
+        sel.innerHTML = '';
         roles.forEach(function (r) {
           const opt = document.createElement('option');
           opt.value = r.id;
           opt.textContent = '@' + r.name + ' (' + r.id + ')';
-          if (Array.isArray(conf.staffRoleIds) && conf.staffRoleIds.indexOf(r.id) !== -1) {
-            opt.selected = true;
-          }
-          staffSelect.appendChild(opt);
+          if (selected.indexOf(r.id) !== -1) opt.selected = true;
+          sel.appendChild(opt);
         });
       }
+
+      fillRoleMultiSelect(staffSelect, conf.staffRoleIds);
+
+      const byFeat = conf && conf.staffRolesByFeature ? conf.staffRolesByFeature : {};
+      fillRoleMultiSelect(staffTicketsSelect, byFeat.tickets);
+      fillRoleMultiSelect(staffModerationSelect, byFeat.moderation);
+      fillRoleMultiSelect(staffGameNewsSelect, byFeat.gamenews);
+      fillRoleMultiSelect(staffLogsSelect, byFeat.logs);
 
       // Trust config preview (read-only, global)
       const trust = conf && conf.trust ? conf.trust : null;
@@ -1259,6 +1271,10 @@ function setLang(newLang) {
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
       const ticketSelect = document.getElementById('configTicketChannel');
       const staffSelect = document.getElementById('configStaffRoles');
+      const staffTicketsSelect = document.getElementById('configStaffRolesTickets');
+      const staffModerationSelect = document.getElementById('configStaffRolesModeration');
+      const staffGameNewsSelect = document.getElementById('configStaffRolesGameNews');
+      const staffLogsSelect = document.getElementById('configStaffRolesLogs');
       const statusEl = document.getElementById('configStatus');
       const langSelect = document.getElementById('configServerLanguage');
       const tzSelect = document.getElementById('configServerTimezone');
@@ -1274,6 +1290,22 @@ function setLang(newLang) {
         });
       }
 
+      function readRoleMultiSelect(sel) {
+        const out = [];
+        if (!sel) return out;
+        Array.prototype.forEach.call(sel.selectedOptions || [], function (opt) {
+          if (opt.value) out.push(opt.value);
+        });
+        return out;
+      }
+
+      const staffRolesByFeature = {
+        tickets: readRoleMultiSelect(staffTicketsSelect),
+        moderation: readRoleMultiSelect(staffModerationSelect),
+        gamenews: readRoleMultiSelect(staffGameNewsSelect),
+        logs: readRoleMultiSelect(staffLogsSelect)
+      };
+
       const language = langSelect && langSelect.value ? langSelect.value : 'auto';
       const timezone = tzSelect && tzSelect.value ? tzSelect.value.trim() || null : null;
 
@@ -1283,6 +1315,7 @@ function setLang(newLang) {
           dashboardLogChannelId: dashLogChannelId,
           ticketThreadChannelId: ticketThreadChannelId,
           staffRoleIds: staffRoleIds,
+          staffRolesByFeature: staffRolesByFeature,
           language: language,
           timezone: timezone,
         });

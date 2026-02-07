@@ -37,6 +37,13 @@ app.get('/api/guilds/:guildId/config', requireDashboardAuth, async (req, res) =>
           dashboardLogChannelId: null,
           ticketThreadChannelId: null,
           staffRoleIds: [],
+          staffRolesByFeature: {
+            tickets: [],
+            moderation: [],
+            gamenews: [],
+            logs: [],
+            config: []
+          },
           trust: trustConfig
         }
       });
@@ -52,6 +59,13 @@ app.get('/api/guilds/:guildId/config', requireDashboardAuth, async (req, res) =>
         dashboardLogChannelId: doc.dashboardLogChannelId || null,
         ticketThreadChannelId: doc.ticketThreadChannelId || null,
         staffRoleIds: Array.isArray(doc.staffRoleIds) ? doc.staffRoleIds : [],
+        staffRolesByFeature: {
+          tickets: Array.isArray(doc.staffRolesByFeature?.tickets) ? doc.staffRolesByFeature.tickets : [],
+          moderation: Array.isArray(doc.staffRolesByFeature?.moderation) ? doc.staffRolesByFeature.moderation : [],
+          gamenews: Array.isArray(doc.staffRolesByFeature?.gamenews) ? doc.staffRolesByFeature.gamenews : [],
+          logs: Array.isArray(doc.staffRolesByFeature?.logs) ? doc.staffRolesByFeature.logs : [],
+          config: Array.isArray(doc.staffRolesByFeature?.config) ? doc.staffRolesByFeature.config : []
+        },
         trust: trustConfig
       }
     });
@@ -72,7 +86,7 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, rateLimit({ window
       return res.status(400).json({ ok: false, error: 'guildId is required' });
     }
 
-    const { logChannelId, dashboardLogChannelId, ticketThreadChannelId, staffRoleIds, language, timezone } = req.body || {};
+    const { logChannelId, dashboardLogChannelId, ticketThreadChannelId, staffRoleIds, staffRolesByFeature, language, timezone } = req.body || {};
 
     const payload = {
       guildId,
@@ -87,12 +101,23 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, rateLimit({ window
       payload.staffRoleIds = staffRoleIds.map((id) => sanitizeId(id)).filter(Boolean);
     }
 
+    if (staffRolesByFeature && typeof staffRolesByFeature === 'object') {
+      const byFeature = {};
+      ['tickets', 'moderation', 'gamenews', 'logs', 'config'].forEach((k) => {
+        if (Array.isArray(staffRolesByFeature[k])) {
+          byFeature[k] = staffRolesByFeature[k].map((id) => sanitizeId(id)).filter(Boolean);
+        }
+      });
+      payload.staffRolesByFeature = byFeature;
+    }
+
     // Validação extra com Zod para garantir que o payload tem apenas valores esperados
     const candidate = {
       logChannelId: payload.logChannelId,
       dashboardLogChannelId: payload.dashboardLogChannelId,
       ticketThreadChannelId: payload.ticketThreadChannelId,
       staffRoleIds: payload.staffRoleIds,
+      staffRolesByFeature: payload.staffRolesByFeature,
       language: payload.language,
       timezone: payload.timezone
     };
@@ -126,7 +151,14 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, rateLimit({ window
     logChannelId: doc.logChannelId || null,
         dashboardLogChannelId: doc.dashboardLogChannelId || null,
         ticketThreadChannelId: doc.ticketThreadChannelId || null,
-        staffRoleIds: Array.isArray(doc.staffRoleIds) ? doc.staffRoleIds : []
+        staffRoleIds: Array.isArray(doc.staffRoleIds) ? doc.staffRoleIds : [],
+        staffRolesByFeature: {
+          tickets: Array.isArray(doc.staffRolesByFeature?.tickets) ? doc.staffRolesByFeature.tickets : [],
+          moderation: Array.isArray(doc.staffRolesByFeature?.moderation) ? doc.staffRolesByFeature.moderation : [],
+          gamenews: Array.isArray(doc.staffRolesByFeature?.gamenews) ? doc.staffRolesByFeature.gamenews : [],
+          logs: Array.isArray(doc.staffRolesByFeature?.logs) ? doc.staffRolesByFeature.logs : [],
+          config: Array.isArray(doc.staffRolesByFeature?.config) ? doc.staffRolesByFeature.config : []
+        }
       }
     });
   } catch (err) {

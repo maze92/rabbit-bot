@@ -28,6 +28,15 @@ const guildConfigSchema = new Schema(
       default: []
     },
 
+    // Roles de staff por funcionalidade (se vazio, cai em staffRoleIds)
+    staffRolesByFeature: {
+      tickets: { type: [String], default: [] },
+      moderation: { type: [String], default: [] },
+      gamenews: { type: [String], default: [] },
+      logs: { type: [String], default: [] },
+      config: { type: [String], default: [] }
+    },
+
     // Configuração de voz temporária por guild
     tempVoice: {
       enabled: { type: Boolean, default: false },

@@ -132,6 +132,18 @@ const GuildConfigSchema = z.object({
     ticketThreadChannelId: z.string().regex(/^\d+$/).nullable().optional(),
     staffRoleIds: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
 
+    // Optional: staff roles per feature (if empty, fallback to staffRoleIds)
+    staffRolesByFeature: z
+      .object({
+        tickets: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
+        moderation: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
+        gamenews: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
+        logs: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
+        config: z.array(z.string().regex(/^\d+$/)).max(100).optional()
+      })
+      .partial()
+      .optional(),
+
     // Guild settings
     language: z.enum(['auto', 'pt', 'en']).optional(),
     timezone: z.string().max(64).nullable().optional()
@@ -449,6 +461,25 @@ const _rateBuckets = new Map();
 // Serve UI explicitly at / to avoid any edge cases with platform routers/static defaults
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Some platforms/frontends may hit /index.html directly
+app.get('/index.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// SPA fallback: serve the dashboard shell for unknown non-API routes.
+// This prevents "dashboard doesn't load" issues when a proxy rewrites paths.
+app.get('*', (req, res, next) => {
+  try {
+    const p = req.path || '';
+    if (p.startsWith('/api') || p.startsWith('/socket.io')) return next();
+    // If it's a real asset path, let static handle it.
+    if (p.includes('.')) return next();
+    return res.sendFile(path.join(__dirname, '../public/index.html'));
+  } catch (e) {
+    return next();
+  }
 });
 
 app.use(express.static(path.join(__dirname, '../public'), {

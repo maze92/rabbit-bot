@@ -11,11 +11,18 @@ const { getGuildConfig } = require('../systems/guildConfigService');
  * de ser usados como fallback em tempo de execução. Se precisares de
  * definir roles de staff, usa a aba "Acesso e cargos de staff" na dashboard.
  */
-async function getStaffRoleIdsForGuild(guildId) {
+async function getStaffRoleIdsForGuild(guildId, feature) {
   if (!guildId) return [];
 
   try {
     const guildCfg = await getGuildConfig(guildId);
+
+    // Feature-specific roles override the generic staffRoleIds list
+    if (guildCfg && feature && guildCfg.staffRolesByFeature && Array.isArray(guildCfg.staffRolesByFeature[feature])) {
+      const arr = guildCfg.staffRolesByFeature[feature].map((id) => String(id)).filter(Boolean);
+      if (arr.length) return arr;
+    }
+
     if (guildCfg && Array.isArray(guildCfg.staffRoleIds) && guildCfg.staffRoleIds.length) {
       return guildCfg.staffRoleIds.map((id) => String(id));
     }
@@ -32,7 +39,7 @@ async function getStaffRoleIdsForGuild(guildId) {
  *  - Administradores são sempre staff
  *  - Roles configuradas na dashboard (GuildConfig.staffRoleIds) contam como staff
  */
-async function isStaff(member) {
+async function isStaff(member, feature) {
   if (!member) return false;
 
   const isAdmin = member.permissions?.has(PermissionsBitField.Flags.Administrator);
@@ -41,7 +48,7 @@ async function isStaff(member) {
   const guild = member.guild;
   if (!guild) return false;
 
-  const staffRoles = await getStaffRoleIdsForGuild(guild.id);
+  const staffRoles = await getStaffRoleIdsForGuild(guild.id, feature);
   if (!staffRoles.length) return false;
 
   return member.roles?.cache?.some((r) => staffRoles.includes(r.id)) || false;
