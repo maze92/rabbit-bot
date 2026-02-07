@@ -468,20 +468,6 @@ app.get('/index.html', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-// SPA fallback: serve the dashboard shell for unknown non-API routes.
-// Express v5 (path-to-regexp v6) does NOT accept a bare "*" route pattern.
-// Use a regex route instead.
-app.get(/^\/(?!api\/|socket\.io\/).*/, (req, res, next) => {
-  try {
-    const p = req.path || '';
-    // If it's a real asset path, let static handle it.
-    if (p.includes('.')) return next();
-    return res.sendFile(path.join(__dirname, '../public/index.html'));
-  } catch (e) {
-    return next();
-  }
-});
-
 app.use(express.static(path.join(__dirname, '../public'), {
   etag: true,
   // IMPORTANT: During active development / rapid deploys, aggressive maxAge caching breaks updates
@@ -854,6 +840,20 @@ registerTempVoiceRoutes({
   sanitizeText,
   GuildConfig,
   TempVoiceChannel
+});
+
+// SPA fallback: serve the dashboard shell for unknown non-API routes.
+// Must be registered AFTER all API/health routes so it never hijacks JSON endpoints.
+// Express v5 (path-to-regexp v6) does NOT accept a bare "*" route pattern, so we use a regex.
+app.get(/^\/(?!api\/|socket\.io\/).*/, (req, res, next) => {
+  try {
+    const p = req.path || '';
+    // If it's a real asset path, let static handle it.
+    if (p.includes('.')) return next();
+    return res.sendFile(path.join(__dirname, '../public/index.html'));
+  } catch (e) {
+    return next();
+  }
 });
 
 
