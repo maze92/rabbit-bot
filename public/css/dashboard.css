@@ -1683,13 +1683,34 @@ h2 {
 
 #tab-config .config-form {
   margin-top: 16px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  /* Config is operational settings: keep it linear to avoid horizontal scrolling */
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
 #tab-config .config-form > .card.subcard {
-  height: 100%;
+  height: auto;
+}
+
+/* Prevent horizontal overflow in Config */
+#tab-config .config-form .row {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+#tab-config .config-form .row > .col,
+#tab-config .config-form .row > .field {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+#tab-config textarea.input {
+  max-width: 100%;
+}
+
+html, body {
+  overflow-x: hidden;
 }
 
 /* Spacing helpers inside config tab */
@@ -1794,11 +1815,42 @@ h2 {
 }
 
 
-.config-actions-footer {
+/* Config: keep save/reload accessible while scrolling */
+#tab-config .config-actions-footer {
+  position: sticky;
+  bottom: 0;
   margin-top: 16px;
+  padding: 10px 0 2px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  z-index: 5;
+  backdrop-filter: blur(6px);
+  background: linear-gradient(to top, rgba(0,0,0,0.35), rgba(0,0,0,0));
+}
+
+/* Config nav pills */
+#tab-config .config-nav {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#tab-config .config-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--text);
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+#tab-config .config-pill:hover {
+  background: rgba(255, 255, 255, 0.10);
 }
 
 .btn.small {

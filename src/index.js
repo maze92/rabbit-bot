@@ -159,10 +159,12 @@ async function handleClientReady() {
   }
 }
 
-// discord.js v14+ exposes the "clientReady" event name ("ready" is deprecated and
-// emits a deprecation warning). Use clientReady to avoid noisy logs.
-const readyEventName = 'clientReady';
-client.once(readyEventName, handleClientReady);
+// Discord "ready" event naming differs across discord.js major versions.
+// - v14 emits "ready" (and logs a deprecation warning about the upcoming rename)
+// - v15 emits "clientReady" instead
+// Register both (with a guard) so startup logic runs exactly once.
+client.once('ready', handleClientReady);
+client.once('clientReady', handleClientReady);
 
 // Keep presence consistent on shard resume
 client.on('shardResume', async () => {

@@ -486,6 +486,13 @@ function setLang(newLang) {
     }
     state.currentTab = name;
 
+    // Avoid "opening on the right" if the previous view caused horizontal scroll.
+    try {
+      window.scrollTo(0, window.scrollY || 0);
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+    } catch (e) {}
+
     // Reset seleção de utilizadores / GameNews ao entrar nas tabs
     if (name === 'user') {
       const userDetail = document.getElementById('userDetailPanel');

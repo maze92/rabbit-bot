@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Ozark Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/css/dashboard.css?v=20260207a">
+  <link rel="stylesheet" href="/css/dashboard.css?v=20260207b">
 </head>
 <body>
   <div id="loginScreen" class="login-screen hidden">
@@ -526,8 +526,15 @@
             Defina canais, cargos de staff e preferências de registo para este servidor.
           </p>
 
+          <div class="config-nav" aria-label="Config navigation">
+            <a class="config-pill" href="#config-section-guild" data-i18n="config_nav_guild">Servidor</a>
+            <a class="config-pill" href="#config-section-logs" data-i18n="config_nav_logs">Logs</a>
+            <a class="config-pill" href="#config-section-access" data-i18n="config_nav_access">Acesso</a>
+            <a class="config-pill" href="#config-section-advanced" data-i18n="config_nav_advanced">Avançado</a>
+          </div>
+
           <div class="config-form">
-              <div class="card subcard">
+              <div class="card subcard" id="config-section-guild">
                 <h3 data-i18n="config_guild_settings_title">Preferências do servidor</h3>
                 <p class="hint" data-i18n="config_guild_settings_hint">
                   Defina o idioma principal e a timezone usados pela dashboard para este servidor.
@@ -553,7 +560,7 @@
                 </div>
               </div>
 
-            <div class="card subcard">
+            <div class="card subcard" id="config-section-logs">
               <h3 data-i18n="config_logs_section_title">Registos e canais de logs</h3>
               <p class="hint" data-i18n="config_logs_section_hint">
                 Defina os canais onde serão enviados os registos principais e os logs da própria dashboard.
@@ -572,7 +579,7 @@
 
             </div>
 
-            <div class="card subcard">
+            <div class="card subcard" id="config-section-access">
               <h3 data-i18n="config_access_section_title">Acesso e cargos de staff</h3>
               <p class="hint" data-i18n="config_access_section_hint">
                 Controla que cargos do Discord podem aceder à dashboard. No futuro será possível gerir utilizadores dedicados.
@@ -626,7 +633,7 @@
 
             
 
-                      <div class="card subcard">
+                      <div class="card subcard" id="config-section-advanced">
               <details class="config-advanced">
                 <summary data-i18n="config_json_section_title">Avançado: importar/exportar configuração</summary>
                 <p class="hint" data-i18n="config_json_section_hint">
@@ -650,10 +657,11 @@
 
 
 <div class="card subcard">
-  <h3 data-i18n="config_dashboard_users_title">Utilizadores da Dashboard</h3>
-  <p class="hint" data-i18n="config_dashboard_users_hint">
-    Planeamento de acesso dedicado à dashboard. Aqui podes criar utilizadores específicos e definir permissões sem depender apenas de cargos do Discord.
-  </p>
+  <details class="config-advanced" id="config-section-dashboard-users">
+    <summary data-i18n="config_dashboard_users_title">Utilizadores da Dashboard</summary>
+    <p class="hint" data-i18n="config_dashboard_users_hint">
+      Planeamento de acesso dedicado à dashboard. Aqui podes criar utilizadores específicos e definir permissões sem depender apenas de cargos do Discord.
+    </p>
 
   <div class="dashboard-users-toolbar">
     <div class="left">
@@ -709,11 +717,12 @@
     </div>
 
 
-                <div class="dashboard-users-editor-actions">
+    <div class="dashboard-users-editor-actions">
       <button type="button" class="btn" id="btnDashboardUsersCancel" data-i18n="common_cancel">Cancelar</button>
       <button type="button" class="btn primary" id="btnDashboardUsersSave" data-i18n="common_save">Guardar</button>
     </div>
   </div>
+</details>
 </div>
 
           </div>
@@ -739,12 +748,12 @@
     </div>
   </div>
 
-  <script src="/js/i18n.js?v=20260207a" defer></script>
-<script src="/js/dashboard.js?v=20260207a" defer></script>
-  <script src="/js/dashboard.users.js?v=20260207a" defer></script>
-  <script src="/js/dashboard.moderation.js?v=20260207a" defer></script>
-  <script src="/js/dashboard.gamenews.js?v=20260207a" defer></script>
-  <script src="/js/dashboard.tickets.js?v=20260207a" defer></script>
+  <script src="/js/i18n.js?v=20260207b" defer></script>
+  <script src="/js/dashboard.js?v=20260207b" defer></script>
+  <script src="/js/dashboard.users.js?v=20260207b" defer></script>
+  <script src="/js/dashboard.moderation.js?v=20260207b" defer></script>
+  <script src="/js/dashboard.gamenews.js?v=20260207b" defer></script>
+  <script src="/js/dashboard.tickets.js?v=20260207b" defer></script>
 
 <!-- Moderation Action Modal -->
 <div id="modActionModal" class="modal hidden">
