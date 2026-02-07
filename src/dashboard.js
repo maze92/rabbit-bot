@@ -179,8 +179,25 @@ const GameNewsFeedSchema = z.object({
   name: z.string().trim().min(1).max(64),
 
   // canonical field is feedUrl; we still accept legacy "feed" and normalize on write
-  feedUrl: z.string().trim().url().max(2048),
-  feed: z.string().trim().url().max(2048).optional(),
+  // NOTE: zod's .url() is stricter than what many RSS endpoints accept in practice.
+  // We only enforce http/https, a reasonable max length, and disallow whitespace.
+  feedUrl: z
+    .string()
+    .trim()
+    .min(8)
+    .max(2048)
+    .refine((v) => /^https?:\/\//i.test(v) && !/\s/.test(v), {
+      message: 'Invalid URL'
+    }),
+  feed: z
+    .string()
+    .trim()
+    .min(8)
+    .max(2048)
+    .refine((v) => /^https?:\/\//i.test(v) && !/\s/.test(v), {
+      message: 'Invalid URL'
+    })
+    .optional(),
 
   channelId: z.string().trim().min(10).max(32),
   logChannelId: z.string().trim().min(10).max(32).nullable().optional(),

@@ -143,10 +143,10 @@ function validateFeedConfig(feed) {
   if (!feedUrl) {
     errors.feedUrl = t('gamenews_validation_url_required');
   } else {
-    try {
-      const u = new URL(feedUrl);
-      if (!/^https?:$/.test(u.protocol)) throw new Error('bad proto');
-    } catch (e) {
+    // Be permissive client-side. Many RSS endpoints have querystrings/paths that
+    // are valid for fetch but can still trip strict URL validators.
+    // Server-side validation will be the source of truth.
+    if (!/^https?:\/\//i.test(feedUrl) || /\s/.test(feedUrl)) {
       errors.feedUrl = t('gamenews_validation_url_invalid');
     }
   }
@@ -637,15 +637,9 @@ function renderGameNewsFeedDetail(feed) {
         const channelId = extractId(channelIdRaw) || channelIdRaw;
         const logChannelId = extractId(logChannelIdRaw) || logChannelIdRaw;
 
-        // Basic client-side validation to prevent accidental data loss.
-        // Backend enforces URL validity too, but we give immediate feedback.
-        try {
-          const u = new URL(feedUrl);
-          if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-            hadInvalidUrl = true;
-            return null;
-          }
-        } catch (e) {
+        // Basic client-side validation: keep it permissive.
+        // Backend is the source of truth; here we only block obvious invalid input.
+        if (!/^https?:\/\//i.test(feedUrl) || /\s/.test(feedUrl)) {
           hadInvalidUrl = true;
           return null;
         }
