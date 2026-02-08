@@ -61,6 +61,7 @@ const ALLOWED_PATHS = new Set([
   'trust.highThreshold',
   'trust.lowTrustWarningsPenalty',
   'trust.lowTrustMessagesPenalty',
+  'trust.highTrustMessagesBonus',
   'trust.lowTrustMuteMultiplier',
   'trust.highTrustMuteMultiplier',
 
@@ -106,7 +107,14 @@ const ALLOWED_PATHS = new Set([
 ]);
 
 function validateValue(pathStr, value) {
-  // Light validation. We mostly rely on existing code to handle numbers.
+  // Stronger validation (still permissive enough to avoid regressions).
+  // Goal: prevent obviously invalid configs (negative durations, NaN, extreme values).
+
+  const isFiniteNumber = (n) => typeof n === 'number' && Number.isFinite(n);
+  const isInt = (n) => isFiniteNumber(n) && Number.isInteger(n);
+  const inRange = (n, min, max) => isFiniteNumber(n) && n >= min && n <= max;
+  const inRangeInt = (n, min, max) => isInt(n) && n >= min && n <= max;
+
   if (pathStr === 'language') {
     return value === 'pt' || value === 'en';
   }
@@ -117,6 +125,7 @@ function validateValue(pathStr, value) {
     'notifications.dmOnMute',
     'trust.enabled',
     'antiSpam.enabled',
+    'antiSpam.softActions.enabled',
     'antiSpam.bypassAdmins',
     'antiSpam.sendMessage',
     'antiSpam.ignoreAttachments',
@@ -131,8 +140,109 @@ function validateValue(pathStr, value) {
   ]);
   if (boolPaths.has(pathStr)) return typeof value === 'boolean';
 
-  // numbers
-  return typeof value === 'number' && Number.isFinite(value);
+  // Per-path numeric constraints
+  switch (pathStr) {
+    case 'maxWarnings':
+      return inRangeInt(value, 0, 50);
+    case 'muteDuration':
+      // ms: 0..30 days
+      return inRangeInt(value, 0, 30 * 24 * 60 * 60 * 1000);
+
+    // Trust core
+    case 'trust.base':
+    case 'trust.min':
+    case 'trust.max':
+    case 'trust.lowThreshold':
+    case 'trust.highThreshold':
+      return inRangeInt(value, 0, 100);
+
+    case 'trust.warnPenalty':
+    case 'trust.mutePenalty':
+      return inRangeInt(value, 0, 100);
+
+    case 'trust.regenPerDay':
+      return inRangeInt(value, 0, 50);
+    case 'trust.regenMaxDays':
+      return inRangeInt(value, 0, 365);
+
+    case 'trust.lowTrustWarningsPenalty':
+    case 'trust.lowTrustMessagesPenalty':
+    case 'trust.highTrustMessagesBonus':
+      return inRangeInt(value, 0, 25);
+
+    case 'trust.lowTrustMuteMultiplier':
+    case 'trust.highTrustMuteMultiplier':
+      return inRange(value, 0.1, 10);
+
+    // Anti-spam
+    case 'antiSpam.interval':
+    case 'antiSpam.muteDuration':
+    case 'antiSpam.actionCooldown':
+      // ms: 0..24h
+      return inRangeInt(value, 0, 24 * 60 * 60 * 1000);
+
+    case 'antiSpam.softActions.strikeWindowMs':
+      return inRangeInt(value, 0, 24 * 60 * 60 * 1000);
+    case 'antiSpam.softActions.strikesToMute':
+      return inRangeInt(value, 1, 10);
+
+    case 'antiSpam.maxMessages':
+      return inRangeInt(value, 1, 100);
+
+    case 'antiSpam.minLength':
+      return inRangeInt(value, 0, 500);
+
+    case 'antiSpam.similarityThreshold':
+      return inRange(value, 0, 1);
+
+    // Dashboard
+    case 'dashboard.maxLogs':
+      return inRangeInt(value, 10, 2000);
+    case 'dashboard.maxDbLogs':
+      return inRangeInt(value, 50, 20000);
+
+    // GameNews
+    case 'gameNews.interval':
+    case 'gameNews.jitterMs':
+    case 'gameNews.perFeedJitterMs':
+      return inRangeInt(value, 0, 24 * 60 * 60 * 1000);
+
+    case 'gameNews.keepHashes':
+      return inRangeInt(value, 1, 200);
+
+    case 'gameNews.maxAgeDays':
+      return inRangeInt(value, 1, 365);
+
+    case 'gameNews.retry.attempts':
+      return inRangeInt(value, 0, 10);
+
+    case 'gameNews.retry.baseDelayMs':
+    case 'gameNews.retry.jitterMs':
+      return inRangeInt(value, 0, 60 * 1000);
+
+    case 'gameNews.backoff.maxFails':
+      return inRangeInt(value, 0, 20);
+
+    case 'gameNews.backoff.pauseMs':
+      return inRangeInt(value, 0, 7 * 24 * 60 * 60 * 1000);
+
+    // Tickets
+    case 'tickets.autoDeleteClosed.delayMs':
+      return inRangeInt(value, 0, 365 * 24 * 60 * 60 * 1000);
+
+    // Automation
+    case 'automation.autoMute.warnsToMute':
+      return inRangeInt(value, 1, 50);
+    case 'automation.autoMute.muteDurationMs':
+      return inRangeInt(value, 0, 30 * 24 * 60 * 60 * 1000);
+
+    case 'automation.autoKick.infractionsToKick':
+      return inRangeInt(value, 1, 100);
+
+    default:
+      // Generic numeric fields
+      return isFiniteNumber(value);
+  }
 }
 
 function flattenPatch(obj, prefix = '', out = {}) {

@@ -3,6 +3,8 @@
 const Parser = require('rss-parser');
 const crypto = require('crypto');
 const { URL } = require('url');
+const dns = require('dns').promises;
+const net = require('net');
 const { EmbedBuilder } = require('discord.js');
 const { fetchChannel } = require('../services/discordFetchCache');
 
@@ -15,6 +17,7 @@ try {
 }
 
 const logger = require('./logger');
+// Node 20+ includes AbortController. Keep a safe fallback.
 const AbortController = global.AbortController || require('abort-controller');
 
 function clampNumber(n, min, max) {
@@ -45,7 +48,7 @@ const dashboardBridge = require('./dashboardBridge');
 const parser = new Parser({ timeout: 15000 });
 
 const FEED_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; OzarkBot/1.0; +https://github.com/maze92/ozark-bot)',
+  'User-Agent': 'Mozilla/5.0 (compatible; .rabbit/1.0; +https://github.com/maze92/rabbit-bot)',
   'Accept': 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7'
 };
 
@@ -68,6 +71,211 @@ function withJitter(baseMs, jitterMs) {
   const j = Math.max(0, Number(jitterMs || 0));
   if (!j) return baseMs;
   return Math.max(0, baseMs + randInt(-j, j));
+}
+
+function normalizeIp(ip) {
+  if (!ip || typeof ip !== 'string') return '';
+  // IPv6-mapped IPv4: ::ffff:1.2.3.4
+  if (ip.startsWith('::ffff:')) return ip.slice(7);
+  return ip;
+}
+
+function isPrivateIp(ip) {
+  const addr = normalizeIp(ip);
+  const family = net.isIP(addr);
+  if (!family) return false;
+
+  if (family === 4) {
+    const parts = addr.split('.').map((x) => Number(x));
+    if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false;
+    const [a, b] = parts;
+
+    // 0.0.0.0/8, 10.0.0.0/8, 127.0.0.0/8
+    if (a === 0 || a === 10 || a === 127) return true;
+    // 169.254.0.0/16 (link-local)
+    if (a === 169 && b === 254) return true;
+    // 172.16.0.0/12
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    // 192.168.0.0/16
+    if (a === 192 && b === 168) return true;
+    // 100.64.0.0/10 (CGNAT)
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    // Multicast / reserved high ranges
+    if (a >= 224) return true;
+
+    return false;
+  }
+
+  // IPv6 checks (string comparisons are safe for these well-known prefixes)
+  const low = addr.toLowerCase();
+  if (low === '::1' || low === '::') return true;
+  // Unique local fc00::/7
+  if (low.startsWith('fc') || low.startsWith('fd')) return true;
+  // Link-local fe80::/10
+  if (low.startsWith('fe8') || low.startsWith('fe9') || low.startsWith('fea') || low.startsWith('feb')) return true;
+  // Documentation 2001:db8::/32
+  if (low.startsWith('2001:db8')) return true;
+
+  return false;
+}
+
+function isBlockedHostname(hostname) {
+  if (!hostname || typeof hostname !== 'string') return true;
+  const h = hostname.toLowerCase();
+  if (h === 'localhost' || h.endsWith('.localhost')) return true;
+  // Basic defense against cloud metadata hostnames (in addition to IP checks)
+  if (h === 'metadata.google.internal') return true;
+  return false;
+}
+
+async function withTimeout(promise, ms, label = 'timeout') {
+  const t = Number(ms);
+  const safeMs = Number.isFinite(t) && t > 0 ? t : 2000;
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(label)), safeMs);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function assertSafeUrl(urlStr, dnsTimeoutMs = 2000) {
+  let u;
+  try {
+    u = new URL(urlStr);
+  } catch {
+    throw new Error('Invalid feed URL');
+  }
+
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+    throw new Error('Unsupported feed URL protocol');
+  }
+  if (u.username || u.password) {
+    throw new Error('Feed URL must not include credentials');
+  }
+  if (isBlockedHostname(u.hostname)) {
+    throw new Error('Blocked feed host');
+  }
+
+  // If hostname is an IP literal, validate directly.
+  if (net.isIP(u.hostname)) {
+    if (isPrivateIp(u.hostname)) throw new Error('Blocked feed IP');
+    return u;
+  }
+
+  // Resolve DNS and block private/loopback/link-local ranges.
+  const addrs = await withTimeout(dns.lookup(u.hostname, { all: true, verbatim: true }), dnsTimeoutMs, 'DNS timeout');
+  if (!Array.isArray(addrs) || addrs.length === 0) throw new Error('DNS lookup failed');
+
+  for (const a of addrs) {
+    const ip = a && a.address ? String(a.address) : '';
+    if (isPrivateIp(ip)) throw new Error('Blocked feed IP');
+  }
+
+  return u;
+}
+
+async function readBodyTextLimited(res, maxBytes, controller) {
+  const limit = Number(maxBytes);
+  const safeLimit = Number.isFinite(limit) && limit >= 10_000 ? limit : 1_500_000;
+
+  // Prefer web streams (undici) when available.
+  const body = res && res.body;
+  const reader = body && typeof body.getReader === 'function' ? body.getReader() : null;
+
+  if (reader) {
+    const chunks = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const buf = value instanceof Uint8Array ? value : new Uint8Array(value);
+      total += buf.byteLength;
+      if (total > safeLimit) {
+        try { controller?.abort?.(); } catch {}
+        throw new Error('Feed payload too large');
+      }
+      chunks.push(buf);
+    }
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const c of chunks) {
+      out.set(c, offset);
+      offset += c.byteLength;
+    }
+    return new TextDecoder('utf-8', { fatal: false }).decode(out);
+  }
+
+  // Fallback (may buffer everything): guard via content-length when present.
+  const cl = Number(res.headers?.get?.('content-length') || 0);
+  if (Number.isFinite(cl) && cl > 0 && cl > safeLimit) throw new Error('Feed payload too large');
+  const txt = await res.text();
+  if (txt && Buffer.byteLength(txt, 'utf8') > safeLimit) throw new Error('Feed payload too large');
+  return txt;
+}
+
+async function fetchFeedXmlWithGuards(urlStr, record, opts = {}) {
+  const timeoutMs = Number(opts.timeoutMs ?? 15_000);
+  const maxBytes = Number(opts.maxBytes ?? 1_500_000);
+  const maxRedirects = Number(opts.maxRedirects ?? 5);
+  const dnsTimeoutMs = Number(opts.dnsTimeoutMs ?? 2000);
+
+  const safeTimeout = Number.isFinite(timeoutMs) && timeoutMs >= 1000 ? timeoutMs : 15_000;
+  const safeRedirects = Number.isFinite(maxRedirects) && maxRedirects >= 0 && maxRedirects <= 10 ? maxRedirects : 5;
+
+  let current = urlStr;
+  for (let r = 0; r <= safeRedirects; r++) {
+    const u = await assertSafeUrl(current, dnsTimeoutMs);
+
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), safeTimeout);
+
+    // Conditional GET support (ETag / Last-Modified)
+    const headers = { ...FEED_HEADERS };
+    if (record?.etag) headers['If-None-Match'] = record.etag;
+    if (record?.lastModified) headers['If-Modified-Since'] = record.lastModified;
+
+    let res;
+    try {
+      res = await fetch(u.toString(), { headers, redirect: 'manual', signal: controller.signal });
+    } finally {
+      clearTimeout(t);
+    }
+
+    if (res.status === 304) return null;
+
+    // Handle redirects manually so we can re-validate targets.
+    if ([301, 302, 303, 307, 308].includes(res.status)) {
+      const loc = res.headers.get('location');
+      if (!loc) throw new Error(`Redirect without Location (${res.status})`);
+      current = new URL(loc, u).toString();
+      continue;
+    }
+
+    if (!res.ok) {
+      const err = new Error(`Status code ${res.status}`);
+      err.statusCode = res.status;
+      throw err;
+    }
+
+    // Update cache hints
+    const newEtag = res.headers.get('etag');
+    const newLastMod = res.headers.get('last-modified');
+    if (record) {
+      record.etag = newEtag || record.etag || null;
+      record.lastModified = newLastMod || record.lastModified || null;
+    }
+
+    const xml = await readBodyTextLimited(res, maxBytes, controller);
+    return xml;
+  }
+
+  throw new Error('Too many redirects');
 }
 
 function normalizeLink(rawLink, base) {
@@ -230,7 +438,11 @@ function pushHashAndTrim(record, hash, keepN) {
   }
 }
 
-async function parseWithRetry(url, retryCfg, record, timeoutMs = 15_000) {
+// Backward-compatible signature:
+// - parseWithRetry(url, retryCfg, record)
+// - parseWithRetry(url, retryCfg, record, timeoutMsNumber)
+// - parseWithRetry(url, retryCfg, record, { timeoutMs, maxBytes, maxRedirects, dnsTimeoutMs })
+async function parseWithRetry(url, retryCfg, record, options = undefined) {
   const attempts = Number(retryCfg?.attempts ?? 2);
   const baseDelayMs = Number(retryCfg?.baseDelayMs ?? 1200);
   const jitterMs = Number(retryCfg?.jitterMs ?? 800);
@@ -241,43 +453,13 @@ async function parseWithRetry(url, retryCfg, record, timeoutMs = 15_000) {
 
   let lastErr = null;
 
+  // Normalize options (keep compatibility with old numeric timeout).
+  const opts = (typeof options === 'number') ? { timeoutMs: options } : (options && typeof options === 'object' ? options : {});
+
   for (let i = 1; i <= safeAttempts; i++) {
     try {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), timeoutMs);
-
-      // Conditional GET support (ETag / Last-Modified) to avoid re-downloading feeds.
-      const headers = { ...FEED_HEADERS };
-      if (record?.etag) headers['If-None-Match'] = record.etag;
-      if (record?.lastModified) headers['If-Modified-Since'] = record.lastModified;
-
-      let res;
-      try {
-        res = await fetch(url, { headers, redirect: 'follow', signal: controller.signal });
-      } finally {
-        clearTimeout(t);
-      }
-
-      // 304 means nothing changed; caller can treat as "no new items".
-      if (res.status === 304) {
-        return null;
-      }
-
-      if (!res.ok) {
-        const err = new Error(`Status code ${res.status}`);
-        err.statusCode = res.status;
-        throw err;
-      }
-
-      // Update cache hints if present.
-      const newEtag = res.headers.get('etag');
-      const newLastMod = res.headers.get('last-modified');
-      if (record) {
-        record.etag = newEtag || record.etag || null;
-        record.lastModified = newLastMod || record.lastModified || null;
-      }
-
-      const xml = await res.text();
+      const xml = await fetchFeedXmlWithGuards(url, record, opts);
+      if (xml === null) return null; // 304 Not Modified
       return await parser.parseString(xml);
     } catch (err) {
       lastErr = err;
@@ -567,7 +749,14 @@ async function gameNewsSystem(client, config) {
           }
 
           try {
-            const parsed = await parseWithRetry(feed.feed, retryCfg, record);
+            const fetchOpts = {
+              timeoutMs: Number(config.gameNews?.timeoutMs ?? 15_000),
+              maxBytes: Number(config.gameNews?.maxXmlBytes ?? 1_500_000),
+              maxRedirects: Number(config.gameNews?.maxRedirects ?? 5),
+              dnsTimeoutMs: Number(config.gameNews?.dnsTimeoutMs ?? 2000)
+            };
+
+            const parsed = await parseWithRetry(feed.feed, retryCfg, record, fetchOpts);
             let items = parsed?.items || [];
             if (!Array.isArray(items) || items.length === 0) {
               await registerFeedSuccess(record).catch(() => null);
@@ -750,7 +939,14 @@ async function testSendGameNews({ client, config, guildId, feedId }) {
   const record = await getOrCreateFeedRecord(feed);
 
   // Fetch RSS feed once (conditional GET may return null when 304 Not Modified)
-  const parsed = await parseWithRetry(feed.feed, retryCfg, record);
+  const fetchOpts = {
+    timeoutMs: Number(cfg.gameNews?.timeoutMs ?? 15_000),
+    maxBytes: Number(cfg.gameNews?.maxXmlBytes ?? 1_500_000),
+    maxRedirects: Number(cfg.gameNews?.maxRedirects ?? 5),
+    dnsTimeoutMs: Number(cfg.gameNews?.dnsTimeoutMs ?? 2000)
+  };
+
+  const parsed = await parseWithRetry(feed.feed, retryCfg, record, fetchOpts);
   const items = Array.isArray(parsed?.items) ? parsed.items.slice() : [];
 
   if (!parsed) {
