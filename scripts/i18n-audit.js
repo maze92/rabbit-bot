@@ -1,7 +1,7 @@
 'use strict';
 
 /*
-  i18n audit for Ozark Dashboard
+  i18n audit for .rabbit Dashboard
 
   - Extracts keys used in public/index.html (data-i18n, data-i18n-placeholder, data-i18n-title)
   - Extracts keys used in public/js/*.js via t('...')
