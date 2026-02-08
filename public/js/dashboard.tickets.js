@@ -14,6 +14,7 @@
 
   let _loading = false;
   let _detailTimeout = null;
+  const MAX_REPLY_LEN = 1800;
 
   function waitForI18nReady(maxMs) {
     const deadline = Date.now() + (typeof maxMs === 'number' ? maxMs : 4000);
@@ -262,6 +263,10 @@
         const content = (ta && ta.value ? ta.value : '').trim();
         if (!content) {
           toast(t('tickets_reply_empty'));
+          return;
+        }
+        if (content.length > MAX_REPLY_LEN) {
+          toast(t('tickets_reply_too_long', { max: MAX_REPLY_LEN }));
           return;
         }
         try {

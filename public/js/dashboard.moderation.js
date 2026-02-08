@@ -15,8 +15,8 @@
   const renderLogs = D.renderLogs;
 
   let logsAbortController = null;
-let modServerRange = '24h';
-let modTicketsRange = '24h';
+let modServerRange = '7d';
+let modTicketsRange = '7d';
 let modTicketsPage = 1;
 
   
@@ -148,8 +148,8 @@ async function loadLogs() {
       return;
     }
 
-    const rangeParam =
-      '?range=' + encodeURIComponent(modServerRange || '24h') +
+      const rangeParam =
+      '?range=' + encodeURIComponent(modServerRange || '7d') +
       '&guildId=' + encodeURIComponent(guildId);
 
     return window.OzarkDashboard.withLoading(function () {
@@ -165,8 +165,18 @@ async function loadLogs() {
           return apiGet('/mod/overview' + rangeParam)
             .then(function (res) {
               insightsContent.innerHTML = '';
-              const data = (res && res.data) || {};
-              const stats = data.stats || {};
+              // Backend currently returns a flat payload (ok, moderationCounts, tickets).
+              // Keep forward compatibility with a future {data:{stats}} wrapper.
+              const data = (res && (res.data || res)) || {};
+              let stats = data.stats || null;
+
+              if (!stats) {
+                const mc = data.moderationCounts || data.moderation || {};
+                const warns = Number(mc.warn || 0) || 0;
+                const mutes = Number(mc.mute || 0) || 0;
+                const totalActions = warns + mutes;
+                stats = { totalActions, warns, mutes };
+              }
               const cards = [
                 {
                   key: 'totalActions',
@@ -182,11 +192,6 @@ async function loadLogs() {
                   key: 'mutes',
                   labelKey: 'logs_server_insights_mutes',
                   value: stats.mutes || 0
-                },
-                {
-                  key: 'bans',
-                  labelKey: 'logs_server_insights_bans',
-                  value: stats.bans || 0
                 }
               ];
 
@@ -244,26 +249,32 @@ async function loadLogs() {
           loadingTickets.textContent = t('logs_tickets_panel_loading');
           ticketsList.appendChild(loadingTickets);
 
+          // Compute a "since" window and ask backend to apply it (more accurate pagination).
+          const now = Date.now();
+          let windowMs = 7 * 24 * 60 * 60 * 1000;
+          if (modTicketsRange === '14d') windowMs = 14 * 24 * 60 * 60 * 1000;
+          else if (modTicketsRange === '7d') windowMs = 7 * 24 * 60 * 60 * 1000;
+          else if (modTicketsRange === '30d') windowMs = 30 * 24 * 60 * 60 * 1000;
+          else if (modTicketsRange === '1y') windowMs = 365 * 24 * 60 * 60 * 1000;
+          const sinceIso = new Date(now - windowMs).toISOString();
+
           return apiGet(
             '/logs?type=tickets&limit=4&page=' +
               encodeURIComponent(String(modTicketsPage)) +
               '&guildId=' +
-              encodeURIComponent(guildId)
+              encodeURIComponent(guildId) +
+              '&since=' +
+              encodeURIComponent(sinceIso)
           )
             .then(function (resTickets) {
               ticketsList.innerHTML = '';
               const rawItems = (resTickets && resTickets.items) || [];
 
-              const now = Date.now();
-              let windowMs = 24 * 60 * 60 * 1000;
-              if (modTicketsRange === '7d') windowMs = 7 * 24 * 60 * 60 * 1000;
-              else if (modTicketsRange === '30d') windowMs = 30 * 24 * 60 * 60 * 1000;
-              else if (modTicketsRange === '1y') windowMs = 365 * 24 * 60 * 60 * 1000;
-              const cutoff = now - windowMs;
-
+              // Backend now supports `since` filtering, but keep a defensive fallback.
+              const cutoff = Date.parse(sinceIso);
               const items = rawItems.filter(function (it) {
                 const tsStr = it.createdAt || it.timestamp || it.time;
-                if (!tsStr) return true;
+                if (!tsStr || Number.isNaN(cutoff)) return true;
                 const ts = Date.parse(tsStr);
                 if (Number.isNaN(ts)) return true;
                 return ts >= cutoff;

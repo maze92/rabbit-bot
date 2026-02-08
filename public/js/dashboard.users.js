@@ -15,6 +15,50 @@
   let userHistoryAbortController = null;
   const escapeHtml = D.escapeHtml;
 
+  function buildUserRow(u, listEl) {
+    if (!u || u.bot) return null;
+
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    row.dataset.userId = u.id || '';
+    row.dataset.username = u.username || u.tag || u.id || '';
+
+    const name = u.username || u.tag || u.id;
+    const roles = (u.roles || []).map(function (r) { return r.name; }).join(', ');
+    const isBot = !!u.bot;
+
+    row.innerHTML = `
+      <div class="user-row-header">
+        <div class="title">${escapeHtml(name)}</div>
+        <div class="user-type-badge ${isBot ? 'bot' : 'human'}">
+          ${escapeHtml(isBot ? (t('users_row_bot')) : (t('users_row_user')))}
+        </div>
+      </div>
+      <div class="subtitle">
+        ${escapeHtml(u.id)}${roles ? ' • ' + escapeHtml(roles) : ''}
+      </div>
+    `;
+
+    row.addEventListener('click', function () {
+      const previouslyActive = listEl.querySelector('.list-item.active');
+      if (previouslyActive) previouslyActive.classList.remove('active');
+      row.classList.add('active');
+
+      state.selectedUserId = u.id || null;
+      loadUserHistory(u);
+    });
+
+    return row;
+  }
+
+  function appendUserRows(listEl, items) {
+    if (!Array.isArray(items) || !items.length) return;
+    items.forEach(function (u) {
+      const row = buildUserRow(u, listEl);
+      if (row) listEl.appendChild(row);
+    });
+  }
+
 
   async function loadUsers() {
   const listEl = document.getElementById('usersList');
@@ -80,41 +124,7 @@
       return;
     }
 
-    items.forEach(function (u) {
-      if (!u || u.bot) return;
-
-      const row = document.createElement('div');
-      row.className = 'list-item';
-      row.dataset.userId = u.id || '';
-      row.dataset.username = u.username || u.tag || u.id || '';
-
-      const name = u.username || u.tag || u.id;
-      const roles = (u.roles || []).map(function (r) { return r.name; }).join(', ');
-      const isBot = !!u.bot;
-
-      row.innerHTML = `
-        <div class="user-row-header">
-          <div class="title">${escapeHtml(name)}</div>
-          <div class="user-type-badge ${isBot ? 'bot' : 'human'}">
-            ${escapeHtml(isBot ? (t('users_row_bot')) : (t('users_row_user')))}
-          </div>
-        </div>
-        <div class="subtitle">
-          ${escapeHtml(u.id)}${roles ? ' • ' + escapeHtml(roles) : ''}
-        </div>
-      `;
-
-      row.addEventListener('click', function () {
-        const previouslyActive = listEl.querySelector('.list-item.active');
-        if (previouslyActive) previouslyActive.classList.remove('active');
-        row.classList.add('active');
-
-        state.selectedUserId = u.id || null;
-        loadUserHistory(u);
-      });
-
-      listEl.appendChild(row);
-    });
+    appendUserRows(listEl, items);
   }
 
   async function fetchPage(page, opts) {
@@ -224,42 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const items = Array.isArray(res.items) ? res.items : [];
           const total = typeof res.total === 'number' ? res.total : items.length;
 
-          // append rows (reuse renderer by calling loadUsers? avoid reload)
-          items.forEach(function (u) {
-            if (!u || u.bot) return;
-
-            const row = document.createElement('div');
-            row.className = 'list-item';
-            row.dataset.userId = u.id || '';
-            row.dataset.username = u.username || u.tag || u.id || '';
-
-            const name = u.username || u.tag || u.id;
-            const roles = (u.roles || []).map(function (r) { return r.name; }).join(', ');
-            const isBot = !!u.bot;
-
-            row.innerHTML = `
-              <div class="user-row-header">
-                <div class="title">${escapeHtml(name)}</div>
-                <div class="user-type-badge ${isBot ? 'bot' : 'human'}">
-                  ${escapeHtml(isBot ? (t('users_row_bot')) : (t('users_row_user')))}
-                </div>
-              </div>
-              <div class="subtitle">
-                ${escapeHtml(u.id)}${roles ? ' • ' + escapeHtml(roles) : ''}
-              </div>
-            `;
-
-            row.addEventListener('click', function () {
-              const previouslyActive = listEl.querySelector('.list-item.active');
-              if (previouslyActive) previouslyActive.classList.remove('active');
-              row.classList.add('active');
-
-              state.selectedUserId = u.id || null;
-              loadUserHistory(u);
-            });
-
-            listEl.appendChild(row);
-          });
+          appendUserRows(listEl, items);
 
           state.usersPage = page;
           state.usersTotal = total;
@@ -673,7 +648,14 @@ async function loadUserHistory(user) {
 
               if (!window.confirm(t('users_history_remove_confirm'))) return;
 
+              // Avoid hammering the API (prevents 429s when user clicks multiple items quickly)
+              const now = Date.now();
               if (state._removeInfractionInFlight) return;
+              if (state._removeInfractionCooldownUntil && now < state._removeInfractionCooldownUntil) {
+                const waitMs = state._removeInfractionCooldownUntil - now;
+                toast((t('common_rate_limit_wait') || 'Aguarda um momento...') + ` (${Math.ceil(waitMs / 100) / 10}s)`);
+                return;
+              }
               state._removeInfractionInFlight = true;
               li.classList.add('removing');
 
@@ -693,10 +675,17 @@ async function loadUserHistory(user) {
                 })
                 .catch(function (err) {
                   console.error('Remove infraction error', err);
-                  toast((err && err.apiMessage) || t('cases_error_generic'));
+                  // If backend provides retryAfterMs, show a helpful message.
+                  const ra = err && err.payload && typeof err.payload.retryAfterMs === 'number' ? err.payload.retryAfterMs : null;
+                  if (err && err.status === 429 && ra) {
+                    toast((t('common_rate_limit_wait') || 'Muitas ações seguidas. Aguarda') + ` ${Math.ceil(ra / 100) / 10}s`);
+                  } else {
+                    toast((err && err.apiMessage) || t('cases_error_generic'));
+                  }
                 })
                 .finally(function () {
                   state._removeInfractionInFlight = false;
+                  state._removeInfractionCooldownUntil = Date.now() + 800;
                   // Keep the visual state if the item was removed on refresh; otherwise re-enable.
                   try { li.classList.remove('removing'); } catch (_) {}
                 });

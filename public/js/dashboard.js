@@ -1,6 +1,37 @@
-'use strict';
-
 (function () {
+  'use strict';
+
+  function clearInlineError(el) {
+      if (!el) return;
+      el.classList.remove('input-error');
+      // remove adjacent error node created by setInlineError
+      var next = el.nextElementSibling;
+      if (next && next.classList && next.classList.contains('field-error') && next.dataset && next.dataset.for === el.id) {
+        next.remove();
+      }
+    }
+
+    function setInlineError(el, msg) {
+      if (!el) return;
+      el.classList.add('input-error');
+      var next = el.nextElementSibling;
+      if (next && next.classList && next.classList.contains('field-error') && next.dataset && next.dataset.for === el.id) {
+        next.textContent = msg || '';
+        return;
+      }
+      var div = document.createElement('div');
+      div.className = 'field-error';
+      div.dataset.for = el.id;
+      div.textContent = msg || '';
+      el.insertAdjacentElement('afterend', div);
+    }
+
+    function clearInlineErrors(ids) {
+      (ids || []).forEach(function (id) {
+        clearInlineError(document.getElementById(id));
+      });
+    }
+
   // Global namespace for multi-file-friendly dashboard
   window.OzarkDashboard = window.OzarkDashboard || {};
 
@@ -10,7 +41,13 @@
     currentTab: 'overview',
     guilds: [],
     dashboardUsers: [],
-    dashboardUsersEditingId: null
+    dashboardUsersEditingId: null,
+    me: null,
+    perms: {},
+    trustDirty: false,
+    trustLastSavedAt: null,
+    currentTrustConfig: null,
+    trustExtraOverride: null
   };
 
   
@@ -207,6 +244,32 @@ const API_BASE = '/api';
     return res.json();
   }
 
+  async function apiPatch(path, body, options) {
+    const opts = options || {};
+    const res = await fetch(API_BASE + path, {
+      method: 'PATCH',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+      body: JSON.stringify(body || {}),
+      signal: opts.signal
+    });
+    let payload = null;
+    try {
+      payload = await res.json();
+    } catch (e) {
+      payload = null;
+    }
+    if (!res.ok) {
+      handleAuthError(res.status);
+      const msg = payload && (payload.error || payload.message);
+      const err = new Error(msg || `HTTP ${res.status} for ${path}`);
+      err.status = res.status;
+      if (msg) err.apiMessage = msg;
+      err.payload = payload;
+      throw err;
+    }
+    return payload;
+  }
+
   async function apiDelete(path, options) {
     const opts = options || {};
     const res = await fetch(API_BASE + path, {
@@ -299,7 +362,7 @@ const API_BASE = '/api';
   
 
   function toast(message) {
-    const id = 'ozarkToast';
+    const id = 'rabbitToast';
     let el = document.getElementById(id);
     if (!el) {
       el = document.createElement('div');
@@ -634,6 +697,226 @@ function setLang(newLang) {
     }
   }
 
+  async function loadMe() {
+    try {
+      const res = await apiGet('/auth/me');
+      state.me = (res && res.user) ? res.user : null;
+      state.perms = (state.me && state.me.permissions && typeof state.me.permissions === 'object') ? state.me.permissions : {};
+      applyPermissionGates();
+    } catch (e) {
+      state.me = null;
+      state.perms = {};
+      applyPermissionGates();
+    }
+  }
+
+  function applyPermissionGates() {
+    // Trust controls live inside the Config tab (Extras -> Trust).
+    const canEdit = !!(state.me && (state.me.role === 'ADMIN' || state.perms.canEditConfig));
+    const trustInputs = [
+      'trustPresetSelect',
+      'btnApplyTrustPreset',
+      'btnSaveTrustConfig',
+      'trustBaseInput',
+      'trustMinInput',
+      'trustMaxInput',
+      'trustWarnPenaltyInput',
+      'trustMutePenaltyInput',
+      'trustRegenPerDayInput',
+      'trustRegenMaxDaysInput',
+      'trustLowThresholdInput',
+      'trustHighThresholdInput'
+    ];
+    trustInputs.forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.disabled = !canEdit;
+    });
+  }
+
+  // -----------------------------
+  // Trust presets (Config -> Extras -> Trust)
+  // -----------------------------
+
+  const TRUST_PRESETS = {
+    balanced: {
+      base: 50,
+      min: 0,
+      max: 100,
+      warnPenalty: 8,
+      mutePenalty: 20,
+      regenPerDay: 2,
+      regenMaxDays: 21,
+      lowThreshold: 25,
+      highThreshold: 75,
+      lowTrustWarningsPenalty: 1,
+      lowTrustMessagesPenalty: 2,
+      highTrustMessagesBonus: 1,
+      lowTrustMuteMultiplier: 2.0,
+      highTrustMuteMultiplier: 0.6
+    },
+    strict: {
+      base: 40,
+      min: 0,
+      max: 100,
+      warnPenalty: 10,
+      mutePenalty: 25,
+      regenPerDay: 1,
+      regenMaxDays: 14,
+      lowThreshold: 35,
+      highThreshold: 80,
+      lowTrustWarningsPenalty: 1,
+      lowTrustMessagesPenalty: 2,
+      highTrustMessagesBonus: 0,
+      lowTrustMuteMultiplier: 2.2,
+      highTrustMuteMultiplier: 0.7
+    },
+    relaxed: {
+      base: 60,
+      min: 0,
+      max: 100,
+      warnPenalty: 6,
+      mutePenalty: 15,
+      regenPerDay: 3,
+      regenMaxDays: 30,
+      lowThreshold: 20,
+      highThreshold: 70,
+      lowTrustWarningsPenalty: 0,
+      lowTrustMessagesPenalty: 1,
+      highTrustMessagesBonus: 2,
+      lowTrustMuteMultiplier: 1.6,
+      highTrustMuteMultiplier: 0.55
+    }
+  };
+
+  function readNum(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const v = Number(el.value);
+    return Number.isFinite(v) ? v : null;
+  }
+
+  function setNum(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = (value === null || value === undefined) ? '' : String(value);
+  }
+
+  function getTrustInputs() {
+    return {
+      base: readNum('trustBaseInput'),
+      min: readNum('trustMinInput'),
+      max: readNum('trustMaxInput'),
+      warnPenalty: readNum('trustWarnPenaltyInput'),
+      mutePenalty: readNum('trustMutePenaltyInput'),
+      regenPerDay: readNum('trustRegenPerDayInput'),
+      regenMaxDays: readNum('trustRegenMaxDaysInput'),
+      lowThreshold: readNum('trustLowThresholdInput'),
+      highThreshold: readNum('trustHighThresholdInput')
+    };
+  }
+
+  function setTrustInputs(cfg) {
+    const c = cfg || {};
+    setNum('trustBaseInput', c.base);
+    setNum('trustMinInput', c.min);
+    setNum('trustMaxInput', c.max);
+    setNum('trustWarnPenaltyInput', c.warnPenalty);
+    setNum('trustMutePenaltyInput', c.mutePenalty);
+    setNum('trustRegenPerDayInput', c.regenPerDay);
+    setNum('trustRegenMaxDaysInput', c.regenMaxDays);
+    setNum('trustLowThresholdInput', c.lowThreshold);
+    setNum('trustHighThresholdInput', c.highThreshold);
+  }
+
+  function nearlyEqual(a, b) {
+    return Number(a) === Number(b);
+  }
+
+  function detectTrustPreset(cfg) {
+    const c = cfg || {};
+    const keys = [
+      'base','min','max',
+      'warnPenalty','mutePenalty',
+      'regenPerDay','regenMaxDays',
+      'lowThreshold','highThreshold',
+      'lowTrustWarningsPenalty','lowTrustMessagesPenalty','highTrustMessagesBonus',
+      'lowTrustMuteMultiplier','highTrustMuteMultiplier'
+    ];
+    for (const [name, preset] of Object.entries(TRUST_PRESETS)) {
+      const ok = keys.every((k) => nearlyEqual(c[k], preset[k]));
+      if (ok) return name;
+    }
+    return 'custom';
+  }
+
+  function validateTrustCore(cfg) {
+    const c = cfg || {};
+    const req = ['base','min','max','warnPenalty','mutePenalty','regenPerDay','regenMaxDays','lowThreshold','highThreshold'];
+    const allFieldIds = [
+      'trustBaseInput','trustMinInput','trustMaxInput',
+      'trustWarnPenaltyInput','trustMutePenaltyInput',
+      'trustRegenPerDayInput','trustRegenMaxDaysInput',
+      'trustLowThresholdInput','trustHighThresholdInput'
+    ];
+
+    for (const k of req) {
+      if (!Number.isFinite(Number(c[k]))) {
+        return { ok: false, msg: t('trust_invalid_numbers'), fields: allFieldIds };
+      }
+    }
+
+    const min = Number(c.min);
+    const max = Number(c.max);
+    const base = Number(c.base);
+    const low = Number(c.lowThreshold);
+    const high = Number(c.highThreshold);
+
+    if (min < 0 || max > 100 || min >= max) {
+      return { ok: false, msg: t('trust_invalid_range'), fields: ['trustMinInput','trustMaxInput'] };
+    }
+    if (base < min || base > max) {
+      return { ok: false, msg: t('trust_invalid_base'), fields: ['trustBaseInput'] };
+    }
+    if (low < min || high > max || low >= high) {
+      return { ok: false, msg: t('trust_invalid_thresholds'), fields: ['trustLowThresholdInput','trustHighThresholdInput','trustMinInput','trustMaxInput'] };
+    }
+    if (Number(c.warnPenalty) < 0 || Number(c.mutePenalty) < 0) {
+      return { ok: false, msg: t('trust_invalid_penalties'), fields: ['trustWarnPenaltyInput','trustMutePenaltyInput'] };
+    }
+    if (Number(c.regenPerDay) < 0 || Number(c.regenMaxDays) < 0) {
+      return { ok: false, msg: t('trust_invalid_regen'), fields: ['trustRegenPerDayInput','trustRegenMaxDaysInput'] };
+    }
+    return { ok: true };
+  }
+
+  function buildTrustPatch(core, presetKey) {
+    const k = (presetKey || 'custom');
+    const baseExtra = state.currentTrustConfig || TRUST_PRESETS.balanced;
+    const presetExtra = TRUST_PRESETS[k];
+    const extra = (presetExtra && k !== 'custom') ? presetExtra : (state.trustExtraOverride || baseExtra);
+
+    return {
+      trust: {
+        base: Number(core.base),
+        min: Number(core.min),
+        max: Number(core.max),
+        warnPenalty: Number(core.warnPenalty),
+        mutePenalty: Number(core.mutePenalty),
+        regenPerDay: Number(core.regenPerDay),
+        regenMaxDays: Number(core.regenMaxDays),
+        lowThreshold: Number(core.lowThreshold),
+        highThreshold: Number(core.highThreshold),
+
+        // Advanced knobs (kept stable unless a preset is applied)
+        lowTrustWarningsPenalty: Number(extra.lowTrustWarningsPenalty),
+        lowTrustMessagesPenalty: Number(extra.lowTrustMessagesPenalty),
+        highTrustMessagesBonus: Number(extra.highTrustMessagesBonus),
+        lowTrustMuteMultiplier: Number(extra.lowTrustMuteMultiplier),
+        highTrustMuteMultiplier: Number(extra.highTrustMuteMultiplier)
+      }
+    };
+  }
+
   
   // -----------------------------
   // Logs de moderação + Tickets
@@ -784,6 +1067,49 @@ function setLang(newLang) {
   // Guild Config
   // -----------------------------
 
+  function setConfigStatus(msg) {
+    var el = document.getElementById('configStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+  }
+
+  function setConfigDirty(isDirty) {
+    state.configDirty = !!isDirty;
+    var btn = document.getElementById('btnSaveGuildConfig');
+    if (btn) btn.disabled = !state.configDirty;
+    setConfigStatus(state.configDirty ? t('config_status_unsaved') : t('config_status_loaded'));
+  }
+
+  function markConfigDirty() {
+    setConfigDirty(true);
+  }
+
+  function bindConfigDirtyListeners() {
+    var ids = [
+      'configLogChannel',
+      'configDashboardLogChannel',
+      'configTicketChannel',
+      'configStaffRoles',
+      'configStaffRolesTickets',
+      'configStaffRolesModeration',
+      'configStaffRolesGameNews',
+      'configStaffRolesLogs',
+      'configServerLanguage',
+      'configServerTimezone'
+    ];
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || el.dataset.dirtyBound) return;
+      el.dataset.dirtyBound = '1';
+      function onDirty() {
+        clearInlineError(el);
+        markConfigDirty();
+      }
+      el.addEventListener('change', onDirty);
+      el.addEventListener('input', onDirty);
+    });
+  }
+
   async function loadGuildConfig() {
     if (!state.guildId) {
       updateTabAccess();
@@ -921,6 +1247,7 @@ function setLang(newLang) {
           setSelectedValues(staffGameNewsSelect, global);
           setSelectedValues(staffLogsSelect, global);
           toast(t('config_staff_preset_applied'));
+          markConfigDirty();
         });
       }
 
@@ -932,6 +1259,7 @@ function setLang(newLang) {
           setSelectedValues(staffGameNewsSelect, []);
           setSelectedValues(staffLogsSelect, []);
           toast(t('config_staff_preset_cleared'));
+          markConfigDirty();
         });
       }
 
@@ -954,6 +1282,7 @@ function setLang(newLang) {
       const highThresholdInput = document.getElementById('trustHighThresholdInput');
 
       if (trust && baseEl && minMaxEl && penaltiesEl && regenEl && riskEl) {
+        state.currentTrustConfig = trust;
         const base = Number.isFinite(Number(trust.base)) ? Number(trust.base) : null;
         const min = Number.isFinite(Number(trust.min)) ? Number(trust.min) : null;
         const max = Number.isFinite(Number(trust.max)) ? Number(trust.max) : null;
@@ -996,17 +1325,23 @@ function setLang(newLang) {
 
         if (lowThresholdInput) lowThresholdInput.value = lowT !== null ? String(lowT) : '';
         if (highThresholdInput) highThresholdInput.value = highT !== null ? String(highT) : '';
+
+        // Preset selection (best-effort)
+        var presetSelect = document.getElementById('trustPresetSelect');
+        if (presetSelect) {
+          presetSelect.value = detectTrustPreset(trust);
+        }
       } else if (baseEl && minMaxEl && penaltiesEl && regenEl && riskEl) {
         // No guild-specific trust config found; show the global defaults so the UI is didactic.
         var defaultBase = 50;
         var defaultMin = 0;
         var defaultMax = 100;
-        var defaultWarnPenalty = 10;
-        var defaultMutePenalty = 25;
-        var defaultRegenPerDay = 5;
-        var defaultRegenMaxDays = 14;
-        var defaultLowThreshold = 30;
-        var defaultHighThreshold = 70;
+        var defaultWarnPenalty = 8;
+        var defaultMutePenalty = 20;
+        var defaultRegenPerDay = 2;
+        var defaultRegenMaxDays = 21;
+        var defaultLowThreshold = 25;
+        var defaultHighThreshold = 75;
 
         baseEl.textContent = String(defaultBase);
         minMaxEl.textContent = defaultMin + ' / ' + defaultMax;
@@ -1023,16 +1358,17 @@ function setLang(newLang) {
         if (regenMaxDaysInput) regenMaxDaysInput.value = String(defaultRegenMaxDays);
         if (lowThresholdInput) lowThresholdInput.value = String(defaultLowThreshold);
         if (highThresholdInput) highThresholdInput.value = String(defaultHighThreshold);
+
+        state.currentTrustConfig = Object.assign({}, TRUST_PRESETS.balanced);
+        var presetSelect2 = document.getElementById('trustPresetSelect');
+        if (presetSelect2) presetSelect2.value = 'balanced';
       }
 
-      if (statusEl) {
-        statusEl.textContent = '';
-      }
+      bindConfigDirtyListeners();
+      setConfigDirty(false);
     } catch (err) {
       console.error('Failed to load guild config', err);
-      if (statusEl) {
-        statusEl.textContent = t('config_error_generic');
-      }
+      setConfigStatus(t('config_error_generic'));
     }
   }
 
@@ -1348,6 +1684,13 @@ function setLang(newLang) {
     async function saveGuildConfig() {
       if (!state.guildId) return;
 
+      if (!state.configDirty) {
+        toast(t('config_nothing_to_save'));
+        return;
+      }
+
+      setConfigStatus(t('config_loading'));
+
       const logSelect = document.getElementById('configLogChannel');
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
       const ticketSelect = document.getElementById('configTicketChannel');
@@ -1390,6 +1733,69 @@ function setLang(newLang) {
       const language = langSelect && langSelect.value ? langSelect.value : 'auto';
       const timezone = tzSelect && tzSelect.value ? tzSelect.value.trim() || null : null;
 
+      // Inline validation (low risk): validate IDs and timezone format before POST
+      function isSnowflake(id) {
+        return typeof id === 'string' && /^\d{5,25}$/.test(id);
+      }
+
+      // Clear previous field errors
+      clearInlineError(logSelect);
+      clearInlineError(dashLogSelect);
+      clearInlineError(ticketSelect);
+      clearInlineError(staffSelect);
+      clearInlineError(staffTicketsSelect);
+      clearInlineError(staffModerationSelect);
+      clearInlineError(staffGameNewsSelect);
+      clearInlineError(staffLogsSelect);
+      clearInlineError(tzSelect);
+
+      if (logChannelId && !isSnowflake(logChannelId)) {
+        setInlineError(logSelect, t('config_invalid_channel_id'));
+        setConfigStatus(t('config_invalid_channel_id'));
+        toast(t('config_invalid_channel_id'));
+        return;
+      }
+      if (dashLogChannelId && !isSnowflake(dashLogChannelId)) {
+        setInlineError(dashLogSelect, t('config_invalid_channel_id'));
+        setConfigStatus(t('config_invalid_channel_id'));
+        toast(t('config_invalid_channel_id'));
+        return;
+      }
+      if (ticketThreadChannelId && !isSnowflake(ticketThreadChannelId)) {
+        setInlineError(ticketSelect, t('config_invalid_channel_id'));
+        setConfigStatus(t('config_invalid_channel_id'));
+        toast(t('config_invalid_channel_id'));
+        return;
+      }
+
+      var allRoleIds = staffRoleIds
+        .concat(staffRolesByFeature.tickets || [])
+        .concat(staffRolesByFeature.moderation || [])
+        .concat(staffRolesByFeature.gamenews || [])
+        .concat(staffRolesByFeature.logs || []);
+
+      for (var i = 0; i < allRoleIds.length; i++) {
+        if (allRoleIds[i] && !isSnowflake(allRoleIds[i])) {
+          // Mark the most relevant select
+          setInlineError(staffSelect || staffTicketsSelect || staffModerationSelect || staffGameNewsSelect || staffLogsSelect, t('config_invalid_role_id'));
+          setConfigStatus(t('config_invalid_role_id'));
+          toast(t('config_invalid_role_id'));
+          return;
+        }
+      }
+
+      if (timezone) {
+        var tzOk = /^[A-Za-z_]+\/[A-Za-z_]+(\/[A-Za-z_]+)?$/.test(timezone)
+          || /^UTC$/i.test(timezone)
+          || /^Etc\/(GMT|UTC)([+-]?\d{1,2})?$/.test(timezone);
+        if (!tzOk) {
+          setInlineError(tzSelect, t('config_invalid_timezone'));
+          setConfigStatus(t('config_invalid_timezone'));
+          toast(t('config_invalid_timezone'));
+          return;
+        }
+      }
+
       try {
         await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', {
           logChannelId: logChannelId,
@@ -1410,15 +1816,15 @@ function setLang(newLang) {
           setLang(state.lang || 'pt');
         }
 
-        if (statusEl) {
-          statusEl.textContent = t('config_saved');
-        }
+        // mark clean + update UI
+        state.configDirty = false;
+        var btnSave = document.getElementById('btnSaveGuildConfig');
+        if (btnSave) btnSave.disabled = true;
+        setConfigStatus(t('config_saved'));
         toast(t('config_saved'));
       } catch (err) {
         console.error('Failed to save guild config', err);
-        if (statusEl) {
-          statusEl.textContent = t('config_error_generic');
-        }
+        setConfigStatus(t('config_error_generic'));
         toast(t('config_error_save'));
       }
     }
@@ -1865,6 +2271,119 @@ function addTempVoiceBaseChannel() {
       });
     }
 
+    // Trust presets + save (Config -> Extras -> Trust)
+    var trustPresetSelect = document.getElementById('trustPresetSelect');
+    var btnApplyTrustPreset = document.getElementById('btnApplyTrustPreset');
+    var btnSaveTrustConfig = document.getElementById('btnSaveTrustConfig');
+    var trustSaveStatus = document.getElementById('trustSaveStatus');
+
+    function setTrustStatus(msg) {
+      if (!trustSaveStatus) return;
+      trustSaveStatus.textContent = msg || '';
+    }
+
+    function markTrustDirty() {
+      state.trustDirty = true;
+      setTrustStatus(t('trust_status_unsaved'));
+    }
+
+    // Bind input changes -> mark dirty + switch to "custom"
+    var trustInputIds = [
+      'trustBaseInput','trustMinInput','trustMaxInput',
+      'trustWarnPenaltyInput','trustMutePenaltyInput',
+      'trustRegenPerDayInput','trustRegenMaxDaysInput',
+      'trustLowThresholdInput','trustHighThresholdInput'
+    ];
+    trustInputIds.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || el.dataset.bound) return;
+      el.dataset.bound = '1';
+      el.addEventListener('input', function () {
+        clearInlineError(el);
+        if (trustPresetSelect) trustPresetSelect.value = 'custom';
+        state.trustExtraOverride = null;
+        markTrustDirty();
+      });
+    });
+
+    if (btnApplyTrustPreset && !btnApplyTrustPreset.dataset.bound) {
+      btnApplyTrustPreset.dataset.bound = '1';
+      btnApplyTrustPreset.addEventListener('click', function () {
+        if (!trustPresetSelect) return;
+        var key = trustPresetSelect.value || 'custom';
+        if (!TRUST_PRESETS[key]) {
+          trustPresetSelect.value = 'custom';
+          return;
+        }
+        setTrustInputs(TRUST_PRESETS[key]);
+        state.trustExtraOverride = TRUST_PRESETS[key];
+        markTrustDirty();
+        setTrustStatus(t('trust_status_preset_applied'));
+        toast(t('trust_preset_applied'));
+      });
+    }
+
+    if (btnSaveTrustConfig && !btnSaveTrustConfig.dataset.bound) {
+      btnSaveTrustConfig.dataset.bound = '1';
+      btnSaveTrustConfig.addEventListener('click', function () {
+        (async function () {
+          try {
+            var core = getTrustInputs();
+            var v = validateTrustCore(core);
+            // Clear previous inline errors
+            clearInlineErrors([
+              'trustBaseInput','trustMinInput','trustMaxInput',
+              'trustWarnPenaltyInput','trustMutePenaltyInput',
+              'trustRegenPerDayInput','trustRegenMaxDaysInput',
+              'trustLowThresholdInput','trustHighThresholdInput'
+            ]);
+            if (!v.ok) {
+              (v.fields || []).forEach(function (id) {
+                setInlineError(document.getElementById(id), v.msg);
+              });
+              setTrustStatus(v.msg);
+              toast(v.msg);
+              return;
+            }
+            var presetKey = trustPresetSelect ? trustPresetSelect.value : 'custom';
+            var patch = buildTrustPatch(core, presetKey);
+
+            btnSaveTrustConfig.disabled = true;
+            btnSaveTrustConfig.classList.add('is-loading');
+
+            var res = await apiPatch('/config', patch);
+            if (!res || res.ok === false) {
+              throw new Error((res && (res.error || res.message)) || 'SAVE_FAILED');
+            }
+
+            state.trustDirty = false;
+            state.trustLastSavedAt = Date.now();
+            state.trustExtraOverride = null;
+            if (res.config && res.config.trust) {
+              state.currentTrustConfig = res.config.trust;
+              if (trustPresetSelect) {
+                trustPresetSelect.value = detectTrustPreset(res.config.trust);
+              }
+            }
+
+            setTrustStatus(t('trust_status_saved'));
+            toast(t('trust_save_ok'));
+            // Refresh config panel to update computed preview labels
+            loadGuildConfig().catch(function () {});
+          } catch (e) {
+            console.error('Failed to save trust config', e);
+            var msg = (e && e.apiMessage) ? e.apiMessage : (e && e.message ? e.message : t('trust_save_error'));
+            setTrustStatus(msg);
+            toast(msg);
+          } finally {
+            btnSaveTrustConfig.disabled = false;
+            btnSaveTrustConfig.classList.remove('is-loading');
+            applyPermissionGates();
+          }
+        })();
+      });
+    }
+
     // Login form
     var loginScreen = document.getElementById('loginScreen');
     var loginForm = document.getElementById('loginForm');
@@ -1913,7 +2432,8 @@ function addTempVoiceBaseChannel() {
             }
             setToken(data.token);
             hideLogin();
-            // Depois de login, carrega guilds e visão geral
+            // Depois de login, carrega perfil/permissões, guilds e visão geral
+            loadMe().catch(function () {});
             loadGuilds().catch(function () {});
             setTab('overview');
           })
@@ -1932,6 +2452,7 @@ function addTempVoiceBaseChannel() {
     // Carrega guilds e visão geral inicial, se já houver token guardado
     if (getToken()) {
       hideLogin();
+      loadMe().catch(function () {});
       loadGuilds().catch(function () {});
       setTab('overview');
     } else {
@@ -2019,7 +2540,7 @@ async function exportGuildConfigJson() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'ozark-guild-config-' + (payload.guildId || 'unknown') + '.json';
+      a.download = 'rabbit-guild-config-' + (payload.guildId || 'unknown') + '.json';
       document.body.appendChild(a);
       a.click();
       a.remove();

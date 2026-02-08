@@ -167,7 +167,128 @@ function setInputError(inputEl, hasError) {
   else inputEl.classList.remove('input-error');
 }
 
+  
+
   // ------------------------
+  // Dirty-state (unsaved changes) tracking for GameNews editor
+  // ------------------------
+
+  function ensureGameNewsMaps() {
+    if (!state.gameNewsOriginalByKey) state.gameNewsOriginalByKey = {};
+  }
+
+  function feedKey(feed) {
+    if (!feed) return '';
+    const id = feed.id || feed._id || feed._mongoId;
+    if (id) return String(id);
+    return makeStatusKey(feed);
+  }
+
+  function snapshotFeed(feed) {
+    if (!feed) return '';
+    const url = normalizeUrlMaybe(feed.feedUrl);
+    const channelId = (feed.channelId != null ? String(feed.channelId).trim() : '');
+    const logChannelId = (feed.logChannelId != null ? String(feed.logChannelId).trim() : '');
+    const name = feed.name != null ? String(feed.name).trim() : '';
+    const enabled = feed.enabled !== false;
+    const intervalMs = (typeof feed.intervalMs === 'number' && Number.isFinite(feed.intervalMs) && feed.intervalMs > 0) ? Math.round(feed.intervalMs) : null;
+    return JSON.stringify({
+      name,
+      feedUrl: url,
+      channelId,
+      logChannelId: logChannelId || null,
+      enabled,
+      intervalMs
+    });
+  }
+
+  function setOriginalForFeeds(feeds) {
+    ensureGameNewsMaps();
+    const map = {};
+    (Array.isArray(feeds) ? feeds : []).forEach(function (f) {
+      const k = feedKey(f);
+      if (!k) return;
+      map[k] = snapshotFeed(f);
+    });
+    state.gameNewsOriginalByKey = map;
+  }
+
+  function isFeedDirty(feed) {
+    ensureGameNewsMaps();
+    const k = feedKey(feed);
+    if (!k) return true;
+    const orig = state.gameNewsOriginalByKey[k];
+    if (!orig) return true; // new/unsaved feed
+    return snapshotFeed(feed) !== orig;
+  }
+
+  function pruneOriginalMap(feeds) {
+    ensureGameNewsMaps();
+    const keep = new Set();
+    (Array.isArray(feeds) ? feeds : []).forEach(function (f) {
+      const k = feedKey(f);
+      if (k) keep.add(k);
+    });
+    const next = {};
+    Object.keys(state.gameNewsOriginalByKey).forEach(function (k) {
+      if (keep.has(k)) next[k] = state.gameNewsOriginalByKey[k];
+    });
+    state.gameNewsOriginalByKey = next;
+  }
+
+  function updateGameNewsFeedRowByIndex(idx) {
+    const listEl = document.getElementById('gamenewsFeedsList');
+    if (!listEl) return;
+    const row = listEl.querySelector('.list-item[data-index="' + String(idx) + '"]');
+    if (!row) return;
+    const f = Array.isArray(state.gameNewsFeeds) ? state.gameNewsFeeds[idx] : null;
+    if (!f) return;
+
+    const nameEl = row.querySelector('.title');
+    const badgeEl = row.querySelector('.user-type-badge');
+    const subtitleEl = row.querySelector('.subtitle');
+    if (!nameEl || !badgeEl || !subtitleEl) return;
+
+    const name = f.name || 'Feed';
+    const feedUrl = f.feedUrl || '';
+    const channelId = f.channelId || '';
+    const enabled = f.enabled !== false;
+
+    const v = validateFeedConfig({ feedUrl: feedUrl, channelId: channelId });
+    const complete = v && v.ok;
+
+    const st = state.gameNewsStatusIndex ? state.gameNewsStatusIndex[makeStatusKey(f)] : null;
+    const hasStatusError = !!(st && st.lastError);
+
+    const dirty = isFeedDirty(f);
+
+    let badgeClass = 'human';
+    let badgeText = t('gamenews_feed_status_on');
+    if (!complete) {
+      badgeClass = 'warn';
+      badgeText = t('gamenews_feed_status_incomplete');
+    } else if (dirty) {
+      badgeClass = 'warn';
+      badgeText = t('gamenews_feed_status_dirty');
+    } else if (hasStatusError) {
+      badgeClass = 'error';
+      badgeText = t('gamenews_feed_status_error');
+    } else {
+      badgeClass = enabled ? 'human' : 'bot';
+      badgeText = enabled ? t('gamenews_feed_status_on') : t('gamenews_feed_status_off');
+    }
+
+    nameEl.textContent = name;
+    badgeEl.className = 'user-type-badge ' + badgeClass;
+    badgeEl.textContent = badgeText;
+
+    subtitleEl.textContent = (feedUrl || '') + (channelId ? ' • ' + channelId : '');
+
+    if (dirty) row.classList.add('dirty');
+    else row.classList.remove('dirty');
+  }
+
+// ------------------------
   // Render da lista de feeds
   // ------------------------
 
@@ -195,13 +316,9 @@ function setInputError(inputEl, hasError) {
       const name = f.name || 'Feed';
       const feedUrl = f.feedUrl || '';
       const channelId = f.channelId || '';
-      const enabled = f.enabled !== false;
-      const v = validateFeedConfig({ feedUrl: feedUrl, channelId: channelId });
-      const complete = v && v.ok;
-      const badgeClass = !complete ? 'warn' : (enabled ? 'human' : 'bot');
-      const badgeText = !complete
-        ? t('gamenews_feed_status_incomplete')
-        : (enabled ? t('gamenews_feed_status_on') : t('gamenews_feed_status_off'));
+      // Badge will be updated after render (dirty/error/incomplete/on/off)
+      const badgeClass = 'human';
+      const badgeText = t('gamenews_feed_status_on');
 
       row.innerHTML = `
         <div class="user-row-header">
@@ -227,6 +344,7 @@ function setInputError(inputEl, hasError) {
       });
 
       listEl.appendChild(row);
+      updateGameNewsFeedRowByIndex(idx);
     });
   }
 
@@ -243,6 +361,14 @@ function setInputError(inputEl, hasError) {
       const numericIdx = Number(idx);
       if (!Number.isInteger(numericIdx) || numericIdx < 0) return;
       if (!Array.isArray(state.gameNewsFeeds)) return;
+
+      const prevIdx = state.activeGameNewsFeedIndex;
+      if (typeof prevIdx === 'number' && prevIdx !== numericIdx) {
+        const prevFeed = state.gameNewsFeeds[prevIdx];
+        if (prevFeed && isFeedDirty(prevFeed)) {
+          toast(t('gamenews_unsaved_changes_notice') || 'Tens alterações por guardar noutro feed.');
+        }
+      }
 
       const feed = state.gameNewsFeeds[numericIdx];
       if (!feed) return;
@@ -376,6 +502,7 @@ function renderGameNewsFeedDetail(feed) {
     html += `<button type="button" class="btn xs gamenews-action btn-remove" data-action="remove">${escapeHtml(t('gamenews_detail_action_remove'))}</button>`;
 
     html += '</div>';
+    html += `<div class="history-hint" id="gnDirtyHint" style="display:none"></div>`;
     html += '</div>'; // /history-section actions
 
 
@@ -473,8 +600,19 @@ function renderGameNewsFeedDetail(feed) {
 
       const btnSave = detailEl.querySelector('.gamenews-action[data-action="save"]');
       const btnTest = detailEl.querySelector('.gamenews-action[data-action="test"]');
-      if (btnSave) btnSave.disabled = !v.ok;
+      const dirty = isFeedDirty(target);
+
+      const dirtyHintEl = detailEl.querySelector('#gnDirtyHint');
+      if (dirtyHintEl) {
+        const msg = dirty ? (t('gamenews_detail_unsaved') || 'Alterações por guardar neste feed.') : '';
+        dirtyHintEl.textContent = msg;
+        dirtyHintEl.style.display = dirty ? 'block' : 'none';
+      }
+
+      if (btnSave) btnSave.disabled = !v.ok || !dirty;
       if (btnTest) btnTest.disabled = !v.ok;
+
+      updateGameNewsFeedRowByIndex(idx);
 
     }
 
@@ -550,8 +688,19 @@ function renderGameNewsFeedDetail(feed) {
           (async function () {
             try {
               btn.disabled = true;
-              if (initialFeedId) {
-                await runTest(initialFeedId);
+              const dirtyNow = isFeedDirty(target);
+              if (dirtyNow) {
+                toast(t('gamenews_test_autosave') || 'Alterações por guardar. A guardar antes do teste...');
+                await saveGameNewsFeeds();
+              }
+
+              // Refresh possible id after save
+              const refreshed = Array.isArray(state.gameNewsFeeds) ? state.gameNewsFeeds[idx] : null;
+              const refreshedId = refreshed && (refreshed.id || refreshed._id || refreshed._mongoId) ? (refreshed.id || refreshed._id || refreshed._mongoId) : null;
+              const effectiveId = refreshedId || initialFeedId;
+
+              if (effectiveId) {
+                await runTest(effectiveId);
                 return;
               }
 
@@ -574,6 +723,7 @@ function renderGameNewsFeedDetail(feed) {
         } else if (action === 'remove') {
           // Remove do state, ajusta seleção e persiste na BD
           state.gameNewsFeeds.splice(idx, 1);
+          pruneOriginalMap(state.gameNewsFeeds);
 
           if (!state.gameNewsFeeds.length) {
             state.activeGameNewsFeedIndex = null;
@@ -712,6 +862,7 @@ function renderGameNewsFeedDetail(feed) {
 
       if (returnedFeeds) {
         state.gameNewsFeeds = returnedFeeds.slice();
+        setOriginalForFeeds(state.gameNewsFeeds);
         renderGameNewsFeedsList(state.gameNewsFeeds);
         // Clamp active index if needed
         let idx = typeof state.activeGameNewsFeedIndex === 'number' ? state.activeGameNewsFeedIndex : 0;
@@ -768,6 +919,7 @@ function renderGameNewsFeedDetail(feed) {
         const statusItems = statusRes && Array.isArray(statusRes.items) ? statusRes.items : [];
 
         state.gameNewsFeeds = feeds;
+        setOriginalForFeeds(feeds);
         state.gameNewsStatusIndex = buildStatusIndex(statusItems);
         state.activeGameNewsFeedIndex = null;
 
