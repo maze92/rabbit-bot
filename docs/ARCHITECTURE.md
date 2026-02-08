@@ -1,4 +1,4 @@
-# Ozark Bot – Visão geral de arquitetura
+# .rabbit – Visão geral de arquitetura
 
 Esta nota resume a arquitetura atual do bot, para facilitar manutenção e evolução a longo prazo.
 

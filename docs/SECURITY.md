@@ -1,4 +1,4 @@
-# Ozark Bot – Segurança e configuração
+# .rabbit – Segurança e configuração
 
 Este documento resume os pontos críticos de segurança do projeto e como configurar as variáveis de ambiente de forma segura.
 
@@ -54,13 +54,13 @@ O CORS é configurado a partir de:
 Exemplos:
 
 ```env
-DASHBOARD_ORIGIN=https://ozark-bot.koyeb.app
+DASHBOARD_ORIGIN=https://rabbit-bot.koyeb.app
 ```
 
 ou
 
 ```env
-DASHBOARD_ORIGIN=https://ozark-bot.koyeb.app,https://outro-dominio.com
+DASHBOARD_ORIGIN=https://rabbit-bot.koyeb.app,https://outro-dominio.com
 ```
 
 Boas práticas:
@@ -81,7 +81,7 @@ Para a segurança do servidor no Discord:
 
 Recomendações:
 
-- Usar um utilizador dedicado só para esta base de dados (`ozark_db_user`).
+- Usar um utilizador dedicado só para esta base de dados (`rabbit_db_user`).
 - Restringir o IP / VPC na configuração do cluster, sempre que possível.
 - Ativar TLS/SSL entre aplicação e base de dados (por omissão, Mongo Atlas já o faz).
 

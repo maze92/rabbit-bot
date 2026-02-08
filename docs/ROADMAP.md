@@ -1,4 +1,4 @@
-# Ozark Bot – Roadmap técnico
+# .rabbit – Roadmap técnico
 
 Este documento lista ideias e próximos passos para evoluir o projeto a médio/longo prazo.  
 Não é um compromisso rígido, mas um guia de prioridades.
