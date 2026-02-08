@@ -66,7 +66,7 @@ module.exports = {
     },
 
     help: {
-      title: 'Ozark Bot – Help',
+      title: '.rabbit – Help',
       moderationTitle: 'Moderation Commands',
       automodTitle: 'AutoMod & Anti-Spam',
       gameNewsTitle: 'Game News',
@@ -233,7 +233,7 @@ Warnings: **${warnings}/${maxWarnings}**`,
     },
 
     help: {
-      title: 'Ozark Bot – Ajuda',
+      title: '.rabbit – Ajuda',
       moderationTitle: 'Comandos de Moderação',
       automodTitle: 'AutoMod & Anti-Spam',
       gameNewsTitle: 'Game News',

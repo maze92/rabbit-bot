@@ -140,7 +140,7 @@ const baseConfig = {
     maxDbLogs: 1000,
     requireAuth: true,
     // Lista de origens permitidas para o Socket.IO (dashboard).
-    allowedOrigins: ['https://ozark-bot.koyeb.app'],
+    allowedOrigins: ['https://rabbit-bot.koyeb.app', 'https://ozark-bot.koyeb.app'],
     // Canal global de logs do Dashboard (fallback, caso a guild ainda não tenha dashboardLogChannelId definido)
     dashboardLogsChannelId: process.env.DASHBOARD_LOG_CHANNEL_ID || null
   },
@@ -213,8 +213,13 @@ const baseConfig = {
   slash: {
     enabled: true,
 
-    // ✅ Recomendo pôr o ID do teu servidor (para registar rápido e evitar cache global)
-    // Se deixares vazio, tenta registar GLOBAL (demora a propagar).
+    // Scope para evitar comandos duplicados no Discord.
+    // - global (default): regista globalmente (recomendado para multi-servidor)
+    // - guild: regista apenas na guild abaixo (propagação imediata)
+    // - both: global + guild (apenas para testes)
+    scope: process.env.SLASH_SCOPE || 'global',
+
+    // Guild para testes/propagação imediata (apenas usado com scope=guild|both)
     guildId: process.env.SLASH_GUILD_ID || null,
 
     // regista automaticamente no arranque
