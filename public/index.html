@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
-  <title>Ozark Dashboard</title>
+  <title>.rabbit Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/css/dashboard.css?v=20260207b">
 </head>
@@ -30,7 +30,7 @@
     <!-- Top bar -->
     <header class="topbar">
       <div class="topbar-left">
-        <div class="logo">Ozark<span>Bot</span></div>
+        <div class="logo">.rabbit</div>
         <div class="divider"></div>
         <div class="top-info">
           <div data-i18n="app_subtitle">Painel de gestão e moderação</div>
@@ -106,10 +106,9 @@
                 </div>
               </div>
               <div class="chips" id="modServerInsightsRange">
-                  <button class="chip chip-active" data-range="24h" data-i18n="range_24h">24h</button>
-                  <button class="chip" data-range="7d" data-i18n="range_7d">7d</button>
+                  <button class="chip chip-active" data-range="7d" data-i18n="range_7d">7d</button>
+                  <button class="chip" data-range="14d" data-i18n="range_14d">14d</button>
                   <button class="chip" data-range="30d" data-i18n="range_30d">30d</button>
-                  <button class="chip" data-range="1y" data-i18n="range_1y">1 ano</button>
               </div>
               <div id="modServerInsightsContent">
                 <div class="empty" data-i18n="logs_server_insights_empty">
@@ -128,10 +127,9 @@
                 </div>
               </div>
               <div class="chips" id="modTicketsRange">
-                  <button class="chip chip-active" data-range="24h" data-i18n="range_24h">24h</button>
-                  <button class="chip" data-range="7d" data-i18n="range_7d">7d</button>
+                  <button class="chip chip-active" data-range="7d" data-i18n="range_7d">7d</button>
+                  <button class="chip" data-range="14d" data-i18n="range_14d">14d</button>
                   <button class="chip" data-range="30d" data-i18n="range_30d">30d</button>
-                  <button class="chip" data-range="1y" data-i18n="range_1y">1 ano</button>
               </div>
               <ul class="simple-list" id="modTicketsList">
                 <li class="empty" data-i18n="logs_tickets_panel_empty">
@@ -150,10 +148,9 @@
                 Vista rápida dos utilizadores mais presentes no servidor.
               </p>
               <div class="chips" id="modTopOnlineRange">
-                <button class="chip chip-active" data-range="24h" data-i18n="range_24h">24h</button>
-                <button class="chip" data-range="7d" data-i18n="range_7d">7d</button>
+                <button class="chip chip-active" data-range="7d" data-i18n="range_7d">7d</button>
+                <button class="chip" data-range="14d" data-i18n="range_14d">14d</button>
                 <button class="chip" data-range="30d" data-i18n="range_30d">30d</button>
-                <button class="chip" data-range="1y" data-i18n="range_1y">1 ano</button>
               </div>
               <ul class="simple-list" id="modTopOnlineList">
                 <li class="empty" data-i18n="logs_top_online_soon">
@@ -424,40 +421,59 @@
                       </p>
 
                       <div class="trust-form-row">
+                        <label for="trustPresetSelect" data-i18n="trust_preset_label">Preset</label>
+                        <div class="row gap">
+                          <select id="trustPresetSelect" class="select" disabled>
+                            <option value="balanced" data-i18n="trust_preset_balanced">Equilibrado</option>
+                            <option value="strict" data-i18n="trust_preset_strict">Rigoroso</option>
+                            <option value="relaxed" data-i18n="trust_preset_relaxed">Flexível</option>
+                            <option value="custom" data-i18n="trust_preset_custom">Personalizado</option>
+                          </select>
+                          <button id="btnApplyTrustPreset" class="btn xs" type="button" disabled data-i18n="trust_preset_apply">Aplicar</button>
+                        </div>
+                        <div class="hint" data-i18n="trust_preset_hint">Escolha um preset e aplique. Depois pode ajustar manualmente e guardar.</div>
+                      </div>
+
+                      <div class="trust-form-row">
                         <label for="trustBaseInput" data-i18n="config_trust_base">Base level</label>
-                        <input id="trustBaseInput" type="number" class="input" value="50" readonly disabled />
+                        <input id="trustBaseInput" type="number" class="input" value="50" disabled />
                       </div>
 
                       <div class="trust-form-row">
                         <label data-i18n="config_trust_minmax">Minimum / Maximum</label>
                         <div class="row gap">
-                          <input id="trustMinInput" type="number" class="input" style="max-width:90px;" value="0" readonly disabled />
-                          <input id="trustMaxInput" type="number" class="input" style="max-width:90px;" value="100" readonly disabled />
+                          <input id="trustMinInput" type="number" class="input" style="max-width:90px;" value="0" disabled />
+                          <input id="trustMaxInput" type="number" class="input" style="max-width:90px;" value="100" disabled />
                         </div>
                       </div>
 
                       <div class="trust-form-row">
                         <label data-i18n="config_trust_penalties">Penalties</label>
                         <div class="row gap">
-                          <input id="trustWarnPenaltyInput" type="number" class="input" placeholder="WARN" style="max-width:90px;" value="10" readonly disabled />
-                          <input id="trustMutePenaltyInput" type="number" class="input" placeholder="MUTE" style="max-width:90px;" value="25" readonly disabled />
+                          <input id="trustWarnPenaltyInput" type="number" class="input" placeholder="WARN" style="max-width:90px;" value="10" disabled />
+                          <input id="trustMutePenaltyInput" type="number" class="input" placeholder="MUTE" style="max-width:90px;" value="25" disabled />
                         </div>
                       </div>
 
                       <div class="trust-form-row">
                         <label data-i18n="config_trust_regen">Regeneration</label>
                         <div class="row gap">
-                          <input id="trustRegenPerDayInput" type="number" class="input" placeholder="por dia" style="max-width:90px;" value="5" readonly disabled />
-                          <input id="trustRegenMaxDaysInput" type="number" class="input" placeholder="máx. dias" style="max-width:90px;" value="14" readonly disabled />
+                          <input id="trustRegenPerDayInput" type="number" class="input" placeholder="por dia" style="max-width:90px;" value="5" disabled />
+                          <input id="trustRegenMaxDaysInput" type="number" class="input" placeholder="máx. dias" style="max-width:90px;" value="14" disabled />
                         </div>
                       </div>
 
                       <div class="trust-form-row">
                         <label data-i18n="config_trust_risk">Thresholds</label>
                         <div class="row gap">
-                          <input id="trustLowThresholdInput" type="number" class="input" placeholder="baixo" style="max-width:90px;" value="30" readonly disabled />
-                          <input id="trustHighThresholdInput" type="number" class="input" placeholder="alto" style="max-width:90px;" value="70" readonly disabled />
+                          <input id="trustLowThresholdInput" type="number" class="input" placeholder="baixo" style="max-width:90px;" value="30" disabled />
+                          <input id="trustHighThresholdInput" type="number" class="input" placeholder="alto" style="max-width:90px;" value="70" disabled />
                         </div>
+                      </div>
+
+                      <div class="row gap" style="margin-top:10px;">
+                        <button id="btnSaveTrustConfig" class="btn xs" type="button" disabled data-i18n="trust_save">Guardar Trust</button>
+                        <span class="hint" id="trustSaveStatus"></span>
                       </div>
                     </div>
 
