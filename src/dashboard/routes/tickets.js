@@ -8,6 +8,8 @@ function registerTicketsRoutes(opts) {
   const {
     app,
     requireDashboardAuth,
+    requirePerm,
+    requireGuildAccess,
     rateLimit,
     sanitizeText,
     getActorFromRequest,
@@ -18,6 +20,34 @@ function registerTicketsRoutes(opts) {
 
   if (!app) throw new Error('registerTicketsRoutes: app is required');
 
+  const canManageTickets = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canManageTickets'] })
+    : (req, res, next) => next();
+
+  const guardGuildQuery = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const guardGuildQueryOptional = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
+    : (req, res, next) => next();
+
+  const guardGuildBodyOptional = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'body', key: 'guildId', optional: true })
+    : (req, res, next) => next();
+
+  function hasGuildAccess(req, guildId) {
+    try {
+      const u = req && req.dashboardUser;
+      if (!u || u.role === 'ADMIN') return true;
+      const list = Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.filter(Boolean).map(String) : [];
+      if (!list.length) return true;
+      return list.includes(String(guildId));
+    } catch {
+      return false;
+    }
+  }
+
   // -----------------------------
   // List tickets (dashboard)
   // GET /api/tickets?guildId=...&status=open|closed|all&q=...&limit=...&cursor=...
@@ -25,6 +55,8 @@ function registerTicketsRoutes(opts) {
   app.get(
     '/api/tickets',
     requireDashboardAuth,
+    canManageTickets,
+    guardGuildQuery,
     rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'rl:tickets:list:' }),
     async (req, res) => {
       try {
@@ -108,6 +140,8 @@ function registerTicketsRoutes(opts) {
   app.get(
     '/api/tickets/:ticketId/audit',
     requireDashboardAuth,
+    canManageTickets,
+    guardGuildQueryOptional,
     rateLimit({ windowMs: 60_000, max: 240, keyPrefix: 'rl:tickets:audit:' }),
     async (req, res) => {
       try {
@@ -122,6 +156,10 @@ function registerTicketsRoutes(opts) {
 
         const guildId = (req.query.guildId || ticket.guildId || '').toString().trim();
         if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+
+        if (!hasGuildAccess(req, guildId)) {
+          return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
+        }
 
         const items = [];
         // Open event
@@ -183,6 +221,8 @@ function registerTicketsRoutes(opts) {
   app.get(
     '/api/tickets/:ticketId/messages',
     requireDashboardAuth,
+    canManageTickets,
+    guardGuildQueryOptional,
     rateLimit({ windowMs: 60_000, max: 240, keyPrefix: 'rl:tickets:msgs:' }),
     async (req, res) => {
       try {
@@ -197,6 +237,10 @@ function registerTicketsRoutes(opts) {
 
         const guildId = (req.query.guildId || req.body?.guildId || ticket.guildId || '').toString().trim();
         if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+
+        if (!hasGuildAccess(req, guildId)) {
+          return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
+        }
 
         let limit = Number(req.query.limit || 25);
         if (!Number.isFinite(limit) || limit <= 0) limit = 25;
@@ -283,6 +327,9 @@ function registerTicketsRoutes(opts) {
   app.post(
     '/api/tickets/:ticketId/close',
     requireDashboardAuth,
+    canManageTickets,
+    guardGuildBodyOptional,
+    guardGuildQueryOptional,
     // Keep UX smooth: allow normal operator usage without tripping 429 on repeated clicks.
     // Still protected by global /api limiter + per-IP keying.
     rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'rl:tickets:close:' }),
@@ -299,6 +346,10 @@ function registerTicketsRoutes(opts) {
 
         const guildId = (req.body?.guildId || ticket.guildId || '').toString().trim();
         if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+
+        if (!hasGuildAccess(req, guildId)) {
+          return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
+        }
 
         const actor = (getActorFromRequest && getActorFromRequest(req)) || 'dashboard';
         const closedAt = new Date();
@@ -364,6 +415,9 @@ function registerTicketsRoutes(opts) {
   app.post(
     '/api/tickets/:ticketId/reopen',
     requireDashboardAuth,
+    canManageTickets,
+    guardGuildBodyOptional,
+    guardGuildQueryOptional,
     rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'rl:tickets:reopen:' }),
     async (req, res) => {
       try {
@@ -378,6 +432,10 @@ function registerTicketsRoutes(opts) {
 
         const guildId = (req.body?.guildId || ticket.guildId || '').toString().trim();
         if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+
+        if (!hasGuildAccess(req, guildId)) {
+          return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
+        }
 
         const actor = (getActorFromRequest && getActorFromRequest(req)) || 'dashboard';
 
@@ -440,6 +498,9 @@ function registerTicketsRoutes(opts) {
   app.post(
     '/api/tickets/:ticketId/reply',
     requireDashboardAuth,
+    canManageTickets,
+    guardGuildBodyOptional,
+    guardGuildQueryOptional,
     rateLimit({ windowMs: 60_000, max: 240, keyPrefix: 'rl:tickets:reply:' }),
     async (req, res) => {
       try {
@@ -467,6 +528,10 @@ function registerTicketsRoutes(opts) {
         const guildId = rawGuildId || (ticket.guildId || '');
         if (!guildId) {
           return res.status(400).json({ ok: false, error: 'guildId is required' });
+        }
+
+        if (!hasGuildAccess(req, guildId)) {
+          return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
         }
 
         const client = _getClient ? _getClient() : null;

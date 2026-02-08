@@ -8,33 +8,37 @@ function registerAuthRoutes(ctx) {
 app.post('/api/auth/login', express.json(), loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body || {};
+    // Hard type checks to prevent NoSQL operator injection (e.g. {"$gt":""}).
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ ok: false, error: 'MISSING_CREDENTIALS' });
+    }
+
     const safeUsername = sanitizeText(username, { maxLen: 64, stripHtml: true });
-    const safePassword = typeof password === 'string' ? password : '';
+    const safePassword = password;
     console.log('[Dashboard Auth] Login attempt', safeUsername);
 
+    // Backwards-compatible: keep legacy error code used by the UI.
     if (!safeUsername || !safePassword) {
-      return res.status(400).json({ ok: false, error: 'Invalid credentials' });
-    }
-    if (!username || !password) {
       return res.status(400).json({ ok: false, error: 'MISSING_CREDENTIALS' });
     }
 
     const envUser = process.env.DASHBOARD_ADMIN_USER;
     const envPass = process.env.DASHBOARD_ADMIN_PASS;
 
-    let user = await DashboardUserModel.findOne({ username }).lean();
+    // Always query with the sanitized username.
+    let user = await DashboardUserModel.findOne({ username: safeUsername }).lean();
 
     // Se não existir user mas as credenciais batem certo com as envs, cria/admin padrão em runtime.
-    if (!user && envUser && envPass && username === envUser && password === envPass) {
+    if (!user && envUser && envPass && safeUsername === envUser && safePassword === envPass) {
       const passwordHash = await bcrypt.hash(password, 10);
       const created = await DashboardUserModel.create({
-        username,
+        username: safeUsername,
         passwordHash,
         role: 'ADMIN',
         permissions: ADMIN_PERMISSIONS
       });
       user = created.toObject();
-      console.log('[Dashboard Auth] Created admin from env on login', username);
+      console.log('[Dashboard Auth] Created admin from env on login', safeUsername);
     }
 
     if (!user) {
@@ -49,11 +53,11 @@ app.post('/api/auth/login', express.json(), loginLimiter, async (req, res) => {
     }
 
     // Se o hash não coincidir mas as envs batem, atualiza o hash e permite login.
-    if (!match && envUser && envPass && username === envUser && password === envPass) {
+    if (!match && envUser && envPass && safeUsername === envUser && safePassword === envPass) {
       const passwordHash = await bcrypt.hash(password, 10);
       await DashboardUserModel.updateOne({ _id: user._id }, { $set: { passwordHash } }).exec();
       match = true;
-      console.log('[Dashboard Auth] Updated admin hash from env on login', username);
+      console.log('[Dashboard Auth] Updated admin hash from env on login', safeUsername);
     }
 
     if (!match) {
@@ -91,7 +95,8 @@ app.get('/api/auth/me', requireDashboardAuth, async (req, res) => {
       id: u._id || null,
       username: u.username || 'env-token',
       role: u.role || 'ADMIN',
-      permissions: u.permissions || {}
+      permissions: u.permissions || {},
+      allowedGuildIds: Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds : []
     }
   });
 });

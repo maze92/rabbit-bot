@@ -8,6 +8,8 @@ function registerCasesRoutes(opts) {
   const {
     app,
     requireDashboardAuth,
+    requirePerm,
+    requireGuildAccess,
     rateLimit,
     sanitizeId,
     recordAudit,
@@ -18,7 +20,15 @@ function registerCasesRoutes(opts) {
 
   if (!app) throw new Error('registerCasesRoutes: app is required');
 
-  app.get('/api/cases', requireDashboardAuth, async (req, res) => {
+  const canAct = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canActOnCases'] })
+    : (req, res, next) => next();
+
+  const guardGuildQuery = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId' })
+    : (req, res, next) => next();
+
+  app.get('/api/cases', requireDashboardAuth, canAct, guardGuildQuery, async (req, res) => {
     const parsed = CasesSearchQuerySchema.safeParse(req.query || {});
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid query' });
 
@@ -67,6 +77,7 @@ function registerCasesRoutes(opts) {
   app.post(
     '/api/cases/clear',
     requireDashboardAuth,
+    canAct,
     rateLimit({ windowMs: 60_000, max: 3, keyPrefix: 'rl:cases:clear:' }),
     async (req, res) => {
       try {

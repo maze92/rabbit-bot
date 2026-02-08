@@ -3,16 +3,28 @@
 function registerAuditRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
+  sanitizeId,
   DashboardAudit
 }) {
-  app.get('/api/audit/config', requireDashboardAuth, async (req, res) => {
+  const guardGuildQuery = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
+    : (req, res, next) => next();
+
+  const canViewConfig = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
+    : (req, res, next) => next();
+
+
+  app.get('/api/audit/config', requireDashboardAuth, canViewConfig, guardGuildQuery, async (req, res) => {
     try {
       if (!DashboardAudit) {
         return res.json({ ok: true, items: [] });
       }
 
       const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10) || 20, 1), 100);
-      const guildId = (req.query.guildId || '').toString().trim();
+            const guildId = sanitizeId((req.query.guildId || '').toString().trim());
 
       const query = {
         action: {

@@ -3,12 +3,31 @@
 function registerTempVoiceRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   sanitizeId,
   sanitizeText,
   GuildConfig,
   TempVoiceChannel
 }) {
-  app.get('/api/temp-voice/config', requireDashboardAuth, async (req, res) => {
+  const guardGuildQuery = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const guardGuildBody = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'body', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const canViewConfig = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
+    : (req, res, next) => next();
+
+  const canEditConfig = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canEditConfig'] })
+    : (req, res, next) => next();
+
+
+  app.get('/api/temp-voice/config', requireDashboardAuth, canViewConfig, guardGuildQuery, async (req, res) => {
     try {
       const guildId = sanitizeId(req.query.guildId || '');
       if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
@@ -36,7 +55,7 @@ function registerTempVoiceRoutes({
     }
   });
 
-  app.post('/api/temp-voice/config', requireDashboardAuth, async (req, res) => {
+  app.post('/api/temp-voice/config', requireDashboardAuth, canEditConfig, guardGuildBody, async (req, res) => {
     try {
       const guildId = sanitizeId(req.body.guildId || '');
       if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
@@ -85,7 +104,7 @@ function registerTempVoiceRoutes({
     }
   });
 
-  app.get('/api/temp-voice/active', requireDashboardAuth, async (req, res) => {
+  app.get('/api/temp-voice/active', requireDashboardAuth, canViewConfig, guardGuildQuery, async (req, res) => {
     try {
       const guildId = sanitizeId(req.query.guildId || '');
       if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });

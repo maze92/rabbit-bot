@@ -9,6 +9,7 @@ const rateLimit = require('../../systems/rateLimit');
 function registerUserRoutes({
   app,
   requireDashboardAuth,
+  requireGuildAccess,
   getClient,
   warningsService,
   infractionsService,
@@ -17,9 +18,14 @@ function registerUserRoutes({
   getTrustLabel,
   getEffectiveMuteDuration
 }) {
+  const guardGuildQuery = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId' })
+    : (req, res, next) => next();
+
   app.get(
     '/api/user',
     requireDashboardAuth,
+    guardGuildQuery,
     rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'rl:user:inspect:' }),
     async (req, res) => {
       try {

@@ -8,6 +8,8 @@ function registerLogsRoutes(opts) {
   const {
     app,
     requireDashboardAuth,
+    requirePerm,
+    requireGuildAccess,
     rateLimit,
     sanitizeId,
     recordAudit,
@@ -21,7 +23,15 @@ function registerLogsRoutes(opts) {
   if (!app) throw new Error('registerLogsRoutes: app is required');
 
   // List logs (DB-backed if available, otherwise in-memory)
-  app.get('/api/logs', requireDashboardAuth, async (req, res) => {
+  const canViewLogs = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canViewLogs', 'canActOnCases'] })
+    : (req, res, next) => next();
+
+  const guardGuildQueryOptional = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
+    : (req, res, next) => next();
+
+  app.get('/api/logs', requireDashboardAuth, canViewLogs, guardGuildQueryOptional, async (req, res) => {
     const parsed = LogsQuerySchema.safeParse(req.query || {});
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid query' });
 
@@ -34,6 +44,12 @@ function registerLogsRoutes(opts) {
       const type = (req.query.type || '').toString().trim().toLowerCase();
       const guildId = (req.query.guildId || '').toString().trim();
 
+      // Optional time window filter (ISO string). Used by the Moderation tab ticket panel.
+      // If invalid, it is ignored (keeps backward compatibility).
+      const sinceRaw = (req.query.since || '').toString().trim();
+      const since = sinceRaw ? new Date(Date.parse(sinceRaw)) : null;
+      const hasSince = !!(since && !Number.isNaN(since.getTime()));
+
       const { DashboardLog, TicketLog } = (_getModels && _getModels()) || {};
 
       // Special mode: ticket logs
@@ -44,6 +60,7 @@ function registerLogsRoutes(opts) {
 
         const qTickets = {};
         if (guildId) qTickets.guildId = guildId;
+        if (hasSince) qTickets.createdAt = { $gte: since };
 
         if (search) {
           const s = search.toString();
@@ -110,6 +127,13 @@ function registerLogsRoutes(opts) {
         filtered = filtered.slice();
 
         if (guildId) filtered = filtered.filter((l) => l?.guild?.id === guildId);
+        if (hasSince) {
+          const sinceMs = since.getTime();
+          filtered = filtered.filter((l) => {
+            const ts = Date.parse(l?.time || l?.createdAt || '');
+            return Number.isFinite(ts) && ts >= sinceMs;
+          });
+        }
         if (type) filtered = filtered.filter((l) => (l.title || '').toLowerCase().includes(type));
 
         if (search) {
@@ -127,6 +151,7 @@ function registerLogsRoutes(opts) {
 
       const q = {};
       if (guildId) q['guild.id'] = guildId;
+      if (hasSince) q.createdAt = { $gte: since };
       if (type) q.title = { $regex: type, $options: 'i' };
       if (search) q.$text = { $search: search };
 
@@ -149,6 +174,9 @@ function registerLogsRoutes(opts) {
   app.post(
     '/api/logs/clear',
     requireDashboardAuth,
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'body', key: 'guildId' })
+      : (req, res, next) => next(),
     rateLimit({ windowMs: 60_000, max: 5, keyPrefix: 'rl:logs:clear:' }),
     async (req, res) => {
       try {

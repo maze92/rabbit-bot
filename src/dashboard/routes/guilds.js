@@ -11,6 +11,7 @@ const { ChannelType } = require('discord.js');
 function registerGuildsRoutes({
   app,
   requireDashboardAuth,
+  requireGuildAccess,
   getClient,
   sanitizeId
 }) {
@@ -20,7 +21,16 @@ function registerGuildsRoutes({
       const _client = getClient();
       if (!_client) return res.json({ ok: true, items: [] });
 
-      const items = _client.guilds.cache.map((g) => ({
+      // Optional allow-list per dashboard user (MOD only).
+      const u = req.dashboardUser;
+      const allowList = u && u.role !== 'ADMIN' && Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.filter(Boolean).map(String) : [];
+
+      let guilds = _client.guilds.cache.map((g) => g);
+      if (allowList.length) {
+        guilds = guilds.filter((g) => g && allowList.includes(String(g.id)));
+      }
+
+      const items = guilds.map((g) => ({
         id: g.id,
         name: g.name,
         memberCount:
@@ -39,7 +49,11 @@ function registerGuildsRoutes({
   });
 
   // Guild metadata for dashboard UI (channels + roles)
-  app.get('/api/guilds/:guildId/meta', requireDashboardAuth, async (req, res) => {
+  const guardGuildParam = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'params', key: 'guildId' })
+    : (req, res, next) => next();
+
+  app.get('/api/guilds/:guildId/meta', requireDashboardAuth, guardGuildParam, async (req, res) => {
     try {
       const _client = getClient();
       if (!_client) return res.json({ ok: true, channels: [], roles: [] });
@@ -72,7 +86,7 @@ function registerGuildsRoutes({
   });
 
   // List text-based channels (used by some selectors)
-  app.get('/api/guilds/:guildId/channels', requireDashboardAuth, async (req, res) => {
+  app.get('/api/guilds/:guildId/channels', requireDashboardAuth, guardGuildParam, async (req, res) => {
     try {
       const _client = getClient();
       if (!_client) return res.json({ ok: true, items: [] });

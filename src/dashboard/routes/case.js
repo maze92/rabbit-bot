@@ -3,11 +3,22 @@
 function registerCaseRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   sanitizeId,
   infractionsService,
   getClient
 }) {
-  app.get('/api/case', requireDashboardAuth, async (req, res) => {
+  const guardGuildQuery = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const canViewCases = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canViewLogs', 'canActOnCases'] })
+    : (req, res, next) => next();
+
+
+  app.get('/api/case', requireDashboardAuth, canViewCases, guardGuildQuery, async (req, res) => {
     try {
       const guildId = sanitizeId(req.query.guildId || '');
       const caseId = (req.query.caseId || '').toString().trim();

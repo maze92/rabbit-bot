@@ -13,13 +13,19 @@ const rateLimit = require('../../systems/rateLimit');
 function registerTrustRoutes({
   app,
   requireDashboardAuth,
+  requireGuildAccess,
   UserModel,
   getTrustConfig,
   getTrustLabel
 }) {
+  const guardGuildQueryOptional = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
+    : (req, res, next) => next();
+
   app.get(
     '/api/trust/summary',
     requireDashboardAuth,
+    guardGuildQueryOptional,
     rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'rl:trust:summary:' }),
     async (req, res) => {
       try {

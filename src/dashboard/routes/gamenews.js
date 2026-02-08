@@ -1,9 +1,25 @@
 // src/dashboard/routes/gamenews.js
 
 function registerGameNewsRoutes(ctx) {
-  const { app, requireDashboardAuth, config, configManager, gameNewsSystem, sanitizeId, sanitizeText, recordAudit, getActorFromRequest, GameNewsModel, GameNewsFeed, GameNewsFeedSchema, getClient, gameNewsStatusCache } = ctx;
+  const { app, requireDashboardAuth, requirePerm, requireGuildAccess, config, configManager, gameNewsSystem, sanitizeId, sanitizeText, recordAudit, getActorFromRequest, GameNewsModel, GameNewsFeed, GameNewsFeedSchema, getClient, gameNewsStatusCache } = ctx;
 
-app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
+  const guardGuildQueryOptional = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
+    : (req, res, next) => next();
+
+  const guardGuildBodyOptional = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'body', key: 'guildId', optional: true })
+    : (req, res, next) => next();
+
+  const canViewGameNews = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canManageGameNews', 'canViewLogs'] })
+    : (req, res, next) => next();
+
+  const canManageGameNews = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canManageGameNews'] })
+    : (req, res, next) => next();
+
+app.get('/api/gamenews-status', requireDashboardAuth, canViewGameNews, guardGuildQueryOptional, async (req, res) => {
   try {
     const guildId = sanitizeId(req.query.guildId || '');
 
@@ -87,7 +103,7 @@ app.get('/api/gamenews-status', requireDashboardAuth, async (req, res) => {
 
 
 // GameNews feeds configuration (for dashboard editor)
-app.get('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
+app.get('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGuildQueryOptional, async (req, res) => {
   try {
     const guildId = sanitizeId(req.query.guildId || '');
 
@@ -131,7 +147,7 @@ app.get('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
 });
 
 
-app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
+app.post('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGuildBodyOptional, guardGuildQueryOptional, async (req, res) => {
   try {
     if (!GameNewsFeed) {
       return res.status(503).json({ ok: false, error: 'GameNewsFeed model not available on this deployment.' });
@@ -308,7 +324,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, async (req, res) => {
     return res.status(500).json({ ok: false, error: 'Internal Server Error' });
   }
 });
-app.post('/api/gamenews/test', requireDashboardAuth, async (req, res) => {
+app.post('/api/gamenews/test', requireDashboardAuth, canManageGameNews, guardGuildBodyOptional, guardGuildQueryOptional, async (req, res) => {
   try {
     const client = typeof getClient === 'function' ? getClient() : null;
     if (!client) {

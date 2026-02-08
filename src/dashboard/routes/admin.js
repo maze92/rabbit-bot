@@ -4,6 +4,9 @@ function registerAdminRoutes({
   app,
   express,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
+  sanitizeId,
   rateLimit,
   fetchChannel,
   configManager,
@@ -18,8 +21,24 @@ function registerAdminRoutes({
   const rlSelfTest = rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'rl:admin:selftest:' });
   const rlTestLogChannels = rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'rl:admin:testlogs:' });
 
+  const guardGuildBody = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'body', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const guardGuildParam = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'params', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const canRunSelfTest = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canViewConfig', 'canManageUsers', 'canEditConfig'] })
+    : (req, res, next) => next();
+
+  const canTestLogChannels = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canEditConfig'] })
+    : (req, res, next) => next();
+
   // Dashboard-triggered self-test (no real punishments, only diagnostics)
-  app.post('/api/admin/selftest', requireDashboardAuth, rlSelfTest, express.json(), async (req, res) => {
+  app.post('/api/admin/selftest', requireDashboardAuth, canRunSelfTest, rlSelfTest, express.json(), guardGuildBody, async (req, res) => {
     try {
       const u = req.dashboardUser;
       const perms = (u && u.permissions) || {};
@@ -35,7 +54,7 @@ function registerAdminRoutes({
       }
 
       const body = req.body || {};
-      const guildId = String(body.guildId || '').trim();
+      const guildId = sanitizeId(String(body.guildId || '').trim());
       const channelId = String(body.channelId || '').trim();
 
       if (!guildId || !channelId) {
@@ -110,12 +129,12 @@ function registerAdminRoutes({
   });
 
   // Test helper for log channels
-  app.post('/api/guilds/:guildId/test-log-channels', requireDashboardAuth, rlTestLogChannels, async (req, res) => {
+  app.post('/api/guilds/:guildId/test-log-channels', requireDashboardAuth, canTestLogChannels, guardGuildParam, rlTestLogChannels, express.json(), async (req, res) => {
     try {
       const client = typeof getClient === 'function' ? getClient() : null;
       if (!client) return res.status(503).json({ ok: false, error: 'Bot client not ready' });
 
-      const guildId = (req.params.guildId || '').toString().trim();
+      const guildId = sanitizeId((req.params.guildId || '').toString().trim());
       if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
 
       const guild = client.guilds.cache.get(guildId) || null;

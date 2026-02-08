@@ -3,6 +3,8 @@
 function registerModRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   rateLimit,
   sanitizeId,
   sanitizeText,
@@ -33,6 +35,33 @@ function registerModRoutes({
   const rlRemoveInf = rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'rl:mod:removeInf:' });
   const rlOverview = rateLimit({ windowMs: 20_000, max: 30, keyPrefix: 'rl:mod:overview:' });
 
+  const guardGuildBody = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'body', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const guardGuildQuery = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'query', key: 'guildId' })
+    : (req, res, next) => next();
+
+  // Small in-memory cache for overview panels (per guild+range). Keeps DB load low
+  // without affecting moderation actions. TTL is intentionally short.
+  const _overviewCache = new Map(); // key -> { exp:number, value:any }
+  const OVERVIEW_CACHE_TTL_MS = 45_000;
+
+  function cacheGet(key) {
+    const hit = _overviewCache.get(key);
+    if (!hit) return null;
+    if (!hit.exp || hit.exp < Date.now()) {
+      _overviewCache.delete(key);
+      return null;
+    }
+    return hit.value;
+  }
+
+  function cacheSet(key, value) {
+    _overviewCache.set(key, { exp: Date.now() + OVERVIEW_CACHE_TTL_MS, value });
+  }
+
   function getClient() {
     return typeof _getClient === 'function' ? _getClient() : null;
   }
@@ -49,7 +78,10 @@ function registerModRoutes({
   // Mod actions (Dashboard -> Bot)
   // ==============================
 
-  app.post('/api/mod/warn', requireDashboardAuth, rlWarn, async (req, res) => {
+  const canAct = typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canActOnCases'] }) : (req, res, next) => next();
+  const canViewLogs = typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canViewLogs', 'canActOnCases'] }) : (req, res, next) => next();
+
+  app.post('/api/mod/warn', requireDashboardAuth, canAct, guardGuildBody, rlWarn, async (req, res) => {
     try {
       const body = req.body || {};
       const parseResult = ModWarnSchema.safeParse(body);
@@ -123,7 +155,7 @@ function registerModRoutes({
     }
   });
 
-  app.post('/api/mod/mute', requireDashboardAuth, rlMute, async (req, res) => {
+  app.post('/api/mod/mute', requireDashboardAuth, canAct, guardGuildBody, rlMute, async (req, res) => {
     try {
       const body = req.body || {};
       const parseResult = ModMuteSchema.safeParse(body);
@@ -220,7 +252,7 @@ function registerModRoutes({
     }
   });
 
-  app.post('/api/mod/unmute', requireDashboardAuth, rlUnmute, async (req, res) => {
+  app.post('/api/mod/unmute', requireDashboardAuth, canAct, guardGuildBody, rlUnmute, async (req, res) => {
     try {
       const body = req.body || {};
       const parseResult = ModWarnSchema.safeParse(body);
@@ -288,7 +320,7 @@ function registerModRoutes({
     }
   });
 
-  app.post('/api/mod/reset-trust', requireDashboardAuth, rlReset, async (req, res) => {
+  app.post('/api/mod/reset-trust', requireDashboardAuth, canAct, guardGuildBody, rlReset, async (req, res) => {
     try {
       const body = req.body || {};
       const parseResult = ModWarnSchema.safeParse(body);
@@ -367,7 +399,7 @@ function registerModRoutes({
     }
   });
 
-  app.post('/api/mod/remove-infraction', requireDashboardAuth, rlRemoveInf, async (req, res) => {
+  app.post('/api/mod/remove-infraction', requireDashboardAuth, canAct, guardGuildBody, rlRemoveInf, async (req, res) => {
     try {
       const { guildId: g0, userId: u0, infractionId: id0 } = req.body || {};
       const guildId = sanitizeId(g0);
@@ -453,77 +485,65 @@ function registerModRoutes({
     }
   });
 
-  app.get('/api/mod/overview', requireDashboardAuth, rlOverview, async (req, res) => {
+  app.get('/api/mod/overview', requireDashboardAuth, canViewLogs, guardGuildQuery, rlOverview, async (req, res) => {
     try {
       const guildId = (req.query.guildId || '').toString().trim();
       if (!guildId) {
         return res.status(400).json({ ok: false, error: 'Missing guildId' });
       }
 
-      const range = (req.query.range || '24h').toString();
-      let windowHours = 24;
-      if (range === '7d') {
-        windowHours = 24 * 7;
-      } else if (range === '30d') {
-        windowHours = 24 * 30;
-      } else if (range === '1y') {
-        windowHours = 24 * 365;
-      }
+      // Supported ranges for server insights.
+      // Keep backward compatibility for older clients using 24h/1y.
+      const rawRange = (req.query.range || '7d').toString();
+      const range = ['7d', '14d', '30d', '24h', '1y'].includes(rawRange) ? rawRange : '7d';
+      let windowHours = 24 * 7;
+      if (range === '24h') windowHours = 24;
+      else if (range === '14d') windowHours = 24 * 14;
+      else if (range === '30d') windowHours = 24 * 30;
+      else if (range === '1y') windowHours = 24 * 365;
 
       const now = new Date();
       const since = new Date(now.getTime() - windowHours * 60 * 60 * 1000);
+
+      const cacheKey = `modOverview:${guildId}:${range}`;
+      const cached = cacheGet(cacheKey);
+      if (cached) return res.json(cached);
 
       const result = {
         ok: true,
         guildId,
         windowHours,
+        range,
+        since: since.toISOString(),
+        // Your bot does not implement ban/kick. Keep fields for backwards compatibility,
+        // but only compute what is real: WARN and MUTE infractions.
         moderationCounts: { warn: 0, mute: 0, unmute: 0, kick: 0, ban: 0, other: 0 },
         tickets: { total: 0, open: 0, closed: 0 }
       };
 
-      const { DashboardLog, TicketLog } = getModels();
+      const { DashboardLog, TicketLog, Infraction, User } = getModels();
 
+      // Moderation counts: use infractions as the single source of truth.
+      // (No ban/kick in this bot; unmute is not tracked as an infraction.)
       try {
-        if (DashboardLog) {
-          const q = { 'guild.id': guildId, createdAt: { $gte: since } };
-          const docs = await DashboardLog.find(q, { title: 1, createdAt: 1 }).lean();
-          for (const doc of docs) {
-            const title = (doc.title || '').toString().toLowerCase();
-            if (title.includes('warn')) result.moderationCounts.warn++;
-            else if (title.includes('mute')) {
-              if (title.includes('unmute')) result.moderationCounts.unmute++;
-              else result.moderationCounts.mute++;
-            } else if (title.includes('unmute')) result.moderationCounts.unmute++;
-            else if (title.includes('kick')) result.moderationCounts.kick++;
-            else if (title.includes('ban')) result.moderationCounts.ban++;
-            else result.moderationCounts.other++;
-          }
-        } else {
-          const sinceMs = since.getTime();
-          const cache = getLogsCache();
-          const filtered = cache.filter((log) => {
-            if (!log) return false;
-            if (guildId && log.guild && log.guild.id !== guildId) return false;
-            if (!log.time) return false;
-            const ts = Date.parse(log.time);
-            if (Number.isNaN(ts)) return false;
-            return ts >= sinceMs;
-          });
+        if (Infraction) {
+          const rows = await Infraction.aggregate([
+            { $match: { guildId, createdAt: { $gte: since } } },
+            { $group: { _id: '$type', count: { $sum: 1 } } }
+          ]);
 
-          for (const log of filtered) {
-            const title = (log.title || '').toString().toLowerCase();
-            if (title.includes('warn')) result.moderationCounts.warn++;
-            else if (title.includes('mute')) {
-              if (title.includes('unmute')) result.moderationCounts.unmute++;
-              else result.moderationCounts.mute++;
-            } else if (title.includes('unmute')) result.moderationCounts.unmute++;
-            else if (title.includes('kick')) result.moderationCounts.kick++;
-            else if (title.includes('ban')) result.moderationCounts.ban++;
-            else result.moderationCounts.other++;
+          result.moderationCounts.warn = 0;
+          result.moderationCounts.mute = 0;
+
+          for (const row of rows || []) {
+            const k = String(row._id || '').toUpperCase();
+            const c = Number(row.count || 0) || 0;
+            if (k === 'WARN') result.moderationCounts.warn = c;
+            else if (k === 'MUTE') result.moderationCounts.mute = c;
           }
         }
       } catch (err) {
-        console.error('[Dashboard] /api/mod/overview logs error:', err);
+        console.error('[Dashboard] /api/mod/overview infraction counts error:', err);
       }
 
       try {
@@ -540,6 +560,52 @@ function registerModRoutes({
         console.error('[Dashboard] /api/mod/overview tickets error:', err);
       }
 
+      // Trust risk breakdown (optional). Helps the "Server Insights" panel.
+      // Safe to ignore if User model is not available.
+      try {
+        if (User) {
+          const rows = await User.aggregate([
+            { $match: { guildId } },
+            {
+              $bucket: {
+                groupBy: '$trust',
+                boundaries: [0, 21, 41, 61, 81, 101],
+                default: 'unknown',
+                output: { count: { $sum: 1 } }
+              }
+            }
+          ]);
+
+          const map = new Map();
+          for (const r of rows || []) {
+            map.set(String(r._id), Number(r.count || 0) || 0);
+          }
+
+          result.riskBreakdown = [
+            { label: '0-20', value: map.get('0') || 0 },
+            { label: '21-40', value: map.get('21') || 0 },
+            { label: '41-60', value: map.get('41') || 0 },
+            { label: '61-80', value: map.get('61') || 0 },
+            { label: '81-100', value: map.get('81') || 0 }
+          ];
+        }
+      } catch (err) {
+        console.error('[Dashboard] /api/mod/overview risk breakdown error:', err);
+      }
+
+
+      // Provide a stable, frontend-friendly stats object.
+      try {
+        const mc = result.moderationCounts || {};
+        const warns = Number(mc.warn || 0) || 0;
+        const mutes = Number(mc.mute || 0) || 0;
+        result.stats = {
+          totalActions: warns + mutes,
+          warns,
+          mutes
+        };
+      } catch (_) {}
+      cacheSet(cacheKey, result);
       return res.json(result);
     } catch (err) {
       console.error('[Dashboard] /api/mod/overview error:', err);

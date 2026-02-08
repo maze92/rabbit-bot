@@ -3,6 +3,8 @@
 function registerConfigRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   rateLimit,
   sanitizeId,
   GuildConfig,
@@ -12,7 +14,19 @@ function registerConfigRoutes({
 // Guild configuration (per-server)
 // ==============================
 
-app.get('/api/guilds/:guildId/config', requireDashboardAuth, async (req, res) => {
+const canViewConfig = typeof requirePerm === 'function'
+  ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
+  : (req, res, next) => next();
+
+const canEditConfig = typeof requirePerm === 'function'
+  ? requirePerm({ anyOf: ['canEditConfig'] })
+  : (req, res, next) => next();
+
+const guardGuildParam = typeof requireGuildAccess === 'function'
+  ? requireGuildAccess({ from: 'params', key: 'guildId' })
+  : (req, res, next) => next();
+
+app.get('/api/guilds/:guildId/config', requireDashboardAuth, canViewConfig, guardGuildParam, async (req, res) => {
   try {
     if (!GuildConfig) {
       return res.status(500).json({ ok: false, error: 'GuildConfig model not available' });
@@ -75,7 +89,7 @@ app.get('/api/guilds/:guildId/config', requireDashboardAuth, async (req, res) =>
   }
 });
 
-app.post('/api/guilds/:guildId/config', requireDashboardAuth, rateLimit({ windowMs: 20_000, max: 20, keyPrefix: 'rl:guildConfig:' }), async (req, res) => {
+app.post('/api/guilds/:guildId/config', requireDashboardAuth, canEditConfig, guardGuildParam, rateLimit({ windowMs: 20_000, max: 20, keyPrefix: 'rl:guildConfig:' }), async (req, res) => {
   try {
     if (!GuildConfig) {
       return res.status(500).json({ ok: false, error: 'GuildConfig model not available' });

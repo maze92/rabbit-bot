@@ -3,11 +3,11 @@
 function registerCoreRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
   rateLimit,
   recordAudit,
   getActorFromRequest,
   configManager,
-  io,
   status,
   getClient,
   Infraction
@@ -48,8 +48,16 @@ function registerCoreRoutes({
     }
   });
 
+  const canViewConfig = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
+    : (req, res, next) => next();
+
+  const canEditConfig = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canEditConfig'] })
+    : (req, res, next) => next();
+
   // Global config for dashboard settings
-  app.get('/api/config', requireDashboardAuth, (req, res) => {
+  app.get('/api/config', requireDashboardAuth, canViewConfig, (req, res) => {
     try {
       return res.json({
         ok: true,
@@ -63,7 +71,7 @@ function registerCoreRoutes({
   });
 
   const rlConfigPatch = rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'rl:config:' });
-  app.patch('/api/config', requireDashboardAuth, rlConfigPatch, async (req, res) => {
+  app.patch('/api/config', requireDashboardAuth, canEditConfig, rlConfigPatch, async (req, res) => {
     try {
       await recordAudit({
         req,
@@ -77,11 +85,6 @@ function registerCoreRoutes({
       const patch = req.body;
       const result = configManager.applyPatch(patch);
       if (!result.ok) return res.status(400).json(result);
-
-      // Push to clients
-      if (io && typeof io.emit === 'function') {
-        io.emit('config', result.config);
-      }
 
       return res.json(result);
     } catch (err) {

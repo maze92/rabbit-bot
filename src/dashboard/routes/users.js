@@ -11,16 +11,41 @@ const rateLimit = require('../../systems/rateLimit');
 function registerUsersRoutes({
   app,
   requireDashboardAuth,
+  requireGuildAccess,
+  requirePerm,
   getClient,
   sanitizeId,
   guildMembersLastFetch,
   infractionsService,
   TicketLogModel
 }) {
+  const guardGuildParam = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'params', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const canViewUsers = typeof requirePerm === 'function'
+    ? requirePerm({ anyOf: ['canManageUsers', 'canViewLogs', 'canActOnCases'] })
+    : (req, res, next) => next();
+  function mapMemberRoles(member, guild) {
+    try {
+      // Hide @everyone (same id as guild) and managed/integration roles.
+      return (
+        member?.roles?.cache
+          ?.filter((r) => r && r.id !== guild.id && !r.managed)
+          .map((r) => ({ id: r.id, name: r.name })) ||
+        []
+      );
+    } catch {
+      return [];
+    }
+  }
+
   // Guild members (for Users tab) - paginated + optional search
   app.get(
     '/api/guilds/:guildId/users',
     requireDashboardAuth,
+    canViewUsers,
+    guardGuildParam,
     rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'rl:users:list:' }),
     async (req, res) => {
       try {
@@ -80,10 +105,7 @@ function registerUsersRoutes({
               tag: m.user?.tag || null,
               bot: !!m.user?.bot,
               joinedAt: m.joinedAt || null,
-              roles:
-                m.roles?.cache
-                  ?.filter((r) => r && r.id !== guild.id && r.id !== '1385619241235120169')
-                  .map((r) => ({ id: r.id, name: r.name })) || []
+              roles: mapMemberRoles(m, guild)
             }));
           } catch (e) {
             // Fallback to cache search
@@ -101,10 +123,7 @@ function registerUsersRoutes({
                 tag: m.user?.tag || null,
                 bot: !!m.user?.bot,
                 joinedAt: m.joinedAt || null,
-                roles:
-                  m.roles?.cache
-                    ?.filter((r) => r && r.id !== guild.id && r.id !== '1385619241235120169')
-                    .map((r) => ({ id: r.id, name: r.name })) || []
+                roles: mapMemberRoles(m, guild)
               }));
           }
 
@@ -128,10 +147,7 @@ function registerUsersRoutes({
           tag: m.user?.tag || null,
           bot: !!m.user?.bot,
           joinedAt: m.joinedAt || null,
-          roles:
-            m.roles?.cache
-              ?.filter((r) => r && r.id !== guild.id && r.id !== '1385619241235120169')
-              .map((r) => ({ id: r.id, name: r.name })) || []
+          roles: mapMemberRoles(m, guild)
         }));
 
         items.sort((a, b) => {
@@ -152,7 +168,7 @@ function registerUsersRoutes({
   );
 
   // User history (infractions + tickets)
-  app.get('/api/guilds/:guildId/users/:userId/history', requireDashboardAuth, async (req, res) => {
+  app.get('/api/guilds/:guildId/users/:userId/history', requireDashboardAuth, canViewUsers, guardGuildParam, async (req, res) => {
     try {
       const guildId = sanitizeId(req.params.guildId);
       const userId = sanitizeId(req.params.userId);
