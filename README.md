@@ -1,6 +1,6 @@
-# Ozark Bot
+# .rabbit
 
-Ozark Bot é um bot de **moderação para Discord** com uma **dashboard web** integrada, focado em:
+.rabbit é um bot de **moderação para Discord** com uma **dashboard web** integrada, focado em:
 
 - Moderar servidores de forma rápida e transparente.
 - Centralizar histórico de ações (warn, mute, ban, tickets, etc.).
@@ -101,8 +101,8 @@ Ozark Bot é um bot de **moderação para Discord** com uma **dashboard web** in
 ### 2. Clonar o repositório
 
 ```bash
-git clone https://github.com/maze92/ozark-bot.git
-cd ozark-bot
+git clone https://github.com/maze92/rabbit-bot.git
+cd rabbit-bot
 ```
 
 ### 3. Instalar dependências
@@ -117,8 +117,28 @@ Cria um ficheiro `.env` na raiz com algo deste género:
 
 ```ini
 DISCORD_TOKEN=seu_token_do_bot
-MONGODB_URI=mongodb://localhost:27017/ozark-bot
-DASHBOARD_TOKEN=token_para_dashboard
+MONGODB_URI=mongodb://localhost:27017/rabbit-bot
+## Dashboard Auth (recomendado)
+# JWT secret forte (>= 32 chars)
+DASHBOARD_JWT_SECRET=coloca_um_segredo_muito_forte_aqui
+
+# (LEGACY) Token fixo da dashboard. Não recomendado em produção.
+# DASHBOARD_TOKEN=token_para_dashboard
+
+## Slash commands
+# Para evitar comandos duplicados no Discord, escolhe um scope:
+# - global (default): regista globalmente
+# - guild: regista apenas na guild indicada
+# - both: regista global + guild (apenas para testes)
+SLASH_SCOPE=global
+
+# Guild para testes (só usado quando SLASH_SCOPE=guild|both)
+# SLASH_GUILD_ID=123456789012345678
+
+## Reverse proxy
+# Em produção atrás de Koyeb/NGINX, o bot usa "trust proxy" por defeito.
+# Podes desligar com:
+# TRUST_PROXY=false
 PORT=3000
 NODE_ENV=production
 ```

@@ -1,3 +1,24 @@
+## 1.2.7
+- Moderação (Server Insights): ranges ajustados para 7d/14d/30d (mantém compatibilidade com 24h/1y se algum cliente antigo usar).
+- Moderação (Server Insights): métricas passam a usar **Infractions** como fonte de verdade (WARN/MUTE), sem parsing frágil de logs.
+- Moderação (Server Insights): `stats` estável (totalActions, warns, mutes) + cache curto (45s) por guild/range.
+- Segurança: `GET /api/mod/overview` agora valida `guildId` via guild allow-list (quando configurada).
+
+## 1.2.6
+- Segurança: guardas de permissões (RBAC) e de acesso por servidor (guild allow-list) aplicados em Case/Audit/Admin/TempVoice/Users history.
+- Tickets: validação de comprimento da resposta (frontend) + chave i18n para erro de mensagem demasiado longa.
+- Backend: removida duplicação de verificação NO_GUILD_ACCESS no endpoint de reply de tickets.
+
+## 1.2.5
+- GameNews: validação inline no editor (URL/canal) e botões desativados quando inválido.
+- GameNews: dirty-state por feed (badge "Alterações" e aviso discreto ao trocar de feed).
+- GameNews: badge de erro quando há lastError no estado do feed.
+
+## 1.2.4
+- Frontend: validação inline em Config e Trust (erros por campo, sem alterar layout).
+- Trust: status explícito quando um preset é aplicado (não guardado).
+- Config: limpeza automática de erros inline ao editar campos.
+
 # Changelog
 
 Todas as alterações relevantes deste projeto serão documentadas neste ficheiro.
@@ -5,6 +26,19 @@ Todas as alterações relevantes deste projeto serão documentadas neste ficheir
 O formato segue uma aproximação ao [Keep a Changelog](https://keepachangelog.com/) e utiliza versionamento semântico inspirado em [SemVer](https://semver.org/).
 
 ---
+
+## [v1.2.2] – Trust presets & config hardening
+
+### Adicionado
+- Presets de Trust (Equilibrado, Rigoroso, Flexível) no painel **Extras → Trust**, com botão **Aplicar**.
+- Botão **Guardar Trust** para persistir as definições globais via API.
+
+### Alterado
+- O painel de Trust deixa de ser read-only quando o utilizador da dashboard tem permissão **canEditConfig**.
+
+### Corrigido
+- Removido hardcode de role-id na listagem de utilizadores; agora ignora automaticamente roles geridos/integration.
+- Endpoint global `/api/config` passa a respeitar RBAC (view/edit) quando a autenticação do dashboard está ativa.
 
 ## [v1.1.0] – Trust system & Extras refinements
 
