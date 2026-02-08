@@ -2,7 +2,6 @@
 
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
 const path = require('path');
 const mongoose = require('mongoose');
 // ChannelType is used inside route modules (guilds/tickets), keep discord.js imports localized there.
@@ -319,6 +318,16 @@ try {
 
 const app = express();
 
+// Behind Koyeb/Reverse proxies, Express needs "trust proxy" so req.ip
+// reflects the real client (x-forwarded-for). This makes rate-limits and
+// audit logs behave correctly.
+// You can disable with TRUST_PROXY=false.
+try {
+  const trustProxyEnv = (process.env.TRUST_PROXY || '').toString().trim().toLowerCase();
+  const shouldTrust = trustProxyEnv ? trustProxyEnv !== 'false' && trustProxyEnv !== '0' : (process.env.NODE_ENV === 'production');
+  if (shouldTrust) app.set('trust proxy', 1);
+} catch (_) {}
+
 // Attach a lightweight request id for diagnostics.
 // Helps correlate frontend errors with server logs.
 app.use((req, res, next) => {
@@ -340,7 +349,7 @@ if (isProd && (!process.env.DASHBOARD_JWT_SECRET || process.env.DASHBOARD_JWT_SE
   throw new Error('[Dashboard Auth] DASHBOARD_JWT_SECRET is missing or too weak in production. It must be at least 32 characters.');
 }
 
-const JWT_SECRET = process.env.DASHBOARD_JWT_SECRET || 'ozark-dashboard-change-me';
+const JWT_SECRET = process.env.DASHBOARD_JWT_SECRET || 'rabbit-dashboard-change-me';
 
 if (!isProd && !process.env.DASHBOARD_JWT_SECRET) {
   console.warn('[Dashboard Auth] Using default JWT secret in non-production. Set DASHBOARD_JWT_SECRET for better security.');
@@ -348,8 +357,6 @@ if (!isProd && !process.env.DASHBOARD_JWT_SECRET) {
 
 
 const server = http.createServer(app);
-
-app.set('trust proxy', 1);
 
 // Basic security headers for dashboard API
 // We disable the default CSP for now to avoid breaking inline scripts/styles.
@@ -362,7 +369,7 @@ const allowedOrigins = (Array.isArray(config.dashboard?.allowedOrigins) && confi
 );
 
 if (!allowedOrigins.length) {
-  console.warn('[Dashboard] No explicit CORS origins configured. Falling back to default Socket.IO behaviour.');
+  console.warn('[Dashboard] No explicit CORS origins configured. Falling back to permissive CORS behaviour. Configure DASHBOARD_ORIGIN or dashboard.allowedOrigins for production.');
 }
 
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -370,13 +377,6 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : undefined, credentials: false }));
 
 app.use(express.json({ limit: '256kb' }));
-
-const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins.length ? allowedOrigins : undefined,
-    methods: ['GET', 'POST']
-  }
-});
 
 const MAX_MEMORY_LOGS = config.dashboard?.maxLogs ?? 200; // initial, runtime may override
 let logsCache = [];
@@ -459,6 +459,64 @@ function requireDashboardAuth(req, res, next) {
     });
 }
 
+// ------------------------------
+// Permission guard (RBAC)
+// ------------------------------
+// Dashboard users can be fine-tuned via DashboardUser.permissions.
+// ADMIN role always bypasses granular checks.
+function requirePerm({ anyOf = [] } = {}) {
+  const needed = Array.isArray(anyOf) ? anyOf.filter(Boolean) : [];
+  return (req, res, next) => {
+    // If auth is disabled, permissions are meaningless.
+    if (!isAuthEnabled()) return next();
+
+    const u = req.dashboardUser;
+    if (!u) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    if (u.role === 'ADMIN') return next();
+
+    if (!needed.length) return next();
+    const perms = (u.permissions && typeof u.permissions === 'object') ? u.permissions : {};
+    const allowed = needed.some((k) => perms[k] === true);
+    if (!allowed) return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
+    return next();
+  };
+}
+
+// ------------------------------
+// Guild access guard (optional allow-list)
+// ------------------------------
+// If DashboardUser.allowedGuildIds is non-empty, MOD users are restricted to those guild IDs.
+// ADMIN users always bypass.
+function requireGuildAccess({ from = 'params', key = 'guildId', optional = false } = {}) {
+  return (req, res, next) => {
+    if (!isAuthEnabled()) return next();
+
+    const u = req.dashboardUser;
+    if (!u) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    if (u.role === 'ADMIN') return next();
+
+    const list = Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.filter(Boolean).map(String) : [];
+    if (!list.length) return next();
+
+    let raw = '';
+    try {
+      if (from === 'query') raw = (req.query && req.query[key]) || '';
+      else if (from === 'body') raw = (req.body && req.body[key]) || '';
+      else raw = (req.params && req.params[key]) || '';
+    } catch {
+      raw = '';
+    }
+
+    const gid = sanitizeId(raw);
+    if (!gid) {
+      if (optional) return next();
+      return res.status(400).json({ ok: false, error: 'Missing guildId' });
+    }
+    if (!list.includes(gid)) return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
+    return next();
+  };
+}
+
 let _client = null;
 
 function setClient(client) {
@@ -467,9 +525,7 @@ function setClient(client) {
 
 
 
-// Simple in-memory rate limiter (per IP + route).
-// Not a replacement for a dedicated gateway, but helps protect critical endpoints.
-const _rateBuckets = new Map();
+// NOTE: route-level rate limiting is handled by src/systems/rateLimit.js.
 
 
 // Serve UI explicitly at / to avoid any edge cases with platform routers/static defaults
@@ -518,11 +574,11 @@ app.use('/api', rateLimit({ windowMs: 60_000, max: 600, keyPrefix: 'rl:api:' }))
 registerCoreRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
   rateLimit,
   recordAudit,
   getActorFromRequest,
   configManager,
-  io,
   status,
   getClient: () => _client,
   Infraction
@@ -546,6 +602,8 @@ registerAuthRoutes({
 registerGuildsRoutes({
   app,
   requireDashboardAuth,
+  requireGuildAccess,
+  requirePerm,
   getClient: () => _client,
   sanitizeId
 });
@@ -553,6 +611,8 @@ registerGuildsRoutes({
 registerUserRoutes({
   app,
   requireDashboardAuth,
+  requireGuildAccess,
+  requirePerm,
   getClient: () => _client,
   warningsService,
   infractionsService,
@@ -565,6 +625,7 @@ registerUserRoutes({
 registerTrustRoutes({
   app,
   requireDashboardAuth,
+  requireGuildAccess,
   UserModel,
   getTrustConfig,
   getTrustLabel
@@ -573,6 +634,8 @@ registerTrustRoutes({
 registerGameNewsRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   rateLimit,
   GameNewsFeed,
   GameNewsModel,
@@ -582,12 +645,15 @@ registerGameNewsRoutes({
   getActorFromRequest,
   recordAudit,
   GameNewsFeedSchema,
-  _getClient: () => _client
+  getClient: () => _client,
+  gameNewsStatusCache
 });
 
 registerModRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   rateLimit,
   sanitizeId,
   sanitizeText,
@@ -613,6 +679,8 @@ registerModRoutes({
 registerConfigRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   rateLimit,
   sanitizeId,
   GuildConfig,
@@ -623,6 +691,8 @@ registerConfigRoutes({
 registerLogsRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   rateLimit,
   sanitizeId,
   recordAudit,
@@ -636,6 +706,8 @@ registerLogsRoutes({
 registerCasesRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   rateLimit,
   sanitizeId,
   recordAudit,
@@ -647,6 +719,8 @@ registerCasesRoutes({
 registerTicketsRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   rateLimit,
   sanitizeText,
   getActorFromRequest,
@@ -658,6 +732,8 @@ registerTicketsRoutes({
 registerUsersRoutes({
   app,
   requireDashboardAuth,
+  requireGuildAccess,
+  requirePerm,
   getClient: () => _client,
   sanitizeId,
   guildMembersLastFetch,
@@ -668,58 +744,11 @@ registerUsersRoutes({
 registerCaseRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   sanitizeId,
   infractionsService,
   getClient: () => _client
-});
-
-
-
-
-io.use(async (socket, next) => {
-  try {
-    if (!isAuthEnabled()) return next();
-
-    const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error('Unauthorized'));
-
-    // Accept dashboard JWT tokens for Socket.IO connections
-    const user = await decodeDashboardToken(String(token).trim());
-    if (!user) return next(new Error('Unauthorized'));
-
-    socket.dashboardUser = user;
-    return next();
-  } catch (err) {
-    console.error('[Dashboard] Socket auth error:', err);
-    return next(new Error('Unauthorized'));
-  }
-});
-
-
-io.on('connection', (socket) => {
-  console.log('🔌 Dashboard client connected');
-
-  socket.emit('logs', logsCache);
-
-  socket.emit('gamenews_status', Array.isArray(gameNewsStatusCache) ? gameNewsStatusCache : []);
-
-  socket.emit('config', configManager.getPublicConfig());
-
-  socket.on('requestLogs', () => {
-    socket.emit('logs', logsCache);
-  });
-
-  socket.on('requestGameNewsStatus', () => {
-    socket.emit('gamenews_status', Array.isArray(gameNewsStatusCache) ? gameNewsStatusCache : []);
-  });
-
-  socket.on('requestConfig', () => {
-    socket.emit('config', configManager.getPublicConfig());
-  });
-
-  socket.on('disconnect', () => {
-    console.log('❌ Dashboard client disconnected');
-  });
 });
 
 async function saveLogToMongo(data) {
@@ -798,8 +827,6 @@ function sendToDashboard(event, data) {
     const maxMem = config.dashboard?.maxLogs ?? MAX_MEMORY_LOGS;
     if (logsCache.length > maxMem) logsCache.shift();
 
-    io.emit('logs', logsCache);
-
     saveLogToMongo(payload).catch(() => null);
 
     return;
@@ -808,8 +835,6 @@ function sendToDashboard(event, data) {
   if (event === 'gamenews_status') {
     const arr = Array.isArray(data) ? data : [];
     gameNewsStatusCache = arr;
-
-    io.emit('gamenews_status', gameNewsStatusCache);
     return;
   }
 }
@@ -821,6 +846,9 @@ dashboardBridge.setSender(sendToDashboard);
 registerAuditRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
+  sanitizeId,
   DashboardAudit
 });
 
@@ -828,6 +856,9 @@ registerAdminRoutes({
   app,
   express,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
+  sanitizeId,
   rateLimit,
   fetchChannel,
   configManager,
@@ -850,6 +881,8 @@ try {
 registerTempVoiceRoutes({
   app,
   requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
   sanitizeId,
   sanitizeText,
   GuildConfig,
@@ -898,7 +931,7 @@ app.use((err, req, res, next) => {
 // SPA fallback: serve the dashboard shell for unknown non-API routes.
 // Must be registered AFTER all API/health routes so it never hijacks JSON endpoints.
 // Express v5 (path-to-regexp v6) does NOT accept a bare "*" route pattern, so we use a regex.
-app.get(/^\/(?!api\/|socket\.io\/).*/, (req, res, next) => {
+app.get(/^\/(?!api\/).*/, (req, res, next) => {
   try {
     const p = req.path || '';
     // If it's a real asset path, let static handle it.

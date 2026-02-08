@@ -19,7 +19,7 @@ require('./events/interactionCreate')(client);
 require('./events/messageReactionAdd')(client);
 require('./events/voiceStateUpdate.tempVoice')(client);
 
-// Dashboard (Express + Socket.IO)
+// Dashboard (Express)
 const dashboard = require('./dashboard');
 
 // Allow dashboard to access the Discord client (for guild list, log tests, etc.)
