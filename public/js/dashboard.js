@@ -613,6 +613,9 @@ function setLang(newLang) {
       if (window.OzarkDashboard.loadModerationOverview) {
         window.OzarkDashboard.loadModerationOverview().catch(function () {});
       }
+      if (window.OzarkDashboard.loadCases) {
+        window.OzarkDashboard.loadCases({ reset: true }).catch(function () {});
+      }
       window.OzarkDashboard.loadLogs().catch(function () {});
     } else if (name === 'gamenews') {
       window.OzarkDashboard.loadGameNews().catch(function () {});
@@ -1499,8 +1502,8 @@ function setLang(newLang) {
         canViewConfig: true,
         canEditConfig: false,
         canManageUsers: false
-      }      if (allowedInput) allowedInput.value = '';
-);
+      });
+      if (allowedInput) allowedInput.value = '';
     }
 
     editor.classList.remove('hidden');

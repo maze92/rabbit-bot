@@ -20,6 +20,11 @@ let modTicketsRange = '7d';
 let modTicketsPage = 1;
 let modTicketsTotal = 0;
 
+// Cases (infractions)
+let casesPage = 1;
+let casesTotal = 0;
+let selectedCaseId = null;
+
   
 
 
@@ -326,6 +331,200 @@ async function loadLogs() {
     });
   }
 
+  // -----------------------------
+  // Cases (lista + detalhe)
+  // -----------------------------
+
+  function renderCases(items, append) {
+    const listEl = document.getElementById('casesList');
+    if (!listEl) return;
+
+    if (!append) listEl.innerHTML = '';
+
+    if (!items || !items.length) {
+      if (!append) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = t('cases_empty');
+        listEl.appendChild(empty);
+      }
+      return;
+    }
+
+    items.forEach(function (it) {
+      const row = document.createElement('div');
+      row.className = 'list-item';
+      const caseId = (it.caseId !== undefined && it.caseId !== null) ? String(it.caseId) : '';
+      row.dataset.caseId = caseId;
+
+      const type = String(it.type || '').toUpperCase();
+      const userTag = it.userTag || it.userId || '—';
+      const moderatorTag = it.executorTag || it.moderatorId || '—';
+      const reason = it.reason || t('common_no_reason_provided');
+      const when = it.createdAt ? new Date(it.createdAt).toLocaleString() : '';
+
+      row.innerHTML =
+        '<div class="title">' +
+        escapeHtml((caseId ? ('#' + caseId + ' ') : '') + type) +
+        '</div>' +
+        '<div class="subtitle">' +
+        escapeHtml(String(userTag)) +
+        ' • ' +
+        escapeHtml(String(moderatorTag)) +
+        (when ? (' • ' + escapeHtml(when)) : '') +
+        '</div>' +
+        '<div class="subtitle" style="margin-top:4px;">' + escapeHtml(String(reason)) + '</div>';
+
+      if (selectedCaseId && caseId && String(selectedCaseId) === String(caseId)) {
+        row.classList.add('active');
+      }
+
+      row.addEventListener('click', function () {
+        if (!caseId) return;
+        selectedCaseId = caseId;
+        // highlight
+        listEl.querySelectorAll('.list-item').forEach(function (el) {
+          el.classList.toggle('active', el === row);
+        });
+        loadCaseDetail(caseId).catch(function () {});
+      });
+
+      listEl.appendChild(row);
+    });
+  }
+
+  async function loadCases(opts) {
+    opts = opts || {};
+    const reset = !!opts.reset;
+
+    const listEl = document.getElementById('casesList');
+    const searchEl = document.getElementById('casesSearch');
+    const typeEl = document.getElementById('casesType');
+    const limitEl = document.getElementById('casesLimit');
+    const btnLoadMore = document.getElementById('btnCasesLoadMore');
+
+    if (!listEl || !btnLoadMore) return;
+
+    if (!state.guildId) {
+      listEl.innerHTML = '';
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = t('warn_select_guild');
+      listEl.appendChild(empty);
+      btnLoadMore.style.display = 'none';
+      btnLoadMore.disabled = true;
+      casesPage = 1;
+      casesTotal = 0;
+      selectedCaseId = null;
+      const detail = document.getElementById('caseDetailContent');
+      if (detail) detail.innerHTML = `<div class="empty">${escapeHtml(t('cases_detail_empty'))}</div>`;
+      return;
+    }
+
+    if (reset) {
+      casesPage = 1;
+      casesTotal = 0;
+    }
+
+    let limit = 50;
+    if (limitEl && limitEl.value) {
+      const n = Number(limitEl.value);
+      if (Number.isFinite(n) && n > 0) limit = n;
+    }
+
+    const q = searchEl && searchEl.value ? searchEl.value.toString().trim() : '';
+    const type = typeEl && typeEl.value ? typeEl.value.toString().trim() : '';
+
+    btnLoadMore.disabled = true;
+
+    return window.OzarkDashboard.withLoading(async function () {
+      if (reset) {
+        listEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_loading'))}</div>`;
+      }
+
+      const params = [];
+      params.push('guildId=' + encodeURIComponent(state.guildId));
+      params.push('limit=' + encodeURIComponent(String(limit)));
+      params.push('page=' + encodeURIComponent(String(casesPage)));
+      if (q) params.push('q=' + encodeURIComponent(q));
+      if (type) params.push('type=' + encodeURIComponent(type));
+
+      const res = await apiGet('/cases?' + params.join('&'));
+      const items = (res && res.items) || [];
+      const total = (res && typeof res.total === 'number') ? res.total : items.length;
+      casesTotal = total;
+
+      renderCases(items, !reset);
+
+      const hasMore = (casesPage * limit) < total;
+      btnLoadMore.style.display = hasMore ? '' : 'none';
+      btnLoadMore.disabled = !hasMore;
+    }, {
+      onError: function (err) {
+        listEl.innerHTML = '';
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = (err && err.apiMessage) ? err.apiMessage : t('cases_error_generic');
+        listEl.appendChild(empty);
+        btnLoadMore.style.display = 'none';
+        btnLoadMore.disabled = true;
+      }
+    }).finally(function () {
+      // If hasMore, enabled already; if not, we keep disabled.
+      if (btnLoadMore.style.display !== 'none') {
+        btnLoadMore.disabled = false;
+      }
+    });
+  }
+
+  async function loadCaseDetail(caseId) {
+    const detailEl = document.getElementById('caseDetailContent');
+    if (!detailEl) return;
+
+    if (!state.guildId || !caseId) {
+      detailEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_detail_empty'))}</div>`;
+      return;
+    }
+
+    detailEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_detail_loading'))}</div>`;
+    try {
+      const res = await apiGet(
+        '/case?guildId=' +
+          encodeURIComponent(state.guildId) +
+          '&caseId=' +
+          encodeURIComponent(String(caseId))
+      );
+      const item = (res && res.item) || null;
+      if (!item) {
+        detailEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_detail_error'))}</div>`;
+        return;
+      }
+
+      const type = String(item.type || '').toUpperCase();
+      const user = item.userTag || item.userId || '—';
+      const mod = item.moderatorTag || item.executorTag || item.moderatorId || '—';
+      const reason = item.reason || t('common_no_reason_provided');
+      const when = item.createdAt ? new Date(item.createdAt).toLocaleString() : '—';
+      const source = item.source || '—';
+      const duration = item.durationMs ? (Math.round(Number(item.durationMs) / 1000) + 's') : null;
+
+      detailEl.innerHTML =
+        '<div class="field">' +
+        '<div class="subtitle"><strong>' + escapeHtml('#' + String(item.caseId || caseId)) + '</strong></div>' +
+        '<div class="hint" style="margin-top:4px;">' + escapeHtml(type) + '</div>' +
+        '</div>' +
+        '<div class="field"><div class="hint">' + escapeHtml(t('cases_detail_field_user')) + '</div><div class="subtitle">' + escapeHtml(String(user)) + '</div></div>' +
+        '<div class="field"><div class="hint">' + escapeHtml(t('cases_detail_field_moderator')) + '</div><div class="subtitle">' + escapeHtml(String(mod)) + '</div></div>' +
+        '<div class="field"><div class="hint">' + escapeHtml(t('cases_detail_field_when')) + '</div><div class="subtitle">' + escapeHtml(String(when)) + '</div></div>' +
+        '<div class="field"><div class="hint">' + escapeHtml(t('cases_detail_field_source')) + '</div><div class="subtitle">' + escapeHtml(String(source)) + '</div></div>' +
+        (duration ? ('<div class="field"><div class="hint">' + escapeHtml(t('cases_detail_field_duration')) + '</div><div class="subtitle">' + escapeHtml(duration) + '</div></div>') : '') +
+        '<div class="field"><div class="hint">' + escapeHtml(t('cases_detail_field_reason')) + '</div><div class="subtitle">' + escapeHtml(String(reason)) + '</div></div>';
+    } catch (err) {
+      console.error('Failed to load case detail', err);
+      detailEl.innerHTML = `<div class="empty">${escapeHtml((err && err.apiMessage) || t('cases_detail_error'))}</div>`;
+    }
+  }
+
 
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -424,10 +623,44 @@ if (btnLogsLoadMore) {
   });
 }
 
+    // Cases controls
+    const btnReloadCases = document.getElementById('btnReloadCases');
+    const btnCasesLoadMore = document.getElementById('btnCasesLoadMore');
+    const casesSearch = document.getElementById('casesSearch');
+    const casesType = document.getElementById('casesType');
+    const casesLimit = document.getElementById('casesLimit');
+
+    if (btnReloadCases) {
+      btnReloadCases.addEventListener('click', function () {
+        selectedCaseId = null;
+        loadCases({ reset: true }).catch(function () {});
+      });
+    }
+    if (btnCasesLoadMore) {
+      btnCasesLoadMore.addEventListener('click', function () {
+        casesPage += 1;
+        loadCases({ reset: false }).catch(function () {});
+      });
+    }
+
+    // Auto reload on search/type/limit changes (debounced)
+    let casesSearchT = null;
+    function scheduleCasesReload() {
+      if (casesSearchT) clearTimeout(casesSearchT);
+      casesSearchT = setTimeout(function () {
+        casesPage = 1;
+        loadCases({ reset: true }).catch(function () {});
+      }, 300);
+    }
+    if (casesSearch) casesSearch.addEventListener('input', scheduleCasesReload);
+    if (casesType) casesType.addEventListener('change', scheduleCasesReload);
+    if (casesLimit) casesLimit.addEventListener('change', scheduleCasesReload);
+
   });
 
 
 // Substituir as funções no namespace pela versão deste módulo
   D.loadLogs = loadLogs;
   D.loadModerationOverview = loadModerationOverview;
+  D.loadCases = loadCases;
 })();

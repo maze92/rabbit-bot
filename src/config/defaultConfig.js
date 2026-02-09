@@ -140,7 +140,9 @@ const baseConfig = {
     maxDbLogs: 1000,
     requireAuth: true,
     // Lista de origens permitidas para o Socket.IO (dashboard).
-    allowedOrigins: ['https://rabbit-bot.koyeb.app', 'https://ozark-bot.koyeb.app'],
+    // Production dashboard origin(s). Keep this list tight.
+    // If you change your Koyeb domain, update this value or set DASHBOARD_ORIGIN.
+    allowedOrigins: ['https://rabbit-bot.koyeb.app'],
     // Canal global de logs do Dashboard (fallback, caso a guild ainda não tenha dashboardLogChannelId definido)
     dashboardLogsChannelId: process.env.DASHBOARD_LOG_CHANNEL_ID || null
   },

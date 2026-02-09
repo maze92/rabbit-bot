@@ -1,3 +1,9 @@
+## 1.2.9
+- Dashboard (CORS): origem de produção ajustada para `https://rabbit-bot.koyeb.app` (remove legado `ozark-bot.koyeb.app`).
+- Moderação (Dashboard): nova secção **Casos** (lista + detalhe) usando `/api/cases` e `/api/case`.
+- Frontend: correção de bug de sintaxe no editor de utilizadores da dashboard (allowedGuildIds reset).
+- Cache bust: versão dos assets atualizada para evitar servir JS/CSS antigos.
+
 ## 1.2.8
 - Infractions: schema alinhado com o serviço (caseId, source, userTag/executorTag) + índices úteis (inclui unique por guild+caseId).
 - Cases API: pesquisa e filtros corrigidos para usar campos reais (reason/tags/ids/type/source/caseId).
