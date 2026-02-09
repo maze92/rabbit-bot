@@ -376,7 +376,8 @@ const allowedOrigins = (Array.isArray(config.dashboard?.allowedOrigins) && confi
       .filter(Boolean)
 );
 
-const isProd = process.env.NODE_ENV === 'production';
+// isProd already defined above
+
 
 // In production, do NOT fall back to permissive CORS unless explicitly allowed.
 // This prevents a common misconfiguration where the API is callable from any website.
