@@ -18,6 +18,7 @@
 let modServerRange = '7d';
 let modTicketsRange = '7d';
 let modTicketsPage = 1;
+let modTicketsTotal = 0;
 
   
 
@@ -269,6 +270,8 @@ async function loadLogs() {
             .then(function (resTickets) {
               ticketsList.innerHTML = '';
               const rawItems = (resTickets && resTickets.items) || [];
+              const total = (resTickets && typeof resTickets.total === 'number') ? resTickets.total : rawItems.length;
+              modTicketsTotal = total;
 
               // Backend now supports `since` filtering, but keep a defensive fallback.
               const cutoff = Date.parse(sinceIso);
@@ -300,6 +303,13 @@ async function loadLogs() {
                   ticketsList.appendChild(li);
                 });
               }
+
+              // Update pagination buttons (avoid “dead” clicks)
+              const btnPrev = document.getElementById('modTicketsPrevPage');
+              const btnNext = document.getElementById('modTicketsNextPage');
+              const pageSize = 4;
+              if (btnPrev) btnPrev.disabled = modTicketsPage <= 1;
+              if (btnNext) btnNext.disabled = (modTicketsPage * pageSize) >= total;
             })
             .catch(function (err) {
               console.error('Failed to load moderation tickets panel', err);

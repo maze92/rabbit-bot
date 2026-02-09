@@ -29,15 +29,16 @@ function registerCaseRoutes({
       const item = await infractionsService.getCase(guildId, caseId);
       if (!item) return res.status(404).json({ ok: false, error: 'Case not found' });
 
-      let userTag = null;
-      let moderatorTag = null;
+      let userTag = item.userTag || null;
+      let moderatorTag = item.executorTag || null;
 
       const client = typeof getClient === 'function' ? getClient() : null;
-      if (client) {
-        const u = await client.users.fetch(item.userId).catch(() => null);
-        const m = await client.users.fetch(item.moderatorId).catch(() => null);
-        userTag = u?.tag || null;
-        moderatorTag = m?.tag || null;
+      // Only fetch from Discord if the snapshot tags are missing (keeps endpoint fast).
+      if (client && (!userTag || !moderatorTag)) {
+        const u = !userTag ? await client.users.fetch(item.userId).catch(() => null) : null;
+        const m = !moderatorTag ? await client.users.fetch(item.moderatorId).catch(() => null) : null;
+        if (!userTag) userTag = u?.tag || u?.username || null;
+        if (!moderatorTag) moderatorTag = m?.tag || m?.username || null;
       }
 
       return res.json({

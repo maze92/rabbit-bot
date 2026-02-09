@@ -31,6 +31,13 @@ const dashboardUserSchema = new Schema(
       canViewConfig: { type: Boolean, default: false },
       canEditConfig: { type: Boolean, default: false },
       canManageUsers: { type: Boolean, default: false }
+    },
+
+    // Optional allow-list of guild IDs this dashboard user may access.
+    // If empty/undefined, the user can access all guilds the bot is in.
+    allowedGuildIds: {
+      type: [String],
+      default: undefined
     }
   },
   {

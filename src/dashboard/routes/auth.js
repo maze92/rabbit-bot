@@ -5,6 +5,42 @@ function registerAuthRoutes(ctx) {
 
   const loginLimiter = rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'rl:auth:login:' });
 
+// Usernames for dashboard auth should be simple and predictable to avoid UX/security issues.
+function normalizeUsername(raw) {
+  if (typeof raw !== 'string') return '';
+  const s = sanitizeText(raw, { maxLen: 32, stripHtml: true }).toLowerCase();
+  // Allow letters, digits, dot, underscore, dash. Trim anything else.
+  const cleaned = s.replace(/[^a-z0-9._-]/g, '');
+  return cleaned;
+}
+
+function parseAllowedGuildIds(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const v of raw) {
+    const s = typeof v === 'string' ? v : (v == null ? '' : String(v));
+    const id = s.replace(/\D/g, '').slice(0, 20);
+    if (id && !out.includes(id)) out.push(id);
+    if (out.length >= 200) break;
+  }
+  return out;
+}
+
+const PERMISSION_KEYS = Object.freeze([
+  ...Object.keys(ADMIN_PERMISSIONS || {}),
+  'canManageUsers'
+]);
+
+function normalizePermissions(raw) {
+  if (!raw || typeof raw !== 'object') return {};
+  const out = {};
+  for (const k of PERMISSION_KEYS) {
+    if (raw[k] === true) out[k] = true;
+  }
+  return out;
+}
+
+
 app.post('/api/auth/login', express.json(), loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body || {};
@@ -13,7 +49,7 @@ app.post('/api/auth/login', express.json(), loginLimiter, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'MISSING_CREDENTIALS' });
     }
 
-    const safeUsername = sanitizeText(username, { maxLen: 64, stripHtml: true });
+    const safeUsername = normalizeUsername(username);
     const safePassword = password;
     console.log('[Dashboard Auth] Login attempt', safeUsername);
 
@@ -127,22 +163,35 @@ app.post('/api/auth/users', requireDashboardAuth, express.json(), async (req, re
   }
 
   try {
-    const { username, password, role, permissions } = req.body || {};
-    if (!username || !password) {
+    const { username, password, role, permissions, allowedGuildIds } = req.body || {};
+
+    if (typeof username !== 'string' || typeof password !== 'string') {
       return res.status(400).json({ ok: false, error: 'MISSING_FIELDS' });
     }
 
-    const existing = await DashboardUserModel.findOne({ username }).lean();
+    const safeUsername = normalizeUsername(username);
+    if (!safeUsername || safeUsername.length < 3) {
+      return res.status(400).json({ ok: false, error: 'INVALID_USERNAME' });
+    }
+
+    // Basic password policy (dashboard-only, not Discord)
+    if (password.length < 8 || password.length > 128) {
+      return res.status(400).json({ ok: false, error: 'WEAK_PASSWORD' });
+    }
+
+    const existing = await DashboardUserModel.findOne({ username: safeUsername }).lean();
     if (existing) {
       return res.status(409).json({ ok: false, error: 'USERNAME_EXISTS' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+
     const user = await DashboardUserModel.create({
-      username,
+      username: safeUsername,
       passwordHash,
       role: role === 'ADMIN' ? 'ADMIN' : 'MOD',
-      permissions: permissions || {}
+      permissions: normalizePermissions(permissions),
+      allowedGuildIds: parseAllowedGuildIds(allowedGuildIds)
     });
 
     return res.json({
@@ -151,7 +200,8 @@ app.post('/api/auth/users', requireDashboardAuth, express.json(), async (req, re
         id: user._id,
         username: user.username,
         role: user.role,
-        permissions: user.permissions
+        permissions: user.permissions,
+        allowedGuildIds: Array.isArray(user.allowedGuildIds) ? user.allowedGuildIds : []
       }
     });
   } catch (err) {
@@ -159,6 +209,7 @@ app.post('/api/auth/users', requireDashboardAuth, express.json(), async (req, re
     return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
   }
 });
+
 
 app.patch('/api/auth/users/:id', requireDashboardAuth, express.json(), async (req, res) => {
   const u = req.dashboardUser;
@@ -170,14 +221,22 @@ app.patch('/api/auth/users/:id', requireDashboardAuth, express.json(), async (re
 
   try {
     const userId = req.params.id;
-    const { role, permissions } = req.body || {};
+    const { role, permissions, allowedGuildIds } = req.body || {};
 
     const update = {};
     if (role && (role === 'ADMIN' || role === 'MOD')) {
       update.role = role;
     }
     if (permissions && typeof permissions === 'object') {
-      update.permissions = permissions;
+      update.permissions = normalizePermissions(permissions);
+    }
+    if (Array.isArray(allowedGuildIds)) {
+      update.allowedGuildIds = parseAllowedGuildIds(allowedGuildIds);
+    }
+
+    // Avoid empty $set (Mongo treats it as no-op, but keep it explicit)
+    if (!Object.keys(update).length) {
+      return res.status(400).json({ ok: false, error: 'NO_CHANGES' });
     }
 
     const updated = await DashboardUserModel.findByIdAndUpdate(
@@ -196,6 +255,7 @@ app.patch('/api/auth/users/:id', requireDashboardAuth, express.json(), async (re
     return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
   }
 });
+
 
 app.delete('/api/auth/users/:id', requireDashboardAuth, async (req, res) => {
   const u = req.dashboardUser;

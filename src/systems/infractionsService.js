@@ -47,6 +47,10 @@ async function create({ guild, user, moderator, type, reason, duration = null, s
 
   const caseId = await allocateCaseId(guild.id).catch(() => null);
 
+  // Discord usernames/tags can change; store a snapshot for dashboard search/history.
+  const userTag = user?.tag || user?.username || null;
+  const executorTag = moderator?.tag || moderator?.username || null;
+
   const doc = await Infraction.create({
     caseId,
     guildId: guild.id,
@@ -55,7 +59,9 @@ async function create({ guild, user, moderator, type, reason, duration = null, s
     type,
     reason: reason || 'No reason provided',
     duration: duration ?? null,
-    source: source || 'unknown'
+    source: source || 'unknown',
+    userTag,
+    executorTag
   });
 
   try {

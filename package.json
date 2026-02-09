@@ -1,6 +1,6 @@
 {
   "name": ".rabbit",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "Discord moderation bot with integrated web dashboard, Trust Score system and RSS integration (.rabbit)",
   "main": "src/index.js",
   "scripts": {

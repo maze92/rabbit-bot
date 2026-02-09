@@ -219,8 +219,6 @@ window.OzarkLocales.en = {
   'overview_error_generic': 'Failed to load overview.',
   'overview_hint': 'Quick summary of bot status, connected servers, and recent activity.',
   'overview_title': 'Overview',
-  'range_1y': '1y',
-  'range_24h': '24h',
   'range_14d': '14d',
   'range_30d': '30d',
   'range_7d': '7d',
@@ -359,6 +357,8 @@ window.OzarkLocales.en = {
   'gamenews_detail_unsaved': "Unsaved changes on this feed.",
   'gamenews_unsaved_changes_notice': "You have unsaved changes on another feed.",
   'gamenews_test_autosave': "Unsaved changes. Saving before testing...",
+  'config_dashboard_users_allowed_guilds': 'Allowed guild IDs',
+  'config_dashboard_users_allowed_guilds_hint': 'Optional. If set, this user can only manage those servers (IDs separated by commas).',
+  'config_dashboard_users_allowed_guilds_badge': 'Guilds: {count}'
 };
 
-//test

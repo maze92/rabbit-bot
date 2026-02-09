@@ -180,11 +180,13 @@ const CasesSearchQuerySchema = z.object({
   limit: z.string().regex(/^\d+$/).optional()
 });
 
+// Logs endpoint supports optional guildId (some panels show “select guild” states).
+// Keep it permissive and validate semantics in the route when needed.
 const LogsQuerySchema = z.object({
-  guildId: z.string().min(1).max(32),
+  guildId: z.string().min(1).max(32).optional(),
   page: z.string().regex(/^\d+$/).optional(),
   limit: z.string().regex(/^\d+$/).optional()
-});
+}).passthrough();
 
 // NOTE: This schema validates each feed item received from the dashboard.
 // The UI may send forward-compatible fields (e.g., `language`).
@@ -358,6 +360,12 @@ if (!isProd && !process.env.DASHBOARD_JWT_SECRET) {
 
 const server = http.createServer(app);
 
+// App hardening (dashboard)
+app.disable('x-powered-by');
+
+// Behind reverse proxies (Koyeb), trust the first hop so req.ip and protocol are correct.
+app.set('trust proxy', 1);
+
 // Basic security headers for dashboard API
 // We disable the default CSP for now to avoid breaking inline scripts/styles.
 const allowedOrigins = (Array.isArray(config.dashboard?.allowedOrigins) && config.dashboard.allowedOrigins.length > 0
@@ -368,15 +376,43 @@ const allowedOrigins = (Array.isArray(config.dashboard?.allowedOrigins) && confi
       .filter(Boolean)
 );
 
-if (!allowedOrigins.length) {
-  console.warn('[Dashboard] No explicit CORS origins configured. Falling back to permissive CORS behaviour. Configure DASHBOARD_ORIGIN or dashboard.allowedOrigins for production.');
+const isProd = process.env.NODE_ENV === 'production';
+
+// In production, do NOT fall back to permissive CORS unless explicitly allowed.
+// This prevents a common misconfiguration where the API is callable from any website.
+if (isProd && !allowedOrigins.length && process.env.DASHBOARD_ALLOW_ANY_ORIGIN !== 'true') {
+  console.warn('[Dashboard] CORS is not configured. Set DASHBOARD_ORIGIN (recommended) or dashboard.allowedOrigins. Refusing cross-origin requests in production.');
 }
 
 app.use(helmet({ contentSecurityPolicy: false }));
 
-app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : undefined, credentials: false }));
+// CORS: allow only configured origins in production (unless explicitly overridden).
+// If allowedOrigins is empty:
+//  - dev: allow all origins (DX)
+//  - prod: deny cross-origin (still allows same-origin requests because browsers omit Origin on same-origin navigations only for some requests; XHR/fetch includes Origin even on same-origin, so you should configure DASHBOARD_ORIGIN)
+const corsOptions = {
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);
+
+    if (!allowedOrigins.length) {
+      if (!isProd) return cb(null, true);
+      if (process.env.DASHBOARD_ALLOW_ANY_ORIGIN === 'true') return cb(null, true);
+      return cb(null, false);
+    }
+
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(null, false);
+  },
+  credentials: false
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '256kb' }));
+
+// Baseline API rate limiting (endpoint-specific limiters still apply)
+app.use('/api', rateLimit({ windowMs: 60_000, max: 600, keyPrefix: 'rl:api:' }));
+
 
 const MAX_MEMORY_LOGS = config.dashboard?.maxLogs ?? 200; // initial, runtime may override
 let logsCache = [];

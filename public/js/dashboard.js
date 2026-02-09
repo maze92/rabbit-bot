@@ -237,11 +237,22 @@ const API_BASE = '/api';
       body: JSON.stringify(body || {}),
       signal: opts.signal
     });
+    let payload = null;
+    try {
+      payload = await res.json();
+    } catch (e) {
+      payload = null;
+    }
     if (!res.ok) {
       handleAuthError(res.status);
-      throw new Error(`HTTP ${res.status} for ${path}`);
+      const msg = payload && (payload.error || payload.message);
+      const err = new Error(msg || `HTTP ${res.status} for ${path}`);
+      err.status = res.status;
+      if (msg) err.apiMessage = msg;
+      err.payload = payload;
+      throw err;
     }
-    return res.json();
+    return payload;
   }
 
   async function apiPatch(path, body, options) {
@@ -1411,6 +1422,23 @@ function setLang(newLang) {
     };
   }
 
+  function parseAllowedGuildIdsText(raw) {
+    if (!raw) return [];
+    var parts = String(raw).split(',');
+    var out = [];
+    parts.forEach(function (p) {
+      var s = (p || '').trim();
+      if (!s) return;
+      // Accept mentions or mixed text; keep digits only.
+      s = s.replace(/\D/g, '');
+      if (!s) return;
+      if (out.indexOf(s) === -1) out.push(s);
+    });
+    return out.slice(0, 200);
+  }
+
+  
+
   function openDashboardUserEditor(user) {
     var editor = document.getElementById('dashboardUsersEditor');
     if (!editor) return;
@@ -1420,6 +1448,7 @@ function setLang(newLang) {
     var passwordInput = document.getElementById('dashboardUserPassword');
     var passwordHint = document.getElementById('dashboardUserPasswordHint');
     var roleSelect = document.getElementById('dashboardUserRole');
+    var allowedInput = document.getElementById('dashboardUserAllowedGuilds');
 
     state.dashboardUsersEditingId = user && user.id ? String(user.id) : null;
 
@@ -1441,6 +1470,10 @@ function setLang(newLang) {
         roleSelect.value = user.role === 'ADMIN' ? 'ADMIN' : 'MOD';
       }
       setDashboardUserPermInputs(user.permissions || {});
+      if (allowedInput) {
+        var ag = Array.isArray(user.allowedGuildIds) ? user.allowedGuildIds : [];
+        allowedInput.value = ag.join(', ');
+      }
     } else {
       if (titleEl) titleEl.textContent = t('config_dashboard_users_editor_new_title');
       if (usernameInput) {
@@ -1466,7 +1499,8 @@ function setLang(newLang) {
         canViewConfig: true,
         canEditConfig: false,
         canManageUsers: false
-      });
+      }      if (allowedInput) allowedInput.value = '';
+);
     }
 
     editor.classList.remove('hidden');
@@ -1532,6 +1566,12 @@ function setLang(newLang) {
         meta.appendChild(permsSpan);
       }
 
+      if (Array.isArray(u.allowedGuildIds) && u.allowedGuildIds.length) {
+        var gSpan = document.createElement('span');
+        gSpan.textContent = t('config_dashboard_users_allowed_guilds_badge', { count: u.allowedGuildIds.length });
+        meta.appendChild(gSpan);
+      }
+
       main.appendChild(usernameEl);
       main.appendChild(meta);
 
@@ -1567,6 +1607,7 @@ function setLang(newLang) {
   async function loadDashboardUsers() {
     var listEl = document.getElementById('dashboardUsersList');
     var statusEl = document.getElementById('dashboardUsersStatus');
+    var allowedInput = document.getElementById('dashboardUserAllowedGuilds');
     var addBtn = document.getElementById('btnDashboardUsersAdd');
     var editor = document.getElementById('dashboardUsersEditor');
     if (!listEl) return;
@@ -1612,7 +1653,9 @@ function setLang(newLang) {
     var usernameInput = document.getElementById('dashboardUserUsername');
     var passwordInput = document.getElementById('dashboardUserPassword');
     var roleSelect = document.getElementById('dashboardUserRole');
+    var allowedInput = document.getElementById('dashboardUserAllowedGuilds');
     var statusEl = document.getElementById('dashboardUsersStatus');
+    var allowedInput = document.getElementById('dashboardUserAllowedGuilds');
 
     var role = roleSelect ? roleSelect.value : 'MOD';
     var perms = getDashboardUserPermInputs();
@@ -1622,6 +1665,8 @@ function setLang(newLang) {
       role: role === 'ADMIN' ? 'ADMIN' : 'MOD',
       permissions: perms
     };
+
+    payload.allowedGuildIds = parseAllowedGuildIdsText(allowedInput ? allowedInput.value : '');
 
     try {
       if (!editingId) {
@@ -1659,6 +1704,7 @@ function setLang(newLang) {
   async function confirmDeleteDashboardUser(user) {
     if (!user || !user.id) return;
     var statusEl = document.getElementById('dashboardUsersStatus');
+    var allowedInput = document.getElementById('dashboardUserAllowedGuilds');
     var msg =
       t('config_dashboard_users_delete_confirm');
     if (!window.confirm(msg)) return;

@@ -1,3 +1,10 @@
+## 1.2.8
+- Infractions: schema alinhado com o serviço (caseId, source, userTag/executorTag) + índices úteis (inclui unique por guild+caseId).
+- Cases API: pesquisa e filtros corrigidos para usar campos reais (reason/tags/ids/type/source/caseId).
+- Case API: usa tags guardadas (snapshot) e só faz fetch ao Discord quando necessário.
+- Logs API: validação Zod agora aceita `guildId` opcional (evita 400 em estados “sem servidor selecionado”).
+- Dashboard (Moderação): paginação do painel de tickets não permite “cliques mortos” (prev/next desativados conforme total).
+
 ## 1.2.7
 - Moderação (Server Insights): ranges ajustados para 7d/14d/30d (mantém compatibilidade com 24h/1y se algum cliente antigo usar).
 - Moderação (Server Insights): métricas passam a usar **Infractions** como fonte de verdade (WARN/MUTE), sem parsing frágil de logs.

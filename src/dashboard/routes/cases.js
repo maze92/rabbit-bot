@@ -50,13 +50,25 @@ function registerCasesRoutes(opts) {
       if (type) query.type = type;
       if (source) query.source = source;
 
-      if (q) {
-        const s = q.toString();
-        query.$or = [
-          { reason: { $regex: s, $options: 'i' } },
-          { userTag: { $regex: s, $options: 'i' } },
-          { executorTag: { $regex: s, $options: 'i' } }
-        ];
+      // q supports: caseId (numeric) or free text (reason/tags/ids)
+      const qText = (q || '').toString().trim();
+      if (qText) {
+        const maybeCaseId = parseInt(qText, 10);
+        if (Number.isFinite(maybeCaseId) && maybeCaseId > 0) {
+          query.caseId = maybeCaseId;
+        } else {
+          // Prefer text index when available. If not present, Mongo will ignore $text and return 0.
+          // Keep a regex fallback for environments where indexes are not built yet.
+          query.$or = [
+            { reason: { $regex: qText, $options: 'i' } },
+            { userTag: { $regex: qText, $options: 'i' } },
+            { executorTag: { $regex: qText, $options: 'i' } },
+            { userId: { $regex: qText, $options: 'i' } },
+            { moderatorId: { $regex: qText, $options: 'i' } },
+            { type: { $regex: qText, $options: 'i' } },
+            { source: { $regex: qText, $options: 'i' } }
+          ];
+        }
       }
 
       const total = await Infraction.countDocuments(query);

@@ -219,8 +219,6 @@ window.OzarkLocales.pt = {
   'overview_error_generic': 'Não foi possível carregar a visão geral.',
   'overview_hint': 'Resumo rápido do estado do bot, servidores ligados e atividade recente.',
   'overview_title': 'Visão geral',
-  'range_1y': '1 ano',
-  'range_24h': '24h',
   'range_14d': '14d',
   'range_30d': '30d',
   'range_7d': '7d',
@@ -359,4 +357,7 @@ window.OzarkLocales.pt = {
   'gamenews_detail_unsaved': "Alterações por guardar neste feed.",
   'gamenews_unsaved_changes_notice': "Tens alterações por guardar noutro feed.",
   'gamenews_test_autosave': "Alterações por guardar. A guardar antes do teste...",
+  'config_dashboard_users_allowed_guilds': 'IDs de servidores permitidos',
+  'config_dashboard_users_allowed_guilds_hint': 'Opcional. Se preenchido, este utilizador só consegue gerir esses servidores (IDs separados por vírgula).',
+  'config_dashboard_users_allowed_guilds_badge': 'Servidores: {count}'
 };
