@@ -1,3 +1,14 @@
+## 1.3.1
+- Staff roles (feature-based): enforcement consistente nos slash commands de moderação e no sistema de ticket threads (usa `staffRolesByFeature` quando configurado).
+- /help: correção do bug de permissões (o check estava assíncrono e nunca bloqueava).
+- Staff roles: cache TTL (30s) para reduzir leituras repetidas de GuildConfig.
+- Config: removido legado `STAFF_ROLE_IDS` e `tickets.staffRoleIds` do defaultConfig (não eram usados em runtime).
+
+## 1.3.0
+- Configuração (Dashboard): UX refeita para selecção de cargos de staff (chips + adicionar/remover) em vez de multi-select difícil.
+- Configuração: presets “Aplicar a todas as secções” e “Limpar overrides” agora atualizam imediatamente a UI dos chips.
+- i18n: novas chaves para o role picker (PT/EN).
+
 ## 1.2.9
 - Dashboard (CORS): origem de produção ajustada para `https://rabbit-bot.koyeb.app` (remove legado `ozark-bot.koyeb.app`).
 - Moderação (Dashboard): nova secção **Casos** (lista + detalhe) usando `/api/cases` e `/api/case`.
