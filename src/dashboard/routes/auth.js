@@ -190,16 +190,30 @@ function registerAuthRoutes(ctx) {
     if (!guild) return null;
 
     const member = await guild.members.fetch(String(userId)).catch(() => null);
-    if (!member) return null;
+
+    // We already validated owner/admin via the OAuth guild list when creating allowedGuildIds.
+    // If member fetch fails (missing privileged intents, transient REST error), we still allow minting
+    // a scoped token for this guild to avoid locking out legitimate admins.
 
     // Validate owner/admin again using live guild member data.
     const isOwner = String(guild.ownerId || '') === String(userId);
     let isAdmin = false;
     try {
+      // discord.js v14 expects a PermissionResolvable; use the canonical bit flag if available.
+      const { PermissionFlagsBits, PermissionsBitField } = require('discord.js');
+      const ADMIN_FLAG =
+        (PermissionFlagsBits && PermissionFlagsBits.Administrator) ||
+        (PermissionsBitField && PermissionsBitField.Flags && PermissionsBitField.Flags.Administrator) ||
+        'Administrator';
       isAdmin = member.permissions && typeof member.permissions.has === 'function'
-        ? member.permissions.has('Administrator')
+        ? member.permissions.has(ADMIN_FLAG)
         : false;
     } catch { isAdmin = false; }
+
+    if (!member && !isOwner) {
+      // Fallback: allow-list already guaranteed owner/admin at login time.
+      isAdmin = true;
+    }
 
     if (!isOwner && !isAdmin) return null;
 
