@@ -177,7 +177,25 @@ const API_BASE = '/api';
   async function ensureGuildScopedToken(guildId) {
     if (!guildId) return true;
     var raw = getToken();
-    if (!raw) return false;
+
+    // If token is not in localStorage (e.g. stored in HttpOnly cookie),
+    // fall back to /auth/me state and attempt to mint a scoped token.
+    if (!raw) {
+      if (state.me && state.me.selectedGuildId === guildId && state.me.profile && state.me.profile !== 'UNSCOPED') {
+        return true;
+      }
+      try {
+        var res0 = await apiPost('/auth/select-guild', { guildId: guildId });
+        if (res0 && res0.ok && res0.token) {
+          setToken(res0.token);
+          await loadMe().catch(function () {});
+          return true;
+        }
+        return false;
+      } catch (e0) {
+        return false;
+      }
+    }
 
     var payload = decodeJwtPayload(raw);
     if (!payload || payload.t !== 'oauth') return true;
@@ -218,10 +236,11 @@ const API_BASE = '/api';
     if (status === 401) {
       clearToken();
       try {
-        // Sessão expirada ou token inválido: recarrega para voltar ao ecrã de login.
-        window.location.reload();
+        // Sessão expirada ou token inválido: mostra o ecrã de login.
+        // Evitamos reload em loop (especialmente quando o token está num cookie HttpOnly).
+        if (typeof showLogin === 'function') showLogin();
       } catch (e) {
-        console.error('Failed to reload after 401', e);
+        console.error('Failed to show login after 401', e);
       }
     }
   }
@@ -2943,63 +2962,64 @@ function deleteTempVoiceBaseAt(index) {
       if (loginError) loginError.textContent = '';
     }
 
-    // Carrega guilds e visão geral inicial, se já houver token guardado
-    if (getToken()) {
-      hideLogin();
-      loadMe().catch(function () {});
-      loadGuilds().catch(function () {});
-      setTab('overview');
-    } else {
-      // OAuth login button
-      if (loginDiscordBtn && !loginDiscordBtn.dataset.bound) {
-        loginDiscordBtn.dataset.bound = '1';
-        loginDiscordBtn.addEventListener('click', function () {
-          try { window.location.href = '/api/auth/discord'; } catch (e) {}
-        });
-      }
-
-      // Add bot (invite) button on login screen (no auth required)
-      var loginAddBotBtn = document.getElementById('loginAddBotBtn');
-      if (loginAddBotBtn && !loginAddBotBtn.dataset.bound) {
-        loginAddBotBtn.dataset.bound = '1';
-        loginAddBotBtn.addEventListener('click', function () {
-          (async function () {
-            try {
-              var r = await fetch('/api/public/invite', { method: 'GET' });
-              var j = await r.json().catch(function () { return null; });
-              if (j && j.ok && j.url) {
-                window.open(j.url, '_blank', 'noopener');
-              } else {
-                toast(t('add_bot_error'));
-              }
-            } catch (e) {
-              toast(t('add_bot_error'));
-            }
-          })();
-        });
-      }
-
-      // Add bot (invite) button
-      var addBotBtn = document.getElementById('addBotBtn');
-      if (addBotBtn && !addBotBtn.dataset.bound) {
-        addBotBtn.dataset.bound = '1';
-        addBotBtn.addEventListener('click', function () {
-          (async function () {
-            try {
-              var r = await apiGet('/invite');
-              if (r && r.ok && r.url) {
-                window.open(r.url, '_blank', 'noopener');
-              } else {
-                toast(t('add_bot_error'));
-              }
-            } catch (e) {
-              toast(t('add_bot_error'));
-            }
-          })();
-        });
-      }
-        showLogin();
+    // Bind login / invite actions (always, regardless of auth state)
+    if (loginDiscordBtn && !loginDiscordBtn.dataset.bound) {
+      loginDiscordBtn.dataset.bound = '1';
+      loginDiscordBtn.addEventListener('click', function () {
+        try { window.location.href = '/api/auth/discord'; } catch (e) {}
+      });
     }
+
+    var loginAddBotBtn = document.getElementById('loginAddBotBtn');
+    if (loginAddBotBtn && !loginAddBotBtn.dataset.bound) {
+      loginAddBotBtn.dataset.bound = '1';
+      loginAddBotBtn.addEventListener('click', function () {
+        (async function () {
+          try {
+            var r = await fetch('/api/public/invite', { method: 'GET' });
+            var j = await r.json().catch(function () { return null; });
+            if (j && j.ok && j.url) {
+              window.open(j.url, '_blank', 'noopener');
+            } else {
+              toast(t('add_bot_error'));
+            }
+          } catch (e) {
+            toast(t('add_bot_error'));
+          }
+        })();
+      });
+    }
+
+    var addBotBtn = document.getElementById('addBotBtn');
+    if (addBotBtn && !addBotBtn.dataset.bound) {
+      addBotBtn.dataset.bound = '1';
+      addBotBtn.addEventListener('click', function () {
+        (async function () {
+          try {
+            var r = await apiGet('/invite');
+            if (r && r.ok && r.url) {
+              window.open(r.url, '_blank', 'noopener');
+            } else {
+              toast(t('add_bot_error'));
+            }
+          } catch (e) {
+            toast(t('add_bot_error'));
+          }
+        })();
+      });
+    }
+
+    // Bootstrap auth from either localStorage token OR HttpOnly cookie.
+    (async function () {
+      await loadMe().catch(function () {});
+      if (state.me && state.me.id) {
+        hideLogin();
+        await loadGuilds().catch(function () {});
+        setTab('overview');
+      } else {
+        showLogin();
+      }
+    })();
 });
 
   // Expose key parts on global namespace for future multi-file split

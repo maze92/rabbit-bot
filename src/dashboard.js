@@ -470,6 +470,25 @@ function isAuthEnabled() {
 function extractToken(req) {
   if (!req || !req.headers) return null;
 
+  // Cookie fallback (OAuth flow can store token server-side).
+  // HttpOnly cookie is preferred to avoid depending on localStorage.
+  try {
+    const cookieHeader = req.headers.cookie ? String(req.headers.cookie) : '';
+    if (cookieHeader) {
+      const parts = cookieHeader.split(';');
+      for (const part of parts) {
+        const idx = part.indexOf('=');
+        if (idx <= 0) continue;
+        const k = part.slice(0, idx).trim();
+        if (k !== 'dash_token') continue;
+        const v = part.slice(idx + 1).trim();
+        if (v) return decodeURIComponent(v);
+      }
+    }
+  } catch {
+    // ignore cookie parsing errors
+  }
+
   const auth = req.headers.authorization || req.headers.Authorization || '';
   if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
     return auth.slice(7).trim();

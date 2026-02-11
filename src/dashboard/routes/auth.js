@@ -115,6 +115,9 @@ function registerAuthRoutes(ctx) {
       if (code) {
         const cached = oauthCodeCache.get(code);
         if (cached && cached.redirectUrl) {
+          if (cached.token) {
+            setCookie(res, 'dash_token', cached.token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
+          }
           return res.redirect(cached.redirectUrl);
         }
       }
@@ -123,7 +126,12 @@ function registerAuthRoutes(ctx) {
       const lk = inflightKey(req, returnedState);
       if (oauthInflight.has(lk)) {
         const cached = code ? oauthCodeCache.get(code) : null;
-        if (cached && cached.redirectUrl) return res.redirect(cached.redirectUrl);
+        if (cached && cached.redirectUrl) {
+          if (cached.token) {
+            setCookie(res, 'dash_token', cached.token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
+          }
+          return res.redirect(cached.redirectUrl);
+        }
         return res.status(429).send('OAuth is already in progress. Please retry in a few seconds.');
       }
       oauthInflight.set(lk, nowMs() + 15000);
@@ -235,18 +243,23 @@ if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
         { expiresIn: '4h' }
       );
 
+      // Persist token server-side (preferred) so the frontend does not depend on localStorage.
+      // Note: fetch calls are same-origin, so cookies are automatically sent.
+
       // If the user only has one guild, auto-select it by minting a scoped token.
       if (allowedGuildIds.length === 1) {
         const scoped = await mintScopedToken({ userId: String(me.id), username: safeUsername, allowedGuildIds, guildId: allowedGuildIds[0] }).catch(() => null);
         if (scoped) {
-          const redirectUrl = `/?token=${encodeURIComponent(scoped)}&selectGuild=0`;
-          oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl });
+          setCookie(res, 'dash_token', scoped, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
+          const redirectUrl = `/?selectGuild=0`;
+          oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token: scoped });
           return res.redirect(redirectUrl);
         }
       }
 
-      const redirectUrl = `/?token=${encodeURIComponent(token)}&selectGuild=1`;
-      oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl });
+      setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
+      const redirectUrl = `/?selectGuild=1`;
+      oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token });
       return res.redirect(redirectUrl);
       } finally {
         oauthInflight.delete(lk);
@@ -316,6 +329,13 @@ if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
         return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
       }
 
+      // Also persist in cookie so the UI continues to work even if storage is blocked.
+      try {
+        setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
+      } catch {}
+
+      // Persist server-side cookie as well, so the session works even if localStorage is blocked.
+      setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
       return res.json({ ok: true, token });
     } catch (err) {
       console.error('[OAuth] select-guild error', err);
