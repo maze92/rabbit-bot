@@ -182,40 +182,14 @@ function registerAuthRoutes(ctx) {
   async function mintScopedToken({ userId, username, allowedGuildIds, guildId }) {
     const gid = sanitizeId(guildId);
     if (!gid) return null;
-    if (!Array.isArray(allowedGuildIds) || !allowedGuildIds.map(String).includes(String(gid))) return null;
+    const allowed = Array.isArray(allowedGuildIds) ? allowedGuildIds.map(String) : [];
+    if (!allowed.includes(String(gid))) return null;
 
-    const client = typeof getClient === 'function' ? getClient() : null;
-    if (!client) return null;
-    const guild = client.guilds.cache.get(String(gid));
-    if (!guild) return null;
-
-    const member = await guild.members.fetch(String(userId)).catch(() => null);
-
-    // We already validated owner/admin via the OAuth guild list when creating allowedGuildIds.
-    // If member fetch fails (missing privileged intents, transient REST error), we still allow minting
-    // a scoped token for this guild to avoid locking out legitimate admins.
-
-    // Validate owner/admin again using live guild member data.
-    const isOwner = String(guild.ownerId || '') === String(userId);
-    let isAdmin = false;
-    try {
-      // discord.js v14 expects a PermissionResolvable; use the canonical bit flag if available.
-      const { PermissionFlagsBits, PermissionsBitField } = require('discord.js');
-      const ADMIN_FLAG =
-        (PermissionFlagsBits && PermissionFlagsBits.Administrator) ||
-        (PermissionsBitField && PermissionsBitField.Flags && PermissionsBitField.Flags.Administrator) ||
-        'Administrator';
-      isAdmin = member.permissions && typeof member.permissions.has === 'function'
-        ? member.permissions.has(ADMIN_FLAG)
-        : false;
-    } catch { isAdmin = false; }
-
-    if (!member && !isOwner) {
-      // Fallback: allow-list already guaranteed owner/admin at login time.
-      isAdmin = true;
-    }
-
-    if (!isOwner && !isAdmin) return null;
+    // IMPORTANT: In admin/owner-only mode, the OAuth callback already filtered allowedGuildIds to:
+    // - bot is present in the guild
+    // - user is owner OR has Administrator permission
+    // Re-validating via guild.members.fetch() introduces fragile failures (intents/REST/race).
+    // Here we only enforce the allow-list and mint a scoped token.
 
     const perms = Object.assign({}, (ADMIN_PERMISSIONS || {}), { canManageUsers: false });
 
@@ -226,7 +200,7 @@ function registerAuthRoutes(ctx) {
         username: sanitizeText(username || 'discord', { maxLen: 32, stripHtml: true }),
         role: 'ADMIN',
         permissions: perms,
-        allowedGuildIds: allowedGuildIds.map(String).slice(0, 200),
+        allowedGuildIds: allowed.slice(0, 200),
         selectedGuildId: gid,
         profile: 'ADMIN'
       },
