@@ -871,7 +871,16 @@ function setLang(newLang) {
 
       if (state.guildId) {
         select.value = state.guildId;
-        await ensureGuildScopedToken(state.guildId);
+        const scopedOk = await ensureGuildScopedToken(state.guildId);
+        if (!scopedOk) {
+          // If the stored/selected guild is no longer allowed, clear it and force the selector.
+          state.guildId = null;
+          try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
+          select.value = '';
+          try { showGuildSelect(items); } catch (e) {}
+          updateTabAccess();
+          return;
+        }
         updateTabAccess();
       } else {
         // Force selection when multiple guilds are available.

@@ -21,9 +21,13 @@ function registerGuildsRoutes({
       const _client = getClient();
       if (!_client) return res.json({ ok: true, items: [] });
 
-      // Optional allow-list per dashboard user (MOD only).
+      // Allow-list per authenticated dashboard user.
+      // In OAuth-only mode we still restrict "ADMIN" users to their allowed guilds
+      // (owner/admin on Discord + bot present) via allowedGuildIds.
       const u = req.dashboardUser;
-      const allowList = u && u.role !== 'ADMIN' && Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.filter(Boolean).map(String) : [];
+      const allowList = u && Array.isArray(u.allowedGuildIds)
+        ? u.allowedGuildIds.filter(Boolean).map(String)
+        : [];
 
       let guilds = _client.guilds.cache.map((g) => g);
       if (allowList.length) {
