@@ -215,14 +215,25 @@ if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
       const client = typeof getClient === 'function' ? getClient() : null;
       const botGuildIds = client ? Array.from(client.guilds.cache.keys()).map(String) : [];
 
-      const ADMINISTRATOR = 0x8;
+      const ADMINISTRATOR = 8n;
 
-      // Allowed guilds: bot is present AND user is owner/admin.
-      const allowedGuildIds = guilds
-        .filter((g) => g && g.id && botGuildIds.includes(String(g.id)))
-        .filter((g) => (g.owner === true) || (((Number(g.permissions) || 0) & ADMINISTRATOR) === ADMINISTRATOR))
-        .map((g) => String(g.id))
-        .slice(0, 200);
+function hasAdministratorPermission(g) {
+  try {
+    // Discord returns permissions as a string integer (can exceed 2^53).
+    const p = typeof g.permissions === 'string' ? BigInt(g.permissions) : BigInt(Number(g.permissions || 0));
+    return (p & ADMINISTRATOR) === ADMINISTRATOR;
+  } catch {
+    return false;
+  }
+}
+
+// Allowed guilds: bot is present AND user is owner/admin.
+const allowedGuildIds = guilds
+  .filter((g) => g && g.id && botGuildIds.includes(String(g.id)))
+  .filter((g) => (g.owner === true) || hasAdministratorPermission(g))
+  .map((g) => String(g.id))
+  .slice(0, 200);
+
 
       const safeUsername = sanitizeText(me.username || 'discord', { maxLen: 32, stripHtml: true });
 
