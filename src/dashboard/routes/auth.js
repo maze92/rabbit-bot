@@ -296,6 +296,11 @@ if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
       if (!gid) return res.status(400).json({ ok: false, error: 'MISSING_GUILD_ID' });
 
       const allowed = Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.map(String) : [];
+      // If the token has no allow-list, force re-auth (prevents selecting arbitrary guilds due to stale tokens).
+      if (!allowed.length) {
+        return res.status(401).json({ ok: false, error: 'REAUTH_REQUIRED' });
+      }
+
       if (!allowed.includes(String(gid))) {
         return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
       }

@@ -29,9 +29,18 @@ function registerGuildsRoutes({
         ? u.allowedGuildIds.filter(Boolean).map(String)
         : [];
 
+
+      // OAuth-only: if token has no allow-list, force re-auth (prevents showing all bot guilds).
+      if (u && u.oauth && (!Array.isArray(u.allowedGuildIds) || u.allowedGuildIds.length === 0)) {
+        return res.status(401).json({ ok: false, error: 'REAUTH_REQUIRED' });
+      }
+
       let guilds = _client.guilds.cache.map((g) => g);
+      // Always restrict to allow-list when present; if empty and not OAuth, falls back to all.
       if (allowList.length) {
         guilds = guilds.filter((g) => g && allowList.includes(String(g.id)));
+      } else if (u && u.oauth) {
+        guilds = [];
       }
 
       const items = guilds.map((g) => ({
