@@ -93,6 +93,27 @@ const API_BASE = '/api';
   } catch (e) {}
 
 
+  // Capture OAuth callback token from URL (?token=...&selectGuild=...)
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    const urlToken = params.get('token');
+    if (urlToken) {
+      try { localStorage.setItem(TOKEN_KEY, urlToken); } catch (e) {}
+    }
+    // If a fresh token arrived and guild selection is required, clear previous selection
+    if (urlToken && params.get('selectGuild') === '1') {
+      try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
+    }
+    if (urlToken || params.has('selectGuild')) {
+      params.delete('token');
+      params.delete('selectGuild');
+      const qs = params.toString();
+      const newUrl = window.location.pathname + (qs ? ('?' + qs) : '') + window.location.hash;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  } catch (e) {}
+
+
   // -----------------------------
   // Small helpers
   // -----------------------------
