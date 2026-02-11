@@ -213,7 +213,13 @@ if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
       }
 
       const client = typeof getClient === 'function' ? getClient() : null;
-      const botGuildIds = client ? Array.from(client.guilds.cache.keys()).map(String) : [];
+      // IMPORTANT: Do NOT depend on the bot guild cache being ready here.
+      // In some deployments the OAuth callback can happen before the client cache is fully populated.
+      // We therefore compute the allow-list purely from Discord (owner/admin) and later mark whether
+      // the bot is present when listing/selecting.
+      const botGuildIds = client && client.guilds && client.guilds.cache
+        ? Array.from(client.guilds.cache.keys()).map(String)
+        : null;
 
       const ADMINISTRATOR = 8n;
 
@@ -227,12 +233,21 @@ function hasAdministratorPermission(g) {
   }
 }
 
-// Allowed guilds: bot is present AND user is owner/admin.
-const allowedGuildIds = guilds
-  .filter((g) => g && g.id && botGuildIds.includes(String(g.id)))
+// Allowed guilds: user is owner/admin.
+// NOTE: We do not require bot presence at this stage to avoid startup-race lockouts.
+// Bot presence is checked later for selection and shown in the guild list.
+const allowedGuilds = guilds
+  .filter((g) => g && g.id)
   .filter((g) => (g.owner === true) || hasAdministratorPermission(g))
-  .map((g) => String(g.id))
+  .map((g) => ({
+    id: String(g.id),
+    name: typeof g.name === 'string' ? g.name : null,
+    icon: typeof g.icon === 'string' ? g.icon : null,
+    botPresent: Array.isArray(botGuildIds) ? botGuildIds.includes(String(g.id)) : null
+  }))
   .slice(0, 200);
+
+const allowedGuildIds = allowedGuilds.map((g) => g.id);
 
 
       const safeUsername = sanitizeText(me.username || 'discord', { maxLen: 32, stripHtml: true });
@@ -247,6 +262,7 @@ const allowedGuildIds = guilds
           role: 'ADMIN',
           permissions: perms,
           allowedGuildIds,
+          allowedGuilds,
           selectedGuildId: null,
           profile: 'UNSCOPED'
         },
@@ -329,6 +345,17 @@ const allowedGuildIds = guilds
         return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
       }
 
+      // Enforce bot presence for the selected guild.
+      // We allow listing guilds even if the bot is not installed, but selection for dashboard operations
+      // requires the bot to be present.
+      try {
+        const client = typeof getClient === 'function' ? getClient() : null;
+        const hasGuild = client && client.guilds && client.guilds.cache && client.guilds.cache.has(String(gid));
+        if (!hasGuild) {
+          return res.status(409).json({ ok: false, error: 'BOT_NOT_INSTALLED' });
+        }
+      } catch {}
+
       const token = await mintScopedToken({
         userId: String(u._id || u.sub || u.id || u.userId || ''),
         username: u.username || 'discord',
@@ -340,12 +367,7 @@ const allowedGuildIds = guilds
         return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
       }
 
-      // Also persist in cookie so the UI continues to work even if storage is blocked.
-      try {
-        setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
-      } catch {}
-
-      // Persist server-side cookie as well, so the session works even if localStorage is blocked.
+      // Persist server-side cookie so the UI continues to work even if storage is blocked.
       setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
       return res.json({ ok: true, token });
     } catch (err) {
@@ -370,6 +392,25 @@ const allowedGuildIds = guilds
         oauth: true
       }
     });
+  });
+
+  // Logout: clear auth cookies so the user can recover from stale tokens without manual cookie deletion.
+  const rlLogout = rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'rl:auth:logout:' });
+  app.post('/api/auth/logout', rlLogout, (req, res) => {
+    try {
+      clearCookie(res, 'dash_token');
+      clearCookie(res, 'oauth_state');
+    } catch {}
+    return res.json({ ok: true });
+  });
+
+  // Convenience GET for simple button links (still rate limited).
+  app.get('/api/auth/logout', rlLogout, (req, res) => {
+    try {
+      clearCookie(res, 'dash_token');
+      clearCookie(res, 'oauth_state');
+    } catch {}
+    return res.redirect('/');
   });
 }
 

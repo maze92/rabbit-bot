@@ -416,6 +416,8 @@ window.OzarkLocales.pt = {
   'config_dashboard_users_allowed_guilds': 'IDs de servidores permitidos',
   'config_dashboard_users_allowed_guilds_hint': 'Opcional. Se preenchido, este utilizador só consegue gerir esses servidores (IDs separados por vírgula).',
   'config_dashboard_users_allowed_guilds_badge': 'Servidores: {count}',
+  'bot_not_installed': 'O bot ainda não está neste servidor. Usa "Adicionar bot" para o instalar e tenta novamente.',
   'add_bot': 'Adicionar bot',
   'add_bot_error': 'Falha ao obter link de convite do bot.',
+  'logout': 'Sair',
 };

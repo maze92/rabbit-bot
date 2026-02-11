@@ -416,7 +416,9 @@ window.OzarkLocales.en = {
   'config_dashboard_users_allowed_guilds': 'Allowed guild IDs',
   'config_dashboard_users_allowed_guilds_hint': 'Optional. If set, this user can only manage those servers (IDs separated by commas).',
   'config_dashboard_users_allowed_guilds_badge': 'Guilds: {count}',
+  'bot_not_installed': 'The bot is not installed in this server yet. Use "Add bot" to install it and try again.',
   'add_bot': 'Add bot',
   'add_bot_error': 'Failed to get the bot invite link.',
+  'logout': 'Logout',
 };
 

@@ -214,6 +214,15 @@ const API_BASE = '/api';
       toast(t('guild_select_error_access'));
       return false;
     } catch (e) {
+      if (e && (e.apiMessage === 'BOT_NOT_INSTALLED' || e.message === 'BOT_NOT_INSTALLED')) {
+        toast(t('bot_not_installed'));
+        // Offer invite in a new tab.
+        try {
+          var inv = await fetch(API_BASE + '/public/invite').then(function (r) { return r.json(); }).catch(function () { return null; });
+          if (inv && inv.url) window.open(inv.url, '_blank');
+        } catch {}
+        return false;
+      }
       toast((e && e.apiMessage) ? e.apiMessage : t('guild_select_error_generic'));
       return false;
     }
@@ -232,8 +241,25 @@ const API_BASE = '/api';
 
 
 
-  function handleAuthError(status) {
+  async function forceLogout() {
+    try {
+      // Server-side logout clears HttpOnly cookies (cannot be cleared from JS directly).
+      await fetch(API_BASE + '/auth/logout', { method: 'POST' });
+    } catch {}
+    clearToken();
+    try {
+      if (typeof showLogin === 'function') showLogin();
+    } catch {}
+  }
+
+  function handleAuthError(status, payload) {
     if (status === 401) {
+      const code = payload && (payload.error || payload.code);
+      if (code === 'REAUTH_REQUIRED') {
+        // Recover from stale tokens/cookies by forcing a server-side logout.
+        forceLogout();
+        return;
+      }
       clearToken();
       try {
         // Sessão expirada ou token inválido: mostra o ecrã de login.
@@ -290,7 +316,7 @@ const API_BASE = '/api';
       payload = null;
     }
     if (!res.ok) {
-      handleAuthError(res.status);
+      handleAuthError(res.status, payload);
       const msg = payload && (payload.error || payload.message);
       const err = new Error(msg || `HTTP ${res.status} for ${path}`);
       err.status = res.status;
@@ -316,7 +342,7 @@ const API_BASE = '/api';
       payload = null;
     }
     if (!res.ok) {
-      handleAuthError(res.status);
+      handleAuthError(res.status, payload);
       const msg = payload && (payload.error || payload.message);
       const err = new Error(msg || `HTTP ${res.status} for ${path}`);
       err.status = res.status;
@@ -342,7 +368,7 @@ const API_BASE = '/api';
       payload = null;
     }
     if (!res.ok) {
-      handleAuthError(res.status);
+      handleAuthError(res.status, payload);
       const msg = payload && (payload.error || payload.message);
       const err = new Error(msg || `HTTP ${res.status} for ${path}`);
       err.status = res.status;
@@ -368,7 +394,7 @@ const API_BASE = '/api';
       payload = null;
     }
     if (!res.ok) {
-      handleAuthError(res.status);
+      handleAuthError(res.status, payload);
       const msg = payload && (payload.error || payload.message);
       const err = new Error(msg || `HTTP ${res.status} for ${path}`);
       err.status = res.status;
@@ -393,7 +419,7 @@ const API_BASE = '/api';
       payload = null;
     }
     if (!res.ok) {
-      handleAuthError(res.status);
+      handleAuthError(res.status, payload);
       const msg = payload && (payload.error || payload.message);
       const err = new Error(msg || `HTTP ${res.status} for ${path}`);
       err.status = res.status;
@@ -3006,6 +3032,14 @@ function deleteTempVoiceBaseAt(index) {
             toast(t('add_bot_error'));
           }
         })();
+      });
+    }
+
+    var logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn && !logoutBtn.dataset.bound) {
+      logoutBtn.dataset.bound = '1';
+      logoutBtn.addEventListener('click', function () {
+        forceLogout();
       });
     }
 
