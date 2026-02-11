@@ -39,7 +39,7 @@ window.OzarkLocales.en = {
   'common_save': 'Save',
   'common_rate_limit_wait': 'Too many actions. Please wait',
   'common_none_option': '— None —',
-  \1'Dashboard login is Discord OAuth-only and restricted to server Owners and Administrators. Here you only define the staff roles used by the bot (tickets, moderation, gamenews, logs, etc.).',
+  'config_access_hint': 'Dashboard login is Discord OAuth-only and restricted to server Owners and Administrators. Here you only define the staff roles used by the bot (tickets, moderation, gamenews, logs, etc.).',
   'config_access_section_title': '🛡️ Staff access and roles',
   'config_dashboard_access_title': "🔐 Dashboard access",
   'config_dashboard_access_hint': "Choose which Discord roles can log in via OAuth and what access level they get.",
@@ -415,7 +415,7 @@ window.OzarkLocales.en = {
   'gamenews_test_autosave': "Unsaved changes. Saving before testing...",
   'config_dashboard_users_allowed_guilds': 'Allowed guild IDs',
   'config_dashboard_users_allowed_guilds_hint': 'Optional. If set, this user can only manage those servers (IDs separated by commas).',
-  'config_dashboard_users_allowed_guilds_badge': 'Guilds: {count}'
+  'config_dashboard_users_allowed_guilds_badge': 'Guilds: {count}',
   'add_bot': 'Add bot',
   'add_bot_error': 'Failed to get the bot invite link.',
 };

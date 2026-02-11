@@ -39,7 +39,7 @@ window.OzarkLocales.pt = {
   'common_save': 'Guardar',
   'common_rate_limit_wait': 'Muitas ações seguidas. Aguarda',
   'common_none_option': '— Nenhum —',
-  \1'O login na dashboard é feito apenas via Discord OAuth e é restrito a Owners e Administradores do servidor. Aqui definis apenas os cargos de staff usados pelo bot (tickets, moderação, gamenews, logs, etc.).',
+  'config_access_hint': 'O login na dashboard é feito apenas via Discord OAuth e é restrito a Owners e Administradores do servidor. Aqui definis apenas os cargos de staff usados pelo bot (tickets, moderação, gamenews, logs, etc.).',
   'config_access_section_title': '🛡️ Acesso e cargos de staff',
   'config_dashboard_access_title': "🔐 Acesso à Dashboard",
   'config_dashboard_access_hint': "Define que cargos podem iniciar sessão por OAuth e que nível de acesso terão.",
@@ -415,7 +415,7 @@ window.OzarkLocales.pt = {
   'gamenews_test_autosave': "Alterações por guardar. A guardar antes do teste...",
   'config_dashboard_users_allowed_guilds': 'IDs de servidores permitidos',
   'config_dashboard_users_allowed_guilds_hint': 'Opcional. Se preenchido, este utilizador só consegue gerir esses servidores (IDs separados por vírgula).',
-  'config_dashboard_users_allowed_guilds_badge': 'Servidores: {count}'
+  'config_dashboard_users_allowed_guilds_badge': 'Servidores: {count}',
   'add_bot': 'Adicionar bot',
   'add_bot_error': 'Falha ao obter link de convite do bot.',
 };
