@@ -2958,6 +2958,27 @@ function deleteTempVoiceBaseAt(index) {
         });
       }
 
+      // Add bot (invite) button on login screen (no auth required)
+      var loginAddBotBtn = document.getElementById('loginAddBotBtn');
+      if (loginAddBotBtn && !loginAddBotBtn.dataset.bound) {
+        loginAddBotBtn.dataset.bound = '1';
+        loginAddBotBtn.addEventListener('click', function () {
+          (async function () {
+            try {
+              var r = await fetch('/api/public/invite', { method: 'GET' });
+              var j = await r.json().catch(function () { return null; });
+              if (j && j.ok && j.url) {
+                window.open(j.url, '_blank', 'noopener');
+              } else {
+                toast(t('add_bot_error'));
+              }
+            } catch (e) {
+              toast(t('add_bot_error'));
+            }
+          })();
+        });
+      }
+
       // Add bot (invite) button
       var addBotBtn = document.getElementById('addBotBtn');
       if (addBotBtn && !addBotBtn.dataset.bound) {

@@ -94,6 +94,31 @@ function registerCoreRoutes({
   });
 
 
+
+
+// Public bot invite URL (available before login). Used by the login screen.
+app.get('/api/public/invite', (req, res) => {
+  try {
+    const clientId = process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID || '';
+    if (!clientId) {
+      return res.status(500).json({ ok: false, error: 'MISSING_CLIENT_ID' });
+    }
+
+    const perms = String(process.env.DISCORD_INVITE_PERMISSIONS || '0').replace(/[^0-9]/g, '') || '0';
+    const scopes = (process.env.DISCORD_INVITE_SCOPES || 'bot applications.commands').trim();
+
+    const url =
+      'https://discord.com/api/oauth2/authorize' +
+      `?client_id=${encodeURIComponent(clientId)}` +
+      `&permissions=${encodeURIComponent(perms)}` +
+      `&scope=${encodeURIComponent(scopes)}`;
+
+    return res.json({ ok: true, url, clientId, permissions: perms, scopes });
+  } catch (err) {
+    console.error('[Dashboard] /api/public/invite error:', err);
+    return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
+  }
+});
   // Bot invite URL (multi-server onboarding)
   app.get('/api/invite', requireDashboardAuth, (req, res) => {
     try {

@@ -9,6 +9,27 @@ function registerAuthRoutes(ctx) {
 
   const crypto = require('crypto');
 
+  // OAuth robustness: avoid duplicate token exchanges, and gracefully handle Discord global rate limits.
+  // Note: in-memory only. If you run multiple replicas, consider a shared store (e.g. Redis) to dedupe across instances.
+  const oauthCodeCache = new Map(); // code -> { exp, redirectUrl }
+  const oauthInflight = new Map();  // key -> exp
+  function nowMs() { return Date.now(); }
+  function sweepMaps() {
+    const n = nowMs();
+    for (const [k, v] of oauthCodeCache.entries()) if (!v || v.exp <= n) oauthCodeCache.delete(k);
+    for (const [k, exp] of oauthInflight.entries()) if (!exp || exp <= n) oauthInflight.delete(k);
+  }
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+  function getClientIp(req) {
+    const xf = (req.headers && (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For'])) || '';
+        const ip = String(Array.isArray(xf) ? xf[0] : xf).split(',')[0].trim() || req.ip || '';
+    return ip;
+  }
+  function inflightKey(req, state) {
+    return `${getClientIp(req)}:${String(state || '').slice(0, 64)}`;
+  }
+
+
   function oauthEnabled() {
     return !!(process.env.DISCORD_OAUTH_CLIENT_ID && process.env.DISCORD_OAUTH_CLIENT_SECRET);
   }
@@ -56,6 +77,8 @@ function registerAuthRoutes(ctx) {
     return res.json({ ok: true, enabled: oauthEnabled(), oauthOnly: true });
   });
 
+  const rlCallback = rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'rl:auth:callback:' });
+
   // Discord OAuth2 start
   app.get('/api/auth/discord', (req, res) => {
     if (!oauthEnabled()) {
@@ -81,13 +104,32 @@ function registerAuthRoutes(ctx) {
   });
 
   // Discord OAuth2 callback
-  app.get('/api/auth/discord/callback', async (req, res) => {
+  app.get('/api/auth/discord/callback', rlCallback, async (req, res) => {
     try {
       if (!oauthEnabled()) return res.status(400).send('Discord OAuth is not configured.');
 
       const code = typeof req.query.code === 'string' ? req.query.code : '';
       const returnedState = typeof req.query.state === 'string' ? req.query.state : '';
-      const cookies = parseCookies(req);
+      sweepMaps();
+      // If the callback is invoked twice with the same single-use code, reuse the cached redirect.
+      if (code) {
+        const cached = oauthCodeCache.get(code);
+        if (cached && cached.redirectUrl) {
+          return res.redirect(cached.redirectUrl);
+        }
+      }
+
+      // Prevent parallel token exchanges for the same client/state.
+      const lk = inflightKey(req, returnedState);
+      if (oauthInflight.has(lk)) {
+        const cached = code ? oauthCodeCache.get(code) : null;
+        if (cached && cached.redirectUrl) return res.redirect(cached.redirectUrl);
+        return res.status(429).send('OAuth is already in progress. Please retry in a few seconds.');
+      }
+      oauthInflight.set(lk, nowMs() + 15000);
+
+      try {
+        const cookies = parseCookies(req);
       const expectedState = cookies.oauth_state || '';
       clearCookie(res, 'oauth_state');
 
@@ -95,23 +137,52 @@ function registerAuthRoutes(ctx) {
         return res.status(400).send('Invalid OAuth state. Please try again.');
       }
 
-      const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: process.env.DISCORD_OAUTH_CLIENT_ID,
-          client_secret: process.env.DISCORD_OAUTH_CLIENT_SECRET,
-          grant_type: 'authorization_code',
-          code,
-          redirect_uri: getRedirectUri(req)
-        })
-      });
+// Token exchange (handles Discord global rate limits safely).
+const redirectUri = getRedirectUri(req);
+let tokenJson = null;
+let tokenRes = null;
 
-      const tokenJson = await tokenRes.json().catch(() => ({}));
-      if (!tokenRes.ok || !tokenJson || !tokenJson.access_token) {
-        console.error('[OAuth] Token exchange failed', tokenRes.status, tokenJson);
-        return res.status(400).send('Failed to exchange OAuth code.');
-      }
+for (let attempt = 0; attempt < 2; attempt++) {
+  tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: process.env.DISCORD_OAUTH_CLIENT_ID,
+      client_secret: process.env.DISCORD_OAUTH_CLIENT_SECRET,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri
+    })
+  });
+
+  if (tokenRes.status === 429) {
+    const body = await tokenRes.json().catch(() => ({}));
+    const raHeader = tokenRes.headers.get('retry-after');
+    const retryAfterSec = Math.max(
+      0,
+      Number.isFinite(Number(raHeader)) ? Number(raHeader) : 0,
+      Number.isFinite(Number(body && body.retry_after)) ? Number(body.retry_after) : 0
+    );
+
+    console.warn('[OAuth] Token exchange rate limited (429). retryAfterSec=', retryAfterSec);
+
+    // Do not hold the request open for long. Wait briefly only when the retry window is small.
+    if (retryAfterSec > 2) {
+      return res.status(429).send('Discord rate limit reached. Please retry shortly.');
+    }
+
+    await sleep(Math.ceil((retryAfterSec || 1) * 1000));
+    continue;
+  }
+
+  tokenJson = await tokenRes.json().catch(() => ({}));
+  break;
+}
+
+if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
+  console.error('[OAuth] Token exchange failed', tokenRes && tokenRes.status, tokenJson);
+  return res.status(400).send('Failed to exchange OAuth code.');
+}
 
       const accessToken = tokenJson.access_token;
 
@@ -168,11 +239,18 @@ function registerAuthRoutes(ctx) {
       if (allowedGuildIds.length === 1) {
         const scoped = await mintScopedToken({ userId: String(me.id), username: safeUsername, allowedGuildIds, guildId: allowedGuildIds[0] }).catch(() => null);
         if (scoped) {
-          return res.redirect(`/?token=${encodeURIComponent(scoped)}&selectGuild=0`);
+          const redirectUrl = `/?token=${encodeURIComponent(scoped)}&selectGuild=0`;
+          oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl });
+          return res.redirect(redirectUrl);
         }
       }
 
-      return res.redirect(`/?token=${encodeURIComponent(token)}&selectGuild=1`);
+      const redirectUrl = `/?token=${encodeURIComponent(token)}&selectGuild=1`;
+      oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl });
+      return res.redirect(redirectUrl);
+      } finally {
+        oauthInflight.delete(lk);
+      }
     } catch (err) {
       console.error('[OAuth] Callback error', err);
       return res.status(500).send('OAuth callback failed.');
