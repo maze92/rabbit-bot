@@ -244,7 +244,7 @@ const API_BASE = '/api';
   async function forceLogout() {
     try {
       // Server-side logout clears HttpOnly cookies (cannot be cleared from JS directly).
-      await fetch(API_BASE + '/auth/logout', { method: 'POST' });
+      await fetch(API_BASE + '/auth/logout', { method: 'POST', credentials: 'same-origin' });
     } catch {}
     clearToken();
     try {
@@ -884,6 +884,12 @@ function setLang(newLang) {
 
     try {
       const res = await apiGet('/guilds');
+      if (res && res.reason === 'NO_ELIGIBLE_GUILDS') {
+        // User has no eligible guilds (must be owner or Administrator). Force logout and show login message.
+        try { await forceLogout(); } catch (e) {}
+        try { if (typeof showLogin === 'function') showLogin(); } catch (e) {}
+        return;
+      }
       const items = (res && res.items) || [];
       state.guilds = items;
       select.innerHTML = '';

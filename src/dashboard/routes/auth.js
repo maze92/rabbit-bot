@@ -65,7 +65,13 @@ function registerAuthRoutes(ctx) {
   }
 
   function clearCookie(res, name) {
-    res.append('Set-Cookie', `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`);
+    // Clear both Secure and non-Secure variants to avoid stale cookies across proxy/HTTPS edge cases.
+    try {
+      res.append('Set-Cookie', `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure`);
+    } catch {}
+    try {
+      res.append('Set-Cookie', `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`);
+    } catch {}
   }
 
   function isSecureRequest(req) {
@@ -248,6 +254,15 @@ const allowedGuilds = guilds
   .slice(0, 200);
 
 const allowedGuildIds = allowedGuilds.map((g) => g.id);
+
+// If the user is not owner/admin in any guild, do not create a dashboard session.
+// Redirect back to login with an explanatory flag.
+if (allowedGuildIds.length === 0) {
+  clearCookie(res, 'dash_token');
+  const redirectUrl = `/?oauthError=NO_ELIGIBLE_GUILDS`;
+  oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token: null });
+  return res.redirect(redirectUrl);
+}
 
 
       const safeUsername = sanitizeText(me.username || 'discord', { maxLen: 32, stripHtml: true });

@@ -32,7 +32,7 @@ function registerGuildsRoutes({
 
       // OAuth-only: if token has no allow-list, force re-auth (prevents stale/empty tokens from persisting).
       if (u && u.oauth && allowList.length === 0) {
-        return res.status(401).json({ ok: false, error: 'REAUTH_REQUIRED' });
+        return res.json({ ok: true, items: [], reason: 'NO_ELIGIBLE_GUILDS' });
       }
 
       // Prefer token metadata (from /users/@me/guilds) for stable listing even if client cache is not ready.
