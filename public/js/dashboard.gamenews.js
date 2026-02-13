@@ -925,13 +925,9 @@ function renderGameNewsFeedDetail(feed) {
 
         renderGameNewsFeedsList(feeds);
 
-        // Limpar / preencher painel de detalhe
+        // Painel de detalhe: não selecionar automaticamente (só abre ao clicar num feed)
         if (detailEl) {
-          if (!feeds.length) {
-            detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
-          } else {
-            selectGameNewsFeedByIndex(0);
-          }
+          detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
         }
       });
     }, {

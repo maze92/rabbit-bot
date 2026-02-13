@@ -521,6 +521,20 @@ async function decodeDashboardToken(rawToken) {
       role: payload.role || 'ADMIN',
       username: payload.username || 'discord',
       permissions: (payload.permissions && typeof payload.permissions === 'object') ? payload.permissions : {},
+      // Optional metadata (available on the unscoped OAuth token) to support
+      // stable guild listing and admin detection without additional Discord API calls.
+      allowedGuilds: Array.isArray(payload.allowedGuilds)
+        ? payload.allowedGuilds
+            .filter((g) => g && g.id)
+            .map((g) => ({
+              id: String(g.id),
+              name: typeof g.name === 'string' ? g.name : null,
+              icon: typeof g.icon === 'string' ? g.icon : null,
+              owner: g.owner === true,
+              permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
+              botPresent: (g.botPresent === true) ? true : (g.botPresent === false ? false : null)
+            }))
+        : [],
       allowedGuildIds: Array.isArray(payload.allowedGuildIds) ? payload.allowedGuildIds.map(String) : [],
       selectedGuildId: payload.selectedGuildId ? sanitizeId(payload.selectedGuildId) : null,
       profile: payload.profile ? String(payload.profile) : null,

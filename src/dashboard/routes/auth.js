@@ -1,13 +1,17 @@
 // src/dashboard/routes/auth.js
 //
 // Discord OAuth2-only authentication.
-// Only Discord guild Owners or users with Administrator permission may access the dashboard,
-// and only for guilds where the bot is present.
+// Login is allowed for any user with access to at least one guild.
+// Authorization is enforced when selecting a guild:
+//  - Owner or Administrator permission => ADMIN
+//  - Otherwise, the user must have at least one role configured in GuildConfig.staffRoleIds => STAFF
+// Bot presence is required for selecting a guild (dashboard operations).
 
 function registerAuthRoutes(ctx) {
-  const { app, express, requireDashboardAuth, jwt, JWT_SECRET, sanitizeText, rateLimit, ADMIN_PERMISSIONS, getClient, sanitizeId } = ctx;
+  const { app, express, requireDashboardAuth, jwt, JWT_SECRET, sanitizeText, rateLimit, ADMIN_PERMISSIONS, getClient, sanitizeId, GuildConfig } = ctx;
 
   const crypto = require('crypto');
+  const { fetchMember } = require('../../services/discordFetchCache');
 
   // OAuth robustness: avoid duplicate token exchanges, and gracefully handle Discord global rate limits.
   // Note: in-memory only. If you run multiple replicas, consider a shared store (e.g. Redis) to dedupe across instances.
@@ -27,6 +31,17 @@ function registerAuthRoutes(ctx) {
   }
   function inflightKey(req, state) {
     return `${getClientIp(req)}:${String(state || '').slice(0, 64)}`;
+  }
+
+  const ADMINISTRATOR = 8n;
+  function hasAdministratorPermission(g) {
+    try {
+      // Discord returns permissions as a string integer (can exceed 2^53).
+      const p = typeof g.permissions === 'string' ? BigInt(g.permissions) : BigInt(Number(g.permissions || 0));
+      return (p & ADMINISTRATOR) === ADMINISTRATOR;
+    } catch {
+      return false;
+    }
   }
 
 
@@ -220,46 +235,32 @@ if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
 
       const client = typeof getClient === 'function' ? getClient() : null;
       // IMPORTANT: Do NOT depend on the bot guild cache being ready here.
-      // In some deployments the OAuth callback can happen before the client cache is fully populated.
-      // We therefore compute the allow-list purely from Discord (owner/admin) and later mark whether
-      // the bot is present when listing/selecting.
+      // The allow-list is based on Discord OAuth's /users/@me/guilds response.
+      // Bot presence is only enforced later during guild selection.
       const botGuildIds = client && client.guilds && client.guilds.cache
         ? Array.from(client.guilds.cache.keys()).map(String)
         : null;
 
-      const ADMINISTRATOR = 8n;
-
-function hasAdministratorPermission(g) {
-  try {
-    // Discord returns permissions as a string integer (can exceed 2^53).
-    const p = typeof g.permissions === 'string' ? BigInt(g.permissions) : BigInt(Number(g.permissions || 0));
-    return (p & ADMINISTRATOR) === ADMINISTRATOR;
-  } catch {
-    return false;
-  }
-}
-
-// Allowed guilds: user is owner/admin.
-// NOTE: We do not require bot presence at this stage to avoid startup-race lockouts.
+// Allowed guilds: all guilds returned by Discord OAuth.
 // Bot presence is checked later for selection and shown in the guild list.
 const allowedGuilds = guilds
   .filter((g) => g && g.id)
-  .filter((g) => (g.owner === true) || hasAdministratorPermission(g))
   .map((g) => ({
     id: String(g.id),
     name: typeof g.name === 'string' ? g.name : null,
     icon: typeof g.icon === 'string' ? g.icon : null,
+    owner: g.owner === true,
+    permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
     botPresent: Array.isArray(botGuildIds) ? botGuildIds.includes(String(g.id)) : null
   }))
   .slice(0, 200);
 
 const allowedGuildIds = allowedGuilds.map((g) => g.id);
 
-// If the user is not owner/admin in any guild, do not create a dashboard session.
-// Redirect back to login with an explanatory flag.
+// If the user has no guilds, do not create a dashboard session.
 if (allowedGuildIds.length === 0) {
   clearCookie(res, 'dash_token');
-  const redirectUrl = `/?oauthError=NO_ELIGIBLE_GUILDS`;
+  const redirectUrl = `/?oauthError=NO_GUILDS`;
   oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token: null });
   return res.redirect(redirectUrl);
 }
@@ -267,6 +268,7 @@ if (allowedGuildIds.length === 0) {
 
       const safeUsername = sanitizeText(me.username || 'discord', { maxLen: 32, stripHtml: true });
 
+      // Unscoped session: user is authenticated, but must select a guild to gain a scoped profile.
       const perms = Object.assign({}, (ADMIN_PERMISSIONS || {}), { canManageUsers: false });
 
       const token = jwt.sign(
@@ -274,7 +276,7 @@ if (allowedGuildIds.length === 0) {
           t: 'oauth',
           sub: String(me.id),
           username: safeUsername,
-          role: 'ADMIN',
+          role: 'USER',
           permissions: perms,
           allowedGuildIds,
           allowedGuilds,
@@ -290,7 +292,13 @@ if (allowedGuildIds.length === 0) {
 
       // If the user only has one guild, auto-select it by minting a scoped token.
       if (allowedGuildIds.length === 1) {
-        const scoped = await mintScopedToken({ userId: String(me.id), username: safeUsername, allowedGuildIds, guildId: allowedGuildIds[0] }).catch(() => null);
+        const scoped = await mintScopedToken({
+          userId: String(me.id),
+          username: safeUsername,
+          allowedGuildIds,
+          allowedGuilds,
+          guildId: allowedGuildIds[0]
+        }).catch(() => null);
         if (scoped) {
           setCookie(res, 'dash_token', scoped, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
           const redirectUrl = `/?selectGuild=0`;
@@ -312,17 +320,47 @@ if (allowedGuildIds.length === 0) {
     }
   });
 
-  async function mintScopedToken({ userId, username, allowedGuildIds, guildId }) {
+  async function mintScopedToken({ userId, username, allowedGuildIds, allowedGuilds, guildId }) {
     const gid = sanitizeId(guildId);
     if (!gid) return null;
     const allowed = Array.isArray(allowedGuildIds) ? allowedGuildIds.map(String) : [];
     if (!allowed.includes(String(gid))) return null;
 
-    // IMPORTANT: In admin/owner-only mode, the OAuth callback already filtered allowedGuildIds to:
-    // - bot is present in the guild
-    // - user is owner OR has Administrator permission
-    // Re-validating via guild.members.fetch() introduces fragile failures (intents/REST/race).
-    // Here we only enforce the allow-list and mint a scoped token.
+    // Bot presence is required for scoped dashboard operations.
+    const client = typeof getClient === 'function' ? getClient() : null;
+    const guild = client && client.guilds && client.guilds.cache ? client.guilds.cache.get(String(gid)) : null;
+    if (!guild) return null;
+
+    // Determine if the user is owner/admin from the OAuth guild metadata.
+    const meta = Array.isArray(allowedGuilds) ? allowedGuilds.find((g) => g && String(g.id) === String(gid)) : null;
+    const isOwner = meta && meta.owner === true;
+    const isAdmin = meta ? hasAdministratorPermission(meta) : false;
+
+    let profile = 'STAFF';
+    let role = 'STAFF';
+
+    if (isOwner || isAdmin) {
+      profile = 'ADMIN';
+      role = 'ADMIN';
+    } else {
+      // Role-based access: user must match at least one GuildConfig.staffRoleIds.
+      let staffRoleIds = [];
+      try {
+        if (GuildConfig && typeof GuildConfig.findOne === 'function') {
+          const cfg = await GuildConfig.findOne({ guildId: String(gid) }).lean().exec();
+          if (cfg && Array.isArray(cfg.staffRoleIds)) staffRoleIds = cfg.staffRoleIds.map(String).filter(Boolean);
+        }
+      } catch (e) {
+        console.error('[OAuth] Failed to read GuildConfig for staffRoleIds', e);
+      }
+
+      if (!staffRoleIds.length) return null;
+
+      const member = await fetchMember(guild, String(userId)).catch(() => null);
+      if (!member) return null;
+      const ok = member.roles && member.roles.cache && member.roles.cache.some((r) => staffRoleIds.includes(r.id));
+      if (!ok) return null;
+    }
 
     const perms = Object.assign({}, (ADMIN_PERMISSIONS || {}), { canManageUsers: false });
 
@@ -331,11 +369,11 @@ if (allowedGuildIds.length === 0) {
         t: 'oauth',
         sub: String(userId),
         username: sanitizeText(username || 'discord', { maxLen: 32, stripHtml: true }),
-        role: 'ADMIN',
+        role,
         permissions: perms,
         allowedGuildIds: allowed.slice(0, 200),
         selectedGuildId: gid,
-        profile: 'ADMIN'
+        profile
       },
       JWT_SECRET,
       { expiresIn: '4h' }
@@ -375,6 +413,7 @@ if (allowedGuildIds.length === 0) {
         userId: String(u._id || u.sub || u.id || u.userId || ''),
         username: u.username || 'discord',
         allowedGuildIds: allowed,
+        allowedGuilds: Array.isArray(u.allowedGuilds) ? u.allowedGuilds : [],
         guildId: gid
       });
 

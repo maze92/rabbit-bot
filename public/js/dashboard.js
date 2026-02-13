@@ -241,7 +241,7 @@ const API_BASE = '/api';
 
 
 
-  async function forceLogout() {
+  async function forceLogout(opts) {
     try {
       // Server-side logout clears HttpOnly cookies (cannot be cleared from JS directly).
       await fetch(API_BASE + '/auth/logout', { method: 'POST', credentials: 'same-origin' });
@@ -249,6 +249,11 @@ const API_BASE = '/api';
     clearToken();
     try {
       if (typeof showLogin === 'function') showLogin();
+    } catch {}
+    try {
+      if (opts && opts.redirect) {
+        window.location.replace('/');
+      }
     } catch {}
   }
 
@@ -3045,7 +3050,7 @@ function deleteTempVoiceBaseAt(index) {
     if (logoutBtn && !logoutBtn.dataset.bound) {
       logoutBtn.dataset.bound = '1';
       logoutBtn.addEventListener('click', function () {
-        forceLogout();
+        forceLogout({ redirect: true });
       });
     }
 
