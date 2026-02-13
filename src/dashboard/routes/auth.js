@@ -166,12 +166,14 @@ function registerAuthRoutes(ctx) {
         return res.status(400).send('Invalid OAuth state. Please try again.');
       }
 
-// Token exchange (handles Discord global rate limits safely).
+// Token exchange (tolerant of Discord rate limits).
+// Rationale: Discord may occasionally apply short-lived global 429s per app/IP.
+// Previously we bailed out when retry-after > 2s, which blocks first-time logins.
 const redirectUri = getRedirectUri(req);
 let tokenJson = null;
 let tokenRes = null;
 
-for (let attempt = 0; attempt < 2; attempt++) {
+for (let attempt = 0; attempt < 4; attempt++) {
   tokenRes = await fetch('https://discord.com/api/oauth2/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -193,14 +195,11 @@ for (let attempt = 0; attempt < 2; attempt++) {
       Number.isFinite(Number(body && body.retry_after)) ? Number(body.retry_after) : 0
     );
 
-    console.warn('[OAuth] Token exchange rate limited (429). retryAfterSec=', retryAfterSec);
+    const waitSec = Math.min(15, Math.max(1, Math.ceil(retryAfterSec || 1)));
+    console.warn('[OAuth] Token exchange rate limited (429). retryAfterSec=', retryAfterSec, 'waiting', waitSec, 's');
 
-    // Do not hold the request open for long. Wait briefly only when the retry window is small.
-    if (retryAfterSec > 2) {
-      return res.status(429).send('Discord rate limit reached. Please retry shortly.');
-    }
-
-    await sleep(Math.ceil((retryAfterSec || 1) * 1000));
+    // Wait (up to 15s) and retry. This avoids forcing the user to restart OAuth.
+    await sleep(waitSec * 1000);
     continue;
   }
 
@@ -210,26 +209,59 @@ for (let attempt = 0; attempt < 2; attempt++) {
 
 if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
   console.error('[OAuth] Token exchange failed', tokenRes && tokenRes.status, tokenJson);
+  if (tokenRes && tokenRes.status === 429) {
+    // Fall back to a friendly HTML page rather than a raw 429 string.
+    return res.status(429).send(
+      '<!doctype html><meta charset="utf-8" />' +
+      '<title>Rate limited</title>' +
+      '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
+      '<h2>Discord rate limit reached</h2>' +
+      '<p>O Discord limitou temporariamente pedidos de login (HTTP 429). Aguarda alguns segundos e volta a tentar.</p>' +
+      '<p><a href="/api/auth/login">Voltar a iniciar login</a></p>' +
+      '</div>'
+    );
+  }
   return res.status(400).send('Failed to exchange OAuth code.');
 }
 
       const accessToken = tokenJson.access_token;
 
-      const meRes = await fetch('https://discord.com/api/users/@me', {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const me = await meRes.json().catch(() => ({}));
-      if (!meRes.ok || !me || !me.id) {
-        console.error('[OAuth] /users/@me failed', meRes.status, me);
+      // Fetch user + guilds, retrying once on 429.
+      let meRes = null;
+      let me = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        meRes = await fetch('https://discord.com/api/users/@me', {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (meRes.status === 429) {
+          const ra = Number(meRes.headers.get('retry-after') || 1);
+          await sleep(Math.min(5, Math.max(1, Math.ceil(Number.isFinite(ra) ? ra : 1))) * 1000);
+          continue;
+        }
+        me = await meRes.json().catch(() => ({}));
+        break;
+      }
+      if (!meRes || !meRes.ok || !me || !me.id) {
+        console.error('[OAuth] /users/@me failed', meRes && meRes.status, me);
         return res.status(400).send('Failed to fetch Discord user.');
       }
 
-      const guildsRes = await fetch('https://discord.com/api/users/@me/guilds', {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const guilds = await guildsRes.json().catch(() => ([]));
-      if (!guildsRes.ok || !Array.isArray(guilds)) {
-        console.error('[OAuth] /users/@me/guilds failed', guildsRes.status, guilds);
+      let guildsRes = null;
+      let guilds = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        guildsRes = await fetch('https://discord.com/api/users/@me/guilds', {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (guildsRes.status === 429) {
+          const ra = Number(guildsRes.headers.get('retry-after') || 1);
+          await sleep(Math.min(5, Math.max(1, Math.ceil(Number.isFinite(ra) ? ra : 1))) * 1000);
+          continue;
+        }
+        guilds = await guildsRes.json().catch(() => ([]));
+        break;
+      }
+      if (!guildsRes || !guildsRes.ok || !Array.isArray(guilds)) {
+        console.error('[OAuth] /users/@me/guilds failed', guildsRes && guildsRes.status, guilds);
         return res.status(400).send('Failed to fetch Discord guilds.');
       }
 
