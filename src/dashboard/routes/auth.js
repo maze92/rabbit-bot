@@ -393,7 +393,6 @@ if (allowedGuildIds.length === 0) {
         role,
         permissions: perms,
         allowedGuildIds: allowed.slice(0, 200),
-        allowedGuilds: Array.isArray(allowedGuilds) ? allowedGuilds.slice(0, 200) : [],
         selectedGuildId: gid,
         profile
       },

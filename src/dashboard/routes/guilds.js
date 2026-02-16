@@ -26,9 +26,32 @@ function registerGuildsRoutes({
       // In OAuth-only mode we still restrict "ADMIN" users to their allowed guilds
       // (owner/admin on Discord + bot present) via allowedGuildIds.
       const u = req.dashboardUser;
-      const allowList = u && Array.isArray(u.allowedGuildIds)
-        ? u.allowedGuildIds.filter(Boolean).map(String)
+
+      // Backwards-compatibility: older sessions may contain an unfiltered allow-list.
+      // Prefer (and re-validate) OAuth metadata whenever available.
+      function hasAdministratorPermission(permissions) {
+        try {
+          // Discord "Administrator" bit = 0x8
+          const perm = BigInt(String(permissions || '0'));
+          return (perm & BigInt(0x8)) === BigInt(0x8);
+        } catch (e) {
+          return false;
+        }
+      }
+
+      const metaAll = (u && Array.isArray(u.allowedGuilds))
+        ? u.allowedGuilds.filter((g) => g && g.id)
         : [];
+
+      const strictEligibleFromMeta = metaAll
+        .filter((g) => Boolean(g.owner) || hasAdministratorPermission(g.permissions))
+        .map((g) => String(g.id));
+
+      const allowList = strictEligibleFromMeta.length
+        ? strictEligibleFromMeta
+        : (u && Array.isArray(u.allowedGuildIds)
+          ? u.allowedGuildIds.filter(Boolean).map(String)
+          : []);
 
       // OAuth-only: if token has no allow-list, force re-auth (prevents stale/empty tokens from persisting).
       if (u && u.oauth && allowList.length === 0) {
@@ -36,9 +59,7 @@ function registerGuildsRoutes({
       }
 
       // Prefer token metadata (from /users/@me/guilds) for stable listing even if client cache is not ready.
-      const allowedMeta = (u && Array.isArray(u.allowedGuilds))
-        ? u.allowedGuilds.filter((g) => g && g.id && allowList.includes(String(g.id)))
-        : [];
+      const allowedMeta = metaAll.filter((g) => allowList.includes(String(g.id)));
 
       const clientGuilds = _client && _client.guilds && _client.guilds.cache
         ? _client.guilds.cache

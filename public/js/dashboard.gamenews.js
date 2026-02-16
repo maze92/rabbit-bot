@@ -385,15 +385,6 @@ function setInputError(inputEl, hasError) {
       const feed = state.gameNewsFeeds[numericIdx];
       if (!feed) return;
 
-      // Keep a per-selection baseline for Cancel/dirty comparison UI
-      try {
-        state.activeGameNewsFeedOriginal = JSON.parse(snapshotFeed(feed));
-        state.activeGameNewsFeedOriginalKey = feedKey(feed);
-      } catch {
-        state.activeGameNewsFeedOriginal = null;
-        state.activeGameNewsFeedOriginalKey = feedKey(feed);
-      }
-
       const listEl = document.getElementById('gamenewsFeedsList');
       if (listEl) {
         const rows = listEl.querySelectorAll('.list-item');
@@ -535,10 +526,8 @@ function renderGameNewsFeedDetail(feed) {
     html += '<div class="history-section user-actions gamenews-detail-actions">';
     html += `<h3>${escapeHtml(t('gamenews_detail_actions_title') || t('users_actions_title'))}</h3>`;
     html += '<div class="badge-row user-actions-buttons">';
-    html += `<button type="button" class="btn xs gamenews-action btn-save" data-action="save">${escapeHtml(
-      t('gamenews_detail_action_save')
-    )}</button>`;
-    html += `<button type="button" class="btn xs gamenews-action btn-cancel" data-action="cancel">${escapeHtml(t('gamenews_detail_action_cancel') || 'Cancelar')}</button>`;
+    html += `<button type="button" class="btn xs gamenews-action btn-save" data-action="save">${escapeHtml(t('gamenews_detail_action_save'))}</button>`;
+    html += `<button type="button" class="btn xs gamenews-action btn-cancel" data-action="cancel">${escapeHtml(t('gamenews_detail_action_cancel'))}</button>`;
     html += `<button type="button" class="btn xs gamenews-action btn-toggle-enabled" data-action="toggle-enabled">${escapeHtml(t('gamenews_detail_action_toggle'))}</button>`;
     html += `<button type="button" class="btn xs gamenews-action btn-remove" data-action="remove">${escapeHtml(t('gamenews_detail_action_remove'))}</button>`;
 
@@ -659,7 +648,8 @@ function renderGameNewsFeedDetail(feed) {
       setInputError(maxEl, !!(v.errors && v.errors.maxPerCycle));
 
       const btnSave = detailEl.querySelector('.gamenews-action[data-action="save"]');
-            const dirty = isFeedDirty(target);
+      const btnCancel = detailEl.querySelector('.gamenews-action[data-action="cancel"]');
+      const dirty = isFeedDirty(target);
 
       const dirtyHintEl = detailEl.querySelector('#gnDirtyHint');
       if (dirtyHintEl) {
@@ -669,6 +659,7 @@ function renderGameNewsFeedDetail(feed) {
       }
 
       if (btnSave) btnSave.disabled = !v.ok || !dirty;
+      if (btnCancel) btnCancel.disabled = !dirty;
 
       updateGameNewsFeedRowByIndex(idx);
 
@@ -702,40 +693,6 @@ function renderGameNewsFeedDetail(feed) {
           saveGameNewsFeeds().catch(function (e) {
             toast((e && e.apiMessage) || t('gamenews_error_generic'));
           });
-                } else if (action === 'cancel') {
-          // Revert local unsaved changes to last saved snapshot (or selection baseline).
-          const k = feedKey(target);
-          let snap = null;
-          try {
-            if (state.gameNewsOriginalByKey && k && state.gameNewsOriginalByKey[k]) {
-              snap = JSON.parse(state.gameNewsOriginalByKey[k]);
-            } else if (state.activeGameNewsFeedOriginal) {
-              snap = state.activeGameNewsFeedOriginal;
-            }
-          } catch {}
-
-          if (snap) {
-            target.name = snap.name || target.name || 'Feed';
-            target.feedUrl = snap.feedUrl || '';
-            target.channelId = snap.channelId || '';
-            target.logChannelId = snap.logChannelId || '';
-            target.enabled = snap.enabled !== false;
-            target.intervalMs = (typeof snap.intervalMs === 'number' && Number.isFinite(snap.intervalMs) && snap.intervalMs > 0) ? snap.intervalMs : null;
-            target.maxPerCycle = (typeof snap.maxPerCycle === 'number' && Number.isFinite(snap.maxPerCycle)) ? snap.maxPerCycle : null;
-          } else {
-            // No snapshot available (new feed): clear fields.
-            target.name = target.name || 'Feed';
-            target.feedUrl = '';
-            target.channelId = '';
-            target.logChannelId = '';
-            target.enabled = true;
-            target.intervalMs = null;
-            target.maxPerCycle = null;
-          }
-
-          updateGameNewsFeedRowByIndex(idx);
-          renderGameNewsFeedDetail(target);
-          toast(t('gamenews_detail_cancelled') || 'Alterações canceladas.');
         } else if (action === 'toggle-enabled') {
           const prev = target.enabled;
           target.enabled = !target.enabled;
@@ -749,6 +706,42 @@ function renderGameNewsFeedDetail(feed) {
           saveGameNewsFeeds().catch(function (e) {
             toast((e && e.apiMessage) || t('gamenews_error_generic'));
           });
+        } else if (action === 'cancel') {
+          // Reverter alterações locais para o snapshot original (ou defaults se for um feed novo)
+          const k = feedKey(target);
+          const orig = (state.gameNewsOriginalByKey && k) ? state.gameNewsOriginalByKey[k] : null;
+          if (orig) {
+            try {
+              const snap = JSON.parse(orig);
+              target.name = snap.name || 'Feed';
+              target.feedUrl = snap.feedUrl || '';
+              target.channelId = snap.channelId || '';
+              target.logChannelId = snap.logChannelId || null;
+              target.enabled = snap.enabled !== false;
+              target.intervalMs = typeof snap.intervalMs === 'number' ? snap.intervalMs : null;
+              target.maxPerCycle = typeof snap.maxPerCycle === 'number' ? snap.maxPerCycle : null;
+            } catch (e) {
+              // fallback para defaults
+              target.name = 'Feed';
+              target.feedUrl = '';
+              target.channelId = '';
+              target.logChannelId = null;
+              target.enabled = true;
+              target.intervalMs = null;
+              target.maxPerCycle = null;
+            }
+          } else {
+            target.name = 'Feed';
+            target.feedUrl = '';
+            target.channelId = '';
+            target.logChannelId = null;
+            target.enabled = true;
+            target.intervalMs = null;
+            target.maxPerCycle = null;
+          }
+
+          updateGameNewsFeedRowByIndex(idx);
+          renderGameNewsFeedDetail(target);
         } else if (action === 'remove') {
           // Remove do state, ajusta seleção e persiste na BD
           state.gameNewsFeeds.splice(idx, 1);

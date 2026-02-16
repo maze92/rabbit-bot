@@ -1,149 +1,118 @@
-## 1.3.2
-- Dashboard: o seletor de servidor passa a apresentar nomes corretamente mesmo após selecionar guild (token scoped inclui metadata) e mantém o filtro apenas para servidores onde o utilizador é **Owner** ou tem **Administrador**.
-- Dashboard (Moderação): removida a secção **Casos** (UI + endpoints), reduzindo superfície de manutenção e código legacy.
-- GameNews: removido o botão **Testar** do histórico do feed; adicionado botão **Cancelar** para descartar alterações locais e voltar ao último estado guardado.
-- GameNews: novo campo por feed **Envios por intervalo** (maxPerCycle) com validação e traduções PT/EN.
-- UI/CSS: alinhamento de colunas no detalhe do feed (inputs com largura consistente) e tipografia/spacing ajustados em Voz Temporária e Trust (valores do resumo mais compactos).
-- i18n: chaves em falta normalizadas (inclui `config_maintenance_title`, `tempvoice_actions_title`, `gamenews_feed_max_per_cycle_*`).
+# Changelog
 
-## 1.3.1
+Todas as alterações relevantes deste projeto são registadas aqui.
+
+Este ficheiro segue o formato do **Keep a Changelog** e utiliza **SemVer**.
+
+---
+
+## [1.3.2] – 2026-02-16
+
+### Corrigido
+- Dashboard: filtro de guilds reforçado no endpoint `/api/guilds` (apenas guilds onde o utilizador é **Owner** ou tem permissão **Administrator**).
+- GameNews (Histórico do feed): remoção do botão **Testar**.
+- GameNews (Histórico do feed): botão **Cancelar** ao lado de **Guardar** para reverter alterações locais.
+- UI: inputs com largura consistente (inclui inputs/seletores do Histórico do feed).
+- UI: tab **Utilizadores** e tab **Configuração do servidor** voltam a renderizar dentro do layout centrado (correção de markup HTML).
+
+### Alterado
+- i18n (PT/EN): adicionadas chaves em falta (inclui GameNews “max per cycle”, Voz Temporária e Manutenção).
+- Trust (Extras): valores do resumo com tipografia mais discreta.
+
+---
+
+## [1.3.1]
+
+### Alterado
 - Staff roles (feature-based): enforcement consistente nos slash commands de moderação e no sistema de ticket threads (usa `staffRolesByFeature` quando configurado).
-- /help: correção do bug de permissões (o check estava assíncrono e nunca bloqueava).
-- Staff roles: cache TTL (30s) para reduzir leituras repetidas de GuildConfig.
-- Config: removido legado `STAFF_ROLE_IDS` e `tickets.staffRoleIds` do defaultConfig (não eram usados em runtime).
+- `/help`: correção do bug de permissões (o check estava assíncrono e nunca bloqueava).
+- Staff roles: cache TTL (30s) para reduzir leituras repetidas de `GuildConfig`.
+- Config: removido legado `STAFF_ROLE_IDS` e `tickets.staffRoleIds` do `defaultConfig` (não eram usados em runtime).
 
-## 1.3.0
-- Configuração (Dashboard): UX refeita para selecção de cargos de staff (chips + adicionar/remover) em vez de multi-select difícil.
-- Configuração: presets “Aplicar a todas as secções” e “Limpar overrides” agora atualizam imediatamente a UI dos chips.
+---
+
+## [1.3.0]
+
+### Alterado
+- Configuração (Dashboard): UX refeita para seleção de cargos de staff (chips + adicionar/remover) em vez de multi-select.
+- Configuração: presets “Aplicar a todas as secções” e “Limpar overrides” atualizam imediatamente a UI.
+
+### Adicionado
 - i18n: novas chaves para o role picker (PT/EN).
 
-## 1.2.9
-- Dashboard (CORS): origem de produção ajustada para `https://rabbit-bot.koyeb.app` (remove legado `ozark-bot.koyeb.app`).
-- Moderação (Dashboard): nova secção **Casos** (lista + detalhe) usando `/api/cases` e `/api/case`.
-- Frontend: correção de bug de sintaxe no editor de utilizadores da dashboard (allowedGuildIds reset).
-- Cache bust: versão dos assets atualizada para evitar servir JS/CSS antigos.
+---
 
-## 1.2.8
-- Infractions: schema alinhado com o serviço (caseId, source, userTag/executorTag) + índices úteis (inclui unique por guild+caseId).
-- Cases API: pesquisa e filtros corrigidos para usar campos reais (reason/tags/ids/type/source/caseId).
+## [1.2.9]
+
+### Corrigido
+- Dashboard (CORS): origem de produção ajustada (remoção de origem antiga).
+- Frontend: correção de bug no editor de utilizadores (reset de `allowedGuildIds`).
+- Cache bust: versão dos assets atualizada.
+
+### Adicionado
+- Moderação (Dashboard): secção **Casos** (lista + detalhe) usando `/api/cases` e `/api/case`.
+
+---
+
+## [1.2.8]
+
+### Alterado
+- Infractions: schema alinhado com o serviço (caseId, source, userTag/executorTag) + índices úteis.
+- Cases API: pesquisa e filtros ajustados para os campos reais.
 - Case API: usa tags guardadas (snapshot) e só faz fetch ao Discord quando necessário.
-- Logs API: validação Zod agora aceita `guildId` opcional (evita 400 em estados “sem servidor selecionado”).
-- Dashboard (Moderação): paginação do painel de tickets não permite “cliques mortos” (prev/next desativados conforme total).
 
-## 1.2.7
-- Moderação (Server Insights): ranges ajustados para 7d/14d/30d (mantém compatibilidade com 24h/1y se algum cliente antigo usar).
-- Moderação (Server Insights): métricas passam a usar **Infractions** como fonte de verdade (WARN/MUTE), sem parsing frágil de logs.
-- Moderação (Server Insights): `stats` estável (totalActions, warns, mutes) + cache curto (45s) por guild/range.
-- Segurança: `GET /api/mod/overview` agora valida `guildId` via guild allow-list (quando configurada).
+### Corrigido
+- Logs API: validação Zod aceita `guildId` opcional.
+- Dashboard (Moderação): paginação do painel de tickets (prev/next coerentes com total).
 
-## 1.2.6
-- Segurança: guardas de permissões (RBAC) e de acesso por servidor (guild allow-list) aplicados em Case/Audit/Admin/TempVoice/Users history.
-- Tickets: validação de comprimento da resposta (frontend) + chave i18n para erro de mensagem demasiado longa.
-- Backend: removida duplicação de verificação NO_GUILD_ACCESS no endpoint de reply de tickets.
+---
 
-## 1.2.5
-- GameNews: validação inline no editor (URL/canal) e botões desativados quando inválido.
-- GameNews: dirty-state por feed (badge "Alterações" e aviso discreto ao trocar de feed).
-- GameNews: badge de erro quando há lastError no estado do feed.
+## [1.2.7]
 
-## 1.2.4
-- Frontend: validação inline em Config e Trust (erros por campo, sem alterar layout).
+### Alterado
+- Moderação (Server Insights): ranges ajustados para 7d/14d/30d.
+- Moderação (Server Insights): métricas usam **Infractions** como fonte de verdade (WARN/MUTE).
+- Moderação (Server Insights): `stats` estável + cache curto (45s) por guild/range.
+
+### Segurança
+- `GET /api/mod/overview` valida `guildId` via allow-list quando configurada.
+
+---
+
+## [1.2.6]
+
+### Segurança
+- Guardas de permissões (RBAC) e de acesso por servidor aplicados em Case/Audit/Admin/TempVoice/Users history.
+
+### Corrigido
+- Tickets: validação de comprimento da resposta (frontend) + chave i18n para erro de mensagem longa.
+- Backend: removida duplicação de verificação `NO_GUILD_ACCESS` no endpoint de reply.
+
+---
+
+## [1.2.5]
+
+### Adicionado
+- GameNews: validação inline (URL/canal) e botões desativados quando inválido.
+- GameNews: dirty-state por feed (badge + aviso discreto ao trocar de feed).
+- GameNews: badge de erro quando existe `lastError`.
+
+---
+
+## [1.2.4]
+
+### Adicionado
+- Frontend: validação inline em Config e Trust (erros por campo).
+
+### Alterado
 - Trust: status explícito quando um preset é aplicado (não guardado).
 - Config: limpeza automática de erros inline ao editar campos.
 
-# Changelog
-
-Todas as alterações relevantes deste projeto serão documentadas neste ficheiro.
-
-O formato segue uma aproximação ao [Keep a Changelog](https://keepachangelog.com/) e utiliza versionamento semântico inspirado em [SemVer](https://semver.org/).
-
 ---
 
-## [v1.2.2] – Trust presets & config hardening
+## [1.0.0]
 
 ### Adicionado
-- Presets de Trust (Equilibrado, Rigoroso, Flexível) no painel **Extras → Trust**, com botão **Aplicar**.
-- Botão **Guardar Trust** para persistir as definições globais via API.
-
-### Alterado
-- O painel de Trust deixa de ser read-only quando o utilizador da dashboard tem permissão **canEditConfig**.
-
-### Corrigido
-- Removido hardcode de role-id na listagem de utilizadores; agora ignora automaticamente roles geridos/integration.
-- Endpoint global `/api/config` passa a respeitar RBAC (view/edit) quando a autenticação do dashboard está ativa.
-
-## [v1.1.0] – Trust system & Extras refinements
-
-### Adicionado
-- Sub-tab **Trust** em **Extras**, com:
-  - Painel dividido entre formulário de configuração e painel de resumo.
-  - Inputs pré-preenchidos com a configuração atual de trust do servidor.
-  - Layout responsivo e integrado com o design restante da dashboard.
-- Melhorias na tab **Configuração**:
-  - Subcards separados para **Registos e canais de logs** e **Acesso e cargos de staff**.
-  - Textos de ajuda (hints) mais claros sobre o papel de cada secção.
-- Refinamentos na tab **Hub de moderação** e mini-painéis relacionados:
-  - Ajustes de tipografia e espaçamento nos **Registos do Servidor** para leitura mais confortável.
-
-### Alterado
-- Layout da secção de **Voz Temporária** e de painéis em Extras para reduzir inconsistências com a tab de Utilizadores.
-- Estilos do Sistema de Trust para alinhar com a identidade visual da dashboard (cards, grids e hints).
-
-### Corrigido
-- Removida a maior parte das situações que causavam **scrollbar horizontal**, em especial na configuração de Voz Temporária.
-- Pequenos ajustes de i18n e alinhamento de chaves utilizadas no frontend.
-
----
-
-## [v1.0.13] – Dashboard & UX refinements
-
-### Adicionado
-- Badge **Bot online/offline** no topo da dashboard, alimentado pelo endpoint `/health`.
-- Mini-painéis na tab **Hub de moderação**:
-  - Análises do Servidor por intervalo (24h / 7d / 30d / 1 ano).
-  - Análises de Tickets com paginação e filtro por período.
-  - Registo de Utilizadores Online preparado para dados reais de presença.
-- Secção **Registos do Servidor** com filtros de pesquisa, tipo de ação e limite configurável de registos.
-- Sistema de internacionalização (i18n) refatorado no frontend, com ficheiros dedicados em `public/locales/` e helper `t(key, params)`.
-- Melhorias de UI na secção de Voz Temporária (layout em mini-painel, alinhado com Utilizadores e GameNews).
-- Endpoint `/api/mod/overview` no backend para fornecer estatísticas rápidas de moderação e tickets.
-
-### Alterado
-- Tab **GameNews** alinhada com o padrão master-detail usado em Utilizadores (lista à esquerda + painel de detalhe à direita).
-- Painel de **Voz temporária** (Extras) ajustado para ter mini-painel de detalhe visualmente consistente com o resto da UI.
-- Dashboard atualizada para:
-  - Reutilizar mais componentes de layout (`user-layout`, mini-paineis).
-  - Garantir que, em caso de erro 401, o utilizador é devolvido ao ecrã de login.
-
-### Corrigido
-- Remoção da antiga tab **Cases** e respetiva lógica legacy no frontend.
-- Erros de sintaxe em `dashboard.js` causados por ramos de tabs obsoletos.
-- Problemas de CSS em `dashboard.css` (regra solta que afetava a secção GameNews).
-- Vários pontos de scroll horizontal indesejado, especialmente no painel de Voz Temporária.
-
----
-
-## [v1.0.0] – Primeira versão pública
-
-### Adicionado
-- Bot Discord com:
-  - Comandos de moderação (`warn`, `mute`, `unmute`, `clear`, `userinfo`, `help`).
-  - Integração com MongoDB para registo de infrações.
-- Dashboard web inicial:
-  - Visão geral do servidor.
-  - Tabs de Utilizadores, Logs, Tickets, GameNews e Configuração.
-- Sistema de GameNews baseado em RSS.
-- Sistema de canais de Voz Temporária com configuração guardada em MongoDB.
-- Configuração base em `defaultConfig.js` e integração com variáveis `.env`.
-
----
-
-## Histórico anterior
-
-Versões intermédias (ex: 1.0.1–1.0.12) focaram-se sobretudo em:
-
-- Ajustes incrementais de UI na dashboard.
-- Pequenas correções ao fluxo de tickets e logs.
-- Melhorias na robustez do bot (tratamento de erros, estados de conexão, etc.).
-
-Para detalhes finos dessas versões, consultar o histórico de commits.
+- Bot Discord com comandos de moderação.
+- Dashboard web inicial (Visão Geral, Utilizadores, Logs, Tickets, GameNews, Configuração).
+- GameNews (RSS), Voz Temporária e persistência em MongoDB.

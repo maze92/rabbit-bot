@@ -52,7 +52,6 @@
   - Lista de feeds configurados.
   - Estado de cada feed (último envio, erros, etc.).
   - Edição rápida de URL, canal, intervalo e título.
-  - Controlo por feed de quantas notícias enviar por execução (Envios por intervalo).
 
 ### 🔊 Voz temporária
 
@@ -69,8 +68,8 @@
 
 ### 🌐 Dashboard web
 
-- Autenticação via Discord OAuth2 (sessão JWT no backend).
-- O seletor de servidor só mostra guilds onde o utilizador é **Owner** ou tem permissão **Administrador**.
+- Autenticação recomendada por **Discord OAuth 2.0** + sessão JWT.
+- A lista de servidores é filtrada: apenas aparecem guilds onde o utilizador é **Owner** ou tem permissão **Administrator**.
 - Seleção de servidor e tabs por contexto:
   - **Visão geral**
   - **Utilizadores**
@@ -120,7 +119,14 @@ Cria um ficheiro `.env` na raiz com algo deste género:
 ```ini
 DISCORD_TOKEN=seu_token_do_bot
 MONGODB_URI=mongodb://localhost:27017/rabbit-bot
+
 ## Dashboard Auth (recomendado)
+# Discord OAuth 2.0 (cria uma aplicação no Developer Portal)
+DISCORD_CLIENT_ID=seu_client_id
+DISCORD_CLIENT_SECRET=seu_client_secret
+# Ex.: http://localhost:3000/api/auth/callback
+DASHBOARD_CALLBACK_URL=http://localhost:3000/api/auth/callback
+
 # JWT secret forte (>= 32 chars)
 DASHBOARD_JWT_SECRET=coloca_um_segredo_muito_forte_aqui
 

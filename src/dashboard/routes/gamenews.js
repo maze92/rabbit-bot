@@ -353,6 +353,62 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGu
     return res.status(500).json({ ok: false, error: 'Internal Server Error' });
   }
 });
+app.post('/api/gamenews/test', requireDashboardAuth, canManageGameNews, guardGuildBodyOptional, guardGuildQueryOptional, async (req, res) => {
+  try {
+    const client = typeof getClient === 'function' ? getClient() : null;
+    if (!client) {
+      return res.status(503).json({ ok: false, error: 'Bot client not ready' });
+    }
+
+    const guildId = sanitizeId(req.body?.guildId || req.query.guildId || '');
+    const rawFeedId = (req.body?.feedId || req.params?.feedId || '').toString().trim();
+    const feedId = rawFeedId.slice(0, 64); // allow hex ObjectId
+
+    if (!guildId) {
+      return res.status(400).json({ ok: false, error: 'guildId is required' });
+    }
+    if (!feedId) {
+      return res.status(400).json({ ok: false, error: 'feedId is required' });
+    }
+
+    if (!gameNewsSystem || typeof gameNewsSystem.testSendGameNews !== 'function') {
+      return res.status(503).json({ ok: false, error: 'GameNews test not available on this deployment' });
+    }
+
+    const mergedCfg = configManager.getPublicConfig
+      ? configManager.getPublicConfig()
+      : config;
+
+    const result = await gameNewsSystem.testSendGameNews({
+      client: client,
+      config: mergedCfg,
+      guildId,
+      feedId
+    });
+
+    await recordAudit({
+      req,
+      action: 'gamenews.feed.test',
+      guildId,
+      targetUserId: null,
+      actor: getActorFromRequest(req),
+      payload: { feedId, feedName: result?.feedName || null }
+    });
+
+    return res.json({
+      ok: true,
+      result: {
+        feedName: result.feedName,
+        title: result.title,
+        link: result.link
+      }
+    });
+  } catch (err) {
+    console.error('[Dashboard] /api/gamenews/test error:', err);
+    const message = err && err.message ? String(err.message) : 'Internal Server Error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
 }
 
 module.exports = { registerGameNewsRoutes };

@@ -16,12 +16,14 @@ const { registerGameNewsRoutes } = require('./dashboard/routes/gamenews');
 const { registerModRoutes } = require('./dashboard/routes/mod');
 const { registerConfigRoutes } = require('./dashboard/routes/config');
 const { registerLogsRoutes } = require('./dashboard/routes/logs');
+const { registerCasesRoutes } = require('./dashboard/routes/cases');
 const { registerTicketsRoutes } = require('./dashboard/routes/tickets');
 const { registerUsersRoutes } = require('./dashboard/routes/users');
 const { registerGuildsRoutes } = require('./dashboard/routes/guilds');
 const { registerUserRoutes } = require('./dashboard/routes/user');
 const { registerTrustRoutes } = require('./dashboard/routes/trust');
 const { registerCoreRoutes } = require('./dashboard/routes/core');
+const { registerCaseRoutes } = require('./dashboard/routes/case');
 const { registerAuditRoutes } = require('./dashboard/routes/audit');
 const { registerAdminRoutes } = require('./dashboard/routes/admin');
 const { registerTempVoiceRoutes } = require('./dashboard/routes/tempVoice');
@@ -161,6 +163,16 @@ const ModUnmuteSchema = z.object({
 /**
  * Query validation schemas
  */
+const CasesSearchQuerySchema = z.object({
+  guildId: z.string().min(1).max(32),
+  q: z.string().max(100).optional(),
+  userId: z.string().max(32).optional(),
+  type: z.string().max(32).optional(),
+  source: z.string().max(32).optional(),
+  page: z.string().regex(/^\d+$/).optional(),
+  limit: z.string().regex(/^\d+$/).optional()
+});
+
 // Logs endpoint supports optional guildId (some panels show “select guild” states).
 // Keep it permissive and validate semantics in the route when needed.
 const LogsQuerySchema = z.object({
@@ -812,6 +824,19 @@ registerLogsRoutes({
   _setLogsCache: (next) => { logsCache = next; }
 });
 
+registerCasesRoutes({
+  app,
+  requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
+  rateLimit,
+  sanitizeId,
+  recordAudit,
+  getActorFromRequest,
+  CasesSearchQuerySchema,
+  _getModels: () => ({ Infraction })
+});
+
 registerTicketsRoutes({
   app,
   requireDashboardAuth,
@@ -835,6 +860,16 @@ registerUsersRoutes({
   guildMembersLastFetch,
   infractionsService,
   TicketLogModel: TicketLog
+});
+
+registerCaseRoutes({
+  app,
+  requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
+  sanitizeId,
+  infractionsService,
+  getClient: () => _client
 });
 
 async function saveLogToMongo(data) {
