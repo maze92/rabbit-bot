@@ -403,4 +403,7 @@ async function loadLogs() {
       // Aqui podemos, no futuro, ligar um spinner global da tab de moderação se quisermos.
     });
   }
+
+  // Expose mandatory tab loaders expected by dashboard.js
+  D.loadLogs = loadLogs;
 })();

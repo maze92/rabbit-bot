@@ -535,7 +535,9 @@ function renderGameNewsFeedDetail(feed) {
     html += '<div class="history-section user-actions gamenews-detail-actions">';
     html += `<h3>${escapeHtml(t('gamenews_detail_actions_title') || t('users_actions_title'))}</h3>`;
     html += '<div class="badge-row user-actions-buttons">';
-    html \+= `<button type=\"button\" class=\"btn xs gamenews-action btn-save\" data-action=\"save\">\$\{escapeHtml\(t\('gamenews_detail_action_save'\)\)\}<\/button>`;
+    html += `<button type="button" class="btn xs gamenews-action btn-save" data-action="save">${escapeHtml(
+      t('gamenews_detail_action_save')
+    )}</button>`;
     html += `<button type="button" class="btn xs gamenews-action btn-cancel" data-action="cancel">${escapeHtml(t('gamenews_detail_action_cancel') || 'Cancelar')}</button>`;
     html += `<button type="button" class="btn xs gamenews-action btn-toggle-enabled" data-action="toggle-enabled">${escapeHtml(t('gamenews_detail_action_toggle'))}</button>`;
     html += `<button type="button" class="btn xs gamenews-action btn-remove" data-action="remove">${escapeHtml(t('gamenews_detail_action_remove'))}</button>`;
