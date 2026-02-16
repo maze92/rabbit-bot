@@ -22,7 +22,6 @@ const { registerGuildsRoutes } = require('./dashboard/routes/guilds');
 const { registerUserRoutes } = require('./dashboard/routes/user');
 const { registerTrustRoutes } = require('./dashboard/routes/trust');
 const { registerCoreRoutes } = require('./dashboard/routes/core');
-const { registerCaseRoutes } = require('./dashboard/routes/case');
 const { registerAuditRoutes } = require('./dashboard/routes/audit');
 const { registerAdminRoutes } = require('./dashboard/routes/admin');
 const { registerTempVoiceRoutes } = require('./dashboard/routes/tempVoice');
@@ -836,16 +835,6 @@ registerUsersRoutes({
   guildMembersLastFetch,
   infractionsService,
   TicketLogModel: TicketLog
-});
-
-registerCaseRoutes({
-  app,
-  requireDashboardAuth,
-  requirePerm,
-  requireGuildAccess,
-  sanitizeId,
-  infractionsService,
-  getClient: () => _client
 });
 
 async function saveLogToMongo(data) {
