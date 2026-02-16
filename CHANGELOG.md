@@ -1,3 +1,11 @@
+## 1.3.2
+- Dashboard: o seletor de servidor passa a apresentar nomes corretamente mesmo após selecionar guild (token scoped inclui metadata) e mantém o filtro apenas para servidores onde o utilizador é **Owner** ou tem **Administrador**.
+- Dashboard (Moderação): removida a secção **Casos** (UI + endpoints), reduzindo superfície de manutenção e código legacy.
+- GameNews: removido o botão **Testar** do histórico do feed; adicionado botão **Cancelar** para descartar alterações locais e voltar ao último estado guardado.
+- GameNews: novo campo por feed **Envios por intervalo** (maxPerCycle) com validação e traduções PT/EN.
+- UI/CSS: alinhamento de colunas no detalhe do feed (inputs com largura consistente) e tipografia/spacing ajustados em Voz Temporária e Trust (valores do resumo mais compactos).
+- i18n: chaves em falta normalizadas (inclui `config_maintenance_title`, `tempvoice_actions_title`, `gamenews_feed_max_per_cycle_*`).
+
 ## 1.3.1
 - Staff roles (feature-based): enforcement consistente nos slash commands de moderação e no sistema de ticket threads (usa `staffRolesByFeature` quando configurado).
 - /help: correção do bug de permissões (o check estava assíncrono e nunca bloqueava).

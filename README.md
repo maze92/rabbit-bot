@@ -7,7 +7,7 @@
 - Integrar notícias via RSS (GameNews).
 - Gerir canais de **voz temporária** de forma automática.
 
-> Versão atual: **v1.1.0**
+> Versão atual: **v1.3.2**
 
 ---
 
@@ -52,6 +52,7 @@
   - Lista de feeds configurados.
   - Estado de cada feed (último envio, erros, etc.).
   - Edição rápida de URL, canal, intervalo e título.
+  - Controlo por feed de quantas notícias enviar por execução (Envios por intervalo).
 
 ### 🔊 Voz temporária
 
@@ -68,7 +69,8 @@
 
 ### 🌐 Dashboard web
 
-- Autenticação com token (DASHBOARD_TOKEN).
+- Autenticação via Discord OAuth2 (sessão JWT no backend).
+- O seletor de servidor só mostra guilds onde o utilizador é **Owner** ou tem permissão **Administrador**.
 - Seleção de servidor e tabs por contexto:
   - **Visão geral**
   - **Utilizadores**
