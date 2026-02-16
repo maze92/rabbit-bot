@@ -37,6 +37,13 @@ const guildConfigSchema = new Schema(
       config: { type: [String], default: [] }
     },
 
+    // Modo manutenção (quando ativo, o bot limita comandos a admin/owner e, opcionalmente, staff)
+    maintenanceMode: {
+      enabled: { type: Boolean, default: false },
+      message: { type: String, default: null },
+      allowStaff: { type: Boolean, default: true }
+    },
+
     // Configuração de voz temporária por guild
     tempVoice: {
       enabled: { type: Boolean, default: false },

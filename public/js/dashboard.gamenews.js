@@ -26,113 +26,7 @@
 
   }
 
-  // ------------------------
-  // GameNews settings (max items per interval)
-  // ------------------------
-
-  function _setGameNewsSettingsStatus(text, isError) {
-    var el = document.getElementById('gamenewsSettingsStatus');
-    if (!el) return;
-    el.textContent = text || '';
-    el.classList.toggle('error', !!isError);
-  }
-
-  function _renderGameNewsEffectiveMax(n) {
-    var out = document.getElementById('gamenewsEffectiveMaxPerCycle');
-    if (!out) return;
-    out.textContent = t('gamenews_settings_effective', { n: String(n) });
-  }
-
-  function bindGameNewsSettingsOnce() {
-    if (document.body && document.body.dataset && document.body.dataset.gnSettingsBound) return;
-    if (document.body && document.body.dataset) document.body.dataset.gnSettingsBound = '1';
-
-    var btnSave = document.getElementById('btnSaveGameNewsSettings');
-    var btnClear = document.getElementById('btnClearGameNewsSettings');
-    var input = document.getElementById('gamenewsMaxPerCycle');
-
-    if (btnSave) {
-      btnSave.addEventListener('click', function () {
-        saveGameNewsSettings().catch(function () {});
-      });
-    }
-    if (btnClear) {
-      btnClear.addEventListener('click', function () {
-        clearGameNewsSettings().catch(function () {});
-      });
-    }
-    if (input) {
-      input.addEventListener('input', function () {
-        _setGameNewsSettingsStatus('', false);
-      });
-    }
-  }
-
-  async function loadGameNewsSettings() {
-    try {
-      bindGameNewsSettingsOnce();
-      var input = document.getElementById('gamenewsMaxPerCycle');
-      var cfg = await apiGet('/config');
-      var effective = 3;
-      try {
-        var v = cfg && cfg.gameNews && cfg.gameNews.maxPerCycle;
-        if (typeof v === 'number' && Number.isFinite(v)) effective = v;
-      } catch (e) {}
-
-      _renderGameNewsEffectiveMax(effective);
-
-      // Keep input empty by default (no forced choice). Use placeholder to show the effective value.
-      if (input) {
-        if (!input.value) input.placeholder = String(effective);
-      }
-    } catch (e) {}
-  }
-
-  async function saveGameNewsSettings() {
-    var input = document.getElementById('gamenewsMaxPerCycle');
-    if (!input) return;
-
-    var raw = String(input.value || '').trim();
-    if (!raw) {
-      return clearGameNewsSettings();
-    }
-
-    var n = parseInt(raw, 10);
-    if (!Number.isFinite(n) || n < 1 || n > 10) {
-      toast(t('gamenews_settings_status_error') || 'Failed to save.', 'error');
-      _setGameNewsSettingsStatus(t('gamenews_settings_status_error') || 'Failed to save.', true);
-      return;
-    }
-
-    try {
-      _setGameNewsSettingsStatus('', false);
-      await apiPatch('/config', { patches: [{ path: 'gameNews.maxPerCycle', value: n }] });
-      input.value = '';
-      _setGameNewsSettingsStatus(t('gamenews_settings_status_saved') || 'Saved.', false);
-      await loadGameNewsSettings();
-    } catch (err) {
-      console.error('Failed to save gamenews settings', err);
-      toast(t('gamenews_settings_status_error') || 'Failed to save.', 'error');
-      _setGameNewsSettingsStatus(t('gamenews_settings_status_error') || 'Failed to save.', true);
-    }
-  }
-
-  async function clearGameNewsSettings() {
-    var input = document.getElementById('gamenewsMaxPerCycle');
-    try {
-      _setGameNewsSettingsStatus('', false);
-      await apiPatch('/config', { patches: [{ path: 'gameNews.maxPerCycle', value: null }] });
-      if (input) input.value = '';
-      _setGameNewsSettingsStatus(t('gamenews_settings_status_cleared') || 'Reset.', false);
-      await loadGameNewsSettings();
-    } catch (err) {
-      console.error('Failed to clear gamenews settings', err);
-      toast(t('gamenews_settings_status_error') || 'Failed to save.', 'error');
-      _setGameNewsSettingsStatus(t('gamenews_settings_status_error') || 'Failed to save.', true);
-    }
-  }
-
-      function makeStatusKey(obj) {
+  function makeStatusKey(obj) {
   // Key used to correlate a feed configuration with its status entry.
   // We need to support both:
   //  - feed objects from /api/gamenews/feeds   -> { name, feedUrl, channelId }
@@ -248,6 +142,7 @@ function validateFeedConfig(feed) {
   const errors = {};
   const feedUrl = normalizeUrlMaybe(feed && feed.feedUrl);
   const channelId = (feed && feed.channelId != null ? String(feed.channelId).trim() : '');
+  const maxPerCycleRaw = (feed && feed.maxPerCycle != null ? String(feed.maxPerCycle).trim() : '');
   if (!feedUrl) {
     errors.feedUrl = t('gamenews_validation_url_required');
   } else {
@@ -259,6 +154,13 @@ function validateFeedConfig(feed) {
   }
   if (!channelId) {
     errors.channelId = t('gamenews_validation_channel_required');
+  }
+
+  if (maxPerCycleRaw) {
+    const n = parseInt(maxPerCycleRaw, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 10) {
+      errors.maxPerCycle = t('gamenews_validation_max_per_cycle_invalid');
+    }
   }
   return { ok: Object.keys(errors).length === 0, errors, normalized: { feedUrl, channelId } };
 }
@@ -300,13 +202,15 @@ function setInputError(inputEl, hasError) {
     const name = feed.name != null ? String(feed.name).trim() : '';
     const enabled = feed.enabled !== false;
     const intervalMs = (typeof feed.intervalMs === 'number' && Number.isFinite(feed.intervalMs) && feed.intervalMs > 0) ? Math.round(feed.intervalMs) : null;
+    const maxPerCycle = (typeof feed.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle)) ? Math.round(feed.maxPerCycle) : null;
     return JSON.stringify({
       name,
       feedUrl: url,
       channelId,
       logChannelId: logChannelId || null,
       enabled,
-      intervalMs
+      intervalMs,
+      maxPerCycle
     });
   }
 
@@ -537,6 +441,7 @@ function renderGameNewsFeedDetail(feed) {
     const enabled = feed.enabled !== false;
     const intervalMs = typeof feed.intervalMs === 'number' ? feed.intervalMs : null;
     const intervalMinutes = intervalMs ? formatIntervalMinutes(intervalMs) : '';
+    const maxPerCycle = (typeof feed.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle)) ? feed.maxPerCycle : null;
 
     const lastSent = st && st.lastSentAt ? formatDateTimeShort(st.lastSentAt) : '';
     const failCount = st && typeof st.failCount === 'number' ? st.failCount : 0;
@@ -596,6 +501,23 @@ function renderGameNewsFeedDetail(feed) {
       value="${intervalMinutes}"
       placeholder="${escapeHtml(t('gamenews_feed_interval_placeholder'))}"
     >`;
+    html += '</div>';
+    html += '<div class="col">';
+    html += `<label for="gnDetailMaxPerCycle">${escapeHtml(
+      t('gamenews_feed_max_per_cycle_label')
+    )}</label>`;
+    html += `<input
+      type="number"
+      min="1"
+      max="10"
+      step="1"
+      class="input"
+      id="gnDetailMaxPerCycle"
+      value="${maxPerCycle != null ? String(maxPerCycle) : ''}"
+      placeholder="${escapeHtml(t('gamenews_feed_max_per_cycle_placeholder'))}"
+    >`;
+    html += `<div class="field-error" id="gnErrMaxPerCycle" style="display:none"></div>`;
+    html += `<p class="hint" style="margin-top:6px;">${escapeHtml(t('gamenews_feed_max_per_cycle_hint'))}</p>`;
     html += '</div>';
     html += '</div>';
 
@@ -662,6 +584,7 @@ function renderGameNewsFeedDetail(feed) {
       const chEl = detailEl.querySelector('#gnDetailChannel');
       const logEl = detailEl.querySelector('#gnDetailLogChannel');
       const intEl = detailEl.querySelector('#gnDetailInterval');
+      const maxEl = detailEl.querySelector('#gnDetailMaxPerCycle');
 
       target.name = nameEl ? nameEl.value.trim() || 'Feed' : target.name;
       target.feedUrl = urlEl ? urlEl.value.trim() : target.feedUrl;
@@ -689,6 +612,22 @@ function renderGameNewsFeedDetail(feed) {
         }
       }
 
+      if (maxEl) {
+        const raw = String(maxEl.value || '').trim();
+        if (!raw) {
+          target.maxPerCycle = null;
+        } else {
+          const n = parseInt(raw, 10);
+          if (Number.isFinite(n)) {
+            const clamped = Math.max(1, Math.min(10, n));
+            target.maxPerCycle = clamped;
+            if (clamped !== n) maxEl.value = String(clamped);
+          } else {
+            target.maxPerCycle = null;
+          }
+        }
+      }
+
 
       // Validation + UI (inline)
       const v = validateFeedConfig(target);
@@ -703,8 +642,10 @@ function renderGameNewsFeedDetail(feed) {
 
       setFieldError(detailEl.querySelector('#gnErrUrl'), v.errors && v.errors.feedUrl);
       setFieldError(detailEl.querySelector('#gnErrChannel'), v.errors && v.errors.channelId);
+      setFieldError(detailEl.querySelector('#gnErrMaxPerCycle'), v.errors && v.errors.maxPerCycle);
       setInputError(urlEl, !!(v.errors && v.errors.feedUrl));
       setInputError(chEl, !!(v.errors && v.errors.channelId));
+      setInputError(maxEl, !!(v.errors && v.errors.maxPerCycle));
 
       const btnSave = detailEl.querySelector('.gamenews-action[data-action="save"]');
       const btnTest = detailEl.querySelector('.gamenews-action[data-action="test"]');
@@ -727,7 +668,7 @@ function renderGameNewsFeedDetail(feed) {
 
     detailEl
       .querySelectorAll(
-        '#gnDetailName,#gnDetailUrl,#gnDetailChannel,#gnDetailLogChannel,#gnDetailInterval'
+        '#gnDetailName,#gnDetailUrl,#gnDetailChannel,#gnDetailLogChannel,#gnDetailInterval,#gnDetailMaxPerCycle'
       )
       .forEach(function (el) {
         el.addEventListener('input', syncFromInputs);
@@ -874,6 +815,8 @@ function renderGameNewsFeedDetail(feed) {
         const enabled = f.enabled !== false;
         const intervalMs =
           typeof f.intervalMs === 'number' && f.intervalMs > 0 ? f.intervalMs : null;
+        const maxPerCycle =
+          typeof f.maxPerCycle === 'number' && Number.isFinite(f.maxPerCycle) ? Math.round(f.maxPerCycle) : null;
 
         if (!feedUrl || !channelIdRaw) {
           hadInvalid = true;
@@ -917,7 +860,8 @@ function renderGameNewsFeedDetail(feed) {
           channelId: channelId,
           logChannelId: logChannelId || null,
           enabled: enabled,
-          intervalMs: intervalMs
+          intervalMs: intervalMs,
+          maxPerCycle: maxPerCycle
         };
       })
       .filter(function (x) {
@@ -1038,7 +982,6 @@ function renderGameNewsFeedDetail(feed) {
           detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
         }
 
-        loadGameNewsSettings().catch(function () {});
       });
     }, {
       onStart: function () {

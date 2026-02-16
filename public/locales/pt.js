@@ -166,7 +166,7 @@ window.OzarkLocales.pt = {
   'extras_tickets_tab': 'Tickets',
   'extras_title': 'Funcionalidades',
   'extras_trust_hint': 'Visão geral do sistema de confiança usado para avaliar risco com base no comportamento e histórico.',
-  'extras_trust_info_body': 'Cada utilizador tem um score de 0 a 100. WARN e MUTE aplicam penalizacoes imediatas; com o tempo, sem novas infracoes, o score regenera gradualmente. Scores baixos indicam maior risco e tornam a automoderacao mais rigida. Scores altos indicam utilizadores de menor risco. Ajuste thresholds, penalizacoes e regeneracao para controlar a agressividade do sistema.',
+  'extras_trust_info_body': 'Cada utilizador tem um score (0-100) que representa o seu nível de risco. Infrações como WARN e MUTE reduzem o score imediatamente; sem novas infrações, o score recupera ao longo do tempo (regeneração). Quando o score fica abaixo do limiar "baixo", a automoderação torna-se mais restritiva; acima do limiar "alto", o utilizador é tratado como menor risco. Ajusta penalizações, regeneração e thresholds para definir a agressividade do sistema.',
   'extras_trust_info_title': 'Como funciona',
 
   'extras_trust_preview_title': 'Resumo',

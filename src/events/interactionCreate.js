@@ -5,6 +5,8 @@
 const config = require('../config/defaultConfig');
 const { t } = require('../systems/i18n');
 const logger = require('../systems/logger');
+const { getGuildConfig } = require('../systems/guildConfigService');
+const { isStaff } = require('../utils/staff');
 const { safeReply } = require('../utils/discord');
 
 const warnSlash = require('../slash/warn');
@@ -33,6 +35,28 @@ module.exports = (client) => {
       if (!interaction?.isChatInputCommand?.()) return;
 
       const name = interaction.commandName;
+
+      // Guild maintenance mode (per-guild, configured via dashboard)
+      try {
+        const guildId = interaction.guildId;
+        if (guildId) {
+          const guildCfg = await getGuildConfig(guildId);
+          const mm = guildCfg && guildCfg.maintenanceMode ? guildCfg.maintenanceMode : null;
+          if (mm && mm.enabled === true) {
+            const allowStaff = mm.allowStaff !== false;
+            const ok = allowStaff ? await isStaff(interaction.member) : false;
+            if (!ok) {
+              const msg = (typeof mm.message === 'string' && mm.message.trim())
+                ? mm.message.trim()
+                : 'O bot está em modo de manutenção. Tenta novamente mais tarde.';
+              await safeReply(interaction, { content: msg }, { ephemeral: true });
+              return;
+            }
+          }
+        }
+      } catch (mmErr) {
+        // If anything fails, do not block the command.
+      }
 
       // Log all slash commands to the moderation log + dashboard
       try {

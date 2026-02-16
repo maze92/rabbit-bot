@@ -216,11 +216,6 @@ const API_BASE = '/api';
     } catch (e) {
       if (e && (e.apiMessage === 'BOT_NOT_INSTALLED' || e.message === 'BOT_NOT_INSTALLED')) {
         toast(t('bot_not_installed'));
-        // Offer invite in a new tab.
-        try {
-          var inv = await fetch(API_BASE + '/public/invite').then(function (r) { return r.json(); }).catch(function () { return null; });
-          if (inv && inv.url) window.open(inv.url, '_blank');
-        } catch {}
         return false;
       }
       toast((e && e.apiMessage) ? e.apiMessage : t('guild_select_error_generic'));
@@ -1345,13 +1340,9 @@ function setLang(newLang) {
       'configDashboardLogChannel',
       'configTicketChannel',
       'configStaffRoles',
-      'configStaffRolesTickets',
-      'configStaffRolesModeration',
-      'configStaffRolesGameNews',
-      'configStaffRolesLogs',
-      'configDashAdmins',
-      'configDashManagers',
-      'configDashViewers',
+      'configMaintenanceEnabled',
+      'configMaintenanceMessage',
+      'configMaintenanceAllowStaff',
       'configServerLanguage',
       'configServerTimezone'
     ];
@@ -1406,14 +1397,18 @@ function setLang(newLang) {
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
       const ticketSelect = document.getElementById('configTicketChannel');
       const staffSelect = document.getElementById('configStaffRoles');
-      const staffTicketsSelect = document.getElementById('configStaffRolesTickets');
-      const staffModerationSelect = document.getElementById('configStaffRolesModeration');
-      const staffGameNewsSelect = document.getElementById('configStaffRolesGameNews');
-      const staffLogsSelect = document.getElementById('configStaffRolesLogs');
+      const maintenanceEnabledSelect = document.getElementById('configMaintenanceEnabled');
+      const maintenanceMessageInput = document.getElementById('configMaintenanceMessage');
+      const maintenanceAllowStaffSelect = document.getElementById('configMaintenanceAllowStaff');
       const langSelect = document.getElementById('configServerLanguage');
       const tzSelect = document.getElementById('configServerTimezone');
       if (langSelect) langSelect.value = state.guildLanguage || 'auto';
       if (tzSelect) tzSelect.value = state.guildTimezone || '';
+
+      const mm = (conf && typeof conf.maintenanceMode === 'object' && conf.maintenanceMode) ? conf.maintenanceMode : {};
+      if (maintenanceEnabledSelect) maintenanceEnabledSelect.value = (mm.enabled === true) ? 'true' : 'false';
+      if (maintenanceMessageInput) maintenanceMessageInput.value = (typeof mm.message === 'string') ? mm.message : '';
+      if (maintenanceAllowStaffSelect) maintenanceAllowStaffSelect.value = (mm.allowStaff === false) ? 'false' : 'true';
 
       if (logSelect) {
         logSelect.innerHTML = '';
@@ -1477,17 +1472,6 @@ function setLang(newLang) {
       }
 
       fillRoleMultiSelect(staffSelect, conf.staffRoleIds);
-
-      const byFeat = conf && conf.staffRolesByFeature ? conf.staffRolesByFeature : {};
-
-      fillRoleMultiSelect(staffTicketsSelect, byFeat.tickets);
-      fillRoleMultiSelect(staffModerationSelect, byFeat.moderation);
-      fillRoleMultiSelect(staffGameNewsSelect, byFeat.gamenews);
-      fillRoleMultiSelect(staffLogsSelect, byFeat.logs);
-
-      // Presets: copy global staff roles -> all feature lists, or clear all feature overrides.
-      const btnApplyGlobal = document.getElementById('btnStaffPresetApplyGlobal');
-      const btnClearOverrides = document.getElementById('btnStaffPresetClearOverrides');
 
       function getSelectedValues(sel) {
         const out = [];
@@ -1601,46 +1585,8 @@ function setLang(newLang) {
         renderAll();
       }
 
-      // Activate role pickers for staff roles.
+      // Activate role picker for global staff roles.
       setupRolePicker('configStaffRoles');
-      setupRolePicker('configStaffRolesTickets');
-      setupRolePicker('configStaffRolesModeration');
-      setupRolePicker('configStaffRolesGameNews');
-      setupRolePicker('configStaffRolesLogs');
-      setupRolePicker('configDashAdmins');
-      setupRolePicker('configDashManagers');
-      setupRolePicker('configDashViewers');
-
-      if (btnApplyGlobal && !btnApplyGlobal.dataset.bound) {
-        btnApplyGlobal.dataset.bound = '1';
-        btnApplyGlobal.addEventListener('click', function () {
-          const global = getSelectedValues(staffSelect);
-          setSelectedValues(staffTicketsSelect, global);
-          setSelectedValues(staffModerationSelect, global);
-          setSelectedValues(staffGameNewsSelect, global);
-          setSelectedValues(staffLogsSelect, global);
-          [staffTicketsSelect, staffModerationSelect, staffGameNewsSelect, staffLogsSelect].forEach(function (sel) {
-            if (sel) sel.dispatchEvent(new Event('change'));
-          });
-          toast(t('config_staff_preset_applied'));
-          markConfigDirty();
-        });
-      }
-
-      if (btnClearOverrides && !btnClearOverrides.dataset.bound) {
-        btnClearOverrides.dataset.bound = '1';
-        btnClearOverrides.addEventListener('click', function () {
-          setSelectedValues(staffTicketsSelect, []);
-          setSelectedValues(staffModerationSelect, []);
-          setSelectedValues(staffGameNewsSelect, []);
-          setSelectedValues(staffLogsSelect, []);
-          [staffTicketsSelect, staffModerationSelect, staffGameNewsSelect, staffLogsSelect].forEach(function (sel) {
-            if (sel) sel.dispatchEvent(new Event('change'));
-          });
-          toast(t('config_staff_preset_cleared'));
-          markConfigDirty();
-        });
-      }
 
       // Trust config preview (read-only, global)
       const trust = conf && conf.trust ? conf.trust : null;
@@ -2109,10 +2055,9 @@ function setLang(newLang) {
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
       const ticketSelect = document.getElementById('configTicketChannel');
       const staffSelect = document.getElementById('configStaffRoles');
-      const staffTicketsSelect = document.getElementById('configStaffRolesTickets');
-      const staffModerationSelect = document.getElementById('configStaffRolesModeration');
-      const staffGameNewsSelect = document.getElementById('configStaffRolesGameNews');
-      const staffLogsSelect = document.getElementById('configStaffRolesLogs');
+      const maintenanceEnabledSelect = document.getElementById('configMaintenanceEnabled');
+      const maintenanceMessageInput = document.getElementById('configMaintenanceMessage');
+      const maintenanceAllowStaffSelect = document.getElementById('configMaintenanceAllowStaff');
       const statusEl = document.getElementById('configStatus');
       const langSelect = document.getElementById('configServerLanguage');
       const tzSelect = document.getElementById('configServerTimezone');
@@ -2128,20 +2073,10 @@ function setLang(newLang) {
         });
       }
 
-      function readRoleMultiSelect(sel) {
-        const out = [];
-        if (!sel) return out;
-        Array.prototype.forEach.call(sel.selectedOptions || [], function (opt) {
-          if (opt.value) out.push(opt.value);
-        });
-        return out;
-      }
-
-      const staffRolesByFeature = {
-        tickets: readRoleMultiSelect(staffTicketsSelect),
-        moderation: readRoleMultiSelect(staffModerationSelect),
-        gamenews: readRoleMultiSelect(staffGameNewsSelect),
-        logs: readRoleMultiSelect(staffLogsSelect)
+      const maintenanceMode = {
+        enabled: maintenanceEnabledSelect ? maintenanceEnabledSelect.value === 'true' : false,
+        message: maintenanceMessageInput ? (maintenanceMessageInput.value || '').trim() || null : null,
+        allowStaff: maintenanceAllowStaffSelect ? maintenanceAllowStaffSelect.value !== 'false' : true
       };
 
       const language = langSelect && langSelect.value ? langSelect.value : 'auto';
@@ -2157,10 +2092,9 @@ function setLang(newLang) {
       clearInlineError(dashLogSelect);
       clearInlineError(ticketSelect);
       clearInlineError(staffSelect);
-      clearInlineError(staffTicketsSelect);
-      clearInlineError(staffModerationSelect);
-      clearInlineError(staffGameNewsSelect);
-      clearInlineError(staffLogsSelect);
+      clearInlineError(maintenanceEnabledSelect);
+      clearInlineError(maintenanceMessageInput);
+      clearInlineError(maintenanceAllowStaffSelect);
       clearInlineError(tzSelect);
 
       if (logChannelId && !isSnowflake(logChannelId)) {
@@ -2182,16 +2116,12 @@ function setLang(newLang) {
         return;
       }
 
-      var allRoleIds = staffRoleIds
-        .concat(staffRolesByFeature.tickets || [])
-        .concat(staffRolesByFeature.moderation || [])
-        .concat(staffRolesByFeature.gamenews || [])
-        .concat(staffRolesByFeature.logs || []);
+      var allRoleIds = staffRoleIds;
 
       for (var i = 0; i < allRoleIds.length; i++) {
         if (allRoleIds[i] && !isSnowflake(allRoleIds[i])) {
           // Mark the most relevant select
-          setInlineError(staffSelect || staffTicketsSelect || staffModerationSelect || staffGameNewsSelect || staffLogsSelect, t('config_invalid_role_id'));
+          setInlineError(staffSelect, t('config_invalid_role_id'));
           setConfigStatus(t('config_invalid_role_id'));
           toast(t('config_invalid_role_id'));
           return;
@@ -2216,7 +2146,7 @@ function setLang(newLang) {
           dashboardLogChannelId: dashLogChannelId,
           ticketThreadChannelId: ticketThreadChannelId,
           staffRoleIds: staffRoleIds,
-          staffRolesByFeature: staffRolesByFeature,
+          maintenanceMode: maintenanceMode,
           language: language,
           timezone: timezone,
         });
@@ -2370,10 +2300,15 @@ function populateTempVoiceSelects() {
       state.tempVoiceDirty = !!isDirty;
       var btn = document.getElementById('btnSaveTempVoice');
       var hint = document.getElementById('tvDirtyHint');
+      var panel = document.getElementById('tempVoiceDetailPanel');
 
       // Permission gate: allow save only if user can manage extras
       var perms = state.perms || {};
       var canEdit = !!(state.me && state.me.role === 'ADMIN') || !!perms.canEditConfig || !!perms.canManageGameNews;
+
+      if (panel) {
+        panel.classList.toggle('dirty', !!state.tempVoiceDirty && canEdit);
+      }
 
       if (btn) {
         btn.disabled = !canEdit || !state.tempVoiceDirty;

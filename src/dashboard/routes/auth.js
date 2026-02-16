@@ -273,18 +273,26 @@ if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
         ? Array.from(client.guilds.cache.keys()).map(String)
         : null;
 
-// Allowed guilds: all guilds returned by Discord OAuth.
-// Bot presence is checked later for selection and shown in the guild list.
+// Allowed guilds: only guilds where the user is Owner or has Administrator.
+// Additionally, if we can reliably detect bot presence from cache, only keep guilds where the bot is installed.
+// Rationale:
+//  - User experience: do not show guilds the user cannot manage.
+//  - Prevent /api/auth/select-guild 409 on guilds without the bot.
 const allowedGuilds = guilds
   .filter((g) => g && g.id)
-  .map((g) => ({
-    id: String(g.id),
-    name: typeof g.name === 'string' ? g.name : null,
-    icon: typeof g.icon === 'string' ? g.icon : null,
-    owner: g.owner === true,
-    permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
-    botPresent: Array.isArray(botGuildIds) ? botGuildIds.includes(String(g.id)) : null
-  }))
+  .filter((g) => (g.owner === true) || hasAdministratorPermission(g))
+  .map((g) => {
+    const botPresent = Array.isArray(botGuildIds) ? botGuildIds.includes(String(g.id)) : null;
+    return {
+      id: String(g.id),
+      name: typeof g.name === 'string' ? g.name : null,
+      icon: typeof g.icon === 'string' ? g.icon : null,
+      owner: g.owner === true,
+      permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
+      botPresent
+    };
+  })
+  .filter((g) => (g.botPresent === null) ? true : (g.botPresent === true))
   .slice(0, 200);
 
 const allowedGuildIds = allowedGuilds.map((g) => g.id);
@@ -368,31 +376,12 @@ if (allowedGuildIds.length === 0) {
     const isOwner = meta && meta.owner === true;
     const isAdmin = meta ? hasAdministratorPermission(meta) : false;
 
-    let profile = 'STAFF';
-    let role = 'STAFF';
+    // Dashboard access policy: ONLY owner/admin.
+    // (Staff roles are used for bot features, not for dashboard authentication.)
+    if (!(isOwner || isAdmin)) return null;
 
-    if (isOwner || isAdmin) {
-      profile = 'ADMIN';
-      role = 'ADMIN';
-    } else {
-      // Role-based access: user must match at least one GuildConfig.staffRoleIds.
-      let staffRoleIds = [];
-      try {
-        if (GuildConfig && typeof GuildConfig.findOne === 'function') {
-          const cfg = await GuildConfig.findOne({ guildId: String(gid) }).lean().exec();
-          if (cfg && Array.isArray(cfg.staffRoleIds)) staffRoleIds = cfg.staffRoleIds.map(String).filter(Boolean);
-        }
-      } catch (e) {
-        console.error('[OAuth] Failed to read GuildConfig for staffRoleIds', e);
-      }
-
-      if (!staffRoleIds.length) return null;
-
-      const member = await fetchMember(guild, String(userId)).catch(() => null);
-      if (!member) return null;
-      const ok = member.roles && member.roles.cache && member.roles.cache.some((r) => staffRoleIds.includes(r.id));
-      if (!ok) return null;
-    }
+    const profile = 'ADMIN';
+    const role = 'ADMIN';
 
     const perms = Object.assign({}, (ADMIN_PERMISSIONS || {}), { canManageUsers: false });
 

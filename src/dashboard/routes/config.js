@@ -51,13 +51,7 @@ app.get('/api/guilds/:guildId/config', requireDashboardAuth, canViewConfig, guar
           dashboardLogChannelId: null,
           ticketThreadChannelId: null,
           staffRoleIds: [],
-          staffRolesByFeature: {
-            tickets: [],
-            moderation: [],
-            gamenews: [],
-            logs: [],
-            config: []
-          },
+          maintenanceMode: { enabled: false, message: null, allowStaff: true },
           trust: trustConfig
         }
       });
@@ -73,12 +67,10 @@ app.get('/api/guilds/:guildId/config', requireDashboardAuth, canViewConfig, guar
         dashboardLogChannelId: doc.dashboardLogChannelId || null,
         ticketThreadChannelId: doc.ticketThreadChannelId || null,
         staffRoleIds: Array.isArray(doc.staffRoleIds) ? doc.staffRoleIds : [],
-        staffRolesByFeature: {
-          tickets: Array.isArray(doc.staffRolesByFeature?.tickets) ? doc.staffRolesByFeature.tickets : [],
-          moderation: Array.isArray(doc.staffRolesByFeature?.moderation) ? doc.staffRolesByFeature.moderation : [],
-          gamenews: Array.isArray(doc.staffRolesByFeature?.gamenews) ? doc.staffRolesByFeature.gamenews : [],
-          logs: Array.isArray(doc.staffRolesByFeature?.logs) ? doc.staffRolesByFeature.logs : [],
-          config: Array.isArray(doc.staffRolesByFeature?.config) ? doc.staffRolesByFeature.config : []
+        maintenanceMode: {
+          enabled: doc.maintenanceMode?.enabled === true,
+          message: typeof doc.maintenanceMode?.message === 'string' && doc.maintenanceMode.message.trim() ? doc.maintenanceMode.message.trim() : null,
+          allowStaff: doc.maintenanceMode?.allowStaff !== false
         },
         trust: trustConfig
       }
@@ -100,7 +92,7 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, canEditConfig, gua
       return res.status(400).json({ ok: false, error: 'guildId is required' });
     }
 
-    const { logChannelId, dashboardLogChannelId, ticketThreadChannelId, staffRoleIds, staffRolesByFeature, language, timezone } = req.body || {};
+    const { logChannelId, dashboardLogChannelId, ticketThreadChannelId, staffRoleIds, maintenanceMode, language, timezone } = req.body || {};
 
     const payload = {
       guildId,
@@ -115,14 +107,23 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, canEditConfig, gua
       payload.staffRoleIds = staffRoleIds.map((id) => sanitizeId(id)).filter(Boolean);
     }
 
-    if (staffRolesByFeature && typeof staffRolesByFeature === 'object') {
-      const byFeature = {};
-      ['tickets', 'moderation', 'gamenews', 'logs', 'config'].forEach((k) => {
-        if (Array.isArray(staffRolesByFeature[k])) {
-          byFeature[k] = staffRolesByFeature[k].map((id) => sanitizeId(id)).filter(Boolean);
-        }
-      });
-      payload.staffRolesByFeature = byFeature;
+    if (maintenanceMode && typeof maintenanceMode === 'object') {
+      const msg = typeof maintenanceMode.message === 'string' ? maintenanceMode.message.trim() : '';
+      payload.maintenanceMode = {
+        enabled: maintenanceMode.enabled === true,
+        message: msg ? msg.slice(0, 180) : null,
+        allowStaff: maintenanceMode.allowStaff !== false
+      };
+    }
+
+    if (maintenanceMode && typeof maintenanceMode === 'object') {
+      payload.maintenanceMode = {
+        enabled: maintenanceMode.enabled === true,
+        message: typeof maintenanceMode.message === 'string' && maintenanceMode.message.trim()
+          ? maintenanceMode.message.trim().slice(0, 180)
+          : null,
+        allowStaff: maintenanceMode.allowStaff !== false
+      };
     }
 
     // Validação extra com Zod para garantir que o payload tem apenas valores esperados
@@ -131,7 +132,7 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, canEditConfig, gua
       dashboardLogChannelId: payload.dashboardLogChannelId,
       ticketThreadChannelId: payload.ticketThreadChannelId,
       staffRoleIds: payload.staffRoleIds,
-      staffRolesByFeature: payload.staffRolesByFeature,
+      maintenanceMode: payload.maintenanceMode,
       language: payload.language,
       timezone: payload.timezone
     };
@@ -160,16 +161,15 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, canEditConfig, gua
           dashboardLogChannelId: doc.dashboardLogChannelId || null,
           ticketThreadChannelId: doc.ticketThreadChannelId || null,
           staffRoleIds: Array.isArray(doc.staffRoleIds) ? doc.staffRoleIds : [],
-          staffRolesByFeature: {
-            tickets: Array.isArray(doc.staffRolesByFeature?.tickets) ? doc.staffRolesByFeature.tickets : [],
-            moderation: Array.isArray(doc.staffRolesByFeature?.moderation) ? doc.staffRolesByFeature.moderation : [],
-            gamenews: Array.isArray(doc.staffRolesByFeature?.gamenews) ? doc.staffRolesByFeature.gamenews : [],
-            logs: Array.isArray(doc.staffRolesByFeature?.logs) ? doc.staffRolesByFeature.logs : [],
-            config: Array.isArray(doc.staffRolesByFeature?.config) ? doc.staffRolesByFeature.config : []
+          maintenanceMode: {
+            enabled: doc.maintenanceMode?.enabled === true,
+            message: typeof doc.maintenanceMode?.message === 'string' && doc.maintenanceMode.message.trim() ? doc.maintenanceMode.message.trim() : null,
+            allowStaff: doc.maintenanceMode?.allowStaff !== false
           },
           trust: config.trust || null
         }
-      });  } catch (err) {
+      });
+  } catch (err) {
     console.error('[Dashboard] /api/guilds/:guildId/config POST error:', err);
     return res.status(500).json({ ok: false, error: 'Internal Server Error' });
   }

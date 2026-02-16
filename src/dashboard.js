@@ -127,14 +127,11 @@ const GuildConfigSchema = z.object({
     ticketThreadChannelId: z.string().regex(/^\d+$/).nullable().optional(),
     staffRoleIds: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
 
-    // Optional: staff roles per feature (if empty, fallback to staffRoleIds)
-    staffRolesByFeature: z
+    maintenanceMode: z
       .object({
-        tickets: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
-        moderation: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
-        gamenews: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
-        logs: z.array(z.string().regex(/^\d+$/)).max(100).optional(),
-        config: z.array(z.string().regex(/^\d+$/)).max(100).optional()
+        enabled: z.boolean().optional(),
+        message: z.string().max(180).nullable().optional(),
+        allowStaff: z.boolean().optional()
       })
       .partial()
       .optional(),
@@ -213,6 +210,7 @@ const GameNewsFeedSchema = z.object({
 
   enabled: z.boolean().optional(),
   intervalMs: z.number().int().positive().max(7 * 24 * 60 * 60 * 1000).nullable().optional(),
+  maxPerCycle: z.number().int().min(1).max(10).nullable().optional(),
 
   // Optional forward-compatible field.
   language: z.string().trim().min(2).max(16).optional()

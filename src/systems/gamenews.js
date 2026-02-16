@@ -801,9 +801,12 @@ async function gameNewsSystem(client, config) {
               continue;
             }
 
-            const maxPerCycle = Number(config.gameNews?.maxPerCycle ?? 3);
+            const maxPerCycle =
+              (typeof feed?.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle))
+                ? Number(feed.maxPerCycle)
+                : Number(config.gameNews?.maxPerCycle ?? 3);
             const safeMaxPerCycle = Number.isFinite(maxPerCycle) && maxPerCycle >= 1 && maxPerCycle <= 10
-              ? maxPerCycle
+              ? Math.round(maxPerCycle)
               : 3;
 
             const itemsToSend = newItems.slice(-safeMaxPerCycle);

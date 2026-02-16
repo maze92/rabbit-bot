@@ -44,7 +44,8 @@ app.get('/api/gamenews-status', requireDashboardAuth, canViewGameNews, guardGuil
           channelId: d.channelId,
           logChannelId: d.logChannelId || null,
           enabled: d.enabled !== false,
-          intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
+          intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null,
+          maxPerCycle: typeof d.maxPerCycle === 'number' ? d.maxPerCycle : null
         }));
       } catch (e) {
         console.error('[Dashboard] /api/gamenews-status: failed loading GameNewsFeed:', e?.message || e);
@@ -59,7 +60,8 @@ app.get('/api/gamenews-status', requireDashboardAuth, canViewGameNews, guardGuil
         channelId: s.channelId,
         logChannelId: null,
         enabled: true,
-        intervalMs: null
+        intervalMs: null,
+        maxPerCycle: null
       }));
     }
 
@@ -98,6 +100,8 @@ app.get('/api/gamenews-status', requireDashboardAuth, canViewGameNews, guardGuil
         logChannelId: s.logChannelId || null,
         enabled: s.enabled !== false,
         intervalMs: typeof s.intervalMs === 'number' ? s.intervalMs : null,
+        maxPerCycle: typeof s.maxPerCycle === 'number' ? s.maxPerCycle : null,
+        maxPerCycle: typeof s.maxPerCycle === 'number' ? s.maxPerCycle : null,
 
         failCount: d?.failCount ?? 0,
         pausedUntil: d?.pausedUntil ?? null,
@@ -136,7 +140,8 @@ app.get('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGui
             channelId: s.channelId,
             logChannelId: null,
             enabled: true,
-            intervalMs: null
+            intervalMs: null,
+            maxPerCycle: null
           }))
         : [];
       return res.json({ ok: true, items, source: 'static' });
@@ -154,7 +159,8 @@ app.get('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGui
       channelId: d.channelId,
       logChannelId: d.logChannelId || null,
       enabled: d.enabled !== false,
-      intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
+      intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null,
+      maxPerCycle: typeof d.maxPerCycle === 'number' ? d.maxPerCycle : null
     }));
 
     return res.json({ ok: true, items, source: 'mongo' });
@@ -213,6 +219,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGu
         logChannelId: logChannelIdForSchema,
         enabled: f.enabled !== false,
         intervalMs: typeof f.intervalMs === 'number' ? f.intervalMs : null,
+        maxPerCycle: typeof f.maxPerCycle === 'number' ? f.maxPerCycle : null,
       };
 
       const parsedResult = GameNewsFeedSchema.safeParse(candidate);
@@ -248,6 +255,9 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGu
       const intervalRaw = Number(parsed.intervalMs ?? 0);
       const intervalMs = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : null;
 
+      const maxRaw = Number(parsed.maxPerCycle ?? 0);
+      const maxPerCycle = Number.isFinite(maxRaw) && maxRaw > 0 ? Math.min(10, Math.max(1, Math.round(maxRaw))) : null;
+
       if (!feedUrl || !channelId) {
         invalidCount++;
         continue;
@@ -261,7 +271,8 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGu
         channelId,
         logChannelId,
         enabled,
-        intervalMs
+        intervalMs,
+        maxPerCycle
       });
     }
 
