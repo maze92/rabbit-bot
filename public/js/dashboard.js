@@ -3,6 +3,12 @@
 
   function clearInlineError(el) {
       if (!el) return;
+
+
+    if (configStatusTimer) {
+      clearTimeout(configStatusTimer);
+      configStatusTimer = null;
+    }
       el.classList.remove('input-error');
       // remove adjacent error node created by setInlineError
       var next = el.nextElementSibling;
@@ -1317,17 +1323,37 @@ function setLang(newLang) {
   // Guild Config
   // -----------------------------
 
-  function setConfigStatus(msg) {
+  var configStatusTimer = null;
+
+  function setConfigStatus(msg, opts) {
     var el = document.getElementById('configStatus');
     if (!el) return;
-    el.textContent = msg || '';
+    var text = msg || '';
+
+
+    var autoClearMs = (opts && opts.autoClearMs) ? Number(opts.autoClearMs) : 0;
+    if (autoClearMs > 0) {
+      configStatusTimer = setTimeout(function () { if (!state.configDirty && el.textContent === text) el.textContent = ''; }, autoClearMs);
+    }
+    el.textContent = text;
+
+    var autoClearMs = (opts && opts.autoClearMs) ? Number(opts.autoClearMs) : 0;
+    if (autoClearMs > 0) {
+      configStatusTimer = setTimeout(function () {
+        if (!state.configDirty && el.textContent === text) el.textContent = '';
+      }, autoClearMs);
+    }
   }
 
   function setConfigDirty(isDirty) {
     state.configDirty = !!isDirty;
     var btn = document.getElementById('btnSaveGuildConfig');
     if (btn) btn.disabled = !state.configDirty;
-    setConfigStatus(state.configDirty ? t('config_status_unsaved') : t('config_status_loaded'));
+    if (state.configDirty) {
+      setConfigStatus(t('config_status_unsaved'));
+    } else {
+      setConfigStatus(t('config_status_loaded'), { autoClearMs: 2200 });
+    }
   }
 
   function markConfigDirty() {

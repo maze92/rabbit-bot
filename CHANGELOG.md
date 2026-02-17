@@ -6,6 +6,21 @@ Este ficheiro segue o formato do **Keep a Changelog** e utiliza **SemVer**.
 
 ---
 
+## [1.3.3] – 2026-02-17
+
+### Removido
+- Dashboard (Moderação): secção **Casos** removida (lista + detalhe) para simplificar a UX.
+- API: endpoints /api/cases e /api/case desativados (superfície desnecessária).
+
+### Corrigido
+- Select de guild: removido fallback permissivo; apenas guilds com **Owner** ou **Administrator** são listadas (OAuth).
+- Configuração: status "Configuração carregada" deixa de ficar persistente (auto-hide quando não há alterações).
+- UI: seletores de filtros (logs) com larguras coerentes e melhor alinhamento em linhas flex.
+- UX móvel: painel Utilizadores com colunas mais estáveis e breakpoint mais conservador.
+
+### Alterado
+- i18n: adicionada chave genérica error_generic e placeholder de mensagem de manutenção.
+
 ## [1.3.2] – 2026-02-16
 
 ### Corrigido

@@ -47,11 +47,14 @@ function registerGuildsRoutes({
         .filter((g) => Boolean(g.owner) || hasAdministratorPermission(g.permissions))
         .map((g) => String(g.id));
 
-      const allowList = strictEligibleFromMeta.length
-        ? strictEligibleFromMeta
-        : (u && Array.isArray(u.allowedGuildIds)
-          ? u.allowedGuildIds.filter(Boolean).map(String)
-          : []);
+      let allowList = strictEligibleFromMeta;
+      if (!allowList.length) {
+        if (u && u.oauth) {
+          allowList = [];
+        } else if (u && Array.isArray(u.allowedGuildIds)) {
+          allowList = u.allowedGuildIds.filter(Boolean).map(String);
+        }
+      }
 
       // OAuth-only: if token has no allow-list, force re-auth (prevents stale/empty tokens from persisting).
       if (u && u.oauth && allowList.length === 0) {

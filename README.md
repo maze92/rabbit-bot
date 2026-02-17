@@ -7,7 +7,7 @@
 - Integrar notícias via RSS (GameNews).
 - Gerir canais de **voz temporária** de forma automática.
 
-> Versão atual: **v1.3.2**
+> Versão atual: **v1.3.3**
 
 ---
 

@@ -114,6 +114,19 @@ body {
 .input:focus {
   border-color: var(--accent);
 }
+/* Sizing helpers (form controls) */
+.select.select-sm {
+  width: 220px;
+  max-width: 240px;
+  flex: 0 0 220px;
+}
+.select.select-xs {
+  width: 90px;
+  max-width: 100px;
+  flex: 0 0 90px;
+}
+
+
 
 .input.input-error {
   border-color: #ff5a5a;
@@ -243,6 +256,15 @@ h2 {
   align-items: center;
 }
 .row.gap {
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.row.gap .input,
+.row.gap .select {
+  min-width: 0;
+}
   gap: 8px;
 }
 
@@ -1212,7 +1234,7 @@ h2 {
   border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.02);
   padding: 2px 8px;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   cursor: pointer;
   line-height: 1.3;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -1354,25 +1376,6 @@ h2 {
   font-size: 0.8rem;
 }
 
-/* === Casos (Tab Moderação) === */
-#tab-logs .cases-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 14px;
-  align-items: flex-start;
-}
-
-@media (max-width: 900px) {
-  #tab-logs .cases-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-#tab-logs #casesSearch {
-  flex: 1;
-  min-width: 180px;
-}
-
 
 /* Forçar a remover qualquer scroll horizontal residual na dashboard */
 .section,
@@ -1477,7 +1480,7 @@ h2 {
 }
 
 #extras-trust-panel .trust-config-item .value {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
 
 #extras-trust-panel .trust-info {
@@ -1516,7 +1519,7 @@ h2 {
 }
 
 #tab-config .card.subcard .hint {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
 
 
@@ -1540,7 +1543,7 @@ h2 {
 
 #tab-config .dashboard-users-toolbar .btn.small {
   padding: 3px 8px;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
 
 #tab-config .dashboard-users-toolbar .btn.disabled {
@@ -1605,7 +1608,7 @@ h2 {
 
 #tab-config .dashboard-user-item .btn.small {
   padding: 3px 8px;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
 
 #tab-config .dashboard-user-item .btn.danger {
@@ -2129,7 +2132,7 @@ html, body {
 /* Tickets UI refinements */
 .users-layout {
   display: grid;
-  grid-template-columns: 1fr 1.15fr;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
   gap: 14px;
   align-items: start;
 }
@@ -2184,7 +2187,7 @@ html, body {
   padding: 6px 0;
 }
 
-@media (max-width: 950px) {
+ (max-width: 1100px) {
   .users-layout {
     grid-template-columns: 1fr;
     gap: 18px;
