@@ -333,7 +333,7 @@ async function loadUserHistory(user) {
 
       if (!historyRes || historyRes.ok === false) {
         console.error('User history error', historyRes && historyRes.error);
-        detailEl.innerHTML = `<div class="empty">${escapeHtml(t('error_generic'))}</div>`;
+        detailEl.innerHTML = `<div class="empty">${escapeHtml(t('cases_error_generic'))}</div>`;
         return;
       }
 
@@ -559,7 +559,7 @@ async function loadUserHistory(user) {
                   .then(function (res) {
                     if (!res || res.ok === false) {
                       console.error('Reset history failed', res && res.error);
-                      toast(res && res.error ? String(res.error) : t('error_generic'));
+                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
                       return;
                     }
                     toast(t('users_actions_reset_history') + ' OK');
@@ -567,7 +567,7 @@ async function loadUserHistory(user) {
                   })
                   .catch(function (err) {
                     console.error('Reset history error', err);
-                    toast(t('error_generic'));
+                    toast(t('cases_error_generic'));
                   });
               } else if (action === 'warn') {
                 apiPost('/mod/warn', {
@@ -578,7 +578,7 @@ async function loadUserHistory(user) {
                   .then(function (res) {
                     if (!res || res.ok === false) {
                       console.error('Warn failed', res && res.error);
-                      toast(res && res.error ? String(res.error) : t('error_generic'));
+                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
                       return;
                     }
                     toast(t('users_actions_warn') + ' OK');
@@ -587,7 +587,7 @@ async function loadUserHistory(user) {
                   })
                   .catch(function (err) {
                     console.error('Warn error', err);
-                    toast(t('error_generic'));
+                    toast(t('cases_error_generic'));
                   });
               } else if (action === 'unmute') {
                 apiPost('/mod/unmute', {
@@ -598,7 +598,7 @@ async function loadUserHistory(user) {
                   .then(function (res) {
                     if (!res || res.ok === false) {
                       console.error('Unmute failed', res && res.error);
-                      toast(res && res.error ? String(res.error) : t('error_generic'));
+                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
                       return;
                     }
                     toast(t('users_actions_unmute') + ' OK');
@@ -606,7 +606,7 @@ async function loadUserHistory(user) {
                   })
                   .catch(function (err) {
                     console.error('Unmute error', err);
-                    toast(t('error_generic'));
+                    toast(t('cases_error_generic'));
                   });
               } else if (action === 'reset') {
                 // Prevent accidental double-click spam (backend also rate-limits).
@@ -620,7 +620,7 @@ async function loadUserHistory(user) {
                   .then(function (res) {
                     if (!res || res.ok === false) {
                       console.error('Reset trust failed', res && res.error);
-                      toast(res && res.error ? String(res.error) : t('error_generic'));
+                      toast(res && res.error ? String(res.error) : t('cases_error_generic'));
                       return;
                     }
                     toast(t('users_actions_reset') + ' OK');
@@ -628,7 +628,7 @@ async function loadUserHistory(user) {
                   })
                   .catch(function (err) {
                     console.error('Reset trust error', err);
-                    toast(t('error_generic'));
+                    toast(t('cases_error_generic'));
                   })
                   .finally(function () {
                     state._resetTrustInFlight = false;
@@ -667,7 +667,7 @@ async function loadUserHistory(user) {
                 .then(function (res) {
                   if (!res || res.ok === false) {
                     console.error('Remove infraction failed', res && res.error);
-                    toast(res && res.error ? String(res.error) : t('error_generic'));
+                    toast(res && res.error ? String(res.error) : t('cases_error_generic'));
                     return;
                   }
                   toast(t('users_history_remove_success'));
@@ -680,7 +680,7 @@ async function loadUserHistory(user) {
                   if (err && err.status === 429 && ra) {
                     toast((t('common_rate_limit_wait') || 'Muitas ações seguidas. Aguarda') + ` ${Math.ceil(ra / 100) / 10}s`);
                   } else {
-                    toast((err && err.apiMessage) || t('error_generic'));
+                    toast((err && err.apiMessage) || t('cases_error_generic'));
                   }
                 })
                 .finally(function () {

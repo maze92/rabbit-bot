@@ -339,19 +339,16 @@ if (allowedGuildIds.length === 0) {
           allowedGuilds,
           guildId: allowedGuildIds[0]
         }).catch(() => null);
-	        if (scoped) {
-	          setCookie(res, 'dash_token', scoped, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
-	          // Also attach a one-time token in the URL so the UI can recover even if cookies are blocked.
-	          // The frontend stores it and immediately removes it via history.replaceState.
-	          const redirectUrl = `/?token=${encodeURIComponent(scoped)}&selectGuild=0`;
+        if (scoped) {
+          setCookie(res, 'dash_token', scoped, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
+          const redirectUrl = `/?selectGuild=0`;
           oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token: scoped });
           return res.redirect(redirectUrl);
         }
       }
 
-	      setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
-	      // Also attach a one-time token in the URL so the UI can recover even if cookies are blocked.
-	      const redirectUrl = `/?token=${encodeURIComponent(token)}&selectGuild=1`;
+      setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
+      const redirectUrl = `/?selectGuild=1`;
       oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token });
       return res.redirect(redirectUrl);
       } finally {

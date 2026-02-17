@@ -3,12 +3,6 @@
 
   function clearInlineError(el) {
       if (!el) return;
-
-
-    if (configStatusTimer) {
-      clearTimeout(configStatusTimer);
-      configStatusTimer = null;
-    }
       el.classList.remove('input-error');
       // remove adjacent error node created by setInlineError
       var next = el.nextElementSibling;
@@ -286,15 +280,11 @@ const API_BASE = '/api';
     }
 
     async function fetchWithRetry(attempt) {
-	      const res = await fetch(API_BASE + path, {
-	        method: 'GET',
-	        headers: getAuthHeaders(),
-	        // Be explicit: some Safari/WebView setups behave inconsistently with implicit cookies.
-	        // Same-origin keeps the default security posture while ensuring cookies are sent.
-	        credentials: 'same-origin',
-	        cache: 'no-store',
-	        signal: opts.signal
-	      });
+      const res = await fetch(API_BASE + path, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+        signal: opts.signal
+      });
 
       if (!res.ok) {
         // Retry only for transient GET failures.
@@ -342,8 +332,6 @@ const API_BASE = '/api';
     const res = await fetch(API_BASE + path, {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
-	      credentials: 'same-origin',
-	      cache: 'no-store',
       body: JSON.stringify(body || {}),
       signal: opts.signal
     });
@@ -370,8 +358,6 @@ const API_BASE = '/api';
     const res = await fetch(API_BASE + path, {
       method: 'PUT',
       headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
-	      credentials: 'same-origin',
-	      cache: 'no-store',
       body: JSON.stringify(body || {}),
       signal: opts.signal
     });
@@ -398,8 +384,6 @@ const API_BASE = '/api';
     const res = await fetch(API_BASE + path, {
       method: 'PATCH',
       headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
-	      credentials: 'same-origin',
-	      cache: 'no-store',
       body: JSON.stringify(body || {}),
       signal: opts.signal
     });
@@ -426,8 +410,6 @@ const API_BASE = '/api';
     const res = await fetch(API_BASE + path, {
       method: 'DELETE',
       headers: getAuthHeaders(),
-	      credentials: 'same-origin',
-	      cache: 'no-store',
       signal: opts.signal
     });
     let payload = null;
@@ -827,7 +809,7 @@ function setLang(newLang) {
     }
 
     const p = (state && state.perms && typeof state.perms === 'object') ? state.perms : {};
-    const isAuthed = !!(state && state.me);
+    const isAuthed = !!(state && state.me && state.me.id);
     const canViewLogs = !!p.canViewLogs;
     const canActOnCases = !!p.canActOnCases;
     const canManageTickets = !!p.canManageTickets;
@@ -867,6 +849,9 @@ function setLang(newLang) {
   // -----------------------------
 
   async function loadOverview() {
+    // Avoid 401 spam when user is not authenticated yet.
+    if (!state.me || !state.me.id) return;
+
     const guildsEl = document.getElementById('kpiGuilds');
     const usersEl = document.getElementById('kpiUsers');
     const actionsEl = document.getElementById('kpiActions24h');
@@ -881,10 +866,6 @@ function setLang(newLang) {
       usersEl.textContent = String(data.users ?? 0);
       actionsEl.textContent = String(data.actions24h ?? 0);
     } catch (err) {
-      // If the user is not authenticated, apiGet() will already have triggered
-      // the login UI via handleAuthError(). Avoid noisy console/toast spam.
-      if (err && err.status === 401) return;
-
       console.error('Overview load error', err);
       toast(err && err.apiMessage ? err.apiMessage : t('overview_error_generic'));
     }
@@ -1339,37 +1320,17 @@ function setLang(newLang) {
   // Guild Config
   // -----------------------------
 
-  var configStatusTimer = null;
-
-  function setConfigStatus(msg, opts) {
+  function setConfigStatus(msg) {
     var el = document.getElementById('configStatus');
     if (!el) return;
-    var text = msg || '';
-
-
-    var autoClearMs = (opts && opts.autoClearMs) ? Number(opts.autoClearMs) : 0;
-    if (autoClearMs > 0) {
-      configStatusTimer = setTimeout(function () { if (!state.configDirty && el.textContent === text) el.textContent = ''; }, autoClearMs);
-    }
-    el.textContent = text;
-
-    var autoClearMs = (opts && opts.autoClearMs) ? Number(opts.autoClearMs) : 0;
-    if (autoClearMs > 0) {
-      configStatusTimer = setTimeout(function () {
-        if (!state.configDirty && el.textContent === text) el.textContent = '';
-      }, autoClearMs);
-    }
+    el.textContent = msg || '';
   }
 
   function setConfigDirty(isDirty) {
     state.configDirty = !!isDirty;
     var btn = document.getElementById('btnSaveGuildConfig');
     if (btn) btn.disabled = !state.configDirty;
-    if (state.configDirty) {
-      setConfigStatus(t('config_status_unsaved'));
-    } else {
-      setConfigStatus(t('config_status_loaded'), { autoClearMs: 2200 });
-    }
+    setConfigStatus(state.configDirty ? t('config_status_unsaved') : t('config_status_loaded'));
   }
 
   function markConfigDirty() {
