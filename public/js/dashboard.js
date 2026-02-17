@@ -784,9 +784,6 @@ function setLang(newLang) {
       if (window.OzarkDashboard.loadModerationOverview) {
         window.OzarkDashboard.loadModerationOverview().catch(function () {});
       }
-      if (window.OzarkDashboard.loadCases) {
-        window.OzarkDashboard.loadCases({ reset: true }).catch(function () {});
-      }
       window.OzarkDashboard.loadLogs().catch(function () {});
     } else if (name === 'gamenews') {
       window.OzarkDashboard.loadGameNews().catch(function () {});
@@ -809,7 +806,7 @@ function setLang(newLang) {
     }
 
     const p = (state && state.perms && typeof state.perms === 'object') ? state.perms : {};
-    const isAuthed = !!(state && state.me && state.me.id);
+    const isAuthed = !!(state && state.me);
     const canViewLogs = !!p.canViewLogs;
     const canActOnCases = !!p.canActOnCases;
     const canManageTickets = !!p.canManageTickets;
@@ -849,9 +846,6 @@ function setLang(newLang) {
   // -----------------------------
 
   async function loadOverview() {
-    // Avoid 401 spam when user is not authenticated yet.
-    if (!state.me || !state.me.id) return;
-
     const guildsEl = document.getElementById('kpiGuilds');
     const usersEl = document.getElementById('kpiUsers');
     const actionsEl = document.getElementById('kpiActions24h');
@@ -1320,17 +1314,38 @@ function setLang(newLang) {
   // Guild Config
   // -----------------------------
 
-  function setConfigStatus(msg) {
+  let _configStatusTimer = null;
+  function setConfigStatus(msg, opts) {
     var el = document.getElementById('configStatus');
     if (!el) return;
+    if (_configStatusTimer) {
+      clearTimeout(_configStatusTimer);
+      _configStatusTimer = null;
+    }
     el.textContent = msg || '';
+    const autoHideMs = opts && Number(opts.autoHideMs);
+    if (msg && Number.isFinite(autoHideMs) && autoHideMs > 0) {
+      _configStatusTimer = setTimeout(function () {
+        // Only clear if we are not dirty (avoid hiding the UNSAVED state)
+        if (!state.configDirty) {
+          const el2 = document.getElementById('configStatus');
+          if (el2) el2.textContent = '';
+        }
+      }, autoHideMs);
+    }
   }
 
   function setConfigDirty(isDirty) {
     state.configDirty = !!isDirty;
     var btn = document.getElementById('btnSaveGuildConfig');
     if (btn) btn.disabled = !state.configDirty;
-    setConfigStatus(state.configDirty ? t('config_status_unsaved') : t('config_status_loaded'));
+
+    // UX: keep "unsaved" visible; do not keep "loaded" permanently.
+    if (state.configDirty) {
+      setConfigStatus(t('config_status_unsaved'));
+    } else {
+      setConfigStatus('');
+    }
   }
 
   function markConfigDirty() {
@@ -1694,6 +1709,7 @@ function setLang(newLang) {
 
       bindConfigDirtyListeners();
       setConfigDirty(false);
+      setConfigStatus(t('config_status_loaded'), { autoHideMs: 1200 });
     } catch (err) {
       console.error('Failed to load guild config', err);
       setConfigStatus(t('config_error_generic'));
@@ -2167,7 +2183,7 @@ function setLang(newLang) {
         state.configDirty = false;
         var btnSave = document.getElementById('btnSaveGuildConfig');
         if (btnSave) btnSave.disabled = true;
-        setConfigStatus(t('config_saved'));
+        setConfigStatus(t('config_saved'), { autoHideMs: 1500 });
         toast(t('config_saved'));
       } catch (err) {
         console.error('Failed to save guild config', err);

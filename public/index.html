@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>.rabbit Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/css/dashboard.css?v=20260217c">
+  <link rel="stylesheet" href="/css/dashboard.css?v=20260209a">
 </head>
 <body>
   <div id="loginScreen" class="login-screen hidden">
@@ -198,59 +198,6 @@
             <button class="btn" id="btnLogsLoadMore" data-i18n="logs_load_more">Carregar mais</button>
           </div>
           </div>
-          </div>
-
-          <!-- Cases / Infrações (lista + detalhe) -->
-          <div class="card" style="margin-top: 14px;">
-            <h3 data-i18n="cases_title">Casos</h3>
-            <p class="hint" data-i18n="cases_hint">
-              Pesquisa e histórico de infrações (warn/mute), com detalhe por caso.
-            </p>
-
-            <div class="user-layout cases-layout" id="casesLayout">
-              <div>
-                <div class="row gap" style="margin-bottom: 8px;">
-                  <input
-                    id="casesSearch"
-                    class="input"
-                    data-i18n-placeholder="cases_search_placeholder"
-                    placeholder="Procurar por caseId, utilizador, moderador ou motivo"
-                  >
-                  <select id="casesType" class="select">
-                    <option value="" data-i18n="cases_filter_all">Todos</option>
-                    <option value="WARN" data-i18n="cases_filter_warn">Warn</option>
-                    <option value="MUTE" data-i18n="cases_filter_mute">Mute</option>
-                  </select>
-                  <select id="casesLimit" class="select">
-                    <option value="25">25</option>
-                    <option value="50" selected>50</option>
-                    <option value="100">100</option>
-                  </select>
-                  <button class="btn" id="btnReloadCases" data-i18n="cases_reload">Recarregar</button>
-                </div>
-
-                <div id="casesList" class="list">
-                  <div class="empty" data-i18n="cases_empty">Não existem casos para o filtro atual.</div>
-                </div>
-                <div class="row" style="margin-top: 8px;">
-                  <button class="btn" id="btnCasesLoadMore" data-i18n="cases_load_more">Carregar mais</button>
-                </div>
-              </div>
-
-              <div class="user-detail mini-panel" id="caseDetailPanel">
-                <div class="mini-panel-header">
-                  <div>
-                    <h3 data-i18n="cases_detail_title">Detalhe do caso</h3>
-                    <p class="hint" data-i18n="cases_detail_hint">
-                      Seleciona um caso na lista para ver informação completa.
-                    </p>
-                  </div>
-                </div>
-                <div id="caseDetailContent">
-                  <div class="empty" data-i18n="cases_detail_empty">Nenhum caso selecionado.</div>
-                </div>
-              </div>
-            </div>
           </div>
 
         </div>
@@ -734,12 +681,12 @@
     </div>
   </div>
 
-  <script src="/js/i18n.js?v=20260217c" defer></script>
-  <script src="/js/dashboard.js?v=20260217c" defer></script>
-  <script src="/js/dashboard.users.js?v=20260217c" defer></script>
-  <script src="/js/dashboard.moderation.js?v=20260217c" defer></script>
-  <script src="/js/dashboard.gamenews.js?v=20260217c" defer></script>
-  <script src="/js/dashboard.tickets.js?v=20260217c" defer></script>
+  <script src="/js/i18n.js?v=20260209a" defer></script>
+  <script src="/js/dashboard.js?v=20260209a" defer></script>
+  <script src="/js/dashboard.users.js?v=20260209a" defer></script>
+  <script src="/js/dashboard.moderation.js?v=20260209a" defer></script>
+  <script src="/js/dashboard.gamenews.js?v=20260209a" defer></script>
+  <script src="/js/dashboard.tickets.js?v=20260209a" defer></script>
 
 <!-- Moderation Action Modal -->
 <div id="modActionModal" class="modal hidden">
@@ -748,11 +695,11 @@
     <h3 id="modActionTitle">Moderation</h3>
     <div class="modal-body">
       <label for="modActionReason">Reason</label>
-<input id="modActionReason" type="text" placeholder="" />
+<input id="modActionReason" class="input" type="text" placeholder="" />
 
       <div id="modActionDurationWrap" class="hidden">
         <label for="modActionDuration">Duration</label>
-<input id="modActionDuration" type="text" placeholder="10m, 1h, 1d" />
+<input id="modActionDuration" class="input" type="text" placeholder="10m, 1h, 1d" />
       </div>
     </div>
     <div class="modal-actions">
