@@ -881,6 +881,10 @@ function setLang(newLang) {
       usersEl.textContent = String(data.users ?? 0);
       actionsEl.textContent = String(data.actions24h ?? 0);
     } catch (err) {
+      // If the user is not authenticated, apiGet() will already have triggered
+      // the login UI via handleAuthError(). Avoid noisy console/toast spam.
+      if (err && err.status === 401) return;
+
       console.error('Overview load error', err);
       toast(err && err.apiMessage ? err.apiMessage : t('overview_error_generic'));
     }
