@@ -6,6 +6,12 @@ Este ficheiro segue o formato do **Keep a Changelog** e utiliza **SemVer**.
 
 ---
 
+## [1.3.4] – 2026-02-17
+
+### Corrigido
+- OAuth (Dashboard): callback agora inclui `token` na querystring como fallback (one-time) para ambientes onde cookies podem ser bloqueados/intermitentes (iOS/Safari/WebViews/reverse-proxies). O frontend guarda e remove imediatamente da URL.
+- Auth (Dashboard): chamadas API passam a definir explicitamente `credentials: 'same-origin'` e `cache: 'no-store'` para reduzir comportamento inconsistentes em fetch.
+
 ## [1.3.3] – 2026-02-17
 
 ### Removido

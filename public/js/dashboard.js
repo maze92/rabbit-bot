@@ -286,11 +286,15 @@ const API_BASE = '/api';
     }
 
     async function fetchWithRetry(attempt) {
-      const res = await fetch(API_BASE + path, {
-        method: 'GET',
-        headers: getAuthHeaders(),
-        signal: opts.signal
-      });
+	      const res = await fetch(API_BASE + path, {
+	        method: 'GET',
+	        headers: getAuthHeaders(),
+	        // Be explicit: some Safari/WebView setups behave inconsistently with implicit cookies.
+	        // Same-origin keeps the default security posture while ensuring cookies are sent.
+	        credentials: 'same-origin',
+	        cache: 'no-store',
+	        signal: opts.signal
+	      });
 
       if (!res.ok) {
         // Retry only for transient GET failures.
@@ -338,6 +342,8 @@ const API_BASE = '/api';
     const res = await fetch(API_BASE + path, {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+	      credentials: 'same-origin',
+	      cache: 'no-store',
       body: JSON.stringify(body || {}),
       signal: opts.signal
     });
@@ -364,6 +370,8 @@ const API_BASE = '/api';
     const res = await fetch(API_BASE + path, {
       method: 'PUT',
       headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+	      credentials: 'same-origin',
+	      cache: 'no-store',
       body: JSON.stringify(body || {}),
       signal: opts.signal
     });
@@ -390,6 +398,8 @@ const API_BASE = '/api';
     const res = await fetch(API_BASE + path, {
       method: 'PATCH',
       headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+	      credentials: 'same-origin',
+	      cache: 'no-store',
       body: JSON.stringify(body || {}),
       signal: opts.signal
     });
@@ -416,6 +426,8 @@ const API_BASE = '/api';
     const res = await fetch(API_BASE + path, {
       method: 'DELETE',
       headers: getAuthHeaders(),
+	      credentials: 'same-origin',
+	      cache: 'no-store',
       signal: opts.signal
     });
     let payload = null;
