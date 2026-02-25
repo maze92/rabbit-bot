@@ -926,6 +926,13 @@ function setLang(newLang) {
       state.guildsLoaded = true;
       select.innerHTML = '';
 
+      // If we already have a selected guildId but it is no longer present in the allowed list,
+      // clear it immediately to avoid boot-time "Guild not found" errors.
+      if (state.guildId && !items.some(function (g) { return g && g.id === state.guildId; })) {
+        state.guildId = null;
+        try { localStorage.removeItem(GUILD_KEY); } catch (e0) {}
+      }
+
       const optEmpty = document.createElement('option');
       optEmpty.value = '';
       optEmpty.textContent = t('select_guild');
@@ -1747,6 +1754,21 @@ function setLang(newLang) {
       setConfigDirty(false);
       setConfigStatus(t('config_status_loaded'), { autoHideMs: 1200 });
     } catch (err) {
+      // "Guild not found" is a common non-fatal case when the stored guildId is stale.
+      // Do not let it break the dashboard bootstrap.
+      var msg = String((err && (err.apiMessage || err.message)) || '');
+      var isGuildNotFound = (err && err.status === 404) || msg.toLowerCase().indexOf('guild not found') !== -1;
+      if (isGuildNotFound) {
+        try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
+        state.guildId = null;
+        var select = document.getElementById('guildPicker');
+        if (select) select.value = '';
+        updateTabAccess();
+        try { showGuildSelect(state.guilds || []); } catch (e2) {}
+        setConfigStatus('');
+        return;
+      }
+
       console.error('Failed to load guild config', err);
       setConfigStatus(t('config_error_generic'));
     }
