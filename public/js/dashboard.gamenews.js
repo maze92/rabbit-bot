@@ -398,6 +398,11 @@ function setInputError(inputEl, hasError) {
       const detailEl = document.getElementById('gamenewsFeedDetailPanel');
       state.activeGameNewsFeedIndex = numericIdx;
       if (detailEl) {
+        try {
+          if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+            window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', true);
+          }
+        } catch (e) {}
         detailEl.innerHTML = renderGameNewsFeedSkeleton();
       }
 
@@ -422,6 +427,11 @@ function renderGameNewsFeedDetail(feed) {
 
     if (!state.guildId || !feed) {
       detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
+    try {
+      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+        window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', false);
+      }
+    } catch (e) {}
       return;
     }
 
@@ -572,6 +582,12 @@ function renderGameNewsFeedDetail(feed) {
 
     html += '</div>'; // /history-section state
     detailEl.innerHTML = html;
+
+    try {
+      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+        window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', false);
+      }
+    } catch (e) {}
 
     // Ligação inputs -> state.gameNewsFeeds[activeIndex]
     const idx = state.activeGameNewsFeedIndex;

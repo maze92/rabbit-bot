@@ -98,12 +98,30 @@
   }
 
   function renderDetailSkeleton() {
-    return `<div class="empty">${escapeHtml(t('loading'))}</div>`;
+    // Match the visual language used in other panels (feeds/temp voice): shimmer + skeleton blocks.
+    return `
+      <div>
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-line skeleton-line--w80"></div>
+        <div class="skeleton skeleton-line skeleton-line--w60"></div>
+
+        <div style="margin-top: 14px;">
+          <div class="skeleton skeleton-block"></div>
+          <div class="skeleton skeleton-block"></div>
+          <div class="skeleton skeleton-block"></div>
+        </div>
+      </div>
+    `;
   }
 
   function renderDetailEmpty() {
     const panel = document.getElementById('ticketDetailPanel');
     if (!panel) return;
+    try {
+      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+        window.OzarkDashboard.setPanelLoading('ticketDetailPanel', false);
+      }
+    } catch (e) {}
     panel.innerHTML = `<div class="empty">${escapeHtml(t('tickets_detail_empty'))}</div>`;
   }
 
@@ -116,7 +134,14 @@
 
     state.activeTicketIndex = idx;
     const panel = document.getElementById('ticketDetailPanel');
-    if (panel) panel.innerHTML = renderDetailSkeleton();
+    if (panel) {
+      try {
+        if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+          window.OzarkDashboard.setPanelLoading('ticketDetailPanel', true);
+        }
+      } catch (e) {}
+      panel.innerHTML = renderDetailSkeleton();
+    }
 
     if (_detailTimeout) clearTimeout(_detailTimeout);
     _detailTimeout = setTimeout(() => {
@@ -125,7 +150,7 @@
       if (!cur) return;
       renderDetail(cur);
       _detailTimeout = null;
-    }, 300);
+    }, 350);
   }
 
   function renderDetail(ticket) {
@@ -184,6 +209,12 @@
         </div>
       </details>
     `;
+
+    try {
+      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+        window.OzarkDashboard.setPanelLoading('ticketDetailPanel', false);
+      }
+    } catch (e) {}
 
     const guildId = getGuildId();
     const ticketId = ticket._id;
