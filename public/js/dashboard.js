@@ -3029,8 +3029,8 @@ function deleteTempVoiceBaseAt(index) {
       });
     }
 
-    var logSearchInput = document.getElementById('logSearch');
-if (logSearchInput) {
+	    var logSearchInput = document.getElementById('logSearch');
+	    if (logSearchInput) {
   var logSearchTimer = null;
 
   function triggerLogsDebounced() {
@@ -3050,8 +3050,7 @@ if (logSearchInput) {
       window.OzarkDashboard.loadLogs().catch(function () {});
     }
   });
-}
-    }
+	}
 
     // Config buttons
     var btnReloadGuildConfig = document.getElementById('btnReloadGuildConfig');
