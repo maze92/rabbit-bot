@@ -36,7 +36,6 @@ function registerTicketsRoutes(opts) {
     ? requireGuildAccess({ from: 'body', key: 'guildId', optional: true })
     : (req, res, next) => next();
 
-  // Required guildId in body (used by POST routes)
   const guardGuildBody = typeof requireGuildAccess === 'function'
     ? requireGuildAccess({ from: 'body', key: 'guildId' })
     : (req, res, next) => next();
@@ -600,90 +599,6 @@ function registerTicketsRoutes(opts) {
       }
     }
   );
-  // -----------------------------
-  // Post ticket support message to the configured channel (dashboard)
-  // POST /api/tickets/support-message { guildId, channelId }
-  // -----------------------------
-  app.post(
-    '/api/tickets/support-message',
-    requireDashboardAuth,
-    canManageTickets,
-    // Do not depend on guardGuildBody existing across deployments; validate guildId inside handler.
-    guardGuildBodyOptional,
-    rateLimit({ windowMs: 60_000, max: 30, keyPrefix: 'rl:tickets:supportmsg:' }),
-    async (req, res) => {
-      try {
-        const guildId = (req.body && req.body.guildId ? String(req.body.guildId).trim() : '');
-        const channelIdRaw = (req.body && req.body.channelId ? String(req.body.channelId).trim() : '');
-
-        if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
-
-        if (!hasGuildAccess(req, guildId)) {
-          return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
-        }
-
-        // Resolve channel id: prefer explicit channelId, fallback to GuildConfig.ticketThreadChannelId
-        let channelId = channelIdRaw;
-
-        let GuildConfig = null;
-        try { GuildConfig = require('../../database/models/GuildConfig'); } catch (e) {}
-
-        if ((!channelId || !/^\d+$/.test(channelId)) && GuildConfig) {
-          const doc = await GuildConfig.findOne({ guildId }).lean().catch(() => null);
-          if (doc && doc.ticketThreadChannelId) channelId = String(doc.ticketThreadChannelId);
-        }
-
-        if (!channelId || !/^\d+$/.test(channelId)) {
-          return res.status(400).json({ ok: false, error: 'channelId is required' });
-        }
-
-        const client = _getClient ? _getClient() : null;
-        if (!client) return res.status(503).json({ ok: false, error: 'Discord client not available' });
-
-        const guild = await client.guilds.fetch(guildId).catch(() => null);
-        if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
-
-        const channel = await guild.channels.fetch(channelId).catch(() => null);
-        if (!channel) return res.status(404).json({ ok: false, error: 'Channel not found' });
-        if (!channel.isTextBased || !channel.isTextBased()) {
-          return res.status(400).json({ ok: false, error: 'Channel is not text-based' });
-        }
-
-        const OPEN_EMOJI = '🎫';
-        const DEFAULT_MESSAGE = [
-          '🎫 **Tickets de Suporte**',
-          '',
-          `Reage com ${OPEN_EMOJI} para abrir um ticket privado.`,
-          'A equipa responderá assim que possível.'
-        ].join('\n');
-
-        const content = sanitizeText ? sanitizeText(DEFAULT_MESSAGE, { maxLen: 1500 }) : DEFAULT_MESSAGE;
-
-        const sent = await channel.send({ content }).catch(() => null);
-        if (!sent) return res.status(500).json({ ok: false, error: 'Failed to send message' });
-
-        try { await sent.react(OPEN_EMOJI).catch(() => {}); } catch (e) {}
-
-        if (recordAudit) {
-          const actor = getActorFromRequest ? getActorFromRequest(req) : (req.dashboardUser?.id || 'dashboard');
-          await recordAudit({
-            req,
-            action: 'ticket.support_message.send',
-            guildId,
-            actor,
-            payload: { channelId, messageId: sent.id }
-          });
-        }
-
-        return res.json({ ok: true, channelId, messageId: sent.id });
-      } catch (err) {
-        console.error('[Dashboard] POST /api/tickets/support-message error:', err);
-        return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-      }
-    }
-  );
-
-
 }
 
 function escapeRegExp(s) {

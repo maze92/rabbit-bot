@@ -98,16 +98,7 @@
   }
 
   function renderDetailSkeleton() {
-    return `
-      <div class="ticket-detail-header">
-        <div class="skeleton skeleton-title"></div>
-        <div class="skeleton skeleton-line" style="width: 55%;"></div>
-        <div class="skeleton skeleton-line" style="width: 40%;"></div>
-      </div>
-      <div class="skeleton skeleton-block" style="height: 44px;"></div>
-      <div class="skeleton skeleton-block" style="height: 44px;"></div>
-      <div class="skeleton skeleton-block" style="height: 44px;"></div>
-    `;
+    return `<div class="empty">${escapeHtml(t('loading'))}</div>`;
   }
 
   function renderDetailEmpty() {
@@ -125,7 +116,6 @@
 
     state.activeTicketIndex = idx;
     const panel = document.getElementById('ticketDetailPanel');
-    if (D && typeof D.setPanelLoading === 'function') D.setPanelLoading('ticketDetailPanel', true);
     if (panel) panel.innerHTML = renderDetailSkeleton();
 
     if (_detailTimeout) clearTimeout(_detailTimeout);
@@ -134,10 +124,6 @@
       const cur = curItems[idx];
       if (!cur) return;
       renderDetail(cur);
-      // Keep a short minimum so the shimmer feels consistent with other panels.
-      setTimeout(function () {
-        if (D && typeof D.setPanelLoading === 'function') D.setPanelLoading('ticketDetailPanel', false);
-      }, 650);
       _detailTimeout = null;
     }, 300);
   }
@@ -414,34 +400,6 @@
   function initTicketsUI() {
     const reloadBtn = document.getElementById('btnReloadTickets');
     if (reloadBtn) reloadBtn.addEventListener('click', () => loadTickets(true));
-
-    const sendBtn = document.getElementById('btnSendTicketSupportMessage');
-    if (sendBtn) {
-      sendBtn.addEventListener('click', () => {
-        const guildId = getGuildId();
-        const sel = document.getElementById('configTicketChannel');
-        const channelId = sel ? String(sel.value || '').trim() : '';
-        if (!guildId) return toast(t('select_guild'));
-        if (!channelId) return toast(t('config_ticket_channel_hint'));
-
-        sendBtn.disabled = true;
-        const label = sendBtn.textContent;
-        sendBtn.textContent = t('loading');
-
-        D.withLoading(
-          () => apiPost('/tickets/support-message', { guildId, channelId }),
-          {
-            toastOnError: t('tickets_support_send_error'),
-            onFinally: () => {
-              sendBtn.disabled = false;
-              sendBtn.textContent = label;
-            }
-          }
-        ).then((res) => {
-          if (res && res.ok) toast(t('tickets_support_send_ok'));
-        }).catch(() => {});
-      });
-    }
 
     const filterEl = document.getElementById('ticketsStatusFilter');
     if (filterEl) filterEl.addEventListener('change', () => loadTickets(true));

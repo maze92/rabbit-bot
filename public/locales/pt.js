@@ -460,7 +460,4 @@ window.OzarkLocales.pt = {
   'config_maintenance_message_placeholder': 'Ex: Estamos em manutenção. Voltamos em breve.',
   'config_access_section_hint': 'Controla quem pode aceder à dashboard e gerir as definições do servidor.',
   'logout': 'Sair',
-  'tickets_support_send': 'Enviar',
-  'tickets_support_send_ok': 'Mensagem de suporte enviada.',
-  'tickets_support_send_error': 'Falha ao enviar a mensagem de suporte.',
 };

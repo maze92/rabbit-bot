@@ -40,7 +40,6 @@
     guildId: null,
     currentTab: 'overview',
     guilds: [],
-    guildsLoaded: false,
     dashboardUsers: [],
     dashboardUsersEditingId: null,
     me: null,
@@ -495,47 +494,32 @@ const API_BASE = '/api';
     return row;
   }
 
-  // Toasts (stacked, typed, accessible)
-  function toast(message, opts) {
-    opts = opts || {};
-    var type = (opts.type || 'info').toLowerCase();
-    var duration = typeof opts.duration === 'number' ? opts.duration : 2800;
+  
 
-    var hostId = 'rabbitToastHost';
-    var host = document.getElementById(hostId);
-    if (!host) {
-      host = document.createElement('div');
-      host.id = hostId;
-      host.className = 'toast-host';
-      host.setAttribute('aria-live', 'polite');
-      host.setAttribute('aria-relevant', 'additions');
-      document.body.appendChild(host);
+  function toast(message) {
+    const id = 'rabbitToast';
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.style.position = 'fixed';
+      el.style.right = '16px';
+      el.style.bottom = '16px';
+      el.style.padding = '10px 14px';
+      el.style.background = 'rgba(0,0,0,0.75)';
+      el.style.color = '#fff';
+      el.style.borderRadius = '6px';
+      el.style.fontSize = '13px';
+      el.style.zIndex = '9999';
+      el.style.transition = 'opacity 0.25s ease';
+      document.body.appendChild(el);
     }
-
-    var item = document.createElement('div');
-    item.className = 'toast toast--' + (type || 'info');
-    item.setAttribute('role', type === 'error' ? 'alert' : 'status');
-    item.textContent = String(message || '');
-
-    host.appendChild(item);
-
-    // animate in
-    requestAnimationFrame(function () {
-      item.classList.add('toast--visible');
-    });
-
-    clearTimeout(item._hideTimer);
-    item._hideTimer = setTimeout(function () {
-      item.classList.remove('toast--visible');
-      // remove after transition
-      setTimeout(function () {
-        try { item.remove(); } catch (e) {}
-        try {
-          // keep DOM clean
-          if (host && host.children && host.children.length === 0) host.remove();
-        } catch (e2) {}
-      }, 220);
-    }, Math.max(800, duration));
+    el.textContent = message;
+    el.style.opacity = '1';
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(function () {
+      el.style.opacity = '0';
+    }, 2400);
   }
 
 
@@ -570,29 +554,15 @@ const API_BASE = '/api';
   }
   window.OzarkDashboard.withLoading = withLoading;
 
-  function setPanelLoading(panelId, isLoading) {
+ 
+  function showPanelLoading(panelId) {
     var panel = document.getElementById(panelId);
     if (!panel) return;
-    if (isLoading) {
-      panel.classList.add('panel-loading');
-      panel.setAttribute('aria-busy', 'true');
-    } else {
+    panel.classList.add('panel-loading');
+    setTimeout(function () {
       panel.classList.remove('panel-loading');
-      panel.removeAttribute('aria-busy');
-    }
+    }, 350);
   }
-
-  // Backwards compatible helper (kept for older call sites).
-  // Prefer setPanelLoading(panelId, true/false) around real async work.
-  function showPanelLoading(panelId) {
-    setPanelLoading(panelId, true);
-    // Keep a short minimum, but do not lie about completion for long operations.
-    clearTimeout(showPanelLoading._t);
-    showPanelLoading._t = setTimeout(function () {
-      setPanelLoading(panelId, false);
-    }, 650);
-  }
-
 
  function escapeHtml(value) {
     if (value === null || value === undefined) return '';
@@ -620,8 +590,6 @@ const API_BASE = '/api';
     document.documentElement.lang = state.lang;
 
     document.querySelectorAll('[data-i18n]').forEach(function (el) {
-      // badgeBot is dynamic (online/offline) and should not be overridden by a static i18n key.
-      if (el && el.id === 'badgeBot') return;
       const key = el.getAttribute('data-i18n');
       if (!key) return;
       el.textContent = t(key);
@@ -746,7 +714,7 @@ function setLang(newLang) {
       state.currentTab = 'overview';
       const warn = document.getElementById('tabWarning');
       if (warn) {
-        warn.style.display = state.guildsLoaded ? 'block' : 'none';
+        warn.style.display = 'block';
       }
       // Reforçar botões ativos
       document.querySelectorAll('.section').forEach(function (sec) {
@@ -836,9 +804,7 @@ function setLang(newLang) {
     const warn = document.getElementById('tabWarning');
     const hasGuild = !!state.guildId;
     if (warn) {
-      // Avoid flashing the warning before guilds are loaded / auto-selected.
-      var ready = !!state.guildsLoaded;
-      warn.style.display = (!hasGuild && ready) ? 'block' : 'none';
+      warn.style.display = hasGuild ? 'none' : 'block';
     }
 
     const p = (state && state.perms && typeof state.perms === 'object') ? state.perms : {};
@@ -925,15 +891,7 @@ function setLang(newLang) {
       }
       const items = (res && res.items) || [];
       state.guilds = items;
-      state.guildsLoaded = true;
       select.innerHTML = '';
-
-      // If we already have a selected guildId but it is no longer present in the allowed list,
-      // clear it immediately to avoid boot-time "Guild not found" errors.
-      if (state.guildId && !items.some(function (g) { return g && g.id === state.guildId; })) {
-        state.guildId = null;
-        try { localStorage.removeItem(GUILD_KEY); } catch (e0) {}
-      }
 
       const optEmpty = document.createElement('option');
       optEmpty.value = '';
@@ -946,6 +904,14 @@ function setLang(newLang) {
         opt.textContent = g.name;
         select.appendChild(opt);
       });
+
+
+// Validate existing state.guildId (may be stale from previous sessions).
+if (state.guildId && !items.some(function (g) { return g && g.id === state.guildId; })) {
+  state.guildId = null;
+  try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
+  try { if (select) select.value = ''; } catch (e) {}
+}
 
       // Restore last selected guild if present and still allowed.
       if (!state.guildId) {
@@ -980,7 +946,6 @@ function setLang(newLang) {
       }
     } catch (err) {
       console.error('Failed to load guilds', err);
-      state.guildsLoaded = true;
       toast(err && err.apiMessage ? err.apiMessage : t('guilds_error_generic'));
     }
   }
@@ -1756,23 +1721,24 @@ function setLang(newLang) {
       setConfigDirty(false);
       setConfigStatus(t('config_status_loaded'), { autoHideMs: 1200 });
     } catch (err) {
-      // "Guild not found" is a common non-fatal case when the stored guildId is stale.
-      // Do not let it break the dashboard bootstrap.
-      var msg = String((err && (err.apiMessage || err.message)) || '');
-      var isGuildNotFound = (err && err.status === 404) || msg.toLowerCase().indexOf('guild not found') !== -1;
-      if (isGuildNotFound) {
-        try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
-        state.guildId = null;
-        var select = document.getElementById('guildPicker');
-        if (select) select.value = '';
-        updateTabAccess();
-        try { showGuildSelect(state.guilds || []); } catch (e2) {}
-        setConfigStatus('');
-        return;
-      }
-
-      console.error('Failed to load guild config', err);
-      setConfigStatus(t('config_error_generic'));
+      
+console.error('Failed to load guild config', err);
+// If the selected guild is no longer accessible (stale localStorage guildId),
+// clear selection so the dashboard can continue loading other areas.
+var msg = (err && (err.apiMessage || err.message)) ? String(err.apiMessage || err.message) : '';
+if (msg === 'Guild not found' || /Guild not found/i.test(msg)) {
+  state.guildId = null;
+  try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
+  try {
+    var sel = document.getElementById('guildPicker');
+    if (sel) sel.value = '';
+  } catch (e2) {}
+  updateTabAccess();
+  try { showGuildSelect(state.guilds || []); } catch (e3) {}
+  setConfigStatus(t('config_error_generic'));
+  return;
+}
+setConfigStatus(t('config_error_generic'));
     }
   }
 
@@ -2733,32 +2699,6 @@ function deleteTempVoiceBaseAt(index) {
         }
       })();
 
-
-
-    function setupTabsKeyboardNavigation() {
-      var tabs = Array.prototype.slice.call(document.querySelectorAll('.tabs button[data-tab]') || []);
-      if (!tabs.length) return;
-      tabs.forEach(function (btn, i) {
-        // Ensure focusability (buttons already are), but keep consistent outlines
-        btn.addEventListener('keydown', function (ev) {
-          var key = ev.key || ev.code;
-          if (key === 'ArrowRight' || key === 'Right') {
-            ev.preventDefault();
-            var next = tabs[(i + 1) % tabs.length];
-            if (next) next.focus();
-          } else if (key === 'ArrowLeft' || key === 'Left') {
-            ev.preventDefault();
-            var prev = tabs[(i - 1 + tabs.length) % tabs.length];
-            if (prev) prev.focus();
-          } else if (key === 'Enter' || key === ' ') {
-            // activate
-            ev.preventDefault();
-            try { btn.click(); } catch (e) {}
-          }
-        });
-      });
-    }
-
     // Tabs
     document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
     // Subtabs inside Extras
@@ -2820,8 +2760,6 @@ function deleteTempVoiceBaseAt(index) {
         setTab(tab);
       });
     });
-
-    setupTabsKeyboardNavigation();
 
     // Guild picker
     var guildPicker = document.getElementById('guildPicker');

@@ -44,8 +44,7 @@
         <span class="badge hidden" id="badgeProfile"></span>
         <span class="badge hidden" id="badgeAccess"></span>
 
-        <!-- Bot status is dynamic; text is set by JS based on /health -->
-        <span class="badge" id="badgeBot">Bot online</span>
+        <span class="badge" id="badgeBot" data-i18n="badge_bot_online">Bot online</span>
       </div>
     </header>
 
@@ -357,9 +356,6 @@
                       <div class="col">
                         <label for="configTicketChannel" data-i18n="config_ticket_channel">Canal de suporte (tickets)</label>
                         <select id="configTicketChannel" class="select"></select>
-                        <div class="row" style="margin-top:8px; justify-content:flex-end;">
-                          <button id="btnSendTicketSupportMessage" class="btn xs" type="button" data-i18n="tickets_support_send">Enviar</button>
-                        </div>
                         <p class="hint" data-i18n="config_ticket_channel_hint">
                           Canal onde será publicada a mensagem de suporte com o emoji para abrir tickets.
                         </p>
@@ -385,12 +381,12 @@
                         <div class="toolbar" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                           <div class="title" data-i18n="tickets_manage_title">Tickets ativos</div>
                           <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                            <select id="ticketsStatusFilter" class="select xs" style="min-width:92px;">
+                            <input id="ticketsSearch" class="input md" type="text" placeholder="Pesquisar..." data-i18n-placeholder="tickets_search_placeholder" />
+                            <select id="ticketsStatusFilter" class="select" style="min-width:120px;">
                               <option value="open" data-i18n="tickets_filter_open">Abertos</option>
                               <option value="closed" data-i18n="tickets_filter_closed">Fechados</option>
                               <option value="all" data-i18n="tickets_filter_all">Todos</option>
                             </select>
-                            <input id="ticketsSearch" class="input md" type="text" placeholder="Pesquisar..." data-i18n-placeholder="tickets_search_placeholder" />
                             <button id="btnReloadTickets" class="btn xs" type="button" data-i18n="reload">Recarregar</button>
                           </div>
                         </div>
@@ -574,7 +570,7 @@
               <div class="row gap">
                 <div class="field">
                   <label for="configServerLanguage" data-i18n="config_server_language_label">Idioma principal do servidor</label>
-                  <select id="configServerLanguage" class="select">
+                  <select id="configServerLanguage" class="input">
                     <option value="auto" data-i18n="config_server_language_auto">Automático (seguir idioma do cliente)</option>
                     <option value="pt" data-i18n="config_server_language_pt">Português</option>
                     <option value="en" data-i18n="config_server_language_en">English</option>
@@ -584,9 +580,9 @@
                 <div class="field">
                   <label for="configServerTimezone" data-i18n="config_server_timezone_label">Timezone do servidor</label>
                   <input id="configServerTimezone" class="input" type="text" placeholder="Europe/Lisbon" />
-</div>
-                            <p class="hint" data-i18n="config_server_timezone_hint">Use um identificador IANA (por exemplo, Europe/Lisbon). Se ficar vazio, é usado o fuso horário padrão do servidor.</p>
-</div>
+                  <p class="hint" data-i18n="config_server_timezone_hint">Use um identificador IANA (por exemplo, Europe/Lisbon). Se ficar vazio, é usado o fuso horário padrão do servidor.</p>
+                </div>
+              </div>
             </div>
 
             <div class="card subcard" id="config-section-logs">

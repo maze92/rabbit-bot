@@ -459,7 +459,4 @@ window.OzarkLocales.en = {
   'config_maintenance_message_placeholder': "e.g. We're doing maintenance. Back soon.",
   'config_access_section_hint': 'Controls who can access the dashboard and manage server settings.',
   'logout': 'Logout',
-  'tickets_support_send': 'Send',
-  'tickets_support_send_ok': 'Support message sent.',
-  'tickets_support_send_error': 'Failed to send support message.',
 };
