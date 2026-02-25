@@ -13,6 +13,12 @@ const FreeToKeepConfigSchema = z.object({
       ubisoft: z.boolean().optional()
     })
     .optional(),
+  offerTypes: z
+    .object({
+      freetokeep: z.boolean().optional(),
+      freeweekend: z.boolean().optional()
+    })
+    .optional(),
   pollIntervalMs: z.number().int().optional(),
   maxPerCycle: z.number().int().optional()
 });
@@ -66,6 +72,13 @@ function registerFreeToKeepRoutes({
           epic: boolish(parsed.platforms.epic),
           steam: boolish(parsed.platforms.steam),
           ubisoft: boolish(parsed.platforms.ubisoft)
+        };
+      }
+
+      if (parsed.offerTypes) {
+        update.offerTypes = {
+          freetokeep: boolish(parsed.offerTypes.freetokeep),
+          freeweekend: boolish(parsed.offerTypes.freeweekend)
         };
       }
 

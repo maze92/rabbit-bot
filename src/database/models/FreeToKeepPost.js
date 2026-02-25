@@ -8,6 +8,8 @@ const FreeToKeepPostSchema = new mongoose.Schema(
     platform: { type: String, required: true, index: true }, // epic | steam | ubisoft
     giveawayId: { type: Number, required: true },
 
+    kind: { type: String, default: 'freetokeep' }, // freetokeep | freeweekend
+
     title: { type: String, default: '' },
     worth: { type: String, default: '' },
     endDate: { type: String, default: '' },

@@ -15,6 +15,14 @@ const FreeToKeepConfigSchema = new mongoose.Schema(
       ubisoft: { type: Boolean, default: true }
     },
 
+    // Which kinds of offers to post.
+    // - freetokeep: keep forever / free-to-keep
+    // - freeweekend: limited-time play/free weekend
+    offerTypes: {
+      freetokeep: { type: Boolean, default: true },
+      freeweekend: { type: Boolean, default: false }
+    },
+
     // How often to poll sources for *live* giveaways.
     pollIntervalMs: { type: Number, default: 120000 },
 

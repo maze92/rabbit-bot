@@ -18,6 +18,21 @@ const PLATFORM_QUERY = {
   ubisoft: 'ubisoft'
 };
 
+const PLATFORM_EMOJI = {
+  epic: '🟦',
+  steam: '🟩',
+  ubisoft: '🟪'
+};
+
+function detectOfferKind(item) {
+  // GamerPower doesn't expose a dedicated "free weekend" flag.
+  // We infer it from common wording in the title/description.
+  const hay = `${item?.title || ''} ${item?.description || ''} ${item?.instructions || ''}`.toLowerCase();
+  if (hay.includes('free weekend') || hay.includes('free-weekend') || hay.includes('weekend only')) return 'freeweekend';
+  if (hay.includes('play for free') || hay.includes('play free') || hay.includes('free to play this weekend')) return 'freeweekend';
+  return 'freetokeep';
+}
+
 function clampInt(n, min, max, fallback) {
   const v = Number(n);
   if (!Number.isFinite(v)) return fallback;
@@ -58,18 +73,25 @@ function hasSendPerm(channel, client) {
   }
 }
 
-function buildEmbed(item, platformLabel) {
+function buildEmbed(item, platformKey, platformLabel, kind) {
   const title = item?.title ? String(item.title) : 'Free game';
   const worth = item?.worth ? String(item.worth) : '';
   const end = item?.end_date ? String(item.end_date) : '';
 
+  const kindTag = kind === 'freeweekend' ? '**FREE WEEKEND**' : '**FREE TO KEEP**';
+
   const descParts = [];
+  descParts.push(kindTag);
   if (worth) descParts.push(`**${worth}**`);
-  if (end && end.toLowerCase() !== 'n/a') descParts.push(`Free until **${end}**`);
+  if (end && end.toLowerCase() !== 'n/a') {
+    descParts.push(kind === 'freeweekend' ? `Until **${end}**` : `Free until **${end}**`);
+  }
   const description = descParts.length ? descParts.join(' — ') : '';
 
+  const emoji = PLATFORM_EMOJI[platformKey] || '🎮';
+
   const embed = new EmbedBuilder()
-    .setTitle(title)
+    .setTitle(`${emoji} ${title}`)
     .setURL(item?.open_giveaway_url || item?.gamerpower_url || item?.url || '')
     .setDescription(description)
     .setFooter({ text: `via GamerPower • ${platformLabel}` });
@@ -94,13 +116,13 @@ function buildButtons(item) {
   return row;
 }
 
-async function postItem({ client, guildId, channelId, platformKey, item }) {
+async function postItem({ client, guildId, channelId, platformKey, item, kind }) {
   const channel = client.channels.cache.get(channelId) || (await fetchChannel(client, channelId));
   if (!channel || !channel.isTextBased?.()) throw new Error('Configured channel not found or not text-based');
   if (!hasSendPerm(channel, client)) throw new Error('Missing permission to send messages');
 
   const platformLabel = platformKey === 'epic' ? 'Epic Games Store' : platformKey === 'steam' ? 'Steam' : 'Ubisoft';
-  const embed = buildEmbed(item, platformLabel);
+  const embed = buildEmbed(item, platformKey, platformLabel, kind);
   const row = buildButtons(item);
 
   const msg = await channel.send({ embeds: [embed], components: row ? [row] : [] });
@@ -109,6 +131,7 @@ async function postItem({ client, guildId, channelId, platformKey, item }) {
     guildId,
     platform: platformKey,
     giveawayId: Number(item.id),
+    kind,
     title: String(item.title || ''),
     worth: String(item.worth || ''),
     endDate: String(item.end_date || ''),
@@ -131,6 +154,8 @@ async function runForGuild(client, cfg) {
   const platformKeys = ['epic', 'steam', 'ubisoft'].filter((k) => platforms[k]);
   if (!platformKeys.length) return;
 
+  const offerTypes = cfg.offerTypes || { freetokeep: true, freeweekend: false };
+
   // Collect candidates newest-first
   const candidates = [];
   for (const key of platformKeys) {
@@ -140,7 +165,10 @@ async function runForGuild(client, cfg) {
     const list = Array.isArray(arr) ? arr : [];
     for (const it of list) {
       if (!it || !it.id) continue;
-      candidates.push({ platformKey: key, item: it });
+      const kind = detectOfferKind(it);
+      if (kind === 'freeweekend' && !offerTypes.freeweekend) continue;
+      if (kind === 'freetokeep' && !offerTypes.freetokeep) continue;
+      candidates.push({ platformKey: key, item: it, kind });
     }
     // Stay well under 4 req/sec.
     await sleep(350);
@@ -162,7 +190,7 @@ async function runForGuild(client, cfg) {
     const exists = await FreeToKeepPost.findOne({ guildId, platform: c.platformKey, giveawayId }).select('_id').lean();
     if (exists) continue;
 
-    await postItem({ client, guildId, channelId: cfg.channelId, platformKey: c.platformKey, item: c.item });
+    await postItem({ client, guildId, channelId: cfg.channelId, platformKey: c.platformKey, item: c.item, kind: c.kind });
     posted++;
     await sleep(550);
   }
