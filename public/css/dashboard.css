@@ -1077,10 +1077,10 @@ h2 {
 #badgeAccess {
   font-size: 12px;
   font-weight: 500;
-  max-width: 220px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 #badgeAccess.badge-readonly {
@@ -1745,7 +1745,19 @@ h2 {
 
 /* === Small UX polish: tempvoice & config buttons === */
 #extras-tempvoice-panel .field.field-spaced-top {
-  margin-top: 16px;
+  margin-top: 10px;
+}
+
+/* TempVoice: reduce visual density to match other extras (feeds/tickets) */
+#extras-tempvoice-panel .row.gap { gap: 6px; }
+#extras-tempvoice-panel .field { gap: 3px; }
+
+/* TempVoice: avoid overly long controls on wide screens */
+@media (min-width: 900px) {
+  #extras-tempvoice-panel .user-detail .input,
+  #extras-tempvoice-panel .user-detail .select {
+    max-width: 520px;
+  }
 }
 
 #tab-config .config-actions-row {
@@ -2614,6 +2626,16 @@ details[open] > .details-summary:before {
 }
 
 .tickets-status-filter { width: 110px; }
+
+/* Tickets: support message row should not wrap when textarea is resized (keeps label stable) */
+.ticket-support-row {
+  flex-wrap: nowrap;
+  align-items: flex-end;
+}
+.ticket-support-row textarea.input {
+  resize: vertical;
+  min-height: 96px;
+}
 
 
 @media (min-width: 900px) {

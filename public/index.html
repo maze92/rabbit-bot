@@ -59,7 +59,7 @@
     </div>
 
     <!-- Aviso quando não há servidor selecionado -->
-    <div id="tabWarning" class="tab-warning" data-i18n="warn_select_guild">
+    <div id="tabWarning" class="tab-warning hidden" data-i18n="warn_select_guild">
       Selecione um servidor para aceder às restantes secções.
     </div>
     <!-- Banner global (estado / avisos contextuais) -->
@@ -370,15 +370,14 @@
                         <p class="hint" data-i18n="config_ticket_channel_hint">
                           Canal onde será publicada a mensagem de suporte com o emoji para abrir tickets.
                         </p>
-                        <div class="row gap" style="margin-top:10px;">
-                          <div class="col" style="flex:1;">
+                        <div class="row gap ticket-support-row" style="margin-top:10px;">
+                          <div class="col" style="flex:1; min-width:0;">
                             <label for="configTicketSupportMessage" data-i18n="config_ticket_support_message_label">Mensagem de suporte</label>
                             <textarea id="configTicketSupportMessage" class="input" rows="4" data-i18n-placeholder="config_ticket_support_message_placeholder" placeholder="Escreve a mensagem que será enviada ao canal de suporte..."></textarea>
                             <p class="hint" data-i18n="config_ticket_support_message_hint">Esta mensagem será enviada para o canal selecionado. O emoji 🎫 é adicionado automaticamente.</p>
                           </div>
-                          <div class="col" style="max-width:160px;">
-                            <label style="opacity:0;">.</label>
-                            <button id="btnSendTicketSupportMessage" class="btn" type="button" data-i18n="config_ticket_support_message_send">Enviar</button>
+                          <div class="col" style="width:auto; flex:0 0 auto;">
+                            <button id="btnSendTicketSupportMessage" class="btn xs" type="button" data-i18n="config_ticket_support_message_send">Enviar</button>
                           </div>
                         </div>
 

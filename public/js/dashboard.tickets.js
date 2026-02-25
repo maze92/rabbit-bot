@@ -447,6 +447,17 @@
       searchEl.addEventListener('change', trigger);
     }
 
+    // Pre-fill support message with the default (from locale) if empty.
+    try {
+      const msgEl = document.getElementById('configTicketSupportMessage');
+      if (msgEl && !String(msgEl.value || '').trim()) {
+        const defMsg = t('config_ticket_support_message_default');
+        if (defMsg && defMsg !== 'config_ticket_support_message_default') {
+          msgEl.value = defMsg;
+        }
+      }
+    } catch (e) {}
+
     const sendBtn = document.getElementById('btnSendTicketSupportMessage');
     if (sendBtn) {
       sendBtn.addEventListener('click', async () => {

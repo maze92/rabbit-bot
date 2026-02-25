@@ -40,6 +40,7 @@
     guildId: null,
     currentTab: 'overview',
     guilds: [],
+    guildsLoaded: false,
     dashboardUsers: [],
     dashboardUsersEditingId: null,
     me: null,
@@ -678,16 +679,43 @@ function refreshGlobalBanner() {
   clearGlobalBanner();
 }
 
-function setPanelLoading(panelId, isLoading) {
+  // Keep a minimum duration so the shimmer is perceptible and consistent across modules.
+  var _panelLoadingStart = {};
+  var _panelLoadingTimer = {};
+  var PANEL_LOADING_MIN_MS = 650;
+
+  function setPanelLoading(panelId, isLoading) {
     var panel = document.getElementById(panelId);
     if (!panel) return;
+
+    // Clear any pending delayed-off timer.
+    if (_panelLoadingTimer[panelId]) {
+      clearTimeout(_panelLoadingTimer[panelId]);
+      _panelLoadingTimer[panelId] = null;
+    }
+
     if (isLoading) {
+      _panelLoadingStart[panelId] = Date.now();
       panel.classList.add('panel-loading');
       panel.setAttribute('aria-busy', 'true');
-    } else {
-      panel.classList.remove('panel-loading');
-      panel.removeAttribute('aria-busy');
+      return;
     }
+
+    var started = _panelLoadingStart[panelId] || 0;
+    var elapsed = started ? (Date.now() - started) : PANEL_LOADING_MIN_MS;
+    var wait = Math.max(0, PANEL_LOADING_MIN_MS - elapsed);
+
+    if (wait > 0) {
+      _panelLoadingTimer[panelId] = setTimeout(function () {
+        panel.classList.remove('panel-loading');
+        panel.removeAttribute('aria-busy');
+        _panelLoadingTimer[panelId] = null;
+      }, wait);
+      return;
+    }
+
+    panel.classList.remove('panel-loading');
+    panel.removeAttribute('aria-busy');
   }
 
   // Expose for external modules (users/tickets/gamenews) to show consistent loading.
@@ -982,7 +1010,9 @@ function setLang(newLang) {
     const warn = document.getElementById('tabWarning');
     const hasGuild = !!state.guildId;
     if (warn) {
-      warn.style.display = hasGuild ? 'none' : 'block';
+      // Avoid flashing the warning during initial bootstrap (guilds not loaded yet).
+      if (!state.guildsLoaded) warn.style.display = 'none';
+      else warn.style.display = hasGuild ? 'none' : 'block';
     }
 
     const p = (state && state.perms && typeof state.perms === 'object') ? state.perms : {};
@@ -1117,6 +1147,10 @@ function setLang(newLang) {
     } catch (err) {
       console.error('Failed to load guilds', err);
       toast(err && err.apiMessage ? err.apiMessage : t('guilds_error_generic'));
+    } finally {
+      state.guildsLoaded = true;
+      try { updateTabAccess(); } catch (e) {}
+      try { refreshGlobalBanner(); } catch (e) {}
     }
   }
 
