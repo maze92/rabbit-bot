@@ -36,6 +36,11 @@ function registerTicketsRoutes(opts) {
     ? requireGuildAccess({ from: 'body', key: 'guildId', optional: true })
     : (req, res, next) => next();
 
+  // Required guildId in body (used by POST routes)
+  const guardGuildBody = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'body', key: 'guildId' })
+    : (req, res, next) => next();
+
   function hasGuildAccess(req, guildId) {
     try {
       const u = req && req.dashboardUser;
