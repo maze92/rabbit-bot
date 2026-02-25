@@ -646,6 +646,11 @@ function setGlobalBanner(opts) {
 }
 
 function refreshGlobalBanner() {
+  // Avoid flashing “select guild” while guild list is still loading.
+  if (!state.guildsLoaded) {
+    clearGlobalBanner();
+    return;
+  }
   // Priority: no guild selected > bot offline > none
   if (!state.guildId) {
     setGlobalBanner({
@@ -1117,16 +1122,19 @@ function setLang(newLang) {
           return;
         }
         updateTabAccess();
+        try { refreshGlobalBanner(); } catch (e) {}
       } else {
         // Force selection when multiple guilds are available.
         try { showGuildSelect(items); } catch (e) {}
         updateTabAccess();
+        try { refreshGlobalBanner(); } catch (e) {}
       }
     } catch (err) {
       console.error('Failed to load guilds', err);
       toast(err && err.apiMessage ? err.apiMessage : t('guilds_error_generic'));
       state.guildsLoaded = true;
       updateTabAccess();
+      try { refreshGlobalBanner(); } catch (e) {}
     }
   }
 

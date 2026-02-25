@@ -1075,10 +1075,22 @@ h2 {
 #badgeAccess {
   font-size: 12px;
   font-weight: 500;
-  max-width: 220px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* Logout no topo deve ter o mesmo “peso” visual dos badges, mas diferenciado */
+.badge-logout {
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  cursor: pointer;
+}
+
+.badge-logout:hover {
+  background: rgba(255,255,255,0.10);
+}
+
+.badge-logout:active {
+  transform: translateY(1px);
 }
 
 #badgeAccess.badge-readonly {
@@ -2423,6 +2435,20 @@ details[open] > .details-summary:before {
 
 /* Control width helpers (use sparingly for compact fields) */
 .input.xs, .select.xs { max-width: 110px; }
+
+/* Tickets toolbar: manter procura e filtros na mesma linha sempre que possível */
+#extras-tickets-panel .toolbar > div:last-child {
+  flex-wrap: nowrap !important;
+}
+
+#ticketsSearch {
+  flex: 1 1 220px;
+  min-width: 220px;
+}
+
+#ticketsStatusFilter {
+  width: 110px;
+}
 .input.sm, .select.sm { max-width: 140px; }
 .input.md, .select.md { max-width: 240px; }
 
