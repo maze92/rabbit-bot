@@ -228,6 +228,7 @@
             <button class="subtab" data-subtab="tempvoice" data-i18n="extras_tempvoice_tab">Voz temporária</button>
             <button class="subtab" data-subtab="tickets" data-i18n="extras_tickets_tab">Tickets</button>
             <button class="subtab" data-subtab="trust" data-i18n="extras_trust_tab">Moderação</button>
+            <button class="subtab" data-subtab="freetokeep" data-i18n="extras_freetokeep_tab">FreeToKeep</button>
           </div>
 
           <div class="subtab-panels">
@@ -521,6 +522,60 @@
                   </div>
                 </div>
               </div>
+
+              <div class="subtab-panel" id="extras-freetokeep-panel">
+                <div class="panel-header">
+                  <div>
+                    <div class="panel-title" data-i18n="freetokeep_title">Free-to-keep</div>
+                    <div class="muted" data-i18n="freetokeep_subtitle">Publica automaticamente jogos gratuitos (para ficar) da Epic, Steam e Ubisoft.</div>
+                  </div>
+                </div>
+
+                <div class="grid-2">
+                  <div class="card">
+                    <div class="card-title" data-i18n="freetokeep_config">Configuração</div>
+                    <div class="form">
+                      <label class="checkbox-row">
+                        <input type="checkbox" id="freeToKeepEnabled" />
+                        <span data-i18n="freetokeep_enabled">Ativo</span>
+                      </label>
+
+                      <label data-i18n="freetokeep_channel">Canal de publicação</label>
+                      <select id="freeToKeepChannel" class="select"></select>
+
+                      <div class="row">
+                        <div>
+                          <label data-i18n="freetokeep_poll">Intervalo (min)</label>
+                          <input id="freeToKeepPollMinutes" class="input" type="number" min="1" max="60" value="2" />
+                        </div>
+                        <div>
+                          <label data-i18n="freetokeep_max">Máximo por ciclo</label>
+                          <input id="freeToKeepMaxPerCycle" class="input" type="number" min="1" max="10" value="3" />
+                        </div>
+                      </div>
+
+                      <div class="divider"></div>
+
+                      <label data-i18n="freetokeep_platforms">Plataformas</label>
+                      <div class="row">
+                        <label class="checkbox-row"><input type="checkbox" id="freeToKeepEpic" checked /> <span>Epic</span></label>
+                        <label class="checkbox-row"><input type="checkbox" id="freeToKeepSteam" checked /> <span>Steam</span></label>
+                        <label class="checkbox-row"><input type="checkbox" id="freeToKeepUbisoft" checked /> <span>Ubisoft</span></label>
+                      </div>
+
+                      <div class="row" style="justify-content:flex-end; gap:8px;">
+                        <button class="btn" id="freeToKeepSave" data-i18n="common_save">Guardar</button>
+                      </div>
+                      <div class="muted" id="freeToKeepStatus"></div>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-title" data-i18n="freetokeep_recent">Enviados recentemente</div>
+                    <div id="freeToKeepRecent" class="list"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -698,6 +753,7 @@
   <script src="/js/dashboard.moderation.js?v=20260209a" defer></script>
   <script src="/js/dashboard.gamenews.js?v=20260209a" defer></script>
   <script src="/js/dashboard.tickets.js?v=20260209a" defer></script>
+  <script src="/js/dashboard.freetokeep.js?v=20260209a" defer></script>
 
 <!-- Moderation Action Modal -->
 <div id="modActionModal" class="modal hidden">
