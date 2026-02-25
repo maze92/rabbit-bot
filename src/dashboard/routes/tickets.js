@@ -608,7 +608,8 @@ function registerTicketsRoutes(opts) {
     '/api/tickets/support-message',
     requireDashboardAuth,
     canManageTickets,
-    guardGuildBody,
+    // Do not depend on guardGuildBody existing across deployments; validate guildId inside handler.
+    guardGuildBodyOptional,
     rateLimit({ windowMs: 60_000, max: 30, keyPrefix: 'rl:tickets:supportmsg:' }),
     async (req, res) => {
       try {

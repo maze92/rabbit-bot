@@ -620,6 +620,8 @@ const API_BASE = '/api';
     document.documentElement.lang = state.lang;
 
     document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      // badgeBot is dynamic (online/offline) and should not be overridden by a static i18n key.
+      if (el && el.id === 'badgeBot') return;
       const key = el.getAttribute('data-i18n');
       if (!key) return;
       el.textContent = t(key);
