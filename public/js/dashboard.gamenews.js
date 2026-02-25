@@ -294,7 +294,23 @@ function setInputError(inputEl, hasError) {
     badgeEl.className = 'user-type-badge ' + badgeClass;
     badgeEl.textContent = badgeText;
 
-    subtitleEl.textContent = (feedUrl || '') + (channelId ? ' • ' + channelId : '');
+    // Secondary info: URL + channel + rate limiting (interval/max)
+    const intervalMs =
+      typeof f.intervalMs === 'number' && Number.isFinite(f.intervalMs) && f.intervalMs > 0
+        ? Math.round(f.intervalMs)
+        : null;
+    const intervalMin = intervalMs ? Math.max(1, Math.round(intervalMs / 60000)) : null;
+    const maxPerCycle =
+      typeof f.maxPerCycle === 'number' && Number.isFinite(f.maxPerCycle)
+        ? Math.round(f.maxPerCycle)
+        : null;
+
+    const bits = [];
+    if (feedUrl) bits.push(feedUrl);
+    if (channelId) bits.push(channelId);
+    if (intervalMin) bits.push((t('gamenews_feed_interval_short') || 'int') + ': ' + intervalMin + 'm');
+    if (maxPerCycle) bits.push((t('gamenews_feed_max_short') || 'max') + ': ' + maxPerCycle);
+    subtitleEl.textContent = bits.join(' • ');
 
     if (dirty) row.classList.add('dirty');
     else row.classList.remove('dirty');
@@ -328,6 +344,21 @@ function setInputError(inputEl, hasError) {
       const name = f.name || 'Feed';
       const feedUrl = f.feedUrl || '';
       const channelId = f.channelId || '';
+      const intervalMs =
+        typeof f.intervalMs === 'number' && Number.isFinite(f.intervalMs) && f.intervalMs > 0
+          ? Math.round(f.intervalMs)
+          : null;
+      const intervalMin = intervalMs ? Math.max(1, Math.round(intervalMs / 60000)) : null;
+      const maxPerCycle =
+        typeof f.maxPerCycle === 'number' && Number.isFinite(f.maxPerCycle)
+          ? Math.round(f.maxPerCycle)
+          : null;
+
+      const subtitleBits = [];
+      if (feedUrl) subtitleBits.push(feedUrl);
+      if (channelId) subtitleBits.push(channelId);
+      if (intervalMin) subtitleBits.push((t('gamenews_feed_interval_short') || 'int') + ': ' + intervalMin + 'm');
+      if (maxPerCycle) subtitleBits.push((t('gamenews_feed_max_short') || 'max') + ': ' + maxPerCycle);
       // Badge will be updated after render (dirty/error/incomplete/on/off)
       const badgeClass = 'human';
       const badgeText = t('gamenews_feed_status_on');
@@ -340,7 +371,7 @@ function setInputError(inputEl, hasError) {
           </div>
         </div>
         <div class="subtitle">
-          ${escapeHtml(feedUrl)}${channelId ? ' • ' + escapeHtml(channelId) : ''}
+          ${escapeHtml(subtitleBits.join(' • '))}
         </div>
       `;
 
@@ -901,17 +932,46 @@ function renderGameNewsFeedDetail(feed) {
         (res && Array.isArray(res.feeds) && res.feeds) ||
         null;
 
-      if (returnedFeeds) {
-        state.gameNewsFeeds = returnedFeeds.slice();
+      // Alguns backends respondem apenas { ok: true } sem devolver a lista.
+      // Para não perder alterações locais (ex.: maxPerCycle), se não vier payload mantemos local.
+      if (!returnedFeeds) {
         setOriginalForFeeds(state.gameNewsFeeds);
         renderGameNewsFeedsList(state.gameNewsFeeds);
-        // Clamp active index if needed
-        let idx = typeof state.activeGameNewsFeedIndex === 'number' ? state.activeGameNewsFeedIndex : 0;
-        if (idx < 0) idx = 0;
-        if (idx >= state.gameNewsFeeds.length) idx = state.gameNewsFeeds.length - 1;
-        if (idx >= 0 && state.gameNewsFeeds.length) {
+        const idx = typeof state.activeGameNewsFeedIndex === 'number' ? state.activeGameNewsFeedIndex : null;
+        if (idx != null && idx >= 0 && state.gameNewsFeeds && state.gameNewsFeeds[idx]) {
           selectGameNewsFeedByIndex(idx);
         }
+        return;
+      }
+
+      // Merge conservador: se o backend não devolver maxPerCycle/intervalMs/logChannelId,
+      // preservamos os valores do estado local para evitar “sumir até refresh”.
+      const localFeeds = Array.isArray(state.gameNewsFeeds) ? state.gameNewsFeeds : [];
+      const merged = returnedFeeds.map(function (rf) {
+        if (!rf) return rf;
+        const key = makeStatusKey(rf);
+        const lf = localFeeds.find(function (x) {
+          return makeStatusKey(x) === key;
+        });
+        if (lf) {
+          if (rf.maxPerCycle == null && lf.maxPerCycle != null) rf.maxPerCycle = lf.maxPerCycle;
+          if (rf.intervalMs == null && lf.intervalMs != null) rf.intervalMs = lf.intervalMs;
+          if (rf.logChannelId == null && lf.logChannelId != null) rf.logChannelId = lf.logChannelId;
+          if (rf.enabled == null && lf.enabled != null) rf.enabled = lf.enabled;
+          if (!rf.name && lf.name) rf.name = lf.name;
+        }
+        return rf;
+      });
+
+      state.gameNewsFeeds = merged.slice();
+      setOriginalForFeeds(state.gameNewsFeeds);
+      renderGameNewsFeedsList(state.gameNewsFeeds);
+      // Clamp active index if needed
+      let idx = typeof state.activeGameNewsFeedIndex === 'number' ? state.activeGameNewsFeedIndex : 0;
+      if (idx < 0) idx = 0;
+      if (idx >= state.gameNewsFeeds.length) idx = state.gameNewsFeeds.length - 1;
+      if (idx >= 0 && state.gameNewsFeeds.length) {
+        selectGameNewsFeedByIndex(idx);
       }
     } else {
       toast(t('gamenews_error_generic'));
