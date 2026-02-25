@@ -14,7 +14,52 @@
   const createLogRow = D.createLogRow;
   const renderLogs = D.renderLogs;
 
-  let logsAbortController = null;
+  
+
+// -----------------------------
+// Preferences (per-guild) for logs filters
+// -----------------------------
+function logsPrefsKey(guildId) {
+  return 'ozark.logsPrefs.' + String(guildId || 'none');
+}
+
+function saveLogsPrefs(guildId, prefs) {
+  try {
+    if (!guildId) return;
+    localStorage.setItem(logsPrefsKey(guildId), JSON.stringify(prefs || {}));
+  } catch (e) {}
+}
+
+function loadLogsPrefs(guildId) {
+  try {
+    if (!guildId) return null;
+    const raw = localStorage.getItem(logsPrefsKey(guildId));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyLogsPrefsToControls(guildId) {
+  const prefs = loadLogsPrefs(guildId);
+  if (!prefs) return;
+
+  const searchInput = document.getElementById('logSearch');
+  const typeSelect = document.getElementById('logType');
+  const limitSelect = document.getElementById('logLimit');
+
+  if (searchInput && typeof prefs.search === 'string') searchInput.value = prefs.search;
+  if (typeSelect && typeof prefs.type === 'string') typeSelect.value = prefs.type;
+  if (limitSelect && typeof prefs.limit === 'number') limitSelect.value = String(prefs.limit);
+}
+
+// Expose so core can restore on guild change
+D.restoreLogsPrefs = function (guildId) {
+  applyLogsPrefsToControls(guildId);
+};
+
+let logsAbortController = null;
 let modServerRange = '7d';
 let modTicketsRange = '7d';
 let modTopOnlineRange = '7d';
@@ -67,6 +112,21 @@ async function loadLogs() {
         const row = createLogRow(log);
         listEl.appendChild(row);
       });
+
+
+function renderLogsSkeleton() {
+  const rows = [];
+  rows.push('<div class="list-skeleton" aria-hidden="true">');
+  for (let i = 0; i < 6; i++) {
+    rows.push('<div class="skeleton-row">');
+    rows.push('<div class="skeleton-line skeleton-line--w60"></div>');
+    rows.push('<div class="skeleton-line skeleton-line--w35"></div>');
+    rows.push('</div>');
+  }
+  rows.push('</div>');
+  return rows.join('');
+}
+
     }
 
     if (!state.guildId) {
@@ -93,6 +153,8 @@ async function loadLogs() {
     state.logsType = typeValue;
     state.logsLimit = limit;
 
+    saveLogsPrefs(state.guildId, { search: search, type: typeValue, limit: limit });
+
     if (btnLoadMore) btnLoadMore.disabled = true;
 
     // Abort previous
@@ -101,7 +163,7 @@ async function loadLogs() {
     const signal = logsAbortController.signal;
 
     return window.OzarkDashboard.withLoading(async function () {
-      listEl.innerHTML = `<div class="empty">${escapeHtml(t('logs_loading'))}</div>`;
+      listEl.innerHTML = renderLogsSkeleton();
       setLoadMoreVisible(false);
 
       const params = [];
@@ -179,8 +241,31 @@ async function loadLogs() {
           insightsContent.innerHTML = '';
           const loading = document.createElement('div');
           loading.className = 'empty';
-          loading.textContent = t('logs_server_insights_loading');
-          insightsContent.appendChild(loading);
+          insightsContent.innerHTML = '<div class="grid-3" aria-hidden="true">' +
+            '<div class="skeleton-row"><div class="skeleton-line skeleton-line--w60"></div><div class="skeleton-line skeleton-line--w35"></div></div>' +
+            '<div class="skeleton-row"><div class="skeleton-line skeleton-line--w60"></div><div class="skeleton-line skeleton-line--w35"></div></div>' +
+            '<div class="skeleton-row"><div class="skeleton-line skeleton-line--w60"></div><div class="skeleton-line skeleton-line--w35"></div></div>' +
+            '</div>';
+
+// Tickets list skeleton
+ticketsList.innerHTML = '';
+for (let i = 0; i < 4; i++) {
+  const liS = document.createElement('li');
+  liS.className = 'skeleton-row';
+  liS.innerHTML = '<div class="skeleton-line skeleton-line--w80"></div><div class="skeleton-line skeleton-line--w35"></div>';
+  ticketsList.appendChild(liS);
+}
+
+// Top online skeleton
+topOnlineList.innerHTML = '';
+for (let j = 0; j < 5; j++) {
+  const liO = document.createElement('li');
+  liO.className = 'skeleton-row';
+  liO.innerHTML = '<div class="skeleton-line skeleton-line--w60"></div><div class="skeleton-line skeleton-line--w35"></div>';
+  topOnlineList.appendChild(liO);
+}
+
+
 
           return apiGet('/mod/overview' + rangeParam)
             .then(function (res) {
