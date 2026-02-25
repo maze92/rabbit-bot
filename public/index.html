@@ -370,13 +370,11 @@
                         <p class="hint" data-i18n="config_ticket_channel_hint">
                           Canal onde será publicada a mensagem de suporte com o emoji para abrir tickets.
                         </p>
-                        <div class="row gap ticket-support-row" style="margin-top:10px;">
-                          <div class="col" style="flex:1; min-width:0;">
-                            <label for="configTicketSupportMessage" data-i18n="config_ticket_support_message_label">Mensagem de suporte</label>
-                            <textarea id="configTicketSupportMessage" class="input" rows="4" data-i18n-placeholder="config_ticket_support_message_placeholder" placeholder="Escreve a mensagem que será enviada ao canal de suporte..."></textarea>
-                            <p class="hint" data-i18n="config_ticket_support_message_hint">Esta mensagem será enviada para o canal selecionado. O emoji 🎫 é adicionado automaticamente.</p>
-                          </div>
-                          <div class="col" style="width:auto; flex:0 0 auto;">
+
+                        <div class="row gap align-end" style="margin-top:10px;">
+                          <button id="btnSendTicketSupportMessage" class="btn xs" type="button" data-i18n="config_ticket_support_message_send">Enviar</button>
+                        </div>
+<div class="col" style="width:auto; flex:0 0 auto;">
                             <button id="btnSendTicketSupportMessage" class="btn xs" type="button" data-i18n="config_ticket_support_message_send">Enviar</button>
                           </div>
                         </div>
@@ -602,9 +600,9 @@
                 <div class="field">
                   <label for="configServerTimezone" data-i18n="config_server_timezone_label">Timezone do servidor</label>
                   <input id="configServerTimezone" class="input" type="text" placeholder="Europe/Lisbon" />
-                  <p class="hint" data-i18n="config_server_timezone_hint">Use um identificador IANA (por exemplo, Europe/Lisbon). Se ficar vazio, é usado o fuso horário padrão do servidor.</p>
                 </div>
               </div>
+              <p class="hint" data-i18n="config_server_timezone_hint">Use um identificador IANA (por exemplo, Europe/Lisbon). Se ficar vazio, é usado o fuso horário do servidor.</p>
             </div>
 
             <div class="card subcard" id="config-section-logs">

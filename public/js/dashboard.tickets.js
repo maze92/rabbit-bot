@@ -447,28 +447,22 @@
       searchEl.addEventListener('change', trigger);
     }
 
-    // Pre-fill support message with the default (from locale) if empty.
-    try {
-      const msgEl = document.getElementById('configTicketSupportMessage');
-      if (msgEl && !String(msgEl.value || '').trim()) {
-        const defMsg = t('config_ticket_support_message_default');
-        if (defMsg && defMsg !== 'config_ticket_support_message_default') {
-          msgEl.value = defMsg;
-        }
-      }
-    } catch (e) {}
-
     const sendBtn = document.getElementById('btnSendTicketSupportMessage');
     if (sendBtn) {
       sendBtn.addEventListener('click', async () => {
         const guildId = getGuildId();
         const chSel = document.getElementById('configTicketChannel');
-        const msgEl = document.getElementById('configTicketSupportMessage');
         const channelId = chSel ? String(chSel.value || '').trim() : '';
-        const message = msgEl ? String(msgEl.value || '').trim() : '';
+
+        // Send the default support message (no editor in UI).
+        const defMsg = t('config_ticket_support_message_default');
+        const message = (defMsg && defMsg !== 'config_ticket_support_message_default')
+          ? String(defMsg).trim()
+          : (t('config_ticket_support_message_fallback') || '🎫 Para abrir um ticket, reage a esta mensagem.');
+
         if (!guildId) { toast(t('warn_select_guild') || 'Selecione um servidor.'); return; }
         if (!channelId) { toast(t('config_ticket_channel_hint') || 'Selecione um canal de suporte.'); return; }
-        if (!message) { toast(t('config_ticket_support_message_empty') || 'Escreva a mensagem a enviar.'); return; }
+
         try {
           sendBtn.disabled = true;
           await apiPost('/tickets/support-message', { guildId, channelId, message });

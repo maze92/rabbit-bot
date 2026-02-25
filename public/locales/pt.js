@@ -137,6 +137,7 @@ window.OzarkLocales.pt = {
   'config_ticket_support_message_sent': 'Mensagem enviada.',
   'config_ticket_support_message_failed': 'Falha ao enviar mensagem.',
   'config_ticket_support_message_default': 'Precisas de ajuda? Reage com 🎫 para abrir um ticket e falar com a equipa de suporte.',
+  'config_ticket_support_message_fallback': '🎫 Para abrir um ticket, reage a esta mensagem.',
   'config_title': 'Configuração do servidor',
   'config_nav_guild': 'Servidor',
   'config_nav_logs': 'Logs',

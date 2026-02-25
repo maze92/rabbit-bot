@@ -136,6 +136,7 @@ window.OzarkLocales.en = {
   'config_ticket_support_message_sent': 'Message sent.',
   'config_ticket_support_message_failed': 'Failed to send message.',
   'config_ticket_support_message_default': 'Need help? React with 🎫 to open a ticket and contact support.',
+  'config_ticket_support_message_fallback': '🎫 To open a ticket, react to this message.',
   'config_title': 'Server configuration',
   'config_nav_guild': 'Server',
   'config_nav_logs': 'Logs',
