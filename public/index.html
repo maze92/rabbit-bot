@@ -30,8 +30,7 @@
     <header class="topbar">
       <div class="topbar-left">
         <div class="logo">.rabbit</div>
-        <button type="button" class="icon-btn" id="logoutBtn" data-i18n="logout" title="Sair" aria-label="Sair">⎋</button>
-        <div class="divider"></div>
+<div class="divider"></div>
         <div class="top-info">
           <div data-i18n="app_subtitle">Painel de gestão e moderação</div>
         </div>
@@ -43,6 +42,8 @@
 
         <span class="badge hidden" id="badgeProfile"></span>
         <span class="badge hidden" id="badgeAccess"></span>
+
+        <button type="button" class="icon-btn" id="logoutBtn" data-i18n="logout" title="Sair" aria-label="Sair">⎋</button>
 
         <span class="badge" id="badgeBot" data-i18n="badge_bot_online">Bot online</span>
       </div>
@@ -369,6 +370,18 @@
                         <p class="hint" data-i18n="config_ticket_channel_hint">
                           Canal onde será publicada a mensagem de suporte com o emoji para abrir tickets.
                         </p>
+                        <div class="row gap" style="margin-top:10px;">
+                          <div class="col" style="flex:1;">
+                            <label for="configTicketSupportMessage" data-i18n="config_ticket_support_message_label">Mensagem de suporte</label>
+                            <textarea id="configTicketSupportMessage" class="input" rows="4" data-i18n-placeholder="config_ticket_support_message_placeholder" placeholder="Escreve a mensagem que será enviada ao canal de suporte..."></textarea>
+                            <p class="hint" data-i18n="config_ticket_support_message_hint">Esta mensagem será enviada para o canal selecionado. O emoji 🎫 é adicionado automaticamente.</p>
+                          </div>
+                          <div class="col" style="max-width:160px;">
+                            <label style="opacity:0;">.</label>
+                            <button id="btnSendTicketSupportMessage" class="btn" type="button" data-i18n="config_ticket_support_message_send">Enviar</button>
+                          </div>
+                        </div>
+
                       </div>
                     </div>
                   </details>
@@ -392,7 +405,7 @@
                           <div class="title" data-i18n="tickets_manage_title">Tickets ativos</div>
                           <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                             <input id="ticketsSearch" class="input md" type="text" placeholder="Pesquisar..." data-i18n-placeholder="tickets_search_placeholder" />
-                            <select id="ticketsStatusFilter" class="select" style="min-width:120px;">
+                            <select id="ticketsStatusFilter" class="select xs tickets-status-filter">
                               <option value="open" data-i18n="tickets_filter_open">Abertos</option>
                               <option value="closed" data-i18n="tickets_filter_closed">Fechados</option>
                               <option value="all" data-i18n="tickets_filter_all">Todos</option>
@@ -580,7 +593,7 @@
               <div class="row gap">
                 <div class="field">
                   <label for="configServerLanguage" data-i18n="config_server_language_label">Idioma principal do servidor</label>
-                  <select id="configServerLanguage" class="input">
+                  <select id="configServerLanguage" class="select">
                     <option value="auto" data-i18n="config_server_language_auto">Automático (seguir idioma do cliente)</option>
                     <option value="pt" data-i18n="config_server_language_pt">Português</option>
                     <option value="en" data-i18n="config_server_language_en">English</option>

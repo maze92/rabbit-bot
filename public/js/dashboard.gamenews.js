@@ -369,7 +369,27 @@ function setInputError(inputEl, hasError) {
     return `<div class="empty">${escapeHtml(t('loading'))}</div>`;
   }
 
-  function selectGameNewsFeedByIndex(idx) {
+  
+  function resetGameNewsSelection() {
+    try { state.activeGameNewsFeedIndex = null; } catch (e) {}
+    const detailEl = document.getElementById('gamenewsFeedDetailPanel');
+    if (detailEl) {
+      try {
+        if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+          window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', false);
+        }
+      } catch (e) {}
+      detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
+    }
+    const listEl = document.getElementById('gamenewsFeedsList');
+    if (listEl) {
+      listEl.querySelectorAll('.list-item').forEach(function (row) {
+        row.classList.remove('active');
+      });
+    }
+  }
+
+function selectGameNewsFeedByIndex(idx) {
       const numericIdx = Number(idx);
       if (!Number.isInteger(numericIdx) || numericIdx < 0) return;
       if (!Array.isArray(state.gameNewsFeeds)) return;
@@ -1022,4 +1042,33 @@ function renderGameNewsFeedDetail(feed) {
   // ------------------------
 
   D.loadGameNews = loadGameNews;
+
+  // Reset selection when leaving the Feeds subtab or leaving the GameNews main tab.
+  // Requirement: returning to Feeds should never keep a feed selected.
+  document.addEventListener('click', function (ev) {
+    const tEl = ev && ev.target ? ev.target.closest('.tab, .subtab') : null;
+    if (!tEl) return;
+
+    // Main tabs (top-level)
+    if (tEl.classList.contains('tab')) {
+      const tabName = tEl.getAttribute('data-tab');
+      if (tabName && tabName !== 'gamenews') {
+        resetGameNewsSelection();
+      }
+      return;
+    }
+
+    // Subtabs inside GameNews
+    if (tEl.classList.contains('subtab')) {
+      const sub = tEl.getAttribute('data-subtab');
+      if (sub && sub !== 'feeds') {
+        resetGameNewsSelection();
+      }
+      // If user explicitly clicks "Feeds", also reset to avoid carrying prior selection.
+      if (sub === 'feeds') {
+        resetGameNewsSelection();
+      }
+    }
+  }, true);
+
 })();

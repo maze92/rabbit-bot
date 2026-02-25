@@ -66,6 +66,16 @@ body {
   gap: 8px;
 }
 
+.topbar-right {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.topbar-left {
+  min-width: 0;
+}
+
+
 .logo {
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -139,6 +149,8 @@ body {
   border-radius: 999px;
   border: 1px solid var(--border-soft);
   background: rgba(255,255,255,0.02);
+
+  white-space: nowrap;
 }
 
 /* Tabs */
@@ -182,6 +194,7 @@ body {
 /* Aviso de seleção de servidor */
 
 .tab-warning {
+  display: none;
   margin: 6px 0 0 4px;
   font-size: 11px;
   color: var(--danger);
@@ -2583,3 +2596,61 @@ details[open] > .details-summary:before {
 
 
 @keyframes shimmer { 0% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
+
+
+#guildPicker {
+  max-width: 320px;
+  min-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.select.xs {
+  padding: 6px 8px;
+  font-size: 12px;
+  height: 32px;
+}
+
+.tickets-status-filter { width: 110px; }
+
+
+@media (min-width: 900px) {
+  #extras-tickets-panel .toolbar > div:last-child {
+    flex-wrap: nowrap !important;
+  }
+}
+
+/* Skeleton blocks (used in tickets, logs, etc.) */
+.ticket-skeleton .skel-line,
+.skel-line {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.04);
+  margin: 8px 0;
+}
+.ticket-skeleton .skel-block {
+  margin-top: 14px;
+}
+.skel-line.w35 { width: 35%; }
+.skel-line.w50 { width: 50%; }
+.skel-line.w55 { width: 55%; }
+.skel-line.w60 { width: 60%; }
+.skel-line.w70 { width: 70%; }
+.skel-line.w75 { width: 75%; }
+.skel-line.w80 { width: 80%; }
+
+.panel-loading .skel-line {
+  position: relative;
+  overflow: hidden;
+}
+.panel-loading .skel-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.00), rgba(255,255,255,0.10), rgba(255,255,255,0.00));
+  transform: translateX(-30%);
+  animation: panelShimmer 1.1s linear infinite;
+}

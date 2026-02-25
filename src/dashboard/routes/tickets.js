@@ -595,6 +595,70 @@ function registerTicketsRoutes(opts) {
       }
     }
   );
+
+
+  // -----------------------------
+  // Send / publish support message (dashboard)
+  // POST /api/tickets/support-message { guildId, channelId, message }
+  // Adds the 🎫 reaction automatically.
+  // -----------------------------
+  app.post(
+    '/api/tickets/support-message',
+    requireDashboardAuth,
+    canManageTickets,
+    guardGuildBody,
+    rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'rl:tickets:supportmsg:' }),
+    async (req, res) => {
+      try {
+        const guildId = (req.body && req.body.guildId ? String(req.body.guildId) : '').trim();
+        const channelId = (req.body && req.body.channelId ? String(req.body.channelId) : '').trim();
+        const raw = (req.body && req.body.message ? String(req.body.message) : '').trim();
+        const message = typeof sanitizeText === 'function' ? sanitizeText(raw, { maxLen: 1800 }) : raw.slice(0, 1800);
+
+        if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+        if (!channelId) return res.status(400).json({ ok: false, error: 'channelId is required' });
+        if (!message) return res.status(400).json({ ok: false, error: 'message is required' });
+
+        if (!hasGuildAccess(req, guildId)) return res.status(403).json({ ok: false, error: 'No guild access' });
+
+        const client = typeof _getClient === 'function' ? _getClient() : null;
+        if (!client) return res.status(503).json({ ok: false, error: 'Discord client not available' });
+
+        // Resolve guild & channel
+        const guild = client.guilds && client.guilds.cache ? client.guilds.cache.get(guildId) : null;
+        if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found in client' });
+
+        const channel = guild.channels && guild.channels.cache ? guild.channels.cache.get(channelId) : null;
+        if (!channel) return res.status(404).json({ ok: false, error: 'Channel not found' });
+
+        if (typeof channel.isTextBased === 'function' ? !channel.isTextBased() : !channel.send) {
+          return res.status(400).json({ ok: false, error: 'Channel is not text-based' });
+        }
+
+        const sent = await channel.send({ content: message });
+        try { await sent.react('🎫'); } catch (e) {}
+
+        // Audit (best-effort)
+        try {
+          const actor = typeof getActorFromRequest === 'function' ? getActorFromRequest(req) : null;
+          if (typeof recordAudit === 'function') {
+            recordAudit({
+              action: 'tickets_support_message_sent',
+              guildId,
+              actor,
+              meta: { channelId, messageId: sent && sent.id ? String(sent.id) : null }
+            });
+          }
+        } catch (e) {}
+
+        return res.json({ ok: true, messageId: sent && sent.id ? String(sent.id) : null });
+      } catch (err) {
+        console.error('tickets/support-message failed', err);
+        return res.status(500).json({ ok: false, error: 'Failed to send support message' });
+      }
+    }
+  );
+
 }
 
 function escapeRegExp(s) {

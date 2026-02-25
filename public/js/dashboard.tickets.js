@@ -98,7 +98,21 @@
   }
 
   function renderDetailSkeleton() {
-    return `<div class="empty">${escapeHtml(t('loading'))}</div>`;
+    return `
+      <div class="ticket-skeleton">
+        <div class="skel-line w60"></div>
+        <div class="skel-line w35"></div>
+        <div class="skel-block">
+          <div class="skel-line w80"></div>
+          <div class="skel-line w75"></div>
+          <div class="skel-line w55"></div>
+        </div>
+        <div class="skel-block">
+          <div class="skel-line w70"></div>
+          <div class="skel-line w50"></div>
+        </div>
+      </div>
+    `;
   }
 
   function renderDetailEmpty() {
@@ -431,6 +445,30 @@
       };
       searchEl.addEventListener('input', trigger);
       searchEl.addEventListener('change', trigger);
+    }
+
+    const sendBtn = document.getElementById('btnSendTicketSupportMessage');
+    if (sendBtn) {
+      sendBtn.addEventListener('click', async () => {
+        const guildId = getGuildId();
+        const chSel = document.getElementById('configTicketChannel');
+        const msgEl = document.getElementById('configTicketSupportMessage');
+        const channelId = chSel ? String(chSel.value || '').trim() : '';
+        const message = msgEl ? String(msgEl.value || '').trim() : '';
+        if (!guildId) { toast(t('warn_select_guild') || 'Selecione um servidor.'); return; }
+        if (!channelId) { toast(t('config_ticket_channel_hint') || 'Selecione um canal de suporte.'); return; }
+        if (!message) { toast(t('config_ticket_support_message_empty') || 'Escreva a mensagem a enviar.'); return; }
+        try {
+          sendBtn.disabled = true;
+          await apiPost('/tickets/support-message', { guildId, channelId, message });
+          toast(t('config_ticket_support_message_sent') || 'Mensagem enviada.');
+        } catch (e) {
+          console.error('Failed to send ticket support message', e);
+          toast(t('config_ticket_support_message_failed') || 'Falha ao enviar mensagem.');
+        } finally {
+          sendBtn.disabled = false;
+        }
+      });
     }
 
     const btnMore = document.getElementById('btnTicketsLoadMore');
