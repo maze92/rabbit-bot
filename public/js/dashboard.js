@@ -353,34 +353,7 @@ const API_BASE = '/api';
     }
     return payload;
   }
-
-  async function apiPut(path, body, options) {
-    const opts = options || {};
-    const res = await fetch(API_BASE + path, {
-      method: 'PUT',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
-      body: JSON.stringify(body || {}),
-      signal: opts.signal
-    });
-    let payload = null;
-    try {
-      payload = await res.json();
-    } catch (e) {
-      payload = null;
-    }
-    if (!res.ok) {
-      handleAuthError(res.status, payload);
-      const msg = payload && (payload.error || payload.message);
-      const err = new Error(msg || `HTTP ${res.status} for ${path}`);
-      err.status = res.status;
-      if (msg) err.apiMessage = msg;
-      err.payload = payload;
-      throw err;
-    }
-    return payload;
-  }
-
-  async function apiPatch(path, body, options) {
+async function apiPatch(path, body, options) {
     const opts = options || {};
     const res = await fetch(API_BASE + path, {
       method: 'PATCH',
@@ -1932,45 +1905,7 @@ function setLang(newLang) {
     if (editConfig) editConfig.checked = !!p.canEditConfig;
     if (manageUsers) manageUsers.checked = !!p.canManageUsers;
   }
-
-  function getDashboardUserPermInputs() {
-    var viewLogs = document.getElementById('permViewLogs');
-    var actOnCases = document.getElementById('permActOnCases');
-    var manageTickets = document.getElementById('permManageTickets');
-    var manageGameNews = document.getElementById('permManageGameNews');
-    var viewConfig = document.getElementById('permViewConfig');
-    var editConfig = document.getElementById('permEditConfig');
-    var manageUsers = document.getElementById('permManageUsers');
-
-    return {
-      canViewLogs: !!(viewLogs && viewLogs.checked),
-      canActOnCases: !!(actOnCases && actOnCases.checked),
-      canManageTickets: !!(manageTickets && manageTickets.checked),
-      canManageGameNews: !!(manageGameNews && manageGameNews.checked),
-      canViewConfig: !!(viewConfig && viewConfig.checked),
-      canEditConfig: !!(editConfig && editConfig.checked),
-      canManageUsers: !!(manageUsers && manageUsers.checked)
-    };
-  }
-
-  function parseAllowedGuildIdsText(raw) {
-    if (!raw) return [];
-    var parts = String(raw).split(',');
-    var out = [];
-    parts.forEach(function (p) {
-      var s = (p || '').trim();
-      if (!s) return;
-      // Accept mentions or mixed text; keep digits only.
-      s = s.replace(/\D/g, '');
-      if (!s) return;
-      if (out.indexOf(s) === -1) out.push(s);
-    });
-    return out.slice(0, 200);
-  }
-
-  
-
-  function openDashboardUserEditor(user) {
+function openDashboardUserEditor(user) {
     var editor = document.getElementById('dashboardUsersEditor');
     if (!editor) return;
 
@@ -2179,60 +2114,7 @@ function setLang(newLang) {
       }
     }
   }
-
-  async function saveDashboardUserFromEditor() {
-    var usernameInput = document.getElementById('dashboardUserUsername');
-    var passwordInput = document.getElementById('dashboardUserPassword');
-    var roleSelect = document.getElementById('dashboardUserRole');
-    var allowedInput = document.getElementById('dashboardUserAllowedGuilds');
-    var statusEl = document.getElementById('dashboardUsersStatus');
-    var allowedInput = document.getElementById('dashboardUserAllowedGuilds');
-
-    var role = roleSelect ? roleSelect.value : 'MOD';
-    var perms = getDashboardUserPermInputs();
-    var editingId = state.dashboardUsersEditingId || null;
-
-    var payload = {
-      role: role === 'ADMIN' ? 'ADMIN' : 'MOD',
-      permissions: perms
-    };
-
-    payload.allowedGuildIds = parseAllowedGuildIdsText(allowedInput ? allowedInput.value : '');
-
-    try {
-      if (!editingId) {
-        var username = usernameInput ? usernameInput.value.trim() : '';
-        var password = passwordInput ? passwordInput.value : '';
-        if (!username || !password) {
-          if (statusEl) {
-            statusEl.textContent =
-              t('config_dashboard_users_error_required');
-          }
-          return;
-        }
-        payload.username = username;
-        payload.password = password;
-        await apiPost('/auth/users', payload);
-      } else {
-        await apiPut('/auth/users/' + encodeURIComponent(editingId), payload);
-      }
-
-      if (statusEl) {
-        statusEl.textContent =
-          t('config_dashboard_users_save_success');
-      }
-      closeDashboardUserEditor();
-      await loadDashboardUsers();
-    } catch (err) {
-      console.error('Failed to save dashboard user', err);
-      if (statusEl) {
-        statusEl.textContent =
-          t('config_dashboard_users_save_error');
-      }
-    }
-  }
-
-  async function confirmDeleteDashboardUser(user) {
+async function confirmDeleteDashboardUser(user) {
     if (!user || !user.id) return;
     var statusEl = document.getElementById('dashboardUsersStatus');
     var allowedInput = document.getElementById('dashboardUserAllowedGuilds');
@@ -2808,12 +2690,6 @@ function addTempVoiceBaseChannel() {
     try { bindTempVoiceDirtyTrackingOnce(); } catch (e) {}
     updateTempVoiceDirtyFromUI();
   }
-
-function syncTempVoiceBaseFromInput() {
-    // Legacy no-op: base channels are managed via select + list, not manual ID input.
-    return;
-  }
-
 function deleteTempVoiceBaseAt(index) {
     if (!state.tempVoiceBase || !Array.isArray(state.tempVoiceBase.items)) return;
     if (index < 0 || index >= state.tempVoiceBase.items.length) return;

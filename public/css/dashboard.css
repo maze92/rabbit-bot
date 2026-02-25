@@ -524,7 +524,6 @@ h2 {
 }
 
 
-
 /* Trust config preview */
 .trust-config-card {
   margin-top: 18px;
@@ -691,7 +690,6 @@ h2 {
 #tab-gamenews .gamenews-detail .row {
   margin-top: 4px;
 }
-
 
 
 /* GameNews detail panel tweaks */
@@ -913,7 +911,6 @@ h2 {
 #extras-tempvoice-panel .user-layout > div:first-child {
   overflow-x: hidden;
 }
-
 
 
 #extras-tempvoice-panel .list .title {
@@ -1522,7 +1519,6 @@ h2 {
 }
 
 
-
 /* === Config: Logs & Acesso === */
 
 #tab-config .card.subcard h3 {
@@ -2060,7 +2056,6 @@ html, body {
 }
 
 
-
 /* Config: Dashboard Users layout */
 #tab-config .dashboard-users-layout {
   display: grid;
@@ -2408,7 +2403,6 @@ details[open] > .details-summary:before {
 .guild-select-name {
   font-weight: 700;
 }
-
 
 
 /* Hardening: prevent horizontal scroll in Temporary Voice list caused by hover transforms */
