@@ -206,6 +206,13 @@ const baseConfig = {
     pruneDashboardLogsOlderThanDays: 60
   },
 
+  // FreeToKeep: auto-post "free to keep" giveaways (Epic/Steam/Ubisoft)
+  freeToKeep: {
+    enabled: true,
+    // How often the worker wakes up. Per-guild pollIntervalMs controls actual fetch frequency.
+    tickMs: 30 * 1000
+  },
+
   // Slash Commands
   slash: {
     enabled: true,

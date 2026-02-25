@@ -25,6 +25,7 @@ const { registerCoreRoutes } = require('./dashboard/routes/core');
 const { registerAuditRoutes } = require('./dashboard/routes/audit');
 const { registerAdminRoutes } = require('./dashboard/routes/admin');
 const { registerTempVoiceRoutes } = require('./dashboard/routes/tempVoice');
+const { registerFreeToKeepRoutes } = require('./dashboard/routes/freetokeep');
 
 const status = require('./systems/status');
 const config = require('./config/defaultConfig');
@@ -51,6 +52,8 @@ let DashboardAudit = null;
 let TicketLog = null;
 let Ticket = null;
 let Infraction = null;
+let FreeToKeepConfig = null;
+let FreeToKeepPost = null;
 
 // In-memory cache para controlar fetch de membros por guild na dashboard
 const guildMembersLastFetch = new Map();
@@ -300,6 +303,18 @@ try {
   Ticket = require('./database/models/Ticket');
 } catch (e) {
   console.warn('[Dashboard] Ticket model not loaded (did you create src/database/models/Ticket.js?)');
+}
+
+try {
+  FreeToKeepConfig = require('./database/models/FreeToKeepConfig');
+} catch (e) {
+  console.warn('[Dashboard] FreeToKeepConfig model not loaded');
+}
+
+try {
+  FreeToKeepPost = require('./database/models/FreeToKeepPost');
+} catch (e) {
+  console.warn('[Dashboard] FreeToKeepPost model not loaded');
 }
 
 
@@ -753,6 +768,17 @@ registerGameNewsRoutes({
   GameNewsFeedSchema,
   getClient: () => _client,
   gameNewsStatusCache
+});
+
+registerFreeToKeepRoutes({
+  app,
+  requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
+  rateLimit,
+  sanitizeId,
+  FreeToKeepConfig,
+  FreeToKeepPost
 });
 
 registerModRoutes({
