@@ -46,10 +46,11 @@
     el.innerHTML = arr.map(function (it) {
       const title = escapeHtml(it.title || '');
       const platform = escapeHtml((it.platform || '').toUpperCase());
+      const kind = escapeHtml((it.kind || 'freetokeep').toUpperCase());
       const when = escapeHtml(fmtDate(it.postedAt || it.createdAt));
       const worth = escapeHtml(it.worth || '');
       const end = escapeHtml(it.endDate || '');
-      const meta = [worth, end ? ('until ' + end) : ''].filter(Boolean).join(' — ');
+      const meta = [kind, worth, end ? ('until ' + end) : ''].filter(Boolean).join(' — ');
       const link = it.url ? `<a class="link" href="${escapeHtml(it.url)}" target="_blank" rel="noopener">↗</a>` : '';
       return `
         <div class="list-item">
@@ -107,6 +108,10 @@
       $('freeToKeepEpic').checked = p.epic !== false;
       $('freeToKeepSteam').checked = p.steam !== false;
       $('freeToKeepUbisoft').checked = p.ubisoft !== false;
+
+      const ot = (cfg && cfg.offerTypes) ? cfg.offerTypes : { freetokeep: true, freeweekend: false };
+      $('freeToKeepTypeKeep').checked = ot.freetokeep !== false;
+      $('freeToKeepTypeWeekend').checked = !!ot.freeweekend;
     } catch (e) {
       if (statusEl) statusEl.textContent = t('freetokeep_load_failed');
     }
@@ -141,6 +146,10 @@
         epic: !!$('freeToKeepEpic').checked,
         steam: !!$('freeToKeepSteam').checked,
         ubisoft: !!$('freeToKeepUbisoft').checked
+      },
+      offerTypes: {
+        freetokeep: !!$('freeToKeepTypeKeep').checked,
+        freeweekend: !!$('freeToKeepTypeWeekend').checked
       }
     };
 

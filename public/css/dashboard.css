@@ -2620,3 +2620,7 @@ details[open] > .details-summary:before {
 
 
 @keyframes shimmer { 0% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
+
+/* Utilities */
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.hr { height: 1px; width: 100%; background: var(--border-soft); margin: 12px 0; }
