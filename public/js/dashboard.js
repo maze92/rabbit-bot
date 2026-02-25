@@ -690,6 +690,10 @@ function setPanelLoading(panelId, isLoading) {
     }
   }
 
+  // Expose for external modules (users/tickets/gamenews) to show consistent loading.
+  window.OzarkDashboard = window.OzarkDashboard || {};
+  window.OzarkDashboard.setPanelLoading = setPanelLoading;
+
   // Backwards compatible helper (kept for older call sites).
   // Prefer setPanelLoading(panelId, true/false) around real async work.
   function showPanelLoading(panelId) {
@@ -700,6 +704,8 @@ function setPanelLoading(panelId, isLoading) {
       setPanelLoading(panelId, false);
     }, 650);
   }
+
+  window.OzarkDashboard.showPanelLoading = showPanelLoading;
 
 
  function escapeHtml(value) {
@@ -926,20 +932,49 @@ function setLang(newLang) {
     if (name === 'overview') {
       loadOverview().catch(function () {});
     } else if (name === 'logs') {
-      if (window.OzarkDashboard.loadModerationOverview) {
-        window.OzarkDashboard.loadModerationOverview().catch(function () {});
-      }
-      window.OzarkDashboard.loadLogs().catch(function () {});
+      // Overlay loading for the tab while we fetch the panel data.
+      setPanelLoading('tab-logs', true);
+      var p1 = (window.OzarkDashboard.loadModerationOverview
+        ? window.OzarkDashboard.loadModerationOverview()
+        : Promise.resolve());
+      var p2 = (window.OzarkDashboard.loadLogs
+        ? window.OzarkDashboard.loadLogs()
+        : Promise.resolve());
+      Promise.allSettled([p1, p2]).finally(function () {
+        setPanelLoading('tab-logs', false);
+      });
     } else if (name === 'gamenews') {
-      window.OzarkDashboard.loadGameNews().catch(function () {});
-      loadTempVoiceConfig().catch(function () {});
-      loadTempVoiceActive().catch(function () {});
+      setPanelLoading('tab-gamenews', true);
+      var g1 = (window.OzarkDashboard.loadGameNews
+        ? window.OzarkDashboard.loadGameNews()
+        : Promise.resolve());
+      var g2 = (typeof loadTempVoiceConfig === 'function' ? loadTempVoiceConfig() : Promise.resolve());
+      var g3 = (typeof loadTempVoiceActive === 'function' ? loadTempVoiceActive() : Promise.resolve());
       // Garantir que canais/roles de configuração estão disponíveis para Tickets/Extras
-      loadGuildConfig().catch(function () {});
+      var g4 = (typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve());
+      Promise.allSettled([g1, g2, g3, g4]).finally(function () {
+        setPanelLoading('tab-gamenews', false);
+      });
     } else if (name === 'user') {
-      window.OzarkDashboard.loadUsers().catch(function () {});
+      setPanelLoading('tab-user', true);
+      var u1 = (window.OzarkDashboard.loadUsers ? window.OzarkDashboard.loadUsers() : Promise.resolve());
+      Promise.resolve(u1).finally(function () {
+        setPanelLoading('tab-user', false);
+      });
     } else if (name === 'config') {
-      loadGuildConfig().catch(function () {});
+      setPanelLoading('tab-config', true);
+      var c1 = (typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve());
+      Promise.resolve(c1).finally(function () {
+        setPanelLoading('tab-config', false);
+      });
+    } else if (name === 'tickets') {
+      setPanelLoading('tab-tickets', true);
+      var t1 = (window.OzarkDashboard && typeof window.OzarkDashboard.loadTickets === 'function')
+        ? window.OzarkDashboard.loadTickets(true)
+        : Promise.resolve();
+      Promise.resolve(t1).finally(function () {
+        setPanelLoading('tab-tickets', false);
+      });
     }
   }
 

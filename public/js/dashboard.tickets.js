@@ -104,6 +104,11 @@
   function renderDetailEmpty() {
     const panel = document.getElementById('ticketDetailPanel');
     if (!panel) return;
+    try {
+      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+        window.OzarkDashboard.setPanelLoading('ticketDetailPanel', false);
+      }
+    } catch (e) {}
     panel.innerHTML = `<div class="empty">${escapeHtml(t('tickets_detail_empty'))}</div>`;
   }
 
@@ -116,7 +121,14 @@
 
     state.activeTicketIndex = idx;
     const panel = document.getElementById('ticketDetailPanel');
-    if (panel) panel.innerHTML = renderDetailSkeleton();
+    if (panel) {
+      try {
+        if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+          window.OzarkDashboard.setPanelLoading('ticketDetailPanel', true);
+        }
+      } catch (e) {}
+      panel.innerHTML = renderDetailSkeleton();
+    }
 
     if (_detailTimeout) clearTimeout(_detailTimeout);
     _detailTimeout = setTimeout(() => {
@@ -184,6 +196,12 @@
         </div>
       </details>
     `;
+
+    try {
+      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+        window.OzarkDashboard.setPanelLoading('ticketDetailPanel', false);
+      }
+    } catch (e) {}
 
     const guildId = getGuildId();
     const ticketId = ticket._id;

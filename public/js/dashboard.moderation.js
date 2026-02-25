@@ -14,6 +14,26 @@
   const createLogRow = D.createLogRow;
   const renderLogs = D.renderLogs;
 
+  // -----------------------------
+  // Skeleton helpers
+  // -----------------------------
+
+  // Used while fetching logs.
+  function renderLogsSkeleton(count) {
+    count = typeof count === 'number' && count > 0 ? count : 6;
+    let html = '<div class="list-skeleton" aria-hidden="true">';
+    for (let i = 0; i < count; i++) {
+      html +=
+        '<div class="skeleton-row">' +
+          '<div class="skeleton-line skeleton-line--w60"></div>' +
+          '<div class="skeleton-line skeleton-line--w80"></div>' +
+          '<div class="skeleton-line skeleton-line--w35"></div>' +
+        '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   
 
 // -----------------------------
