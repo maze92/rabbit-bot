@@ -28,11 +28,6 @@ function registerTicketsRoutes(opts) {
     ? requireGuildAccess({ from: 'query', key: 'guildId' })
     : (req, res, next) => next();
 
-  const guardGuildBody = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'body', key: 'guildId' })
-    : (req, res, next) => next();
-
-
   const guardGuildQueryOptional = typeof requireGuildAccess === 'function'
     ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
     : (req, res, next) => next();
@@ -600,69 +595,88 @@ function registerTicketsRoutes(opts) {
       }
     }
   );
-
-
   // -----------------------------
-  // Send / publish support message (dashboard)
-  // POST /api/tickets/support-message { guildId, channelId, message }
-  // Adds the 🎫 reaction automatically.
+  // Post ticket support message to the configured channel (dashboard)
+  // POST /api/tickets/support-message { guildId, channelId }
   // -----------------------------
   app.post(
     '/api/tickets/support-message',
     requireDashboardAuth,
     canManageTickets,
     guardGuildBody,
-    rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'rl:tickets:supportmsg:' }),
+    rateLimit({ windowMs: 60_000, max: 30, keyPrefix: 'rl:tickets:supportmsg:' }),
     async (req, res) => {
       try {
-        const guildId = (req.body && req.body.guildId ? String(req.body.guildId) : '').trim();
-        const channelId = (req.body && req.body.channelId ? String(req.body.channelId) : '').trim();
-        const raw = (req.body && req.body.message ? String(req.body.message) : '').trim();
-        const message = typeof sanitizeText === 'function' ? sanitizeText(raw, { maxLen: 1800 }) : raw.slice(0, 1800);
+        const guildId = (req.body && req.body.guildId ? String(req.body.guildId).trim() : '');
+        const channelIdRaw = (req.body && req.body.channelId ? String(req.body.channelId).trim() : '');
 
         if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
-        if (!channelId) return res.status(400).json({ ok: false, error: 'channelId is required' });
-        if (!message) return res.status(400).json({ ok: false, error: 'message is required' });
 
-        if (!hasGuildAccess(req, guildId)) return res.status(403).json({ ok: false, error: 'No guild access' });
+        if (!hasGuildAccess(req, guildId)) {
+          return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
+        }
 
-        const client = typeof _getClient === 'function' ? _getClient() : null;
+        // Resolve channel id: prefer explicit channelId, fallback to GuildConfig.ticketThreadChannelId
+        let channelId = channelIdRaw;
+
+        let GuildConfig = null;
+        try { GuildConfig = require('../../database/models/GuildConfig'); } catch (e) {}
+
+        if ((!channelId || !/^\d+$/.test(channelId)) && GuildConfig) {
+          const doc = await GuildConfig.findOne({ guildId }).lean().catch(() => null);
+          if (doc && doc.ticketThreadChannelId) channelId = String(doc.ticketThreadChannelId);
+        }
+
+        if (!channelId || !/^\d+$/.test(channelId)) {
+          return res.status(400).json({ ok: false, error: 'channelId is required' });
+        }
+
+        const client = _getClient ? _getClient() : null;
         if (!client) return res.status(503).json({ ok: false, error: 'Discord client not available' });
 
-        // Resolve guild & channel
-        const guild = client.guilds && client.guilds.cache ? client.guilds.cache.get(guildId) : null;
-        if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found in client' });
+        const guild = await client.guilds.fetch(guildId).catch(() => null);
+        if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
 
-        const channel = guild.channels && guild.channels.cache ? guild.channels.cache.get(channelId) : null;
+        const channel = await guild.channels.fetch(channelId).catch(() => null);
         if (!channel) return res.status(404).json({ ok: false, error: 'Channel not found' });
-
-        if (typeof channel.isTextBased === 'function' ? !channel.isTextBased() : !channel.send) {
+        if (!channel.isTextBased || !channel.isTextBased()) {
           return res.status(400).json({ ok: false, error: 'Channel is not text-based' });
         }
 
-        const sent = await channel.send({ content: message });
-        try { await sent.react('🎫'); } catch (e) {}
+        const OPEN_EMOJI = '🎫';
+        const DEFAULT_MESSAGE = [
+          '🎫 **Tickets de Suporte**',
+          '',
+          `Reage com ${OPEN_EMOJI} para abrir um ticket privado.`,
+          'A equipa responderá assim que possível.'
+        ].join('\n');
 
-        // Audit (best-effort)
-        try {
-          const actor = typeof getActorFromRequest === 'function' ? getActorFromRequest(req) : null;
-          if (typeof recordAudit === 'function') {
-            recordAudit({
-              action: 'tickets_support_message_sent',
-              guildId,
-              actor,
-              meta: { channelId, messageId: sent && sent.id ? String(sent.id) : null }
-            });
-          }
-        } catch (e) {}
+        const content = sanitizeText ? sanitizeText(DEFAULT_MESSAGE, { maxLen: 1500 }) : DEFAULT_MESSAGE;
 
-        return res.json({ ok: true, messageId: sent && sent.id ? String(sent.id) : null });
+        const sent = await channel.send({ content }).catch(() => null);
+        if (!sent) return res.status(500).json({ ok: false, error: 'Failed to send message' });
+
+        try { await sent.react(OPEN_EMOJI).catch(() => {}); } catch (e) {}
+
+        if (recordAudit) {
+          const actor = getActorFromRequest ? getActorFromRequest(req) : (req.dashboardUser?.id || 'dashboard');
+          await recordAudit({
+            req,
+            action: 'ticket.support_message.send',
+            guildId,
+            actor,
+            payload: { channelId, messageId: sent.id }
+          });
+        }
+
+        return res.json({ ok: true, channelId, messageId: sent.id });
       } catch (err) {
-        console.error('tickets/support-message failed', err);
-        return res.status(500).json({ ok: false, error: 'Failed to send support message' });
+        console.error('[Dashboard] POST /api/tickets/support-message error:', err);
+        return res.status(500).json({ ok: false, error: 'Internal Server Error' });
       }
     }
   );
+
 
 }
 

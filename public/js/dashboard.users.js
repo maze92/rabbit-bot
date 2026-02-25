@@ -310,11 +310,6 @@ async function loadUserHistory(user) {
     userHistoryAbortController = new AbortController();
     const signal = userHistoryAbortController.signal;
 
-    try {
-      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
-        window.OzarkDashboard.setPanelLoading('userDetailPanel', true);
-      }
-    } catch (e) {}
     detailEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
 
 
@@ -709,12 +704,6 @@ async function loadUserHistory(user) {
       console.error('Failed to load user history', err);
       detailEl.innerHTML =
         `<div class="empty">${escapeHtml(t('users_history_error_generic'))}</div>`;
-    } finally {
-      try {
-        if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
-          window.OzarkDashboard.setPanelLoading('userDetailPanel', false);
-        }
-      } catch (e) {}
     }
   }
 

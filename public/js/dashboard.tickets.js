@@ -99,30 +99,20 @@
 
   function renderDetailSkeleton() {
     return `
-      <div class="ticket-skeleton">
-        <div class="skel-line w60"></div>
-        <div class="skel-line w35"></div>
-        <div class="skel-block">
-          <div class="skel-line w80"></div>
-          <div class="skel-line w75"></div>
-          <div class="skel-line w55"></div>
-        </div>
-        <div class="skel-block">
-          <div class="skel-line w70"></div>
-          <div class="skel-line w50"></div>
-        </div>
+      <div class="ticket-detail-header">
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-line" style="width: 55%;"></div>
+        <div class="skeleton skeleton-line" style="width: 40%;"></div>
       </div>
+      <div class="skeleton skeleton-block" style="height: 44px;"></div>
+      <div class="skeleton skeleton-block" style="height: 44px;"></div>
+      <div class="skeleton skeleton-block" style="height: 44px;"></div>
     `;
   }
 
   function renderDetailEmpty() {
     const panel = document.getElementById('ticketDetailPanel');
     if (!panel) return;
-    try {
-      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
-        window.OzarkDashboard.setPanelLoading('ticketDetailPanel', false);
-      }
-    } catch (e) {}
     panel.innerHTML = `<div class="empty">${escapeHtml(t('tickets_detail_empty'))}</div>`;
   }
 
@@ -135,14 +125,8 @@
 
     state.activeTicketIndex = idx;
     const panel = document.getElementById('ticketDetailPanel');
-    if (panel) {
-      try {
-        if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
-          window.OzarkDashboard.setPanelLoading('ticketDetailPanel', true);
-        }
-      } catch (e) {}
-      panel.innerHTML = renderDetailSkeleton();
-    }
+    if (D && typeof D.setPanelLoading === 'function') D.setPanelLoading('ticketDetailPanel', true);
+    if (panel) panel.innerHTML = renderDetailSkeleton();
 
     if (_detailTimeout) clearTimeout(_detailTimeout);
     _detailTimeout = setTimeout(() => {
@@ -150,6 +134,10 @@
       const cur = curItems[idx];
       if (!cur) return;
       renderDetail(cur);
+      // Keep a short minimum so the shimmer feels consistent with other panels.
+      setTimeout(function () {
+        if (D && typeof D.setPanelLoading === 'function') D.setPanelLoading('ticketDetailPanel', false);
+      }, 650);
       _detailTimeout = null;
     }, 300);
   }
@@ -210,12 +198,6 @@
         </div>
       </details>
     `;
-
-    try {
-      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
-        window.OzarkDashboard.setPanelLoading('ticketDetailPanel', false);
-      }
-    } catch (e) {}
 
     const guildId = getGuildId();
     const ticketId = ticket._id;
@@ -433,6 +415,34 @@
     const reloadBtn = document.getElementById('btnReloadTickets');
     if (reloadBtn) reloadBtn.addEventListener('click', () => loadTickets(true));
 
+    const sendBtn = document.getElementById('btnSendTicketSupportMessage');
+    if (sendBtn) {
+      sendBtn.addEventListener('click', () => {
+        const guildId = getGuildId();
+        const sel = document.getElementById('configTicketChannel');
+        const channelId = sel ? String(sel.value || '').trim() : '';
+        if (!guildId) return toast(t('select_guild'));
+        if (!channelId) return toast(t('config_ticket_channel_hint'));
+
+        sendBtn.disabled = true;
+        const label = sendBtn.textContent;
+        sendBtn.textContent = t('loading');
+
+        D.withLoading(
+          () => apiPost('/tickets/support-message', { guildId, channelId }),
+          {
+            toastOnError: t('tickets_support_send_error'),
+            onFinally: () => {
+              sendBtn.disabled = false;
+              sendBtn.textContent = label;
+            }
+          }
+        ).then((res) => {
+          if (res && res.ok) toast(t('tickets_support_send_ok'));
+        }).catch(() => {});
+      });
+    }
+
     const filterEl = document.getElementById('ticketsStatusFilter');
     if (filterEl) filterEl.addEventListener('change', () => loadTickets(true));
 
@@ -445,35 +455,6 @@
       };
       searchEl.addEventListener('input', trigger);
       searchEl.addEventListener('change', trigger);
-    }
-
-    const sendBtn = document.getElementById('btnSendTicketSupportMessage');
-    if (sendBtn) {
-      sendBtn.addEventListener('click', async () => {
-        const guildId = getGuildId();
-        const chSel = document.getElementById('configTicketChannel');
-        const channelId = chSel ? String(chSel.value || '').trim() : '';
-
-        // Send the default support message (no editor in UI).
-        const defMsg = t('config_ticket_support_message_default');
-        const message = (defMsg && defMsg !== 'config_ticket_support_message_default')
-          ? String(defMsg).trim()
-          : (t('config_ticket_support_message_fallback') || '🎫 Para abrir um ticket, reage a esta mensagem.');
-
-        if (!guildId) { toast(t('warn_select_guild') || 'Selecione um servidor.'); return; }
-        if (!channelId) { toast(t('config_ticket_channel_hint') || 'Selecione um canal de suporte.'); return; }
-
-        try {
-          sendBtn.disabled = true;
-          await apiPost('/tickets/support-message', { guildId, channelId, message });
-          toast(t('config_ticket_support_message_sent') || 'Mensagem enviada.');
-        } catch (e) {
-          console.error('Failed to send ticket support message', e);
-          toast(t('config_ticket_support_message_failed') || 'Falha ao enviar mensagem.');
-        } finally {
-          sendBtn.disabled = false;
-        }
-      });
     }
 
     const btnMore = document.getElementById('btnTicketsLoadMore');

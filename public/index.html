@@ -30,7 +30,8 @@
     <header class="topbar">
       <div class="topbar-left">
         <div class="logo">.rabbit</div>
-<div class="divider"></div>
+        <button type="button" class="icon-btn" id="logoutBtn" data-i18n="logout" title="Sair" aria-label="Sair">⎋</button>
+        <div class="divider"></div>
         <div class="top-info">
           <div data-i18n="app_subtitle">Painel de gestão e moderação</div>
         </div>
@@ -42,8 +43,6 @@
 
         <span class="badge hidden" id="badgeProfile"></span>
         <span class="badge hidden" id="badgeAccess"></span>
-
-        <button type="button" class="icon-btn" id="logoutBtn" data-i18n="logout" title="Sair" aria-label="Sair">⎋</button>
 
         <span class="badge" id="badgeBot" data-i18n="badge_bot_online">Bot online</span>
       </div>
@@ -59,19 +58,9 @@
     </div>
 
     <!-- Aviso quando não há servidor selecionado -->
-    <div id="tabWarning" class="tab-warning hidden" data-i18n="warn_select_guild">
+    <div id="tabWarning" class="tab-warning" data-i18n="warn_select_guild">
       Selecione um servidor para aceder às restantes secções.
     </div>
-    <!-- Banner global (estado / avisos contextuais) -->
-    <div id="globalBanner" class="global-banner hidden" role="region" aria-label="Avisos">
-      <div class="global-banner__content">
-        <div class="global-banner__title" id="globalBannerTitle"></div>
-        <div class="global-banner__message" id="globalBannerMessage"></div>
-      </div>
-      <div class="global-banner__actions" id="globalBannerActions"></div>
-      <button type="button" class="icon-btn global-banner__close" id="globalBannerClose" aria-label="Fechar">×</button>
-    </div>
-
 
     <!-- Sections -->
     <main class="sections">
@@ -367,18 +356,12 @@
                       <div class="col">
                         <label for="configTicketChannel" data-i18n="config_ticket_channel">Canal de suporte (tickets)</label>
                         <select id="configTicketChannel" class="select"></select>
+                        <div class="row" style="margin-top:8px; justify-content:flex-end;">
+                          <button id="btnSendTicketSupportMessage" class="btn xs" type="button" data-i18n="tickets_support_send">Enviar</button>
+                        </div>
                         <p class="hint" data-i18n="config_ticket_channel_hint">
                           Canal onde será publicada a mensagem de suporte com o emoji para abrir tickets.
                         </p>
-
-                        <div class="row gap align-end" style="margin-top:10px;">
-                          <button id="btnSendTicketSupportMessage" class="btn xs" type="button" data-i18n="config_ticket_support_message_send">Enviar</button>
-                        </div>
-<div class="col" style="width:auto; flex:0 0 auto;">
-                            <button id="btnSendTicketSupportMessage" class="btn xs" type="button" data-i18n="config_ticket_support_message_send">Enviar</button>
-                          </div>
-                        </div>
-
                       </div>
                     </div>
                   </details>
@@ -401,12 +384,12 @@
                         <div class="toolbar" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                           <div class="title" data-i18n="tickets_manage_title">Tickets ativos</div>
                           <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                            <input id="ticketsSearch" class="input md" type="text" placeholder="Pesquisar..." data-i18n-placeholder="tickets_search_placeholder" />
-                            <select id="ticketsStatusFilter" class="select xs tickets-status-filter">
+                            <select id="ticketsStatusFilter" class="select xs" style="min-width:92px;">
                               <option value="open" data-i18n="tickets_filter_open">Abertos</option>
                               <option value="closed" data-i18n="tickets_filter_closed">Fechados</option>
                               <option value="all" data-i18n="tickets_filter_all">Todos</option>
                             </select>
+                            <input id="ticketsSearch" class="input md" type="text" placeholder="Pesquisar..." data-i18n-placeholder="tickets_search_placeholder" />
                             <button id="btnReloadTickets" class="btn xs" type="button" data-i18n="reload">Recarregar</button>
                           </div>
                         </div>
@@ -600,9 +583,9 @@
                 <div class="field">
                   <label for="configServerTimezone" data-i18n="config_server_timezone_label">Timezone do servidor</label>
                   <input id="configServerTimezone" class="input" type="text" placeholder="Europe/Lisbon" />
-                </div>
-              </div>
-              <p class="hint" data-i18n="config_server_timezone_hint">Use um identificador IANA (por exemplo, Europe/Lisbon). Se ficar vazio, é usado o fuso horário do servidor.</p>
+</div>
+                            <p class="hint" data-i18n="config_server_timezone_hint">Use um identificador IANA (por exemplo, Europe/Lisbon). Se ficar vazio, é usado o fuso horário padrão do servidor.</p>
+</div>
             </div>
 
             <div class="card subcard" id="config-section-logs">

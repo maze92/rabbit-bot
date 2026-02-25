@@ -570,157 +570,17 @@ const API_BASE = '/api';
   }
   window.OzarkDashboard.withLoading = withLoading;
 
-  
-
-// -----------------------------
-// Global banner (estado/avisos)
-// -----------------------------
-var bannerState = { active: false, locked: false, lastKey: '' };
-
-function clearGlobalBanner() {
-  var el = document.getElementById('globalBanner');
-  var titleEl = document.getElementById('globalBannerTitle');
-  var msgEl = document.getElementById('globalBannerMessage');
-  var actionsEl = document.getElementById('globalBannerActions');
-  if (!el || !titleEl || !msgEl || !actionsEl) return;
-
-  el.classList.add('hidden');
-  el.classList.remove('global-banner--info', 'global-banner--success', 'global-banner--warn', 'global-banner--error');
-  titleEl.textContent = '';
-  msgEl.textContent = '';
-  actionsEl.innerHTML = '';
-  bannerState.active = false;
-  bannerState.lastKey = '';
-}
-
-function setGlobalBanner(opts) {
-  opts = opts || {};
-  var type = (opts.type || 'info').toLowerCase();
-  var key = String(opts.key || (type + ':' + (opts.title || '') + ':' + (opts.message || '')));
-
-  // If user closed the same banner recently, don't resurrect it unless forced.
-  if (bannerState.locked && bannerState.lastKey === key && !opts.force) return;
-
-  var el = document.getElementById('globalBanner');
-  var titleEl = document.getElementById('globalBannerTitle');
-  var msgEl = document.getElementById('globalBannerMessage');
-  var actionsEl = document.getElementById('globalBannerActions');
-  var closeBtn = document.getElementById('globalBannerClose');
-  if (!el || !titleEl || !msgEl || !actionsEl) return;
-
-  bannerState.active = true;
-  bannerState.lastKey = key;
-
-  el.classList.remove('global-banner--info', 'global-banner--success', 'global-banner--warn', 'global-banner--error');
-  if (type === 'success') el.classList.add('global-banner--success');
-  else if (type === 'warn' || type === 'warning') el.classList.add('global-banner--warn');
-  else if (type === 'error') el.classList.add('global-banner--error');
-  else el.classList.add('global-banner--info');
-
-  titleEl.textContent = opts.title || '';
-  msgEl.textContent = opts.message || '';
-  actionsEl.innerHTML = '';
-
-  var actions = Array.isArray(opts.actions) ? opts.actions : [];
-  actions.forEach(function (a) {
-    if (!a) return;
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn btn-ghost';
-    btn.textContent = a.label || 'OK';
-    btn.addEventListener('click', function () {
-      try { if (typeof a.onClick === 'function') a.onClick(); } catch (e) {}
-    });
-    actionsEl.appendChild(btn);
-  });
-
-  el.classList.remove('hidden');
-
-  if (closeBtn && !closeBtn.__ozarkBound) {
-    closeBtn.__ozarkBound = true;
-    closeBtn.addEventListener('click', function () {
-      bannerState.locked = true;
-      clearGlobalBanner();
-    });
-  }
-}
-
-function refreshGlobalBanner() {
-  // Priority: no guild selected > bot offline > none
-  if (!state.guildId) {
-    setGlobalBanner({
-      key: 'no-guild',
-      type: 'info',
-      title: t('warn_select_guild'),
-      message: t('select_guild'),
-      actions: [
-        { label: t('select_guild') || 'Selecionar', onClick: function () {
-            var picker = document.getElementById('guildPicker');
-            if (picker) { picker.focus(); picker.click && picker.click(); }
-          } }
-      ]
-    });
-    return;
-  }
-
-  if (bannerState.lastBotOk === false) {
-    setGlobalBanner({
-      key: 'bot-offline',
-      type: 'warn',
-      title: t('badge_bot_offline'),
-      message: t('overview_bot_offline_hint') || 'O bot parece offline ou não está pronto no Discord.',
-      actions: [
-        { label: t('retry') || 'Recarregar', onClick: function () { refreshBotStatusBadge(); } }
-      ]
-    });
-    return;
-  }
-
-  clearGlobalBanner();
-}
-
-  // Keep a minimum duration so the shimmer is perceptible and consistent across modules.
-  var _panelLoadingStart = {};
-  var _panelLoadingTimer = {};
-  var PANEL_LOADING_MIN_MS = 650;
-
   function setPanelLoading(panelId, isLoading) {
     var panel = document.getElementById(panelId);
     if (!panel) return;
-
-    // Clear any pending delayed-off timer.
-    if (_panelLoadingTimer[panelId]) {
-      clearTimeout(_panelLoadingTimer[panelId]);
-      _panelLoadingTimer[panelId] = null;
-    }
-
     if (isLoading) {
-      _panelLoadingStart[panelId] = Date.now();
       panel.classList.add('panel-loading');
       panel.setAttribute('aria-busy', 'true');
-      return;
+    } else {
+      panel.classList.remove('panel-loading');
+      panel.removeAttribute('aria-busy');
     }
-
-    var started = _panelLoadingStart[panelId] || 0;
-    var elapsed = started ? (Date.now() - started) : PANEL_LOADING_MIN_MS;
-    var wait = Math.max(0, PANEL_LOADING_MIN_MS - elapsed);
-
-    if (wait > 0) {
-      _panelLoadingTimer[panelId] = setTimeout(function () {
-        panel.classList.remove('panel-loading');
-        panel.removeAttribute('aria-busy');
-        _panelLoadingTimer[panelId] = null;
-      }, wait);
-      return;
-    }
-
-    panel.classList.remove('panel-loading');
-    panel.removeAttribute('aria-busy');
   }
-
-  // Expose for external modules (users/tickets/gamenews) to show consistent loading.
-  window.OzarkDashboard = window.OzarkDashboard || {};
-  window.OzarkDashboard.setPanelLoading = setPanelLoading;
 
   // Backwards compatible helper (kept for older call sites).
   // Prefer setPanelLoading(panelId, true/false) around real async work.
@@ -732,8 +592,6 @@ function refreshGlobalBanner() {
       setPanelLoading(panelId, false);
     }, 650);
   }
-
-  window.OzarkDashboard.showPanelLoading = showPanelLoading;
 
 
  function escapeHtml(value) {
@@ -791,25 +649,20 @@ function refreshGlobalBanner() {
 
       const ok = !!data.ok && !!data.discordReady;
 
-      bannerState.lastBotOk = ok;
-
       el.classList.remove('status-online', 'status-offline');
 
       if (ok) {
         el.classList.add('status-online');
         el.textContent = t('badge_bot_online');
-        refreshGlobalBanner();
       } else {
         el.classList.add('status-offline');
         el.textContent = t('badge_bot_offline');
-        refreshGlobalBanner();
-      bannerState.lastBotOk = false;
       }
     } catch (e) {
       console.error('Failed to refresh bot status badge', e);
       el.classList.remove('status-online');
       el.classList.add('status-offline');
-      
+      el.textContent = t('badge_bot_offline');
     }
   }
 
@@ -891,7 +744,7 @@ function setLang(newLang) {
       state.currentTab = 'overview';
       const warn = document.getElementById('tabWarning');
       if (warn) {
-        warn.style.display = 'block';
+        warn.style.display = state.guildsLoaded ? 'block' : 'none';
       }
       // Reforçar botões ativos
       document.querySelectorAll('.section').forEach(function (sec) {
@@ -960,49 +813,20 @@ function setLang(newLang) {
     if (name === 'overview') {
       loadOverview().catch(function () {});
     } else if (name === 'logs') {
-      // Overlay loading for the tab while we fetch the panel data.
-      setPanelLoading('tab-logs', true);
-      var p1 = (window.OzarkDashboard.loadModerationOverview
-        ? window.OzarkDashboard.loadModerationOverview()
-        : Promise.resolve());
-      var p2 = (window.OzarkDashboard.loadLogs
-        ? window.OzarkDashboard.loadLogs()
-        : Promise.resolve());
-      Promise.allSettled([p1, p2]).finally(function () {
-        setPanelLoading('tab-logs', false);
-      });
+      if (window.OzarkDashboard.loadModerationOverview) {
+        window.OzarkDashboard.loadModerationOverview().catch(function () {});
+      }
+      window.OzarkDashboard.loadLogs().catch(function () {});
     } else if (name === 'gamenews') {
-      setPanelLoading('tab-gamenews', true);
-      var g1 = (window.OzarkDashboard.loadGameNews
-        ? window.OzarkDashboard.loadGameNews()
-        : Promise.resolve());
-      var g2 = (typeof loadTempVoiceConfig === 'function' ? loadTempVoiceConfig() : Promise.resolve());
-      var g3 = (typeof loadTempVoiceActive === 'function' ? loadTempVoiceActive() : Promise.resolve());
+      window.OzarkDashboard.loadGameNews().catch(function () {});
+      loadTempVoiceConfig().catch(function () {});
+      loadTempVoiceActive().catch(function () {});
       // Garantir que canais/roles de configuração estão disponíveis para Tickets/Extras
-      var g4 = (typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve());
-      Promise.allSettled([g1, g2, g3, g4]).finally(function () {
-        setPanelLoading('tab-gamenews', false);
-      });
+      loadGuildConfig().catch(function () {});
     } else if (name === 'user') {
-      setPanelLoading('tab-user', true);
-      var u1 = (window.OzarkDashboard.loadUsers ? window.OzarkDashboard.loadUsers() : Promise.resolve());
-      Promise.resolve(u1).finally(function () {
-        setPanelLoading('tab-user', false);
-      });
+      window.OzarkDashboard.loadUsers().catch(function () {});
     } else if (name === 'config') {
-      setPanelLoading('tab-config', true);
-      var c1 = (typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve());
-      Promise.resolve(c1).finally(function () {
-        setPanelLoading('tab-config', false);
-      });
-    } else if (name === 'tickets') {
-      setPanelLoading('tab-tickets', true);
-      var t1 = (window.OzarkDashboard && typeof window.OzarkDashboard.loadTickets === 'function')
-        ? window.OzarkDashboard.loadTickets(true)
-        : Promise.resolve();
-      Promise.resolve(t1).finally(function () {
-        setPanelLoading('tab-tickets', false);
-      });
+      loadGuildConfig().catch(function () {});
     }
   }
 
@@ -1010,9 +834,9 @@ function setLang(newLang) {
     const warn = document.getElementById('tabWarning');
     const hasGuild = !!state.guildId;
     if (warn) {
-      // Avoid flashing the warning during initial bootstrap (guilds not loaded yet).
-      if (!state.guildsLoaded) warn.style.display = 'none';
-      else warn.style.display = hasGuild ? 'none' : 'block';
+      // Avoid flashing the warning before guilds are loaded / auto-selected.
+      var ready = !!state.guildsLoaded;
+      warn.style.display = (!hasGuild && ready) ? 'block' : 'none';
     }
 
     const p = (state && state.perms && typeof state.perms === 'object') ? state.perms : {};
@@ -1099,6 +923,7 @@ function setLang(newLang) {
       }
       const items = (res && res.items) || [];
       state.guilds = items;
+      state.guildsLoaded = true;
       select.innerHTML = '';
 
       const optEmpty = document.createElement('option');
@@ -1146,11 +971,8 @@ function setLang(newLang) {
       }
     } catch (err) {
       console.error('Failed to load guilds', err);
-      toast(err && err.apiMessage ? err.apiMessage : t('guilds_error_generic'));
-    } finally {
       state.guildsLoaded = true;
-      try { updateTabAccess(); } catch (e) {}
-      try { refreshGlobalBanner(); } catch (e) {}
+      toast(err && err.apiMessage ? err.apiMessage : t('guilds_error_generic'));
     }
   }
 
@@ -2984,8 +2806,6 @@ function deleteTempVoiceBaseAt(index) {
         (async function () {
         var v = guildPicker.value || '';
         state.guildId = v || null;
-        try { if (window.OzarkDashboard && typeof window.OzarkDashboard.restoreLogsPrefs === 'function') window.OzarkDashboard.restoreLogsPrefs(state.guildId); } catch (e) {}
-        try { refreshGlobalBanner(); } catch (e) {}
         try {
           if (state.guildId) setStoredGuildId(state.guildId);
           else localStorage.removeItem(GUILD_KEY);
@@ -3098,28 +2918,14 @@ function deleteTempVoiceBaseAt(index) {
       });
     }
 
-	    var logSearchInput = document.getElementById('logSearch');
-	    if (logSearchInput) {
-  var logSearchTimer = null;
-
-  function triggerLogsDebounced() {
-    if (logSearchTimer) clearTimeout(logSearchTimer);
-    logSearchTimer = setTimeout(function () {
-      window.OzarkDashboard.loadLogs().catch(function () {});
-    }, 300);
-  }
-
-  logSearchInput.addEventListener('input', function () {
-    triggerLogsDebounced();
-  });
-
-  logSearchInput.addEventListener('keydown', function (ev) {
-    if (ev.key === 'Enter') {
-      if (logSearchTimer) { clearTimeout(logSearchTimer); logSearchTimer = null; }
-      window.OzarkDashboard.loadLogs().catch(function () {});
+    var logSearchInput = document.getElementById('logSearch');
+    if (logSearchInput) {
+      logSearchInput.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          window.OzarkDashboard.loadLogs().catch(function () {});
+        }
+      });
     }
-  });
-	}
 
     // Config buttons
     var btnReloadGuildConfig = document.getElementById('btnReloadGuildConfig');
