@@ -28,6 +28,11 @@ function registerTicketsRoutes(opts) {
     ? requireGuildAccess({ from: 'query', key: 'guildId' })
     : (req, res, next) => next();
 
+  const guardGuildBody = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess({ from: 'body', key: 'guildId' })
+    : (req, res, next) => next();
+
+
   const guardGuildQueryOptional = typeof requireGuildAccess === 'function'
     ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
     : (req, res, next) => next();
