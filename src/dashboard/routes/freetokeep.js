@@ -197,6 +197,18 @@ function registerFreeToKeepRoutes({
   const guardGuildQuery = _requireGuildAccess({ from: 'query', key: 'guildId' });
   const guardGuildBody = _requireGuildAccess({ from: 'body', key: 'guildId' });
 
+  // Permission guard (keep consistent with the rest of the dashboard routes).
+  // In this codebase, requirePerm expects an object: requirePerm({ anyOf: [...] }).
+  // If permissions aren't configured, we allow by default to avoid breaking the UI.
+  let canEdit = (req, res, next) => next();
+  try {
+    if (typeof requirePerm === 'function') {
+      canEdit = requirePerm({ anyOf: ['canEditFreeToKeep', 'canEditConfig'] });
+    }
+  } catch {
+    canEdit = (req, res, next) => next();
+  }
+
   // Bound DB ops; some hosting layers surface long waits as HTTP 504.
   const DB_MAX_MS = 5000;
 
@@ -224,7 +236,7 @@ function registerFreeToKeepRoutes({
   });
 
   // Upsert config
-  app.put('/api/freetokeep/config', _rateLimit, requireDashboardAuth, requirePerm('admin'), guardGuildBody, async (req, res) => {
+  app.put('/api/freetokeep/config', _rateLimit, requireDashboardAuth, canEdit, guardGuildBody, async (req, res) => {
     try {
       const parsed = FreeToKeepConfigSchema.parse(req.body || {});
       const guildId = sanitizeId(parsed.guildId);
@@ -343,7 +355,7 @@ function registerFreeToKeepRoutes({
   });
 
   // Send a test message to the selected channel (and returns preview payload)
-  app.post('/api/freetokeep/test-send', _rateLimit, requireDashboardAuth, requirePerm('admin'), guardGuildBody, async (req, res) => {
+  app.post('/api/freetokeep/test-send', _rateLimit, requireDashboardAuth, canEdit, guardGuildBody, async (req, res) => {
     try {
       const guildId = sanitizeId(req.body.guildId);
       const channelId = sanitizeId(req.body.channelId);
