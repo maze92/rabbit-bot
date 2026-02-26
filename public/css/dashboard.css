@@ -2623,4 +2623,43 @@ details[open] > .details-summary:before {
 
 /* Utilities */
 .stack { display: flex; flex-direction: column; gap: 8px; }
+
+/* --- FreeToKeep (split layout + embed preview) --- */
+.freetokeep-layout { display: grid; grid-template-columns: 420px 1fr; gap: 16px; align-items: start; }
+.freetokeep-left { display: flex; flex-direction: column; gap: 16px; }
+.freetokeep-right { display: flex; flex-direction: column; gap: 16px; }
+
+@media (max-width: 980px) {
+  .freetokeep-layout { grid-template-columns: 1fr; }
+}
+
+.embed-preview-wrap { margin-top: 10px; }
+.embed-preview {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 4px solid rgba(88, 101, 242, 0.9);
+  border-radius: 10px;
+  padding: 12px;
+}
+.embed-preview .embed-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.embed-preview .embed-title { font-weight: 700; line-height: 1.2; }
+.embed-preview .embed-title a { color: inherit; text-decoration: none; }
+.embed-preview .embed-title a:hover { text-decoration: underline; }
+.embed-preview .embed-desc { margin-top: 6px; color: var(--text-muted); }
+.embed-preview .embed-thumb { width: 40px; height: 40px; border-radius: 8px; background: rgba(255, 255, 255, 0.05); object-fit: cover; }
+.embed-preview .embed-image { margin-top: 10px; width: 100%; max-height: 260px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); }
+.embed-preview .embed-footer { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+.embed-preview .embed-buttons { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+.embed-preview .embed-link-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 12px;
+}
+.embed-preview .embed-link-btn:hover { background: rgba(255, 255, 255, 0.06); }
 .hr { height: 1px; width: 100%; background: var(--border-soft); margin: 12px 0; }

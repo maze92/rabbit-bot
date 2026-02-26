@@ -20,6 +20,9 @@
   async function apiPut(url, body) {
     return await window.OzarkDashboard.apiPut(url, body);
   }
+  async function apiPost(url, body) {
+    return await window.OzarkDashboard.apiPost(url, body);
+  }
 
   function t(key) {
     try { return window.t ? window.t(key) : key; } catch { return key; }
@@ -43,7 +46,7 @@
       return;
     }
 
-    el.innerHTML = arr.map(function (it) {
+    el.innerHTML = arr.map(function (it, idx) {
       const title = escapeHtml(it.title || '');
       const platform = escapeHtml((it.platform || '').toUpperCase());
       const kind = escapeHtml((it.kind || 'freetokeep').toUpperCase());
@@ -53,7 +56,7 @@
       const meta = [kind, worth, end ? ('until ' + end) : ''].filter(Boolean).join(' — ');
       const link = it.url ? `<a class="link" href="${escapeHtml(it.url)}" target="_blank" rel="noopener">↗</a>` : '';
       return `
-        <div class="list-item">
+        <div class="list-item" role="button" tabindex="0" data-ftk-idx="${idx}">
           <div class="list-main">
             <div class="list-title">${title}</div>
             <div class="list-sub">${platform} • ${when}${meta ? ' • ' + meta : ''}</div>
@@ -61,6 +64,87 @@
           <div class="list-actions">${link}</div>
         </div>`;
     }).join('');
+
+    // click-to-preview
+    el.querySelectorAll('[data-ftk-idx]').forEach(function (node) {
+      node.addEventListener('click', function () {
+        const idx = Number(node.getAttribute('data-ftk-idx'));
+        const it = arr[idx];
+        if (it) renderPreviewFromRecent(it);
+      });
+      node.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          const idx = Number(node.getAttribute('data-ftk-idx'));
+          const it = arr[idx];
+          if (it) renderPreviewFromRecent(it);
+        }
+      });
+    });
+  }
+
+  function platformLabel(p) {
+    if (p === 'epic') return 'Epic Games Store';
+    if (p === 'steam') return 'Steam';
+    if (p === 'ubisoft') return 'Ubisoft';
+    return String(p || '').toUpperCase();
+  }
+
+  function buildPreviewHtml(p) {
+    if (!p) return `<div class="empty">${escapeHtml(t('freetokeep_preview_empty'))}</div>`;
+    const title = escapeHtml(p.title || '');
+    const url = escapeHtml(p.url || '');
+    const desc = escapeHtml(p.description || '');
+    const thumb = escapeHtml(p.platformIcon || '');
+    const image = escapeHtml(p.image || '');
+    const footer = escapeHtml(p.footer || '');
+    const buttons = Array.isArray(p.buttons) ? p.buttons : [];
+
+    const btnHtml = buttons.map(function (b) {
+      if (!b || !b.url) return '';
+      return `<a class="embed-link-btn" href="${escapeHtml(b.url)}" target="_blank" rel="noopener">${escapeHtml(b.label || 'Open')} ↗</a>`;
+    }).filter(Boolean).join('');
+
+    return `
+      <div class="embed-preview">
+        <div class="embed-head">
+          <div>
+            <div class="embed-title">${url ? `<a href="${url}" target="_blank" rel="noopener">${title}</a>` : title}</div>
+            <div class="embed-desc">${desc}</div>
+          </div>
+          ${thumb ? `<img class="embed-thumb" src="${thumb}" alt="${escapeHtml(platformLabel(p.platform))}" />` : ''}
+        </div>
+        ${image ? `<img class="embed-image" src="${image}" alt="${title}" />` : ''}
+        ${btnHtml ? `<div class="embed-buttons">${btnHtml}</div>` : ''}
+        ${footer ? `<div class="embed-footer">${footer}</div>` : ''}
+      </div>
+    `;
+  }
+
+  function renderPreview(payload) {
+    const el = $('freeToKeepPreview');
+    if (!el) return;
+    el.innerHTML = buildPreviewHtml(payload);
+    const hint = $('freeToKeepPreviewHint');
+    if (hint) hint.style.display = 'none';
+    window.OzarkDashboard._freeToKeepLastPreview = payload || null;
+  }
+
+  function renderPreviewFromRecent(it) {
+    const kind = (it.kind || 'freetokeep');
+    const worth = it.worth ? `~~${it.worth}~~` : '';
+    const end = it.endDate ? String(it.endDate) : '';
+    const untilPart = end ? (kind === 'freeweekend' ? `Free weekend until **${end}**` : `Free until **${end}**`) : (kind === 'freeweekend' ? 'Free weekend' : 'Free to keep');
+    const description = [worth, untilPart].filter(Boolean).join(' ');
+    renderPreview({
+      title: it.title || '',
+      url: it.url || '',
+      description: description,
+      image: it.image || '',
+      platform: it.platform || '',
+      platformIcon: it.platform === 'epic' ? 'https://cdn.simpleicons.org/epicgames/ffffff' : (it.platform === 'steam' ? 'https://cdn.simpleicons.org/steam/ffffff' : (it.platform === 'ubisoft' ? 'https://cdn.simpleicons.org/ubisoft/ffffff' : '')),
+      footer: `via GamerPower • © ${it.publisher || platformLabel(it.platform)}`
+    });
   }
 
   function fillChannels(channels, selectedId) {
@@ -85,12 +169,14 @@
     const statusEl = $('freeToKeepStatus');
     if (statusEl) statusEl.textContent = '';
 
-    // Ensure channels list is loaded
+    // Ensure channels list is loaded (text channels)
+    // NOTE: this project exposes channels under /api/guilds/:guildId/channels
     try {
-      const ch = await apiGet('/api/core/channels?guildId=' + encodeURIComponent(guildId));
-      fillChannels(ch.channels || [], '');
+      const ch = await apiGet('/api/guilds/' + encodeURIComponent(guildId) + '/channels');
+      fillChannels(ch.items || [], '');
     } catch (e) {
-      // silent
+      // Keep selector usable even if channels couldn't be loaded.
+      fillChannels([], '');
     }
 
     try {
@@ -112,6 +198,14 @@
       const ot = (cfg && cfg.offerTypes) ? cfg.offerTypes : { freetokeep: true, freeweekend: false };
       $('freeToKeepTypeKeep').checked = ot.freetokeep !== false;
       $('freeToKeepTypeWeekend').checked = !!ot.freeweekend;
+
+      // Health panel
+      const lastRun = cfg && cfg.lastRunAt ? cfg.lastRunAt : '';
+      const lastErr = cfg && cfg.lastError ? cfg.lastError : '';
+      const lr = $('freeToKeepLastRun');
+      const le = $('freeToKeepLastError');
+      if (lr) lr.textContent = lastRun ? fmtDate(lastRun) : '—';
+      if (le) le.textContent = lastErr ? String(lastErr) : '—';
     } catch (e) {
       if (statusEl) statusEl.textContent = t('freetokeep_load_failed');
     }
@@ -162,9 +256,79 @@
     }
   }
 
+  async function previewNow() {
+    const guildId = window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId();
+    if (!guildId) return;
+
+    const statusEl = $('freeToKeepStatus');
+    if (statusEl) statusEl.textContent = '';
+
+    try {
+      // Use current UI selections for preview.
+      const qs = new URLSearchParams();
+      qs.set('guildId', guildId);
+      qs.set('epic', $('freeToKeepEpic').checked ? '1' : '0');
+      qs.set('steam', $('freeToKeepSteam').checked ? '1' : '0');
+      qs.set('ubisoft', $('freeToKeepUbisoft').checked ? '1' : '0');
+      qs.set('keep', $('freeToKeepTypeKeep').checked ? '1' : '0');
+      qs.set('weekend', $('freeToKeepTypeWeekend').checked ? '1' : '0');
+
+      const data = await apiGet('/api/freetokeep/preview?' + qs.toString());
+      if (data && data.preview) {
+        renderPreview(data.preview);
+      } else {
+        renderPreview(null);
+      }
+    } catch (e) {
+      if (statusEl) statusEl.textContent = t('freetokeep_preview_failed');
+    }
+  }
+
+  async function sendTest() {
+    const guildId = window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId();
+    if (!guildId) return;
+
+    const channelId = $('freeToKeepChannel') ? $('freeToKeepChannel').value : '';
+    if (!channelId) {
+      window.OzarkDashboard.toast && window.OzarkDashboard.toast(t('common_select_channel'), 'error');
+      return;
+    }
+
+    try {
+      const body = {
+        guildId: guildId,
+        channelId: channelId,
+        platforms: {
+          epic: !!$('freeToKeepEpic').checked,
+          steam: !!$('freeToKeepSteam').checked,
+          ubisoft: !!$('freeToKeepUbisoft').checked
+        },
+        offerTypes: {
+          freetokeep: !!$('freeToKeepTypeKeep').checked,
+          freeweekend: !!$('freeToKeepTypeWeekend').checked
+        }
+      };
+      const res = await apiPost('/api/freetokeep/test-send', body);
+      if (res && res.preview) renderPreview(res.preview);
+      window.OzarkDashboard.toast && window.OzarkDashboard.toast(t('freetokeep_test_sent'), 'success');
+      await loadFreeToKeep(true);
+    } catch (e) {
+      window.OzarkDashboard.toast && window.OzarkDashboard.toast(t('freetokeep_test_send_failed'), 'error');
+    }
+  }
+
   function setup() {
     const btn = $('freeToKeepSave');
     if (btn) btn.addEventListener('click', function () { saveFreeToKeep(); });
+
+    const refresh = $('freeToKeepRefresh');
+    if (refresh) refresh.addEventListener('click', function () { loadFreeToKeep(true); });
+
+    const test = $('freeToKeepTest');
+    if (test) test.addEventListener('click', function () { previewNow(); });
+
+    const send = $('freeToKeepPreviewSend');
+    if (send) send.addEventListener('click', function () { sendTest(); });
   }
 
   window.OzarkDashboard.loadFreeToKeep = loadFreeToKeep;

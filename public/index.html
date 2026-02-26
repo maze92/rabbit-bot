@@ -524,67 +524,102 @@
               </div>
 
               <div class="subtab-panel" id="extras-freetokeep-panel">
-                <div class="panel-header">
-                  <div>
-                    <div class="panel-title" data-i18n="freetokeep_title">Free-to-keep</div>
-                    <div class="muted" data-i18n="freetokeep_subtitle">Publica automaticamente jogos gratuitos (para ficar) da Epic, Steam e Ubisoft.</div>
-                  </div>
-                </div>
-
-                <div class="grid-2">
-                  <div class="card">
-                    <div class="card-title" data-i18n="freetokeep_config">Configuração</div>
-                    <div class="form">
-                      <label class="checkbox-row">
-                        <input type="checkbox" id="freeToKeepEnabled" />
-                        <span data-i18n="freetokeep_enabled">Ativo</span>
-                      </label>
-
-                      <label data-i18n="freetokeep_channel">Canal de publicação</label>
-                      <select id="freeToKeepChannel" class="select"></select>
-
-                      <div class="row">
-                        <div>
-                          <label data-i18n="freetokeep_poll">Intervalo (min)</label>
-                          <input id="freeToKeepPollMinutes" class="input" type="number" min="1" max="60" value="2" />
-                        </div>
-                        <div>
-                          <label data-i18n="freetokeep_max">Máximo por ciclo</label>
-                          <input id="freeToKeepMaxPerCycle" class="input" type="number" min="1" max="10" value="3" />
-                        </div>
-                      </div>
-
-                      <div class="hr"></div>
-
-                      <div class="grid-2" style="gap:12px;">
-                        <div>
-                          <label data-i18n="freetokeep_platforms">Plataformas</label>
-                          <div class="stack">
-                            <label class="checkbox-row"><input type="checkbox" id="freeToKeepEpic" checked /> <span>Epic Games</span></label>
-                            <label class="checkbox-row"><input type="checkbox" id="freeToKeepSteam" checked /> <span>Steam</span></label>
-                            <label class="checkbox-row"><input type="checkbox" id="freeToKeepUbisoft" checked /> <span>Ubisoft</span></label>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label data-i18n="freetokeep_offer_types">Tipos de ofertas</label>
-                          <div class="stack">
-                            <label class="checkbox-row"><input type="checkbox" id="freeToKeepTypeKeep" checked /> <span data-i18n="freetokeep_type_keep">Free-to-keep</span></label>
-                            <label class="checkbox-row"><input type="checkbox" id="freeToKeepTypeWeekend" /> <span data-i18n="freetokeep_type_weekend">Free weekend</span></label>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="row" style="justify-content:flex-end; gap:8px;">
-                        <button class="btn" id="freeToKeepSave" data-i18n="common_save">Guardar</button>
-                      </div>
-                      <div class="muted" id="freeToKeepStatus"></div>
+                <div class="panel">
+                  <div class="panel-header">
+                    <div>
+                      <div class="panel-title" data-i18n="freetokeep_title">Free-to-keep</div>
+                      <div class="muted" data-i18n="freetokeep_subtitle">Publica automaticamente jogos gratuitos (para ficar) da Epic, Steam e Ubisoft.</div>
+                    </div>
+                    <div class="panel-actions">
+                      <button class="btn xs" id="freeToKeepRefresh" type="button" data-i18n="common_refresh">Recarregar</button>
+                      <button class="btn xs" id="freeToKeepTest" type="button" data-i18n="freetokeep_test">Testar agora</button>
+                      <button class="btn xs primary" id="freeToKeepSave" type="button" data-i18n="common_save">Guardar</button>
                     </div>
                   </div>
 
-                  <div class="card">
-                    <div class="card-title" data-i18n="freetokeep_recent">Enviados recentemente</div>
-                    <div id="freeToKeepRecent" class="list"></div>
+                  <div class="freetokeep-layout">
+                    <div class="freetokeep-left">
+                      <div class="card">
+                        <div class="card-title" data-i18n="freetokeep_config">Configuração</div>
+                        <div class="form">
+                          <div class="row gap" style="align-items:center;">
+                            <label class="checkbox-row" style="margin:0;">
+                              <input type="checkbox" id="freeToKeepEnabled" />
+                              <span data-i18n="freetokeep_enabled">Ativo</span>
+                            </label>
+                            <div class="muted" data-i18n="freetokeep_enabled_hint">Quando ativo, o bot verifica ofertas e publica no canal selecionado.</div>
+                          </div>
+
+                          <label data-i18n="freetokeep_channel">Canal de publicação</label>
+                          <select id="freeToKeepChannel" class="select"></select>
+
+                          <div class="row gap freetokeep-inline" style="flex-wrap:nowrap;">
+                            <div>
+                              <label data-i18n="freetokeep_poll">Intervalo (min)</label>
+                              <input id="freeToKeepPollMinutes" class="input xs" type="number" min="1" max="60" value="2" />
+                            </div>
+                            <div>
+                              <label data-i18n="freetokeep_max">Máximo por ciclo</label>
+                              <input id="freeToKeepMaxPerCycle" class="input xs" type="number" min="1" max="10" value="3" />
+                            </div>
+                          </div>
+
+                          <div class="hr"></div>
+
+                          <div class="grid-2" style="gap:12px;">
+                            <div>
+                              <label data-i18n="freetokeep_platforms">Plataformas</label>
+                              <div class="stack">
+                                <label class="checkbox-row"><input type="checkbox" id="freeToKeepEpic" checked /> <span>Epic Games Store</span></label>
+                                <label class="checkbox-row"><input type="checkbox" id="freeToKeepSteam" checked /> <span>Steam</span></label>
+                                <label class="checkbox-row"><input type="checkbox" id="freeToKeepUbisoft" checked /> <span>Ubisoft</span></label>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label data-i18n="freetokeep_offer_types">Tipos de ofertas</label>
+                              <div class="stack">
+                                <label class="checkbox-row"><input type="checkbox" id="freeToKeepTypeKeep" checked /> <span data-i18n="freetokeep_type_keep">Free-to-keep</span></label>
+                                <label class="checkbox-row"><input type="checkbox" id="freeToKeepTypeWeekend" /> <span data-i18n="freetokeep_type_weekend">Free weekend</span></label>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="muted" id="freeToKeepStatus"></div>
+                        </div>
+                      </div>
+
+                      <div class="card">
+                        <div class="card-title" data-i18n="freetokeep_recent">Enviados recentemente</div>
+                        <div class="muted" data-i18n="freetokeep_recent_hint">Clica num item para pré-visualizar o embed.</div>
+                        <div id="freeToKeepRecent" class="list"></div>
+                      </div>
+                    </div>
+
+                    <div class="freetokeep-right">
+                      <div class="card">
+                        <div class="card-title" data-i18n="freetokeep_preview">Pré-visualização</div>
+                        <div class="muted" id="freeToKeepPreviewHint" data-i18n="freetokeep_preview_hint">Usa “Testar agora” para ver como o embed será enviado.</div>
+                        <div id="freeToKeepPreview" class="embed-preview-wrap"></div>
+                        <div class="row gap" style="justify-content:flex-end; margin-top:12px;">
+                          <button class="btn" id="freeToKeepPreviewSend" type="button" data-i18n="freetokeep_send_test">Enviar teste</button>
+                        </div>
+                      </div>
+
+                      <div class="card">
+                        <div class="card-title" data-i18n="freetokeep_health">Estado</div>
+                        <div class="stack">
+                          <div class="row" style="justify-content:space-between;">
+                            <div class="muted" data-i18n="freetokeep_last_run">Última verificação</div>
+                            <div id="freeToKeepLastRun" class="mono muted">—</div>
+                          </div>
+                          <div class="row" style="justify-content:space-between;">
+                            <div class="muted" data-i18n="freetokeep_last_error">Último erro</div>
+                            <div id="freeToKeepLastError" class="mono muted">—</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
