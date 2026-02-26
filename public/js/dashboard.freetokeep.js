@@ -163,7 +163,7 @@
   }
 
   async function loadFreeToKeep(force) {
-    const guildId = window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId();
+    const guildId = (window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId()) || (window.OzarkDashboard.state && window.OzarkDashboard.state.guildId) || '';
     if (!guildId) return;
 
     const statusEl = $('freeToKeepStatus');
@@ -199,6 +199,15 @@
       $('freeToKeepTypeKeep').checked = ot.freetokeep !== false;
       $('freeToKeepTypeWeekend').checked = !!ot.freeweekend;
 
+      const eo = (cfg && cfg.embedOptions) ? cfg.embedOptions : {};
+      $('freeToKeepEmbedShowPrice').checked = eo.showPrice !== false;
+      $('freeToKeepEmbedShowUntil').checked = eo.showUntil !== false;
+      $('freeToKeepEmbedShowThumb').checked = eo.showThumbnail !== false;
+      $('freeToKeepEmbedShowImage').checked = eo.showImage !== false;
+      $('freeToKeepEmbedShowButtons').checked = eo.showButtons !== false;
+      $('freeToKeepEmbedShowFooter').checked = eo.showFooter !== false;
+      $('freeToKeepEmbedShowClient').checked = eo.showClientButton !== false;
+
       // Health panel
       const lastRun = cfg && cfg.lastRunAt ? cfg.lastRunAt : '';
       const lastErr = cfg && cfg.lastError ? cfg.lastError : '';
@@ -219,7 +228,7 @@
   }
 
   async function saveFreeToKeep() {
-    const guildId = window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId();
+    const guildId = (window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId()) || (window.OzarkDashboard.state && window.OzarkDashboard.state.guildId) || '';
     if (!guildId) return;
 
     const statusEl = $('freeToKeepStatus');
@@ -244,6 +253,15 @@
       offerTypes: {
         freetokeep: !!$('freeToKeepTypeKeep').checked,
         freeweekend: !!$('freeToKeepTypeWeekend').checked
+      },
+      embedOptions: {
+        showPrice: !!$('freeToKeepEmbedShowPrice').checked,
+        showUntil: !!$('freeToKeepEmbedShowUntil').checked,
+        showThumbnail: !!$('freeToKeepEmbedShowThumb').checked,
+        showImage: !!$('freeToKeepEmbedShowImage').checked,
+        showButtons: !!$('freeToKeepEmbedShowButtons').checked,
+        showFooter: !!$('freeToKeepEmbedShowFooter').checked,
+        showClientButton: !!$('freeToKeepEmbedShowClient').checked
       }
     };
 
@@ -257,12 +275,14 @@
   }
 
   async function previewNow() {
-    const guildId = window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId();
+    const guildId = (window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId()) || (window.OzarkDashboard.state && window.OzarkDashboard.state.guildId) || '';
     if (!guildId) return;
 
     const statusEl = $('freeToKeepStatus');
     if (statusEl) statusEl.textContent = '';
 
+    const previewEl = $('freeToKeepPreview');
+    if (previewEl) previewEl.classList.add('panel-loading');
     try {
       // Use current UI selections for preview.
       const qs = new URLSearchParams();
@@ -273,6 +293,15 @@
       qs.set('keep', $('freeToKeepTypeKeep').checked ? '1' : '0');
       qs.set('weekend', $('freeToKeepTypeWeekend').checked ? '1' : '0');
 
+      // Embed options
+      qs.set('sp', $('freeToKeepEmbedShowPrice').checked ? '1' : '0');
+      qs.set('su', $('freeToKeepEmbedShowUntil').checked ? '1' : '0');
+      qs.set('st', $('freeToKeepEmbedShowThumb').checked ? '1' : '0');
+      qs.set('si', $('freeToKeepEmbedShowImage').checked ? '1' : '0');
+      qs.set('sb', $('freeToKeepEmbedShowButtons').checked ? '1' : '0');
+      qs.set('sf', $('freeToKeepEmbedShowFooter').checked ? '1' : '0');
+      qs.set('sc', $('freeToKeepEmbedShowClient').checked ? '1' : '0');
+
       const data = await apiGet('/api/freetokeep/preview?' + qs.toString());
       if (data && data.preview) {
         renderPreview(data.preview);
@@ -281,11 +310,13 @@
       }
     } catch (e) {
       if (statusEl) statusEl.textContent = t('freetokeep_preview_failed');
+    } finally {
+      if (previewEl) previewEl.classList.remove('panel-loading');
     }
   }
 
   async function sendTest() {
-    const guildId = window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId();
+    const guildId = (window.OzarkDashboard.getGuildId && window.OzarkDashboard.getGuildId()) || (window.OzarkDashboard.state && window.OzarkDashboard.state.guildId) || '';
     if (!guildId) return;
 
     const channelId = $('freeToKeepChannel') ? $('freeToKeepChannel').value : '';
@@ -294,6 +325,8 @@
       return;
     }
 
+    const previewEl = $('freeToKeepPreview');
+    if (previewEl) previewEl.classList.add('panel-loading');
     try {
       const body = {
         guildId: guildId,
@@ -306,6 +339,15 @@
         offerTypes: {
           freetokeep: !!$('freeToKeepTypeKeep').checked,
           freeweekend: !!$('freeToKeepTypeWeekend').checked
+        },
+        embedOptions: {
+          showPrice: !!$('freeToKeepEmbedShowPrice').checked,
+          showUntil: !!$('freeToKeepEmbedShowUntil').checked,
+          showThumbnail: !!$('freeToKeepEmbedShowThumb').checked,
+          showImage: !!$('freeToKeepEmbedShowImage').checked,
+          showButtons: !!$('freeToKeepEmbedShowButtons').checked,
+          showFooter: !!$('freeToKeepEmbedShowFooter').checked,
+          showClientButton: !!$('freeToKeepEmbedShowClient').checked
         }
       };
       const res = await apiPost('/api/freetokeep/test-send', body);
@@ -314,6 +356,8 @@
       await loadFreeToKeep(true);
     } catch (e) {
       window.OzarkDashboard.toast && window.OzarkDashboard.toast(t('freetokeep_test_send_failed'), 'error');
+    } finally {
+      if (previewEl) previewEl.classList.remove('panel-loading');
     }
   }
 

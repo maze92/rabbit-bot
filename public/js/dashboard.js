@@ -3441,6 +3441,10 @@ function deleteTempVoiceBaseAt(index) {
   window.OzarkDashboard.createLogRow = createLogRow;
   window.OzarkDashboard.createCaseRow = createCaseRow;
   window.OzarkDashboard.renderLogs = renderLogs;
+  // Helper for feature modules (FreeToKeep, etc.)
+  window.OzarkDashboard.getGuildId = function () {
+    try { return state && state.guildId ? String(state.guildId) : ''; } catch (e) { return ''; }
+  };
 
   // JSON import/export helpers for guild config
   
