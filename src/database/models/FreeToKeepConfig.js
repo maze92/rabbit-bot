@@ -29,6 +29,17 @@ const FreeToKeepConfigSchema = new mongoose.Schema(
     // Max posts per cycle (across all platforms) to avoid spam.
     maxPerCycle: { type: Number, default: 3 },
 
+    // Embed rendering options
+    embedOptions: {
+      showPrice: { type: Boolean, default: true },
+      showUntil: { type: Boolean, default: true },
+      showThumbnail: { type: Boolean, default: true },
+      showImage: { type: Boolean, default: true },
+      showButtons: { type: Boolean, default: true },
+      showFooter: { type: Boolean, default: true },
+      showClientButton: { type: Boolean, default: true }
+    },
+
     // Operational metadata
     lastRunAt: { type: Date, default: null },
     lastError: { type: String, default: '' }

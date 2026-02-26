@@ -53,35 +53,49 @@ async function fetchJson(url, timeoutMs = 15000) {
   }
 }
 
-function buildEmbed(item, platformKey, platformLabel, kind) {
+function buildEmbed(item, platformKey, platformLabel, kind, embedOptions) {
   const title = item?.title ? String(item.title) : 'Free game';
   const worth = item?.worth ? String(item.worth) : '';
   const end = item?.end_date ? String(item.end_date) : '';
 
+  const eo = embedOptions || {};
+  const showPrice = eo.showPrice !== false;
+  const showUntil = eo.showUntil !== false;
+  const showThumb = eo.showThumbnail !== false;
+  const showImage = eo.showImage !== false;
+  const showFooter = eo.showFooter !== false;
+
   const isValidEnd = end && String(end).toLowerCase() !== 'n/a';
-  const pricePart = worth ? `~~${worth}~~` : '';
-  const untilPart = isValidEnd
-    ? (kind === 'freeweekend' ? `Free weekend until **${end}**` : `Free until **${end}**`)
-    : (kind === 'freeweekend' ? 'Free weekend' : 'Free to keep');
-  const description = [pricePart, untilPart].filter(Boolean).join(' ');
+  const pricePart = (showPrice && worth) ? `~~${worth}~~` : '';
+  const untilPart = showUntil
+    ? (isValidEnd
+        ? (kind === 'freeweekend' ? `Free weekend until **${end}**` : `Free until **${end}**`)
+        : (kind === 'freeweekend' ? 'Free weekend' : 'Free to keep'))
+    : '';
+  const description = [pricePart, untilPart].filter(Boolean).join(' ').trim();
 
   const embed = new EmbedBuilder()
     .setTitle(title)
-    .setURL(item?.open_giveaway_url || item?.gamerpower_url || item?.url || '')
-    .setDescription(description)
-    .setFooter({ text: `via GamerPower • © ${String(item?.publisher || platformLabel)}` });
+    .setURL(item?.open_giveaway_url || item?.gamerpower_url || item?.url || '');
+
+  if (description) embed.setDescription(description);
+  if (showFooter) embed.setFooter({ text: `via GamerPower • © ${String(item?.publisher || platformLabel)}` });
 
   const icon = PLATFORM_ICON[platformKey];
-  if (icon) {
+  if (showThumb && icon) {
     try { embed.setThumbnail(icon); } catch {}
   }
-  if (item?.thumbnail) {
+  if (showImage && item?.thumbnail) {
     try { embed.setImage(String(item.thumbnail)); } catch {}
   }
   return embed;
 }
 
-function buildButtons(item, platformKey) {
+function buildButtons(item, platformKey, embedOptions) {
+  const eo = embedOptions || {};
+  const showButtons = eo.showButtons !== false;
+  const showClient = eo.showClientButton !== false;
+  if (!showButtons) return null;
   const url = item?.open_giveaway_url || item?.gamerpower_url || item?.url;
   if (!url) return null;
 
@@ -89,7 +103,7 @@ function buildButtons(item, platformKey) {
     new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Open in browser ↗').setURL(String(url))
   ];
 
-  if (platformKey === 'steam') {
+  if (platformKey === 'steam' && showClient) {
     const appId = extractSteamAppId(url);
     if (appId) {
       buttons.push(
@@ -101,11 +115,11 @@ function buildButtons(item, platformKey) {
   return new ActionRowBuilder().addComponents(buttons.slice(0, 5));
 }
 
-function toPreviewPayload(item, platformKey, kind) {
+function toPreviewPayload(item, platformKey, kind, embedOptions) {
   const platformLabel = platformKey === 'epic' ? 'Epic Games Store' : platformKey === 'steam' ? 'Steam' : 'Ubisoft';
-  const embed = buildEmbed(item, platformKey, platformLabel, kind);
+  const embed = buildEmbed(item, platformKey, platformLabel, kind, embedOptions);
   const url = item?.open_giveaway_url || item?.gamerpower_url || item?.url || '';
-  const row = buildButtons(item, platformKey);
+  const row = buildButtons(item, platformKey, embedOptions);
   const buttons = row?.components?.map((c) => ({ label: c.label, url: c.url })) || [{ label: 'Open in browser', url: String(url) }];
 
   return {
@@ -115,7 +129,7 @@ function toPreviewPayload(item, platformKey, kind) {
     url: embed.data?.url || String(url),
     description: embed.data?.description || '',
     image: item?.thumbnail ? String(item.thumbnail) : '',
-    platformIcon: PLATFORM_ICON[platformKey] || '',
+    platformIcon: (embedOptions && embedOptions.showThumbnail === false) ? '' : (PLATFORM_ICON[platformKey] || ''),
     footer: embed.data?.footer?.text || '',
     buttons
   };
@@ -139,7 +153,18 @@ const FreeToKeepConfigSchema = z.object({
     })
     .optional(),
   pollIntervalMs: z.number().int().optional(),
-  maxPerCycle: z.number().int().optional()
+  maxPerCycle: z.number().int().optional(),
+  embedOptions: z
+    .object({
+      showPrice: z.boolean().optional(),
+      showUntil: z.boolean().optional(),
+      showThumbnail: z.boolean().optional(),
+      showImage: z.boolean().optional(),
+      showButtons: z.boolean().optional(),
+      showFooter: z.boolean().optional(),
+      showClientButton: z.boolean().optional()
+    })
+    .optional()
 });
 
 function boolish(v) {
@@ -209,6 +234,18 @@ function registerFreeToKeepRoutes({
         update.maxPerCycle = clampInt(parsed.maxPerCycle, 1, 10, 3);
       }
 
+      if (parsed.embedOptions) {
+        update.embedOptions = {
+          showPrice: boolish(parsed.embedOptions.showPrice),
+          showUntil: boolish(parsed.embedOptions.showUntil),
+          showThumbnail: boolish(parsed.embedOptions.showThumbnail),
+          showImage: boolish(parsed.embedOptions.showImage),
+          showButtons: boolish(parsed.embedOptions.showButtons),
+          showFooter: boolish(parsed.embedOptions.showFooter),
+          showClientButton: boolish(parsed.embedOptions.showClientButton)
+        };
+      }
+
       const cfg = await FreeToKeepConfig.findOneAndUpdate(
         { guildId },
         { $set: update, $setOnInsert: { guildId } },
@@ -257,6 +294,16 @@ function registerFreeToKeepRoutes({
         freeweekend: !!weekend
       };
 
+      const embedOptions = {
+        showPrice: boolish(req.query.sp),
+        showUntil: boolish(req.query.su),
+        showThumbnail: boolish(req.query.st),
+        showImage: boolish(req.query.si),
+        showButtons: boolish(req.query.sb),
+        showFooter: boolish(req.query.sf),
+        showClientButton: boolish(req.query.sc)
+      };
+
       if (!platformKeys.length || (!allow.freetokeep && !allow.freeweekend)) {
         return res.json({ ok: true, preview: null });
       }
@@ -286,7 +333,7 @@ function registerFreeToKeepRoutes({
       const pick = candidates[0];
       if (!pick) return res.json({ ok: true, preview: null });
 
-      return res.json({ ok: true, preview: toPreviewPayload(pick.item, pick.platformKey, pick.kind) });
+      return res.json({ ok: true, preview: toPreviewPayload(pick.item, pick.platformKey, pick.kind, embedOptions) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: 'INTERNAL_ERROR' });
     }
@@ -304,6 +351,7 @@ function registerFreeToKeepRoutes({
 
       const platforms = req.body.platforms || {};
       const offerTypes = req.body.offerTypes || {};
+      const embedOptions = req.body.embedOptions || {};
       const platformKeys = ['epic', 'steam', 'ubisoft'].filter((k) => boolish(platforms[k]));
       const allow = {
         freetokeep: boolish(offerTypes.freetokeep),
@@ -338,8 +386,8 @@ function registerFreeToKeepRoutes({
       if (!pick) return res.status(404).json({ ok: false, error: 'NO_ITEMS' });
 
       const platformLabel = pick.platformKey === 'epic' ? 'Epic Games Store' : pick.platformKey === 'steam' ? 'Steam' : 'Ubisoft';
-      const embed = buildEmbed(pick.item, pick.platformKey, platformLabel, pick.kind);
-      const row = buildButtons(pick.item, pick.platformKey);
+      const embed = buildEmbed(pick.item, pick.platformKey, platformLabel, pick.kind, embedOptions);
+      const row = buildButtons(pick.item, pick.platformKey, embedOptions);
 
       const ch = await client.channels.fetch(channelId).catch(() => null);
       if (!ch || !ch.isTextBased?.()) return res.status(404).json({ ok: false, error: 'CHANNEL_NOT_FOUND' });
@@ -363,7 +411,7 @@ function registerFreeToKeepRoutes({
         isTest: true
       });
 
-      return res.json({ ok: true, preview: toPreviewPayload(pick.item, pick.platformKey, pick.kind) });
+      return res.json({ ok: true, preview: toPreviewPayload(pick.item, pick.platformKey, pick.kind, embedOptions) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: 'INTERNAL_ERROR' });
     }

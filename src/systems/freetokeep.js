@@ -92,39 +92,53 @@ function hasSendPerm(channel, client) {
   }
 }
 
-function buildEmbed(item, platformKey, platformLabel, kind) {
+function buildEmbed(item, platformKey, platformLabel, kind, embedOptions) {
   const title = item?.title ? String(item.title) : 'Free game';
   const worth = item?.worth ? String(item.worth) : '';
   const end = item?.end_date ? String(item.end_date) : '';
 
+  const eo = embedOptions || {};
+  const showPrice = eo.showPrice !== false;
+  const showUntil = eo.showUntil !== false;
+  const showThumb = eo.showThumbnail !== false;
+  const showImage = eo.showImage !== false;
+  const showFooter = eo.showFooter !== false;
+
   // Match FreeStuff-like formatting:
   // ~~€X~~ Free until 23/02/2026
   const isValidEnd = end && String(end).toLowerCase() !== 'n/a';
-  const pricePart = worth ? `~~${worth}~~` : '';
-  const untilPart = isValidEnd
-    ? (kind === 'freeweekend' ? `Free weekend until **${end}**` : `Free until **${end}**`)
-    : (kind === 'freeweekend' ? 'Free weekend' : 'Free to keep');
-  const description = [pricePart, untilPart].filter(Boolean).join(' ');
+  const pricePart = (showPrice && worth) ? `~~${worth}~~` : '';
+  const untilPart = showUntil
+    ? (isValidEnd
+        ? (kind === 'freeweekend' ? `Free weekend until **${end}**` : `Free until **${end}**`)
+        : (kind === 'freeweekend' ? 'Free weekend' : 'Free to keep'))
+    : '';
+  const description = [pricePart, untilPart].filter(Boolean).join(' ').trim();
 
   const embed = new EmbedBuilder()
     .setTitle(title)
-    .setURL(item?.open_giveaway_url || item?.gamerpower_url || item?.url || '')
-    .setDescription(description)
-    .setFooter({ text: `via GamerPower • © ${String(item?.publisher || platformLabel)}` });
+    .setURL(item?.open_giveaway_url || item?.gamerpower_url || item?.url || '');
+
+  if (description) embed.setDescription(description);
+  if (showFooter) embed.setFooter({ text: `via GamerPower • © ${String(item?.publisher || platformLabel)}` });
 
   const icon = PLATFORM_ICON[platformKey];
-  if (icon) {
+  if (showThumb && icon) {
     try { embed.setThumbnail(icon); } catch {}
   }
 
-  if (item?.thumbnail) {
+  if (showImage && item?.thumbnail) {
     try { embed.setImage(String(item.thumbnail)); } catch {}
   }
 
   return embed;
 }
 
-function buildButtons(item, platformKey) {
+function buildButtons(item, platformKey, embedOptions) {
+  const eo = embedOptions || {};
+  const showButtons = eo.showButtons !== false;
+  const showClient = eo.showClientButton !== false;
+  if (!showButtons) return null;
   const url = item?.open_giveaway_url || item?.gamerpower_url || item?.url;
   if (!url) return null;
 
@@ -136,7 +150,7 @@ function buildButtons(item, platformKey) {
   ];
 
   // Steam client deep-link when we can infer app id.
-  if (platformKey === 'steam') {
+  if (platformKey === 'steam' && showClient) {
     const appId = extractSteamAppId(url);
     if (appId) {
       buttons.push(
@@ -152,14 +166,14 @@ function buildButtons(item, platformKey) {
   return row;
 }
 
-async function postItem({ client, guildId, channelId, platformKey, item, kind }) {
+async function postItem({ client, guildId, channelId, platformKey, item, kind, embedOptions }) {
   const channel = client.channels.cache.get(channelId) || (await fetchChannel(client, channelId));
   if (!channel || !channel.isTextBased?.()) throw new Error('Configured channel not found or not text-based');
   if (!hasSendPerm(channel, client)) throw new Error('Missing permission to send messages');
 
   const platformLabel = platformKey === 'epic' ? 'Epic Games Store' : platformKey === 'steam' ? 'Steam' : 'Ubisoft';
-  const embed = buildEmbed(item, platformKey, platformLabel, kind);
-  const row = buildButtons(item, platformKey);
+  const embed = buildEmbed(item, platformKey, platformLabel, kind, embedOptions);
+  const row = buildButtons(item, platformKey, embedOptions);
 
   const msg = await channel.send({ embeds: [embed], components: row ? [row] : [] });
 
@@ -192,6 +206,7 @@ async function runForGuild(client, cfg) {
   if (!platformKeys.length) return;
 
   const offerTypes = cfg.offerTypes || { freetokeep: true, freeweekend: false };
+  const embedOptions = cfg.embedOptions || {};
 
   // Collect candidates newest-first
   const candidates = [];
@@ -227,7 +242,7 @@ async function runForGuild(client, cfg) {
     const exists = await FreeToKeepPost.findOne({ guildId, platform: c.platformKey, giveawayId }).select('_id').lean();
     if (exists) continue;
 
-    await postItem({ client, guildId, channelId: cfg.channelId, platformKey: c.platformKey, item: c.item, kind: c.kind });
+    await postItem({ client, guildId, channelId: cfg.channelId, platformKey: c.platformKey, item: c.item, kind: c.kind, embedOptions });
     posted++;
     await sleep(550);
   }
