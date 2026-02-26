@@ -16,6 +16,9 @@ const FreeToKeepPostSchema = new mongoose.Schema(
     url: { type: String, default: '' },
     image: { type: String, default: '' },
 
+    publisher: { type: String, default: '' },
+    isTest: { type: Boolean, default: false },
+
     channelId: { type: String, default: '' },
     messageId: { type: String, default: '' },
     postedAt: { type: Date, default: () => new Date() }

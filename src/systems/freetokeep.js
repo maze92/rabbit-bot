@@ -24,6 +24,25 @@ const PLATFORM_EMOJI = {
   ubisoft: '🟪'
 };
 
+// Small platform icons for embed thumbnails.
+// Using Simple Icons CDN keeps this lightweight; if you prefer bundling assets,
+// replace these with local URLs.
+const PLATFORM_ICON = {
+  epic: 'https://cdn.simpleicons.org/epicgames/ffffff',
+  steam: 'https://cdn.simpleicons.org/steam/ffffff',
+  ubisoft: 'https://cdn.simpleicons.org/ubisoft/ffffff'
+};
+
+function extractSteamAppId(url) {
+  const u = String(url || '');
+  // Common Steam store patterns: /app/<id>/, store.steampowered.com/app/<id>
+  const m = u.match(/\/app\/(\d+)/i);
+  if (m && m[1]) return m[1];
+  const m2 = u.match(/store\.steampowered\.com\/app\/(\d+)/i);
+  if (m2 && m2[1]) return m2[1];
+  return null;
+}
+
 function detectOfferKind(item) {
   // GamerPower doesn't expose a dedicated "free weekend" flag.
   // We infer it from common wording in the title/description.
@@ -78,23 +97,25 @@ function buildEmbed(item, platformKey, platformLabel, kind) {
   const worth = item?.worth ? String(item.worth) : '';
   const end = item?.end_date ? String(item.end_date) : '';
 
-  const kindTag = kind === 'freeweekend' ? '**FREE WEEKEND**' : '**FREE TO KEEP**';
-
-  const descParts = [];
-  descParts.push(kindTag);
-  if (worth) descParts.push(`**${worth}**`);
-  if (end && end.toLowerCase() !== 'n/a') {
-    descParts.push(kind === 'freeweekend' ? `Until **${end}**` : `Free until **${end}**`);
-  }
-  const description = descParts.length ? descParts.join(' — ') : '';
-
-  const emoji = PLATFORM_EMOJI[platformKey] || '🎮';
+  // Match FreeStuff-like formatting:
+  // ~~€X~~ Free until 23/02/2026
+  const isValidEnd = end && String(end).toLowerCase() !== 'n/a';
+  const pricePart = worth ? `~~${worth}~~` : '';
+  const untilPart = isValidEnd
+    ? (kind === 'freeweekend' ? `Free weekend until **${end}**` : `Free until **${end}**`)
+    : (kind === 'freeweekend' ? 'Free weekend' : 'Free to keep');
+  const description = [pricePart, untilPart].filter(Boolean).join(' ');
 
   const embed = new EmbedBuilder()
-    .setTitle(`${emoji} ${title}`)
+    .setTitle(title)
     .setURL(item?.open_giveaway_url || item?.gamerpower_url || item?.url || '')
     .setDescription(description)
-    .setFooter({ text: `via GamerPower • ${platformLabel}` });
+    .setFooter({ text: `via GamerPower • © ${String(item?.publisher || platformLabel)}` });
+
+  const icon = PLATFORM_ICON[platformKey];
+  if (icon) {
+    try { embed.setThumbnail(icon); } catch {}
+  }
 
   if (item?.thumbnail) {
     try { embed.setImage(String(item.thumbnail)); } catch {}
@@ -103,16 +124,31 @@ function buildEmbed(item, platformKey, platformLabel, kind) {
   return embed;
 }
 
-function buildButtons(item) {
+function buildButtons(item, platformKey) {
   const url = item?.open_giveaway_url || item?.gamerpower_url || item?.url;
   if (!url) return null;
 
-  const row = new ActionRowBuilder().addComponents(
+  const buttons = [
     new ButtonBuilder()
       .setStyle(ButtonStyle.Link)
       .setLabel('Open in browser ↗')
       .setURL(String(url))
-  );
+  ];
+
+  // Steam client deep-link when we can infer app id.
+  if (platformKey === 'steam') {
+    const appId = extractSteamAppId(url);
+    if (appId) {
+      buttons.push(
+        new ButtonBuilder()
+          .setStyle(ButtonStyle.Link)
+          .setLabel('Open in Steam Client ↗')
+          .setURL(`steam://store/${appId}`)
+      );
+    }
+  }
+
+  const row = new ActionRowBuilder().addComponents(buttons.slice(0, 5));
   return row;
 }
 
@@ -123,7 +159,7 @@ async function postItem({ client, guildId, channelId, platformKey, item, kind })
 
   const platformLabel = platformKey === 'epic' ? 'Epic Games Store' : platformKey === 'steam' ? 'Steam' : 'Ubisoft';
   const embed = buildEmbed(item, platformKey, platformLabel, kind);
-  const row = buildButtons(item);
+  const row = buildButtons(item, platformKey);
 
   const msg = await channel.send({ embeds: [embed], components: row ? [row] : [] });
 
@@ -137,6 +173,7 @@ async function postItem({ client, guildId, channelId, platformKey, item, kind })
     endDate: String(item.end_date || ''),
     url: String(item.open_giveaway_url || item.gamerpower_url || ''),
     image: String(item.thumbnail || ''),
+    publisher: String(item?.publisher || ''),
     channelId,
     messageId: String(msg?.id || ''),
     postedAt: new Date()

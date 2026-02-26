@@ -778,7 +778,8 @@ registerFreeToKeepRoutes({
   rateLimit,
   sanitizeId,
   FreeToKeepConfig,
-  FreeToKeepPost
+  FreeToKeepPost,
+  getClient: () => _client
 });
 
 registerModRoutes({
