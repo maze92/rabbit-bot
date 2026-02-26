@@ -172,7 +172,8 @@
     // Ensure channels list is loaded (text channels)
     // NOTE: this project exposes channels under /api/guilds/:guildId/channels
     try {
-      const ch = await apiGet('/api/guilds/' + encodeURIComponent(guildId) + '/channels');
+      // OzarkDashboard.apiGet already prefixes API_BASE (/api)
+      const ch = await apiGet('/guilds/' + encodeURIComponent(guildId) + '/channels');
       fillChannels(ch.items || [], '');
     } catch (e) {
       // Keep selector usable even if channels couldn't be loaded.
@@ -180,7 +181,7 @@
     }
 
     try {
-      const data = await apiGet('/api/freetokeep/config?guildId=' + encodeURIComponent(guildId));
+      const data = await apiGet('/freetokeep/config?guildId=' + encodeURIComponent(guildId));
       const cfg = data && data.config ? data.config : null;
 
       $('freeToKeepEnabled').checked = !!(cfg && cfg.enabled);
@@ -219,8 +220,11 @@
       if (statusEl) statusEl.textContent = t('freetokeep_load_failed');
     }
 
+    // Always refresh preview after loading config so the right-hand panel stays in sync.
+    try { await previewNow(); } catch { /* ignore */ }
+
     try {
-      const recent = await apiGet('/api/freetokeep/recent?guildId=' + encodeURIComponent(guildId));
+      const recent = await apiGet('/freetokeep/recent?guildId=' + encodeURIComponent(guildId));
       renderRecent(recent.items || []);
     } catch {
       renderRecent([]);
@@ -266,7 +270,7 @@
     };
 
     try {
-      await apiPut('/api/freetokeep/config', body);
+      await apiPut('/freetokeep/config', body);
       if (statusEl) statusEl.textContent = t('common_saved');
       await loadFreeToKeep(true);
     } catch (e) {
@@ -302,7 +306,7 @@
       qs.set('sf', $('freeToKeepEmbedShowFooter').checked ? '1' : '0');
       qs.set('sc', $('freeToKeepEmbedShowClient').checked ? '1' : '0');
 
-      const data = await apiGet('/api/freetokeep/preview?' + qs.toString());
+      const data = await apiGet('/freetokeep/preview?' + qs.toString());
       if (data && data.preview) {
         renderPreview(data.preview);
       } else {
@@ -350,7 +354,7 @@
           showClientButton: !!$('freeToKeepEmbedShowClient').checked
         }
       };
-      const res = await apiPost('/api/freetokeep/test-send', body);
+      const res = await apiPost('/freetokeep/test-send', body);
       if (res && res.preview) renderPreview(res.preview);
       window.OzarkDashboard.toast && window.OzarkDashboard.toast(t('freetokeep_test_sent'), 'success');
       await loadFreeToKeep(true);
@@ -373,6 +377,28 @@
 
     const send = $('freeToKeepPreviewSend');
     if (send) send.addEventListener('click', function () { sendTest(); });
+
+    // Live preview: any option change re-renders preview (debounced)
+    let previewTimer = null;
+    function schedulePreview() {
+      if (previewTimer) clearTimeout(previewTimer);
+      previewTimer = setTimeout(function () {
+        previewNow();
+      }, 250);
+    }
+
+    const liveIds = [
+      'freeToKeepEpic', 'freeToKeepSteam', 'freeToKeepUbisoft',
+      'freeToKeepTypeKeep', 'freeToKeepTypeWeekend',
+      'freeToKeepEmbedShowPrice', 'freeToKeepEmbedShowUntil', 'freeToKeepEmbedShowThumb',
+      'freeToKeepEmbedShowImage', 'freeToKeepEmbedShowButtons', 'freeToKeepEmbedShowFooter',
+      'freeToKeepEmbedShowClient'
+    ];
+    liveIds.forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener('change', schedulePreview);
+    });
   }
 
   window.OzarkDashboard.loadFreeToKeep = loadFreeToKeep;
