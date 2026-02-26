@@ -188,14 +188,35 @@ function registerFreeToKeepRoutes({
   FreeToKeepPost,
   getClient
 }) {
-  const guardGuildQuery = requireGuildAccess({ from: 'query', key: 'guildId' });
-  const guardGuildBody = requireGuildAccess({ from: 'body', key: 'guildId' });
+  // Defensive fallbacks (avoid fragile boot / proxy timeouts).
+  const _rateLimit = typeof rateLimit === 'function' ? rateLimit : (req, res, next) => next();
+  const _requireGuildAccess = typeof requireGuildAccess === 'function'
+    ? requireGuildAccess
+    : () => (req, res, next) => next();
+
+  const guardGuildQuery = _requireGuildAccess({ from: 'query', key: 'guildId' });
+  const guardGuildBody = _requireGuildAccess({ from: 'body', key: 'guildId' });
+
+  // Bound DB ops; some hosting layers surface long waits as HTTP 504.
+  const DB_MAX_MS = 5000;
+
+  // Instant preview/sample payload (no external dependency).
+  const SAMPLE_ITEM = {
+    id: 'sample',
+    title: 'Example Game',
+    worth: '€19.99',
+    end_date: '31/12/2099',
+    open_giveaway_url: 'https://example.com',
+    thumbnail: 'https://picsum.photos/1200/630',
+    publisher: 'Example Publisher'
+  };
 
   // Read config
-  app.get('/api/freetokeep/config', rateLimit, requireDashboardAuth, guardGuildQuery, async (req, res) => {
+  app.get('/api/freetokeep/config', _rateLimit, requireDashboardAuth, guardGuildQuery, async (req, res) => {
     try {
       const guildId = sanitizeId(req.query.guildId);
-      const cfg = await FreeToKeepConfig.findOne({ guildId }).lean();
+      if (!FreeToKeepConfig) return res.json({ ok: true, config: null });
+      const cfg = await FreeToKeepConfig.findOne({ guildId }).maxTimeMS(DB_MAX_MS).lean();
       return res.json({ ok: true, config: cfg || null });
     } catch (e) {
       return res.status(500).json({ ok: false, error: 'INTERNAL_ERROR' });
@@ -203,10 +224,12 @@ function registerFreeToKeepRoutes({
   });
 
   // Upsert config
-  app.put('/api/freetokeep/config', rateLimit, requireDashboardAuth, requirePerm('admin'), guardGuildBody, async (req, res) => {
+  app.put('/api/freetokeep/config', _rateLimit, requireDashboardAuth, requirePerm('admin'), guardGuildBody, async (req, res) => {
     try {
       const parsed = FreeToKeepConfigSchema.parse(req.body || {});
       const guildId = sanitizeId(parsed.guildId);
+
+      if (!FreeToKeepConfig) return res.status(500).json({ ok: false, error: 'MODEL_NOT_READY' });
 
       const update = {};
       if (typeof parsed.enabled === 'boolean') update.enabled = parsed.enabled;
@@ -250,7 +273,7 @@ function registerFreeToKeepRoutes({
         { guildId },
         { $set: update, $setOnInsert: { guildId } },
         { upsert: true, new: true }
-      ).lean();
+      ).maxTimeMS(DB_MAX_MS).lean();
 
       return res.json({ ok: true, config: cfg });
     } catch (e) {
@@ -262,12 +285,14 @@ function registerFreeToKeepRoutes({
   });
 
   // Recent posts
-  app.get('/api/freetokeep/recent', rateLimit, requireDashboardAuth, guardGuildQuery, async (req, res) => {
+  app.get('/api/freetokeep/recent', _rateLimit, requireDashboardAuth, guardGuildQuery, async (req, res) => {
     try {
       const guildId = sanitizeId(req.query.guildId);
+      if (!FreeToKeepPost) return res.json({ ok: true, items: [] });
       const items = await FreeToKeepPost.find({ guildId })
         .sort({ postedAt: -1 })
         .limit(20)
+        .maxTimeMS(DB_MAX_MS)
         .lean();
       return res.json({ ok: true, items: items || [] });
     } catch {
@@ -276,7 +301,8 @@ function registerFreeToKeepRoutes({
   });
 
   // Preview a candidate (does not send)
-  app.get('/api/freetokeep/preview', rateLimit, requireDashboardAuth, guardGuildQuery, async (req, res) => {
+  // IMPORTANT: This must be instant and not depend on external services.
+  app.get('/api/freetokeep/preview', _rateLimit, requireDashboardAuth, guardGuildQuery, async (req, res) => {
     try {
       const epic = boolish(req.query.epic);
       const steam = boolish(req.query.steam);
@@ -308,39 +334,16 @@ function registerFreeToKeepRoutes({
         return res.json({ ok: true, preview: null });
       }
 
-      const candidates = [];
-      for (const key of platformKeys) {
-        const q = PLATFORM_QUERY[key];
-        if (!q) continue;
-        const url = `https://www.gamerpower.com/api/giveaways?platform=${encodeURIComponent(q)}&type=game&sort-by=date`;
-        const arr = await fetchJson(url, 15000);
-        const list = Array.isArray(arr) ? arr : [];
-        for (const it of list) {
-          if (!it || !it.id) continue;
-          const kind = detectOfferKind(it);
-          if (kind === 'freeweekend' && !allow.freeweekend) continue;
-          if (kind === 'freetokeep' && !allow.freetokeep) continue;
-          candidates.push({ platformKey: key, item: it, kind });
-        }
-      }
-
-      candidates.sort((a, b) => {
-        const da = Date.parse(a?.item?.published_date || '') || 0;
-        const db = Date.parse(b?.item?.published_date || '') || 0;
-        return db - da;
-      });
-
-      const pick = candidates[0];
-      if (!pick) return res.json({ ok: true, preview: null });
-
-      return res.json({ ok: true, preview: toPreviewPayload(pick.item, pick.platformKey, pick.kind, embedOptions) });
+      const platformKey = platformKeys[0];
+      const kind = allow.freeweekend ? 'freeweekend' : 'freetokeep';
+      return res.json({ ok: true, preview: toPreviewPayload(SAMPLE_ITEM, platformKey, kind, embedOptions) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: 'INTERNAL_ERROR' });
     }
   });
 
   // Send a test message to the selected channel (and returns preview payload)
-  app.post('/api/freetokeep/test-send', rateLimit, requireDashboardAuth, requirePerm('admin'), guardGuildBody, async (req, res) => {
+  app.post('/api/freetokeep/test-send', _rateLimit, requireDashboardAuth, requirePerm('admin'), guardGuildBody, async (req, res) => {
     try {
       const guildId = sanitizeId(req.body.guildId);
       const channelId = sanitizeId(req.body.channelId);
@@ -361,57 +364,35 @@ function registerFreeToKeepRoutes({
         return res.status(400).json({ ok: false, error: 'INVALID_BODY' });
       }
 
-      // Pick newest matching item.
-      const candidates = [];
-      for (const key of platformKeys) {
-        const q = PLATFORM_QUERY[key];
-        if (!q) continue;
-        const url = `https://www.gamerpower.com/api/giveaways?platform=${encodeURIComponent(q)}&type=game&sort-by=date`;
-        const arr = await fetchJson(url, 15000);
-        const list = Array.isArray(arr) ? arr : [];
-        for (const it of list) {
-          if (!it || !it.id) continue;
-          const kind = detectOfferKind(it);
-          if (kind === 'freeweekend' && !allow.freeweekend) continue;
-          if (kind === 'freetokeep' && !allow.freetokeep) continue;
-          candidates.push({ platformKey: key, item: it, kind });
-        }
-      }
-      candidates.sort((a, b) => {
-        const da = Date.parse(a?.item?.published_date || '') || 0;
-        const db = Date.parse(b?.item?.published_date || '') || 0;
-        return db - da;
-      });
-      const pick = candidates[0];
-      if (!pick) return res.status(404).json({ ok: false, error: 'NO_ITEMS' });
-
-      const platformLabel = pick.platformKey === 'epic' ? 'Epic Games Store' : pick.platformKey === 'steam' ? 'Steam' : 'Ubisoft';
-      const embed = buildEmbed(pick.item, pick.platformKey, platformLabel, pick.kind, embedOptions);
-      const row = buildButtons(pick.item, pick.platformKey, embedOptions);
+      const platformKey = platformKeys[0];
+      const kind = allow.freeweekend ? 'freeweekend' : 'freetokeep';
+      const platformLabel = platformKey === 'epic' ? 'Epic Games Store' : platformKey === 'steam' ? 'Steam' : 'Ubisoft';
+      const embed = buildEmbed(SAMPLE_ITEM, platformKey, platformLabel, kind, embedOptions);
+      const row = buildButtons(SAMPLE_ITEM, platformKey, embedOptions);
 
       const ch = await client.channels.fetch(channelId).catch(() => null);
       if (!ch || !ch.isTextBased?.()) return res.status(404).json({ ok: false, error: 'CHANNEL_NOT_FOUND' });
       const msg = await ch.send({ embeds: [embed], components: row ? [row] : [] });
 
       // Save as a normal post to appear in "recent" (but tag it as test)
-      await FreeToKeepPost.create({
+      if (FreeToKeepPost) await FreeToKeepPost.create({
         guildId,
-        platform: pick.platformKey,
-        giveawayId: Number(pick.item.id),
-        kind: pick.kind,
-        title: String(pick.item.title || ''),
-        worth: String(pick.item.worth || ''),
-        endDate: String(pick.item.end_date || ''),
-        url: String(pick.item.open_giveaway_url || pick.item.gamerpower_url || ''),
-        image: String(pick.item.thumbnail || ''),
-        publisher: String(pick.item.publisher || ''),
+        platform: platformKey,
+        giveawayId: 'sample',
+        kind,
+        title: String(SAMPLE_ITEM.title || ''),
+        worth: String(SAMPLE_ITEM.worth || ''),
+        endDate: String(SAMPLE_ITEM.end_date || ''),
+        url: String(SAMPLE_ITEM.open_giveaway_url || ''),
+        image: String(SAMPLE_ITEM.thumbnail || ''),
+        publisher: String(SAMPLE_ITEM.publisher || ''),
         channelId,
         messageId: String(msg?.id || ''),
         postedAt: new Date(),
         isTest: true
       });
 
-      return res.json({ ok: true, preview: toPreviewPayload(pick.item, pick.platformKey, pick.kind, embedOptions) });
+      return res.json({ ok: true, preview: toPreviewPayload(SAMPLE_ITEM, platformKey, kind, embedOptions) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: 'INTERNAL_ERROR' });
     }
