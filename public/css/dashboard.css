@@ -141,6 +141,17 @@ body {
   background: rgba(255,255,255,0.02);
 }
 
+/* FreeToKeep preview (Discord-like spacing) */
+.ftk-preview-card{padding:12px;}
+.ftk-preview-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.ftk-preview-title{font-weight:700;line-height:1.25;}
+.ftk-preview-thumb{width:48px;height:48px;border-radius:10px;flex:0 0 auto;}
+.ftk-preview-desc{margin-top:10px;color:var(--text);white-space:pre-wrap;}
+.ftk-preview-buttons{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;}
+.ftk-preview-btn{white-space:nowrap;}
+.ftk-preview-image{width:100%;border-radius:12px;margin-top:12px;display:block;}
+.ftk-preview-footer{margin-top:12px;color:var(--text-muted);font-size:12px;}
+
 /* Small pill used for checkbox options in FreeToKeep */
 .chip {
   display: inline-flex;

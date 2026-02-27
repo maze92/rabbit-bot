@@ -93,6 +93,7 @@
     }
     var e = preview.embed;
     var title = e.title || '';
+    // In preview we mimic the Discord embed: title is bold text (not a hyperlink).
     var url = e.url || '';
     var desc = e.description || '';
     var thumb = (e.thumbnail && e.thumbnail.url) ? e.thumbnail.url : '';
@@ -100,17 +101,29 @@
     var footer = (e.footer && e.footer.text) ? e.footer.text : '';
 
     var html = '';
-    html += '<div class="card" style="padding: 12px;">';
-    html += '<div class="row" style="justify-content: space-between; align-items:flex-start; gap:10px;">';
-    html += '<div style="min-width:0;">';
-    html += url ? ('<a href="' + window.OzarkDashboard.escapeHtml(url) + '" target="_blank" rel="noreferrer" style="font-weight:700;">' + window.OzarkDashboard.escapeHtml(title) + '</a>')
-               : ('<div style="font-weight:700;">' + window.OzarkDashboard.escapeHtml(title) + '</div>');
-    if (desc) html += '<div style="margin-top:6px; color: var(--text);">' + window.OzarkDashboard.escapeHtml(desc) + '</div>';
-    html += '</div>';
-    if (thumb) html += '<img src="' + window.OzarkDashboard.escapeHtml(thumb) + '" style="width:40px; height:40px; border-radius:8px;" />';
-    html += '</div>';
-    if (img) html += '<img src="' + window.OzarkDashboard.escapeHtml(img) + '" style="width:100%; border-radius:12px; margin-top:10px;" />';
-    if (footer) html += '<div style="margin-top:10px; color: var(--text-muted); font-size:12px;">' + window.OzarkDashboard.escapeHtml(footer) + '</div>';
+    html += '<div class="card ftk-preview-card">';
+    html += '  <div class="ftk-preview-head">';
+    html += '    <div class="ftk-preview-title">' + window.OzarkDashboard.escapeHtml(title) + '</div>';
+    if (thumb) html += '    <img class="ftk-preview-thumb" src="' + window.OzarkDashboard.escapeHtml(thumb) + '" />';
+    html += '  </div>';
+    if (desc) html += '  <div class="ftk-preview-desc">' + window.OzarkDashboard.escapeHtml(desc) + '</div>';
+
+    // Buttons (Discord-like)
+    var rows = (preview.components && Array.isArray(preview.components)) ? preview.components : [];
+    if (rows.length) {
+      html += '  <div class="ftk-preview-buttons">';
+      rows.forEach(function (row) {
+        if (!row || !row.components) return;
+        row.components.forEach(function (b) {
+          if (!b || !b.url) return;
+          html += '<a class="btn btn-xs ftk-preview-btn" href="' + window.OzarkDashboard.escapeHtml(b.url) + '" target="_blank" rel="noreferrer">' + window.OzarkDashboard.escapeHtml(b.label || 'Open') + '</a>';
+        });
+      });
+      html += '  </div>';
+    }
+
+    if (img) html += '<img class="ftk-preview-image" src="' + window.OzarkDashboard.escapeHtml(img) + '" />';
+    if (footer) html += '<div class="ftk-preview-footer">' + window.OzarkDashboard.escapeHtml(footer) + '</div>';
     html += '</div>';
     box.innerHTML = html;
   }
@@ -282,8 +295,9 @@
     try {
       if (!q('extras-freetokeep-panel')) return;
       if (!els.preview) wire();
-      await loadChannels();
+      // Load config first so we can preserve the selected channel when channels list arrives.
       await loadConfig();
+      await loadChannels();
       await loadRecent();
       await previewNow();
     } catch (e) {
