@@ -148,8 +148,15 @@ function registerGuildsRoutes({
       const guildId = sanitizeId(req.params.guildId);
       if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
 
-      const guild = _client.guilds.cache.get(guildId) || null;
+      // Cache can be cold right after startup. Try an API fetch fallback.
+      let guild = _client.guilds.cache.get(guildId) || null;
+      if (!guild) {
+        guild = await _client.guilds.fetch(guildId).catch(() => null);
+      }
       if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
+
+      // Ensure channels cache is populated.
+      try { await guild.channels.fetch(); } catch {}
 
       const items = guild.channels.cache
         .filter((ch) => ch && ch.isTextBased?.() && !ch.isDMBased?.())

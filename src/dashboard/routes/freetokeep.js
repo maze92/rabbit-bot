@@ -190,12 +190,16 @@ function registerFreeToKeepRoutes({
 }) {
   // Defensive fallbacks (avoid fragile boot / proxy timeouts).
   const _rateLimit = typeof rateLimit === 'function' ? rateLimit : (req, res, next) => next();
-  const _requireGuildAccess = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess
-    : () => (req, res, next) => next();
-
-  const guardGuildQuery = _requireGuildAccess({ from: 'query', key: 'guildId' });
-  const guardGuildBody = _requireGuildAccess({ from: 'body', key: 'guildId' });
+  // Some deployments have a cold Discord cache at startup; the generic
+  // requireGuildAccess middleware can produce false "Guild not found".
+  // We validate guild presence here using an API fetch fallback.
+  async function ensureGuildAccess(guildId) {
+    const client = typeof getClient === 'function' ? getClient() : null;
+    if (!client) return null;
+    let guild = client.guilds.cache.get(guildId) || null;
+    if (!guild) guild = await client.guilds.fetch(guildId).catch(() => null);
+    return guild;
+  }
 
   // Permission guard (keep consistent with the rest of the dashboard routes).
   // In this codebase, requirePerm expects an object: requirePerm({ anyOf: [...] }).
@@ -224,9 +228,12 @@ function registerFreeToKeepRoutes({
   };
 
   // Read config
-  app.get('/api/freetokeep/config', _rateLimit, requireDashboardAuth, guardGuildQuery, async (req, res) => {
+  app.get('/api/freetokeep/config', _rateLimit, requireDashboardAuth, async (req, res) => {
     try {
       const guildId = sanitizeId(req.query.guildId);
+      if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+      const guild = await ensureGuildAccess(guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
       if (!FreeToKeepConfig) return res.json({ ok: true, config: null });
       const cfg = await FreeToKeepConfig.findOne({ guildId }).maxTimeMS(DB_MAX_MS).lean();
       return res.json({ ok: true, config: cfg || null });
@@ -236,10 +243,13 @@ function registerFreeToKeepRoutes({
   });
 
   // Upsert config
-  app.put('/api/freetokeep/config', _rateLimit, requireDashboardAuth, canEdit, guardGuildBody, async (req, res) => {
+  app.put('/api/freetokeep/config', _rateLimit, requireDashboardAuth, canEdit, async (req, res) => {
     try {
       const parsed = FreeToKeepConfigSchema.parse(req.body || {});
       const guildId = sanitizeId(parsed.guildId);
+      if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+      const guild = await ensureGuildAccess(guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
 
       if (!FreeToKeepConfig) return res.status(500).json({ ok: false, error: 'MODEL_NOT_READY' });
 
@@ -297,9 +307,12 @@ function registerFreeToKeepRoutes({
   });
 
   // Recent posts
-  app.get('/api/freetokeep/recent', _rateLimit, requireDashboardAuth, guardGuildQuery, async (req, res) => {
+  app.get('/api/freetokeep/recent', _rateLimit, requireDashboardAuth, async (req, res) => {
     try {
       const guildId = sanitizeId(req.query.guildId);
+      if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+      const guild = await ensureGuildAccess(guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
       if (!FreeToKeepPost) return res.json({ ok: true, items: [] });
       const items = await FreeToKeepPost.find({ guildId })
         .sort({ postedAt: -1 })
@@ -314,8 +327,13 @@ function registerFreeToKeepRoutes({
 
   // Preview a candidate (does not send)
   // IMPORTANT: This must be instant and not depend on external services.
-  app.get('/api/freetokeep/preview', _rateLimit, requireDashboardAuth, guardGuildQuery, async (req, res) => {
+  app.get('/api/freetokeep/preview', _rateLimit, requireDashboardAuth, async (req, res) => {
     try {
+      const guildId = sanitizeId(req.query.guildId);
+      if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
+      const guild = await ensureGuildAccess(guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
+
       const epic = boolish(req.query.epic);
       const steam = boolish(req.query.steam);
       const ubisoft = boolish(req.query.ubisoft);
@@ -355,11 +373,14 @@ function registerFreeToKeepRoutes({
   });
 
   // Send a test message to the selected channel (and returns preview payload)
-  app.post('/api/freetokeep/test-send', _rateLimit, requireDashboardAuth, canEdit, guardGuildBody, async (req, res) => {
+  app.post('/api/freetokeep/test-send', _rateLimit, requireDashboardAuth, canEdit, async (req, res) => {
     try {
       const guildId = sanitizeId(req.body.guildId);
       const channelId = sanitizeId(req.body.channelId);
       if (!guildId || !channelId) return res.status(400).json({ ok: false, error: 'INVALID_BODY' });
+
+      const guild = await ensureGuildAccess(guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
 
       const client = typeof getClient === 'function' ? getClient() : null;
       if (!client) return res.status(500).json({ ok: false, error: 'CLIENT_NOT_READY' });
