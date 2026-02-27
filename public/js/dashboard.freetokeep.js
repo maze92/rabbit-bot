@@ -151,6 +151,10 @@
     const sel = $('freeToKeepChannel');
     if (!sel) return;
 
+    // Preserve current selection unless an explicit selectedId is provided.
+    const keepCurrent = !selectedId;
+    const current = keepCurrent ? (sel.value || '') : '';
+
     const arr = Array.isArray(channels) ? channels : [];
     const opts = [`<option value="">${escapeHtml(t('common_select_channel'))}</option>`];
     arr.forEach(function (ch) {
@@ -159,7 +163,7 @@
       opts.push(`<option value="${escapeHtml(ch.id)}">${escapeHtml(name)}</option>`);
     });
     sel.innerHTML = opts.join('');
-    sel.value = selectedId || '';
+    sel.value = selectedId || current || '';
   }
 
   async function loadFreeToKeep(force) {
