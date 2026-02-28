@@ -2813,6 +2813,15 @@ function deleteTempVoiceBaseAt(index) {
           }
         }
 
+        // Load giveaways config when opening the Giveaways subtab
+        if (name === 'giveaways' && window.OzarkDashboard && typeof window.OzarkDashboard.loadGiveaways === 'function') {
+          try {
+            window.OzarkDashboard.loadGiveaways(true);
+          } catch (e) {
+            console.error('Failed to load giveaways', e);
+          }
+        }
+
         // Reset estado da voz temporária sempre que se entra na subtab
         if (name === 'tempvoice') {
           try {

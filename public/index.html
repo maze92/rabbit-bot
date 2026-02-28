@@ -56,7 +56,6 @@
       <button class="tab" data-tab="gamenews" data-i18n="tab_gamenews">Funcionalidades</button>
       <button class="tab" data-tab="user" data-i18n="tab_user">Utilizadores</button>
       <button class="tab" data-tab="config" data-i18n="tab_config">Configuração</button>
-      <button class="tab" data-tab="giveaways" data-i18n="tab_giveaways">Giveaways</button>
     </div>
 
     <!-- Aviso quando não há servidor selecionado -->
@@ -229,6 +228,7 @@
             <button class="subtab" data-subtab="tempvoice" data-i18n="extras_tempvoice_tab">Voz temporária</button>
             <button class="subtab" data-subtab="tickets" data-i18n="extras_tickets_tab">Tickets</button>
             <button class="subtab" data-subtab="trust" data-i18n="extras_trust_tab">Moderação</button>
+            <button class="subtab" data-subtab="giveaways" data-i18n="tab_giveaways">Giveaways</button>
           </div>
 
           <div class="subtab-panels">
@@ -519,82 +519,82 @@
                       <div class="trust-info" data-i18n="extras_trust_info_body"></div>
                     </div>
 
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      <!-- Giveaways -->
-      <section class="section" id="tab-giveaways">
-        <div class="card">
-          <h2 data-i18n="giveaways_title">Giveaways</h2>
-          <p class="hint" data-i18n="giveaways_hint">
-            Publica automaticamente giveaways do GamerPower no canal escolhido, assim que aparecem.
-          </p>
+	                  </div>
+	                </div>
+	              </div>
 
-          <div class="grid-2">
-            <div>
-              <div class="field">
-                <label class="switch">
-                  <input type="checkbox" id="giveawaysEnabled" />
-                  <span class="slider"></span>
-                </label>
-                <span class="switch-label" data-i18n="giveaways_enabled">Ativar giveaways</span>
-              </div>
+	              <div class="subtab-panel" id="extras-giveaways-panel">
+	                <div class="card" style="margin: 0;">
+	                  <h2 data-i18n="giveaways_title">Giveaways</h2>
+	                  <p class="hint" data-i18n="giveaways_hint">
+	                    Publica automaticamente giveaways do GamerPower no canal escolhido, assim que aparecem.
+	                  </p>
 
-              <div class="field">
-                <label for="giveawaysChannel" data-i18n="giveaways_channel">Canal de publicação</label>
-                <select id="giveawaysChannel" class="select">
-                  <option value="" data-i18n="select_channel">Seleciona um canal</option>
-                </select>
-              </div>
+	                  <div class="grid-2">
+	                    <div>
+	                      <div class="field">
+	                        <label class="switch">
+	                          <input type="checkbox" id="giveawaysEnabled" />
+	                          <span class="slider"></span>
+	                        </label>
+	                        <span class="switch-label" data-i18n="giveaways_enabled">Ativar giveaways</span>
+	                      </div>
 
-              <div class="field">
-                <label data-i18n="giveaways_platforms">Plataformas</label>
-                <div class="check-grid" id="giveawaysPlatforms">
-                  <label class="check"><input type="checkbox" value="steam" /> Steam</label>
-                  <label class="check"><input type="checkbox" value="epic-games-store" /> Epic Games Store</label>
-                  <label class="check"><input type="checkbox" value="ubisoft" /> Ubisoft</label>
-                </div>
-              </div>
+	                      <div class="field">
+	                        <label for="giveawaysChannel" data-i18n="giveaways_channel">Canal de publicação</label>
+	                        <select id="giveawaysChannel" class="select">
+	                          <option value="" data-i18n="select_channel">Seleciona um canal</option>
+	                        </select>
+	                      </div>
 
-              <div class="field">
-                <label data-i18n="giveaways_types">Tipos</label>
-                <div class="check-grid" id="giveawaysTypes">
-                  <label class="check"><input type="checkbox" value="game" /> Game</label>
-                  <label class="check"><input type="checkbox" value="loot" /> Loot</label>
-                  <label class="check"><input type="checkbox" value="beta" /> Beta</label>
-                </div>
-              </div>
+	                      <div class="field">
+	                        <label data-i18n="giveaways_platforms">Plataformas</label>
+	                        <div class="check-grid" id="giveawaysPlatforms">
+	                          <label class="check"><input type="checkbox" value="steam" /> Steam</label>
+	                          <label class="check"><input type="checkbox" value="epic-games-store" /> Epic Games Store</label>
+	                          <label class="check"><input type="checkbox" value="ubisoft" /> Ubisoft</label>
+	                        </div>
+	                      </div>
 
-              <div class="grid-2">
-                <div class="field">
-                  <label for="giveawaysPoll" data-i18n="giveaways_poll">Intervalo (s)</label>
-                  <input id="giveawaysPoll" class="input" type="number" min="60" max="3600" value="60" />
-                </div>
-                <div class="field">
-                  <label for="giveawaysMaxPerCycle" data-i18n="giveaways_max_cycle">Máx / ciclo (0 = todos)</label>
-                  <input id="giveawaysMaxPerCycle" class="input" type="number" min="0" max="50" value="0" />
-                </div>
-              </div>
+	                      <div class="field">
+	                        <label data-i18n="giveaways_types">Tipos</label>
+	                        <div class="check-grid" id="giveawaysTypes">
+	                          <label class="check"><input type="checkbox" value="game" /> Game</label>
+	                          <label class="check"><input type="checkbox" value="loot" /> Loot</label>
+	                          <label class="check"><input type="checkbox" value="beta" /> Beta</label>
+	                        </div>
+	                      </div>
 
-              <div class="actions">
-                <button class="btn primary" id="giveawaysSaveBtn" data-i18n="save">Guardar</button>
-                <span class="hint" id="giveawaysSavedHint"></span>
-              </div>
-            </div>
+	                      <div class="grid-2">
+	                        <div class="field">
+	                          <label for="giveawaysPoll" data-i18n="giveaways_poll">Intervalo (s)</label>
+	                          <input id="giveawaysPoll" class="input" type="number" min="60" max="3600" value="60" />
+	                        </div>
+	                        <div class="field">
+	                          <label for="giveawaysMaxPerCycle" data-i18n="giveaways_max_cycle">Máx / ciclo (0 = todos)</label>
+	                          <input id="giveawaysMaxPerCycle" class="input" type="number" min="0" max="50" value="0" />
+	                        </div>
+	                      </div>
 
-            <div>
-              <div class="preview-card">
-                <div class="preview-title" data-i18n="preview">Preview</div>
-                <div id="giveawaysPreview" class="giveaway-preview"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+	                      <div class="actions">
+	                        <button class="btn primary" id="giveawaysSaveBtn" data-i18n="save">Guardar</button>
+	                        <span class="hint" id="giveawaysSavedHint"></span>
+	                      </div>
+	                    </div>
 
+	                    <div>
+	                      <div class="preview-card">
+	                        <div class="preview-title" data-i18n="preview">Preview</div>
+	                        <div id="giveawaysPreview" class="giveaway-preview"></div>
+	                      </div>
+	                    </div>
+	                  </div>
+	                </div>
+	              </div>
+
+	            </div>
+	          </div>
+	        </section>
 
       <section class="section" id="tab-user">
         <div class="card">
