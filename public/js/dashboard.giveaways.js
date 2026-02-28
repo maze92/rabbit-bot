@@ -38,7 +38,31 @@
     });
   }
 
-  function renderPreview() {
+  const sampleCache = {}; // platform -> sample item
+  let renderToken = 0;
+
+  function formatDatePill(dmy) {
+    return '<span class="giveaway-preview__ts">' + escapeHtml(dmy || '—') + '</span>';
+  }
+
+  async function loadSampleFor(platform, type) {
+    const guildId = getGuildId();
+    if (!guildId) return null;
+    const key = String(platform || 'steam');
+    if (sampleCache[key]) return sampleCache[key];
+    try {
+      const data = await apiGet('/giveaways/sample?guildId=' + encodeURIComponent(guildId) +
+        '&platform=' + encodeURIComponent(key) +
+        '&type=' + encodeURIComponent(type || 'game'));
+      const item = data && data.item ? data.item : null;
+      if (item) sampleCache[key] = item;
+      return item;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function renderPreview() {
     const enabled = !!(q('giveawaysEnabled') && q('giveawaysEnabled').checked);
     const platforms = readChecks('giveawaysPlatforms');
     const types = readChecks('giveawaysTypes');
@@ -50,14 +74,18 @@
 
     const logoUrl = platformLogoUrl(primaryPlatform);
 
-    // Example giveaway (preview only)
-    const example = {
-      title: 'Paragnosia',
-      worth: '€39.99',
-      end_date: '23/02/2026',
-      publisher: 'Sine Coda',
-      image: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co2l7m.jpg',
-      open_giveaway_url: 'https://store.steampowered.com/app/000000/Example'
+    const token = ++renderToken;
+    const sample = await loadSampleFor(primaryPlatform, (types[0] || 'game'));
+    if (token !== renderToken) return; // stale
+
+    const example = sample || {
+      title: 'Just Move: Clean City Messy Battle',
+      worth: '€15.79',
+      end_date: '04/03/2026',
+      publisher: 'FreeStuff',
+      image: '',
+      gamerpower_url: 'https://www.gamerpower.com/',
+      open_giveaway_url: 'https://www.gamerpower.com/'
     };
 
     const root = q('giveawaysPreview');
@@ -68,11 +96,11 @@
       return;
     }
 
-    const title = escapeHtml(example.title);
+    const title = escapeHtml(String(example.title || '').replace(/\s*\(?(steam|epic|ubisoft)\)?\s*giveaway\s*$/i, '').replace(/\s*giveaway\s*$/i, '').trim() || 'Giveaway');
     // Screenshot style: strikethrough worth then "Free until".
     const worthHtml = example.worth ? ('<span class="giveaway-preview__worth">' + escapeHtml(example.worth) + '</span>') : '';
     const meta = (worthHtml ? ('<span class="giveaway-preview__worth-wrap">' + worthHtml + '</span> ') : '') +
-      '<span><b>Free</b> until ' + escapeHtml(example.end_date || '—') + '</span>';
+      '<span><b>Free</b> until ' + formatDatePill(example.end_date || '—') + '</span>';
 
     const footerLeft = 'via .rabbitstuff.xyz';
     const footerRight = example.publisher ? ('© ' + escapeHtml(example.publisher)) : '';
@@ -96,9 +124,7 @@
         '</div>' +
         (logoUrl ? ('<div class="giveaway-preview__thumb"><img alt="" src="' + escapeHtml(logoUrl) + '" /></div>') : '') +
       '</div>' +
-      '<div class="giveaway-preview__image">' +
-        '<img alt="" src="' + escapeHtml(example.image) + '" />' +
-      '</div>' +
+      (example.image ? ('<div class="giveaway-preview__image"><img alt="" src="' + escapeHtml(example.image) + '" /></div>') : '') +
       '<div class="giveaway-preview__footer">' +
         '<span>' + escapeHtml(footerLeft) + '</span>' +
         (footerRight ? '<span>' + footerRight + '</span>' : '') +
@@ -181,7 +207,7 @@
     if (q('giveawaysPoll')) q('giveawaysPoll').value = String(cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
     if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
 
-    renderPreview();
+    await renderPreview();
   }
 
   async function saveGiveaways() {
@@ -216,7 +242,7 @@
       }
     };
 
-    await apiPost('/giveaways/config', payload);
+    const saved = await apiPost('/giveaways/config', payload);
 
     toast('ok', t('saved') || 'Guardado');
     const hint = q('giveawaysSavedHint');
@@ -225,9 +251,24 @@
       setTimeout(function () { hint.textContent = ''; }, 3500);
     }
 
-    // Reload channels/config to ensure the UI reflects persisted state.
+    // Keep UI in sync with what the server persisted (prevents "snap back").
+    if (saved && saved.giveaways) {
+      const cfg = saved.giveaways;
+      if (q('giveawaysEnabled')) q('giveawaysEnabled').checked = !!cfg.enabled;
+      const sel2 = q('giveawaysChannel');
+      if (sel2) {
+        const v2 = cfg.channelId ? String(cfg.channelId) : '';
+        sel2.dataset.desiredValue = v2;
+      }
+      setChecks('giveawaysPlatforms', cfg.platforms || ['steam']);
+      setChecks('giveawaysTypes', cfg.types || ['game']);
+      if (q('giveawaysPoll')) q('giveawaysPoll').value = String(cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
+      if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
+    }
+
+    // Reload channels to make sure the chosen value exists in the select.
     await loadChannelsIntoSelect();
-    await loadGiveawaysConfig();
+    await renderPreview();
   }
 
   async function sendTest() {
@@ -259,14 +300,14 @@
     ids.forEach(function (id) {
       const el = q(id);
       if (!el) return;
-      el.addEventListener('change', renderPreview);
-      el.addEventListener('input', renderPreview);
+      el.addEventListener('change', function () { renderPreview(); });
+      el.addEventListener('input', function () { renderPreview(); });
     });
 
     ['giveawaysPlatforms', 'giveawaysTypes'].forEach(function (id) {
       const wrap = q(id);
       if (!wrap) return;
-      wrap.addEventListener('change', renderPreview);
+      wrap.addEventListener('change', function () { renderPreview(); });
     });
 
     const btn = q('giveawaysSaveBtn');
