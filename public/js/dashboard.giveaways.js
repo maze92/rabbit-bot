@@ -1,0 +1,239 @@
+// Giveaways module extension for OzarkDashboard
+// Configures GamerPower giveaways posting per guild + live preview.
+
+(function () {
+  if (!window.OzarkDashboard) return;
+
+  const D = window.OzarkDashboard;
+  const state = D.state;
+  const apiGet = D.apiGet;
+  const apiPost = D.apiPost;
+  const toast = D.toast;
+  const t = D.t;
+  const escapeHtml = D.escapeHtml;
+
+  function getGuildId() {
+    return state && state.guildId ? String(state.guildId) : '';
+  }
+
+  function q(id) { return document.getElementById(id); }
+
+  function readChecks(containerId) {
+    const root = q(containerId);
+    if (!root) return [];
+    const out = [];
+    root.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+      if (cb && cb.checked) out.push(String(cb.value || '').trim());
+    });
+    return out.filter(Boolean);
+  }
+
+  function setChecks(containerId, values) {
+    const set = new Set((values || []).map(function (v) { return String(v); }));
+    const root = q(containerId);
+    if (!root) return;
+    root.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+      if (!cb) return;
+      cb.checked = set.has(String(cb.value || ''));
+    });
+  }
+
+  function renderPreview() {
+    const enabled = !!(q('giveawaysEnabled') && q('giveawaysEnabled').checked);
+    const platforms = readChecks('giveawaysPlatforms');
+    const types = readChecks('giveawaysTypes');
+
+    const primaryPlatform = (platforms[0] || 'steam');
+    const showSteam = String(primaryPlatform).toLowerCase().includes('steam');
+
+    // Example giveaway (preview only)
+    const example = {
+      title: 'Paragnosia',
+      worth: '€39.99',
+      end_date: '23/02/2026',
+      publisher: 'Sine Coda',
+      image: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co2l7m.jpg',
+      open_giveaway_url: 'https://store.steampowered.com/app/000000/Example'
+    };
+
+    const root = q('giveawaysPreview');
+    if (!root) return;
+
+    if (!enabled) {
+      root.innerHTML = '<div class="empty">' + escapeHtml(t('giveaways_preview_disabled') || 'Ativa para ver a preview.') + '</div>';
+      return;
+    }
+
+    const title = escapeHtml(example.title);
+    const meta = escapeHtml((example.worth ? example.worth + ' ' : '') + 'Free until ' + (example.end_date || '—'));
+    const footerLeft = 'via gamerpower.com';
+    const footerRight = example.publisher ? ('© ' + escapeHtml(example.publisher)) : '';
+
+    const linkBrowser = '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;">Open in browser ↗</a>';
+    const linkClient = showSteam
+      ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;">Open in Steam Client ↗</a>'
+      : '<span class="giveaway-preview__meta">' + escapeHtml(platformLabel(primaryPlatform)) + '</span>';
+
+    root.innerHTML =
+      '<div class="giveaway-preview__header">' +
+        '<div>' +
+          '<div class="giveaway-preview__title">' + title + '</div>' +
+          '<div class="giveaway-preview__meta">' + meta + '</div>' +
+          '<div class="giveaway-preview__actions">' +
+            linkBrowser + (showSteam ? linkClient : '') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="giveaway-preview__image">' +
+        '<img alt="" src="' + escapeHtml(example.image) + '" />' +
+      '</div>' +
+      '<div class="giveaway-preview__footer">' +
+        '<span>' + escapeHtml(footerLeft) + '</span>' +
+        (footerRight ? '<span>' + footerRight + '</span>' : '') +
+      '</div>';
+
+    function platformLabel(p) {
+      p = String(p || '').toLowerCase();
+      if (p.includes('steam')) return 'Steam';
+      if (p.includes('epic')) return 'Epic Games Store';
+      if (p.includes('ubisoft') || p.includes('uplay')) return 'Ubisoft';
+      if (p.includes('gog')) return 'GOG';
+      if (p.includes('itch')) return 'itch.io';
+      return p || 'Platform';
+    }
+  }
+
+  async function loadChannelsIntoSelect() {
+    const guildId = getGuildId();
+    const sel = q('giveawaysChannel');
+    if (!guildId || !sel) return;
+
+    const desired = sel.dataset.desiredValue || sel.value || '';
+
+    sel.innerHTML = '<option value="">' + escapeHtml(t('select_channel') || 'Seleciona um canal') + '</option>';
+
+    let data = null;
+    try {
+      data = await apiGet('/api/guilds/' + encodeURIComponent(guildId) + '/channels');
+    } catch (e) {
+      data = null;
+    }
+
+    const items = data && (data.items || data.channels) ? (data.items || data.channels) : [];
+    items.forEach(function (ch) {
+      if (!ch || !ch.id) return;
+      const opt = document.createElement('option');
+      opt.value = String(ch.id);
+      opt.textContent = (ch.name ? '#' + ch.name : ch.id);
+      sel.appendChild(opt);
+    });
+
+    // Reapply desired value when options arrive
+    if (desired) {
+      const exists = !!sel.querySelector('option[value="' + CSS.escape(desired) + '"]');
+      if (exists) {
+        sel.value = desired;
+        delete sel.dataset.desiredValue;
+      } else {
+        sel.value = '';
+      }
+    }
+  }
+
+  async function loadGiveawaysConfig() {
+    const guildId = getGuildId();
+    if (!guildId) return;
+
+    const data = await apiGet('/api/giveaways/config?guildId=' + encodeURIComponent(guildId));
+
+    const cfg = data && data.giveaways ? data.giveaways : {};
+    if (q('giveawaysEnabled')) q('giveawaysEnabled').checked = !!cfg.enabled;
+
+    const sel = q('giveawaysChannel');
+    if (sel) {
+      const v = cfg.channelId ? String(cfg.channelId) : '';
+      sel.dataset.desiredValue = v;
+      sel.value = v;
+    }
+
+    setChecks('giveawaysPlatforms', cfg.platforms || ['steam']);
+    setChecks('giveawaysTypes', cfg.types || ['game']);
+
+    if (q('giveawaysPoll')) q('giveawaysPoll').value = String(cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
+    if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
+
+    renderPreview();
+  }
+
+  async function saveGiveaways() {
+    const guildId = getGuildId();
+    if (!guildId) return;
+
+    const enabled = !!(q('giveawaysEnabled') && q('giveawaysEnabled').checked);
+    const sel = q('giveawaysChannel');
+    const channelId = sel && sel.value ? String(sel.value) : null;
+
+    const platforms = readChecks('giveawaysPlatforms');
+    const types = readChecks('giveawaysTypes');
+
+    const poll = q('giveawaysPoll') ? Number(q('giveawaysPoll').value) : 60;
+    const maxPer = q('giveawaysMaxPerCycle') ? Number(q('giveawaysMaxPerCycle').value) : 0;
+
+    // Basic validation UX
+    if (enabled && (!channelId || channelId.length < 5)) {
+      toast('error', t('giveaways_err_channel') || 'Seleciona um canal de publicação.');
+      return;
+    }
+
+    const payload = {
+      guildId: guildId,
+      giveaways: {
+        enabled: enabled,
+        channelId: channelId,
+        platforms: platforms.length ? platforms : ['steam'],
+        types: types.length ? types : ['game'],
+        pollIntervalSeconds: Math.max(60, Math.min(3600, Math.trunc(poll || 60))),
+        maxPerCycle: Math.max(0, Math.min(50, Math.trunc(maxPer || 0)))
+      }
+    };
+
+    await apiPost('/api/giveaways/config', payload);
+
+    toast('ok', t('saved') || 'Guardado');
+    const hint = q('giveawaysSavedHint');
+    if (hint) {
+      hint.textContent = (t('saved_now') || 'Guardado agora') + ' • ' + (D.formatDateTime ? D.formatDateTime(Date.now()) : '');
+      setTimeout(function () { hint.textContent = ''; }, 3500);
+    }
+
+    // Reload channels/config to ensure the UI reflects persisted state.
+    await loadChannelsIntoSelect();
+    await loadGiveawaysConfig();
+  }
+
+  function bindEvents() {
+    const ids = ['giveawaysEnabled', 'giveawaysChannel', 'giveawaysPoll', 'giveawaysMaxPerCycle'];
+    ids.forEach(function (id) {
+      const el = q(id);
+      if (!el) return;
+      el.addEventListener('change', renderPreview);
+      el.addEventListener('input', renderPreview);
+    });
+
+    ['giveawaysPlatforms', 'giveawaysTypes'].forEach(function (id) {
+      const wrap = q(id);
+      if (!wrap) return;
+      wrap.addEventListener('change', renderPreview);
+    });
+
+    const btn = q('giveawaysSaveBtn');
+    if (btn) btn.addEventListener('click', function () { saveGiveaways().catch(function () { toast('error', 'Erro ao guardar'); }); });
+  }
+
+  // Public hook for core tab switcher
+  D.loadGiveaways = async function () {
+    bindEvents();
+    await loadChannelsIntoSelect();
+    await loadGiveawaysConfig();
+  };
+})();
