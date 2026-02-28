@@ -38,7 +38,7 @@
     });
   }
 
-  const sampleCache = {}; // platform -> sample item
+  const sampleCache = {}; // key(platform|type) -> sample item
   let renderToken = 0;
 
   function formatDatePill(dmy) {
@@ -48,7 +48,7 @@
   async function loadSampleFor(platform, type) {
     const guildId = getGuildId();
     if (!guildId) return null;
-    const key = String(platform || 'steam');
+    const key = String(platform || 'steam') + '|' + String(type || 'game');
     if (sampleCache[key]) return sampleCache[key];
     try {
       const data = await apiGet('/giveaways/sample?guildId=' + encodeURIComponent(guildId) +
@@ -259,6 +259,8 @@
       if (sel2) {
         const v2 = cfg.channelId ? String(cfg.channelId) : '';
         sel2.dataset.desiredValue = v2;
+        // Apply immediately to avoid apparent "revert" before channels are reloaded.
+        sel2.value = v2;
       }
       setChecks('giveawaysPlatforms', cfg.platforms || ['steam']);
       setChecks('giveawaysTypes', cfg.types || ['game']);
