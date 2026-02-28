@@ -187,6 +187,20 @@ async function handleClientReady() {
       status.setGameNewsRunning(false);
     }
 
+    // Start GamerPower Free-To-Keep (Giveaways) system (posts when new items appear)
+    try {
+      await startGiveaways(client);
+      console.log('🎁 Free-To-Keep system started.');
+      if (status && typeof status.setGiveawaysRunning === 'function') {
+        status.setGiveawaysRunning(true);
+      }
+    } catch (err) {
+      console.error('[Startup] Failed to start Free-To-Keep system:', err);
+      if (status && typeof status.setGiveawaysRunning === 'function') {
+        status.setGiveawaysRunning(false);
+      }
+    }
+
     // Basic presence as a fallback; can be refined later
     try {
       if (client.user) {

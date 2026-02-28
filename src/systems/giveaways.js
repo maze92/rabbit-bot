@@ -126,14 +126,23 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
   return links.join(SEP);
 }
 
-function makeEmbedFromGiveaway(g) {
+function resolvePlatformFromItem(g, fallbackPlatform) {
+  const fromItem = pickPrimaryPlatform(g && g.platforms);
+  const norm = (p) => String(p || '').toLowerCase();
+  if (fromItem && (norm(fromItem).includes('steam') || norm(fromItem).includes('epic') || norm(fromItem).includes('ubisoft') || norm(fromItem).includes('uplay'))) {
+    return fromItem;
+  }
+  return fallbackPlatform || fromItem || null;
+}
+
+function makeEmbedFromGiveaway(g, { forcedPlatform = null } = {}) {
   const title = cleanGiveawayTitle(g.title);
   const worth = safeText(g.worth, 64);
   const endDate = formatDateDMY(g.end_date);
   const endUnix = parseToUnixSeconds(g.end_date);
   const publisher = safeText(g.publisher, 128);
   const image = normalizeImageUrl(g.image);
-  const platform = pickPrimaryPlatform(g.platforms);
+  const platform = resolvePlatformFromItem(g, forcedPlatform);
   const meta = [];
 
   if (worth && worth !== 'N/A') meta.push(`~~${worth}~~`);
@@ -178,11 +187,11 @@ async function fetchGiveaways({ platforms, types }) {
   return Array.isArray(json) ? json : [];
 }
 
-async function postGiveawayToGuild(client, guildId, channelId, g) {
+async function postGiveawayToGuild(client, guildId, channelId, g, { forcedPlatform = null } = {}) {
   const ch = await fetchChannel(client, channelId).catch(() => null);
   if (!ch || typeof ch.send !== 'function') return { ok: false, reason: 'channel_not_found' };
 
-  const built = makeEmbedFromGiveaway(g);
+  const built = makeEmbedFromGiveaway(g, { forcedPlatform });
   const embed = built.embed;
   const files = built.badge ? [built.badge.attachment] : [];
 
@@ -261,11 +270,12 @@ async function startGiveaways(client) {
 
       for (const it of toPost) {
         try {
-          await postGiveawayToGuild(client, guildId, channelId, it);
+          const forcedPlatform = (platforms && platforms.length) ? platforms[0] : null;
+          await postGiveawayToGuild(client, guildId, channelId, it, { forcedPlatform });
           await GiveawayPost.create({
             guildId,
             giveawayId: it.id,
-            platform: pickPrimaryPlatform(it.platforms),
+            platform: forcedPlatform || pickPrimaryPlatform(it.platforms),
             type: it.type || null,
             title: it.title || null,
             url: it.open_giveaway_url || it.gamerpower_url || null
