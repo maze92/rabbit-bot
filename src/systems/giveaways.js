@@ -114,11 +114,9 @@ function makeEmbedFromGiveaway(g) {
 
   const url = safeText(g.open_giveaway_url, 2048) || safeText(g.gamerpower_url, 2048) || '';
   const linkLine = makeLinkLine({ browserUrl: url, platform });
-  const desc = linkLine ? `${meta.join(' ')}
-
-${linkLine}` : meta.join(' '); else {
-    descriptionParts.push(untilText);
-  }
+  const desc = linkLine
+    ? `${meta.join(' ')}\n\n${linkLine}`
+    : meta.join(' ');
 
   const embed = new EmbedBuilder()
     .setTitle(title || 'Giveaway')
