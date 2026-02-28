@@ -76,7 +76,8 @@ function registerFreeToKeepRoutes({
       ? 'https://store.steampowered.com/app/730/CounterStrike_2/'
       : platform === 'ubisoft'
         ? 'https://store.ubisoft.com/'
-        : 'https://store.epicgames.com/en-US/p/sample-game';
+        // Use a /p/<slug> URL so we can also generate an Epic Games Launcher deep-link button.
+        : 'https://store.epicgames.com/en-US/p/fortnite';
     return {
       id: platform + ':' + type + ':sample',
       title,
@@ -85,7 +86,6 @@ function registerFreeToKeepRoutes({
       type,
       originalPrice: '€19.99',
       url,
-      epicSlug: platform === 'epic' ? 'sample-game' : null,
       imageUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=60',
       until,
       publisher: 'Sample Publisher'
@@ -128,18 +128,15 @@ function registerFreeToKeepRoutes({
         url: item.url
       });
 
-      // Epic launcher deep link (best-effort). For real items, this should be built from the Epic product slug.
+      // Epic Games Launcher deep link (only when we can extract a product slug)
       if (item.platform === 'epic') {
-        const slug = item.epicSlug || (() => {
-          const m = String(item.url || '').match(/\/p\/([^/?#]+)/);
-          return m && m[1] ? m[1] : null;
-        })();
-        if (slug) {
+        const m = String(item.url || '').match(/\/p\/([^/?#]+)/i);
+        if (m && m[1]) {
           row.components.push({
             type: 2,
             style: 5,
             label: 'Open in Epic Games Launcher ↗',
-            url: 'com.epicgames.launcher://store/p/' + slug
+            url: 'com.epicgames.launcher://store/p/' + m[1]
           });
         }
       }
@@ -199,7 +196,7 @@ function registerFreeToKeepRoutes({
       await GuildConfig.findOneAndUpdate(
         { guildId },
         { $set: { freeToKeep: next } },
-        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true, maxTimeMS: 5000 }
+        { upsert: true, new: true, setDefaultsOnInsert: true, maxTimeMS: 5000 }
       );
       return res.json({ ok: true, config: next });
     } catch (err) {
