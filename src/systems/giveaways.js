@@ -72,6 +72,9 @@ function safeText(v, max = 1024) {
 
 function cleanGiveawayTitle(raw) {
   let s = safeText(raw, 256);
+  // Some items prepend platform branding like "(Epic Games)".
+  s = s.replace(/^\s*\((steam|epic\s*games?|ubisoft)\)\s*/i, '');
+  s = s.replace(/^\s*(steam|epic\s*games?|ubisoft)\s*:\s*/i, '');
   // GamerPower sometimes appends platform noise like "(Steam) Giveaway" or "Steam Giveaway".
   s = s.replace(/\s*\(?(steam|epic|ubisoft)\)?\s*giveaway\s*$/i, '');
   s = s.replace(/\s*giveaway\s*$/i, '');
@@ -176,9 +179,11 @@ function makeEmbedFromGiveaway(g, { forcedPlatform = null } = {}) {
 async function fetchGiveaways({ platform, types }) {
   const p = String(platform || 'pc').trim() || 'pc';
   const t = normalizeList(types);
-  const typeParam = t.length ? t.join('.') : 'game';
+  // Use the /giveaways endpoint for single-platform fetches; it tends to be more consistent
+  // than /filter for some platforms (notably Ubisoft).
+  const typeParam = t.length ? t[0] : 'game';
 
-  const url = `${GAMERPOWER_BASE}/filter?platform=${encodeURIComponent(p)}&type=${encodeURIComponent(typeParam)}`;
+  const url = `${GAMERPOWER_BASE}/giveaways?platform=${encodeURIComponent(p)}&type=${encodeURIComponent(typeParam)}`;
   const res = await fetch(url, { method: 'GET', headers: { 'accept': 'application/json' } });
   if (!res.ok) {
     const body = await res.text().catch(() => '');

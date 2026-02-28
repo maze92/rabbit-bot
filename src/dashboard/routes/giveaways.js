@@ -153,7 +153,7 @@ function registerGiveawaysRoutes(ctx) {
       const type = sanitizeText(req.query.type || 'game', { maxLen: 32, stripHtml: true });
       if (!ALLOWED_PLATFORMS.has(String(platform))) return res.status(400).json({ ok: false, error: 'invalid_platform' });
 
-      const url = `${GAMERPOWER_BASE}/filter?platform=${encodeURIComponent(String(platform))}&type=${encodeURIComponent(String(type))}`;
+      const url = `${GAMERPOWER_BASE}/giveaways?platform=${encodeURIComponent(String(platform))}&type=${encodeURIComponent(String(type))}`;
       const gp = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } });
       if (!gp.ok) return res.status(502).json({ ok: false, error: 'upstream_error' });
       const list = await gp.json().catch(() => []);
@@ -208,6 +208,9 @@ function normalizeImageUrl(url) {
 
 function cleanGiveawayTitle(raw) {
   let s = String(raw || '').trim();
+  // Some items prepend platform branding like "(Epic Games)".
+  s = s.replace(/^\s*\((steam|epic\s*games?|ubisoft)\)\s*/i, '');
+  s = s.replace(/^\s*(steam|epic\s*games?|ubisoft)\s*:\s*/i, '');
   s = s.replace(/\s*\(?(steam|epic|ubisoft)\)?\s*giveaway\s*$/i, '');
   s = s.replace(/\s*giveaway\s*$/i, '');
   return s.trim();
@@ -256,7 +259,7 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
 
 async function buildTestMessage({ platform }) {
   const platParam = (String(platform).includes('steam') ? 'steam' : (String(platform).includes('epic') ? 'epic-games-store' : 'ubisoft'));
-  const url = `${GAMERPOWER_BASE}/filter?platform=${encodeURIComponent(platParam)}&type=game`;
+  const url = `${GAMERPOWER_BASE}/giveaways?platform=${encodeURIComponent(platParam)}&type=game`;
   const res = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } }).catch(() => null);
   const list = res && res.ok ? await res.json().catch(() => []) : [];
   // Prefer an item that has an image and links, otherwise fall back to the first.
