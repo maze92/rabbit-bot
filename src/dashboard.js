@@ -756,6 +756,20 @@ registerGameNewsRoutes({
   gameNewsStatusCache
 });
 
+registerGiveawaysRoutes({
+  app,
+  requireDashboardAuth,
+  requirePerm,
+  requireGuildAccess,
+  rateLimit,
+  sanitizeId,
+  sanitizeText,
+  getActorFromRequest,
+  recordAudit,
+  getClient: () => _client,
+  GuildConfig
+});
+
 registerModRoutes({
   app,
   requireDashboardAuth,
