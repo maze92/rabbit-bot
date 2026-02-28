@@ -251,6 +251,10 @@
   }
 
   function bindEvents() {
+    // Prevent duplicate listeners when the user re-opens the subtab.
+    if (D.__giveawaysBound) return;
+    D.__giveawaysBound = true;
+
     const ids = ['giveawaysEnabled', 'giveawaysChannel', 'giveawaysPoll', 'giveawaysMaxPerCycle'];
     ids.forEach(function (id) {
       const el = q(id);
