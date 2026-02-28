@@ -68,8 +68,11 @@
     var guildId = gid();
     if (!guildId) return;
     var data = await apiGet('/guilds/' + encodeURIComponent(guildId) + '/channels');
-    var items = (data && data.channels) ? data.channels : [];
-    var current = els.channel.value;
+    // API payload varies across builds: accept both {channels: []} and {items: []}
+    var items = (data && (data.items || data.channels)) ? (data.items || data.channels) : [];
+
+    // Preserve selection even when the option list is empty (async load race)
+    var current = els.channel.value || els.channel.dataset.desiredValue || '';
     els.channel.innerHTML = '';
     var opt0 = document.createElement('option');
     opt0.value = '';
@@ -82,7 +85,16 @@
       opt.textContent = (ch.name ? ('#' + ch.name) : ch.id);
       els.channel.appendChild(opt);
     });
-    if (current) els.channel.value = current;
+
+    if (current) {
+      els.channel.value = current;
+      if (els.channel.value !== current) {
+        // Option not present (yet) - keep it around until a future refresh
+        els.channel.dataset.desiredValue = current;
+      } else {
+        delete els.channel.dataset.desiredValue;
+      }
+    }
   }
 
   function renderPreview(preview) {
@@ -93,36 +105,48 @@
     }
     var e = preview.embed;
     var title = e.title || '';
-    // In preview we mimic the Discord embed: title is bold text (not a hyperlink).
     var url = e.url || '';
     var desc = e.description || '';
     var thumb = (e.thumbnail && e.thumbnail.url) ? e.thumbnail.url : '';
     var img = (e.image && e.image.url) ? e.image.url : '';
     var footer = (e.footer && e.footer.text) ? e.footer.text : '';
 
-    var html = '';
-    html += '<div class="card ftk-preview-card">';
-    html += '  <div class="ftk-preview-head">';
-    html += '    <div class="ftk-preview-title">' + window.OzarkDashboard.escapeHtml(title) + '</div>';
-    if (thumb) html += '    <img class="ftk-preview-thumb" src="' + window.OzarkDashboard.escapeHtml(thumb) + '" />';
-    html += '  </div>';
-    if (desc) html += '  <div class="ftk-preview-desc">' + window.OzarkDashboard.escapeHtml(desc) + '</div>';
-
-    // Buttons (Discord-like)
-    var rows = (preview.components && Array.isArray(preview.components)) ? preview.components : [];
-    if (rows.length) {
-      html += '  <div class="ftk-preview-buttons">';
-      rows.forEach(function (row) {
-        if (!row || !row.components) return;
-        row.components.forEach(function (b) {
-          if (!b || !b.url) return;
-          html += '<a class="btn btn-xs ftk-preview-btn" href="' + window.OzarkDashboard.escapeHtml(b.url) + '" target="_blank" rel="noreferrer">' + window.OzarkDashboard.escapeHtml(b.label || 'Open') + '</a>';
-        });
+    // Discord-style components (link buttons)
+    var components = Array.isArray(preview.components) ? preview.components : [];
+    var buttons = [];
+    components.forEach(function (row) {
+      if (!row || !Array.isArray(row.components)) return;
+      row.components.forEach(function (c) {
+        if (!c || c.type !== 2 || c.style !== 5 || !c.url) return;
+        buttons.push({ label: String(c.label || 'Open'), url: String(c.url) });
       });
-      html += '  </div>';
+    });
+
+    var html = '';
+    html += '<div class="card ftk-preview">';
+    html +=   '<div class="ftk-preview-header">';
+    html +=     '<div class="ftk-preview-text">';
+    // Title must be bold only, with no hyperlinking
+    html +=       '<div class="ftk-preview-title">' + window.OzarkDashboard.escapeHtml(title) + '</div>';
+    if (desc) html += '<div class="ftk-preview-desc">' + window.OzarkDashboard.escapeHtml(desc) + '</div>';
+    // Keep the main URL visible but not as the title hyperlink
+    if (url) html += '<div class="ftk-preview-link">' + window.OzarkDashboard.escapeHtml(url) + '</div>';
+    html +=     '</div>';
+    if (thumb) html += '<img class="ftk-preview-thumb" src="' + window.OzarkDashboard.escapeHtml(thumb) + '" alt="" />';
+    html +=   '</div>';
+
+    if (img) html += '<img class="ftk-preview-image" src="' + window.OzarkDashboard.escapeHtml(img) + '" alt="" />';
+
+    if (buttons.length) {
+      html += '<div class="ftk-preview-actions">';
+      buttons.forEach(function (b) {
+        html += '<a class="ftk-action-btn" href="' + window.OzarkDashboard.escapeHtml(b.url) + '" target="_blank" rel="noreferrer">' +
+                window.OzarkDashboard.escapeHtml(b.label) +
+                '</a>';
+      });
+      html += '</div>';
     }
 
-    if (img) html += '<img class="ftk-preview-image" src="' + window.OzarkDashboard.escapeHtml(img) + '" />';
     if (footer) html += '<div class="ftk-preview-footer">' + window.OzarkDashboard.escapeHtml(footer) + '</div>';
     html += '</div>';
     box.innerHTML = html;
@@ -209,6 +233,8 @@
       var res = await apiPost('/freetokeep/config', f);
       if (res && res.ok) {
         toast(t('common_saved') || 'Guardado', 'success');
+        // Avoid "values jump back" when channels haven't populated yet
+        await loadChannels();
         await loadConfig();
         await loadRecent();
         await previewNow();
@@ -289,15 +315,21 @@
       if (!el) return;
       el.addEventListener('change', queuePreview);
     });
+
+    // If the user explicitly changed the channel, that value becomes the source of truth.
+    if (els.channel) {
+      els.channel.addEventListener('change', function () {
+        delete els.channel.dataset.desiredValue;
+      });
+    }
   }
 
   window.OzarkDashboard.loadFreeToKeep = async function () {
     try {
       if (!q('extras-freetokeep-panel')) return;
       if (!els.preview) wire();
-      // Load config first so we can preserve the selected channel when channels list arrives.
-      await loadConfig();
       await loadChannels();
+      await loadConfig();
       await loadRecent();
       await previewNow();
     } catch (e) {
