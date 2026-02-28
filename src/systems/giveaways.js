@@ -119,9 +119,9 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
   if (p.includes('steam')) {
     if (client) links.push(`**[Open in Steam Client ↗](${client})**`);
   } else if (p.includes('epic')) {
-    if (client) links.push(`**[Open in Epic Games Launcher ↗](${client})**`);
+    if (client) links.push(`**[Open in Epic Games ↗](${client})**`);
   } else if (p.includes('ubisoft')) {
-    if (client) links.push(`**[Open in Ubisoft ↗](${client})**`);
+    if (client) links.push(`**[Open in Ubisoft Games ↗](${client})**`);
   }
   return links.join(SEP);
 }
@@ -148,8 +148,10 @@ function makeEmbedFromGiveaway(g, { forcedPlatform = null } = {}) {
   if (worth && worth !== 'N/A') meta.push(`~~${worth}~~`);
   meta.push(`**Free** until ${endUnix ? `<t:${endUnix}:d>` : (endDate || '—')}`);
 
-  const browserUrl = safeText(g.gamerpower_url, 2048) || '';
-  const clientUrl = safeText(g.open_giveaway_url, 2048) || browserUrl;
+  // "Open in browser" should open the game's giveaway/store page when possible.
+  // GamerPower often provides giveaway_url (store page) and open_giveaway_url (client/open flow).
+  const browserUrl = safeText(g.giveaway_url, 2048) || safeText(g.open_giveaway_url, 2048) || safeText(g.gamerpower_url, 2048) || '';
+  const clientUrl = safeText(g.open_giveaway_url, 2048) || '';
   const linkLine = makeLinkLine({ browserUrl, clientUrl, platform });
   const desc = linkLine
     ? `${meta.join(' ')}\n\n${linkLine}`
@@ -171,13 +173,12 @@ function makeEmbedFromGiveaway(g, { forcedPlatform = null } = {}) {
 
 // Links are rendered inside embed description to match the screenshot (not Discord buttons).
 
-async function fetchGiveaways({ platforms, types }) {
-  const p = normalizeList(platforms);
+async function fetchGiveaways({ platform, types }) {
+  const p = String(platform || 'pc').trim() || 'pc';
   const t = normalizeList(types);
-  const platformParam = p.length ? p.join('.') : 'pc';
   const typeParam = t.length ? t.join('.') : 'game';
 
-  const url = `${GAMERPOWER_BASE}/filter?platform=${encodeURIComponent(platformParam)}&type=${encodeURIComponent(typeParam)}`;
+  const url = `${GAMERPOWER_BASE}/filter?platform=${encodeURIComponent(p)}&type=${encodeURIComponent(typeParam)}`;
   const res = await fetch(url, { method: 'GET', headers: { 'accept': 'application/json' } });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
@@ -242,46 +243,47 @@ async function startGiveaways(client) {
       const types = normalizeList(gcfg.types);
       const maxPerCycle = clampInt(gcfg.maxPerCycle, { min: 0, max: 50, fallback: 0 });
 
-      let items = [];
-      try {
-        items = await fetchGiveaways({ platforms, types });
-      } catch (e) {
-        // Keep silent to avoid spamming logs; you can wire this to logger later.
-        continue;
-      }
+      const perPlatform = platforms.length ? platforms : ['steam'];
+      let postedCount = 0;
 
-      if (!Array.isArray(items) || !items.length) continue;
+      for (const plat of perPlatform) {
+        if (maxPerCycle > 0 && postedCount >= maxPerCycle) break;
 
-      // Newest first isn't ideal; post oldest->newest within the cycle to preserve chronology.
-      // We also limit to the configured max.
-      const candidates = items
-        .filter((it) => it && typeof it.id === 'number')
-        .slice()
-        .reverse();
-
-      const toPost = [];
-      for (const it of candidates) {
-        // Dedupe by (guildId, giveawayId)
-        const exists = await GiveawayPost.findOne({ guildId, giveawayId: it.id }).lean().catch(() => null);
-        if (exists) continue;
-        toPost.push(it);
-        if (maxPerCycle > 0 && toPost.length >= maxPerCycle) break;
-      }
-
-      for (const it of toPost) {
+        let items = [];
         try {
-          const forcedPlatform = (platforms && platforms.length) ? platforms[0] : null;
-          await postGiveawayToGuild(client, guildId, channelId, it, { forcedPlatform });
-          await GiveawayPost.create({
-            guildId,
-            giveawayId: it.id,
-            platform: forcedPlatform || pickPrimaryPlatform(it.platforms),
-            type: it.type || null,
-            title: it.title || null,
-            url: it.open_giveaway_url || it.gamerpower_url || null
-          }).catch(() => {});
-        } catch (e) {
-          // If sending fails, don't mark as posted.
+          items = await fetchGiveaways({ platform: plat, types });
+        } catch (_) {
+          continue;
+        }
+
+        if (!Array.isArray(items) || !items.length) continue;
+
+        // Post oldest->newest within the cycle to preserve chronology.
+        const candidates = items
+          .filter((it) => it && typeof it.id === 'number')
+          .slice()
+          .reverse();
+
+        for (const it of candidates) {
+          if (maxPerCycle > 0 && postedCount >= maxPerCycle) break;
+
+          const exists = await GiveawayPost.findOne({ guildId, giveawayId: it.id }).lean().catch(() => null);
+          if (exists) continue;
+
+          try {
+            await postGiveawayToGuild(client, guildId, channelId, it, { forcedPlatform: plat });
+            await GiveawayPost.create({
+              guildId,
+              giveawayId: it.id,
+              platform: plat,
+              type: it.type || null,
+              title: it.title || null,
+              url: it.open_giveaway_url || it.giveaway_url || it.gamerpower_url || null
+            }).catch(() => {});
+            postedCount += 1;
+          } catch (_) {
+            // If sending fails, don't mark as posted.
+          }
         }
       }
     }

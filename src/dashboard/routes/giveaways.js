@@ -162,6 +162,11 @@ function registerGiveawaysRoutes(ctx) {
         : null;
       if (!g) return res.json({ ok: true, item: null });
 
+      // Avoid mixed-content blocking on HTTPS dashboards.
+      if (g && typeof g.image === 'string' && g.image.startsWith('http://')) {
+        g.image = 'https://' + g.image.slice('http://'.length);
+      }
+
       return res.json({ ok: true, item: g });
     } catch (e) {
       return res.status(500).json({ ok: false, error: 'internal_error' });
@@ -244,8 +249,8 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
   if (browser) links.push(`**[Open in browser ↗](${browser})**`);
   const p = String(platform || '').toLowerCase();
   if (p.includes('steam')) { if (client) links.push(`**[Open in Steam Client ↗](${client})**`); }
-  else if (p.includes('epic')) { if (client) links.push(`**[Open in Epic Games Launcher ↗](${client})**`); }
-  else if (p.includes('ubisoft')) { if (client) links.push(`**[Open in Ubisoft ↗](${client})**`); }
+  else if (p.includes('epic')) { if (client) links.push(`**[Open in Epic Games ↗](${client})**`); }
+  else if (p.includes('ubisoft')) { if (client) links.push(`**[Open in Ubisoft Games ↗](${client})**`); }
   return links.join(SEP);
 }
 
@@ -264,8 +269,8 @@ async function buildTestMessage({ platform }) {
   const until = formatDateDMY(g && g.end_date ? g.end_date : '');
   const untilUnix = parseToUnixSeconds(g && g.end_date ? g.end_date : '');
   const image = normalizeImageUrl(g && g.image ? g.image : '');
-  const browserUrl = (g && g.gamerpower_url) ? String(g.gamerpower_url) : 'https://www.gamerpower.com/';
-  const clientUrl = (g && g.open_giveaway_url) ? String(g.open_giveaway_url) : browserUrl;
+  const browserUrl = (g && (g.giveaway_url || g.open_giveaway_url || g.gamerpower_url)) ? String(g.giveaway_url || g.open_giveaway_url || g.gamerpower_url) : 'https://www.gamerpower.com/';
+  const clientUrl = (g && g.open_giveaway_url) ? String(g.open_giveaway_url) : '';
   const publisher = g && g.publisher ? String(g.publisher) : '';
 
   const untilText = untilUnix ? `<t:${untilUnix}:d>` : (until || '—');
