@@ -52,7 +52,7 @@
     if (sampleCache[key]) return sampleCache[key];
     try {
       const data = await apiGet('/giveaways/sample?guildId=' + encodeURIComponent(guildId) +
-        '&platform=' + encodeURIComponent(key) +
+        '&platform=' + encodeURIComponent(platform || 'steam') +
         '&type=' + encodeURIComponent(type || 'game'));
       const item = data && data.item ? data.item : null;
       if (item) sampleCache[key] = item;
@@ -84,9 +84,17 @@
       end_date: '04/03/2026',
       publisher: 'FreeStuff',
       image: '',
+      giveaway_url: 'https://store.steampowered.com/',
       gamerpower_url: 'https://www.gamerpower.com/',
-      open_giveaway_url: 'https://www.gamerpower.com/'
+      open_giveaway_url: 'https://www.gamerpower.com/open/'
     };
+
+    // Avoid mixed-content blocking on HTTPS dashboards.
+    const imgUrl = (function normalize(u) {
+      u = String(u || '');
+      if (u.startsWith('http://')) return 'https://' + u.slice('http://'.length);
+      return u;
+    })(example.image);
 
     const root = q('giveawaysPreview');
     if (!root) return;
@@ -109,8 +117,8 @@
     const linkClient = showSteam
       ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;"><b>Open in Steam Client ↗</b></a>'
       : (showEpic
-          ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;"><b>Open in Epic Games Launcher ↗</b></a>'
-          : '<span class="giveaway-preview__meta">' + escapeHtml(platformLabel(primaryPlatform)) + '</span>'
+          ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;"><b>Open in Epic Games ↗</b></a>'
+          : '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;"><b>Open in Ubisoft Games ↗</b></a>'
         );
 
     root.innerHTML =
@@ -124,7 +132,7 @@
         '</div>' +
         (logoUrl ? ('<div class="giveaway-preview__thumb"><img alt="" src="' + escapeHtml(logoUrl) + '" /></div>') : '') +
       '</div>' +
-      (example.image ? ('<div class="giveaway-preview__image"><img alt="" src="' + escapeHtml(example.image) + '" /></div>') : '') +
+      (imgUrl ? ('<div class="giveaway-preview__image"><img alt="" src="' + escapeHtml(imgUrl) + '" /></div>') : '') +
       '<div class="giveaway-preview__footer">' +
         '<span>' + escapeHtml(footerLeft) + '</span>' +
         (footerRight ? '<span>' + footerRight + '</span>' : '') +

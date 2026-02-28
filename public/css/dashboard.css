@@ -2690,7 +2690,7 @@ details[open] > .details-summary:before {
 .giveaway-preview__thumb img{
   width:56px;
   height:56px;
-  object-fit:cover;
+  object-fit:contain;
   border-radius:50%;
 }
 
@@ -2705,7 +2705,7 @@ details[open] > .details-summary:before {
   width:100%;
   height:auto;
   display:block;
-  max-height:200px;
+  max-height:240px;
   object-fit:cover;
 }
 
