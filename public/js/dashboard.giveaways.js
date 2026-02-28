@@ -44,7 +44,11 @@
     const types = readChecks('giveawaysTypes');
 
     const primaryPlatform = (platforms[0] || 'steam');
-    const showSteam = String(primaryPlatform).toLowerCase().includes('steam');
+    const pLower = String(primaryPlatform).toLowerCase();
+    const showSteam = pLower.includes('steam');
+    const showEpic = pLower.includes('epic');
+
+    const logoUrl = platformLogoUrl(primaryPlatform);
 
     // Example giveaway (preview only)
     const example = {
@@ -72,7 +76,10 @@
     const linkBrowser = '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;">Open in browser ↗</a>';
     const linkClient = showSteam
       ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;">Open in Steam Client ↗</a>'
-      : '<span class="giveaway-preview__meta">' + escapeHtml(platformLabel(primaryPlatform)) + '</span>';
+      : (showEpic
+          ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;">Open in Epic Games Launcher ↗</a>'
+          : '<span class="giveaway-preview__meta">' + escapeHtml(platformLabel(primaryPlatform)) + '</span>'
+        );
 
     root.innerHTML =
       '<div class="giveaway-preview__header">' +
@@ -80,9 +87,10 @@
           '<div class="giveaway-preview__title">' + title + '</div>' +
           '<div class="giveaway-preview__meta">' + meta + '</div>' +
           '<div class="giveaway-preview__actions">' +
-            linkBrowser + (showSteam ? linkClient : '') +
+            linkBrowser + (linkClient ? linkClient : '') +
           '</div>' +
         '</div>' +
+        (logoUrl ? ('<div class="giveaway-preview__thumb"><img alt="" src="' + escapeHtml(logoUrl) + '" /></div>') : '') +
       '</div>' +
       '<div class="giveaway-preview__image">' +
         '<img alt="" src="' + escapeHtml(example.image) + '" />' +
@@ -97,9 +105,15 @@
       if (p.includes('steam')) return 'Steam';
       if (p.includes('epic')) return 'Epic Games Store';
       if (p.includes('ubisoft') || p.includes('uplay')) return 'Ubisoft';
-      if (p.includes('gog')) return 'GOG';
-      if (p.includes('itch')) return 'itch.io';
       return p || 'Platform';
+    }
+
+    function platformLogoUrl(p) {
+      p = String(p || '').toLowerCase();
+      if (p.includes('steam')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Steam_icon_logo.svg/240px-Steam_icon_logo.svg.png';
+      if (p.includes('epic')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Epic_Games_logo.svg/240px-Epic_Games_logo.svg.png';
+      if (p.includes('ubisoft') || p.includes('uplay')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Ubisoft_logo.svg/240px-Ubisoft_logo.svg.png';
+      return '';
     }
   }
 
