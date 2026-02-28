@@ -4,6 +4,9 @@
 
 const { z } = require('zod');
 
+const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
+
 function registerGiveawaysRoutes(ctx) {
   const {
     app,
@@ -142,7 +145,7 @@ function registerGiveawaysRoutes(ctx) {
       const ch = await client.channels.fetch(channelId).catch(() => null);
       if (!ch || typeof ch.send !== 'function') return res.status(404).json({ ok: false, error: 'channel_not_found' });
 
-      const payload = buildTestMessage({ platform });
+      const payload = await buildTestMessage({ platform });
       await ch.send(payload);
 
       return res.json({ ok: true });
@@ -154,51 +157,72 @@ function registerGiveawaysRoutes(ctx) {
   });
 }
 
-function buildTestMessage({ platform }) {
-  const now = new Date();
-  const end = new Date(now.getTime() + 3 * 24 * 3600 * 1000);
+function normalizeImageUrl(url) {
+  const u = String(url || '').trim();
+  if (!u || u === 'N/A') return '';
+  return u.startsWith('http://') ? ('https://' + u.slice('http://'.length)) : u;
+}
 
-  const title = 'TEST • Paragnosia';
-  const worth = '€39.99';
-  const until = end.toLocaleDateString('pt-PT');
-  const image = 'https://images.igdb.com/igdb/image/upload/t_cover_big/co2l7m.jpg';
-  const url = String(platform).includes('steam')
-    ? 'https://store.steampowered.com/app/000000/Example'
-    : (String(platform).includes('epic')
-      ? 'https://store.epicgames.com/p/example'
-      : 'https://store.ubisoft.com/');
+function formatDateDMY(value) {
+  const s = String(value || '').trim();
+  if (!s || s === 'N/A') return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = String(d.getUTCFullYear());
+  return `${dd}/${mm}/${yyyy}`;
+}
 
-  // Wikimedia frequently rate-limits hotlinking (429). Use a stable CDN + rasterizer.
-  // The weserv proxy converts SVG→PNG and caches.
-  const thumb = String(platform).includes('steam')
-    ? 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/steam.svg&output=png&bg=ffffff&w=256&h=256'
-    : (String(platform).includes('epic')
-      ? 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/epicgames.svg&output=png&bg=ffffff&w=256&h=256'
-      : 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/ubisoft.svg&output=png&bg=ffffff&w=256&h=256');
+function badgeUrl(platform) {
+  const p = String(platform || '').toLowerCase();
+  if (!PUBLIC_BASE_URL) return null;
+  if (p.includes('steam')) return `${PUBLIC_BASE_URL}/assets/platform-badges/steam.png`;
+  if (p.includes('epic')) return `${PUBLIC_BASE_URL}/assets/platform-badges/epic.png`;
+  return `${PUBLIC_BASE_URL}/assets/platform-badges/ubisoft.png`;
+}
+
+function makeLinkLine({ url, platform }) {
+  if (!url) return '';
+  const links = [`[Open in browser ↗](${url})`];
+  const p = String(platform || '').toLowerCase();
+  if (p.includes('steam')) links.push(`[Open in Steam Client ↗](steam://openurl/${url})`);
+  if (p.includes('epic')) {
+    const m = url.match(/\/p\/([a-z0-9-]+)/i);
+    if (m && m[1]) links.push(`[Open in Epic Games Launcher ↗](com.epicgames.launcher://store/p/${m[1]})`);
+  }
+  return links.join('     ');
+}
+
+async function buildTestMessage({ platform }) {
+  const platParam = (String(platform).includes('steam') ? 'steam' : (String(platform).includes('epic') ? 'epic-games-store' : 'ubisoft'));
+  const url = `${GAMERPOWER_BASE}/filter?platform=${encodeURIComponent(platParam)}&type=game`;
+  const res = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } }).catch(() => null);
+  const list = res && res.ok ? await res.json().catch(() => []) : [];
+  const g = Array.isArray(list) && list.length ? list[0] : null;
+
+  const title = g && g.title ? String(g.title) : 'TEST • Giveaway';
+  const worth = g && g.worth ? String(g.worth) : '';
+  const until = formatDateDMY(g && g.end_date ? g.end_date : '');
+  const image = normalizeImageUrl(g && g.image ? g.image : '');
+  const openUrl = (g && (g.open_giveaway_url || g.gamerpower_url)) ? String(g.open_giveaway_url || g.gamerpower_url) : 'https://www.gamerpower.com/';
+  const publisher = g && g.publisher ? String(g.publisher) : '';
+
+  const meta = `${(worth && worth !== 'N/A') ? `~~${worth}~~ ` : ''}**Free** until ${until || '—'}`;
+  const linkLine = makeLinkLine({ url: openUrl, platform: platParam });
 
   const embed = {
     title,
-    description: `~~${worth}~~ Free until ${until}`,
-    color: 0x5865F2,
-    thumbnail: { url: thumb },
-    image: { url: image },
-    footer: { text: 'via gamerpower.com' }
+    description: linkLine ? `${meta}
+
+${linkLine}` : meta,
+    thumbnail: badgeUrl(platParam) ? { url: badgeUrl(platParam) } : undefined,
+    image: image ? { url: image } : undefined,
+    footer: { text: `via .rabbitstuff.xyz${publisher ? `  •  © ${publisher}` : ''}` }
   };
 
-  // Discord Link Buttons only accept http/https URLs. Custom schemes (steam://, com.epicgames...) can throw.
-  // Keep the labels, but use the store URL (Steam/Epic desktop clients can still handle it via browser integration).
-  const components = [
-    {
-      type: 1,
-      components: [
-        { type: 2, style: 5, label: 'Open in browser ↗', url },
-        ...(String(platform).includes('steam') ? [{ type: 2, style: 5, label: 'Open in Steam Client ↗', url }] : []),
-        ...(String(platform).includes('epic') ? [{ type: 2, style: 5, label: 'Open in Epic Games Launcher ↗', url }] : [])
-      ].slice(0, 5)
-    }
-  ];
-
-  return { embeds: [embed], components };
+  return { embeds: [embed] };
 }
 
 module.exports = { registerGiveawaysRoutes };

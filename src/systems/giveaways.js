@@ -5,12 +5,16 @@
 //
 // Docs: https://www.gamerpower.com/api-read
 
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const GuildConfig = require('../database/models/GuildConfig');
 const GiveawayPost = require('../database/models/GiveawayPost');
 const { fetchChannel } = require('../services/discordFetchCache');
 
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
+
+// Public base used for serving local assets (logos) to Discord.
+// Must be reachable from the internet (your dashboard domain).
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
 
 function clampInt(n, { min = 0, max = 1_000_000, fallback = 0 } = {}) {
   const v = Number(n);
@@ -40,13 +44,19 @@ function platformLabel(platform) {
   return platform || 'Platform';
 }
 
-function platformThumbnailUrl(platform) {
+function platformBadgePath(platform) {
   const p = String(platform || '').toLowerCase();
-  // Wikimedia rate-limits hotlinking (429) on some hosts. Use jsDelivr + weserv rasterizer.
-  if (p.includes('steam')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/steam.svg&output=png&bg=ffffff&w=256&h=256';
-  if (p.includes('epic')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/epicgames.svg&output=png&bg=ffffff&w=256&h=256';
-  if (p.includes('ubisoft') || p.includes('uplay')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/ubisoft.svg&output=png&bg=ffffff&w=256&h=256';
+  if (p.includes('steam')) return '/assets/platform-badges/steam.png';
+  if (p.includes('epic')) return '/assets/platform-badges/epic.png';
+  if (p.includes('ubisoft') || p.includes('uplay')) return '/assets/platform-badges/ubisoft.png';
   return null;
+}
+
+function platformBadgeUrl(platform) {
+  const rel = platformBadgePath(platform);
+  if (!rel) return null;
+  if (!PUBLIC_BASE_URL) return null;
+  return `${PUBLIC_BASE_URL}${rel}`;
 }
 
 function safeText(v, max = 1024) {
@@ -57,73 +67,74 @@ function safeText(v, max = 1024) {
   return s;
 }
 
+function normalizeImageUrl(url) {
+  const u = safeText(url, 2048);
+  if (!u || u === 'N/A') return '';
+  if (u.startsWith('http://')) return 'https://' + u.slice('http://'.length);
+  return u;
+}
+
+function formatDateDMY(value) {
+  const s = safeText(value, 64);
+  if (!s || s === 'N/A') return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = String(d.getUTCFullYear());
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function makeLinkLine({ browserUrl, platform }) {
+  const url = safeText(browserUrl, 2048);
+  if (!url) return '';
+  const links = [`[Open in browser ↗](${url})`];
+  const p = String(platform || '').toLowerCase();
+  if (p.includes('steam')) {
+    links.push(`[Open in Steam Client ↗](steam://openurl/${url})`);
+  } else if (p.includes('epic')) {
+    const m = url.match(/\/p\/([a-z0-9-]+)/i);
+    if (m && m[1]) links.push(`[Open in Epic Games Launcher ↗](com.epicgames.launcher://store/p/${m[1]})`);
+  }
+  return links.join('     ');
+}
+
 function makeEmbedFromGiveaway(g) {
   const title = safeText(g.title, 256);
   const worth = safeText(g.worth, 64);
-  const endDate = safeText(g.end_date, 64);
+  const endDate = formatDateDMY(g.end_date);
   const publisher = safeText(g.publisher, 128);
-  const image = safeText(g.image, 2048);
+  const image = normalizeImageUrl(g.image);
   const platform = pickPrimaryPlatform(g.platforms);
-  const descriptionParts = [];
+  const meta = [];
 
-  const untilText = `Free until ${endDate && endDate !== 'N/A' ? endDate : '—'}`;
-  if (worth && worth !== 'N/A') {
-    // Match the screenshot style: strikethrough worth then free-until.
-    descriptionParts.push(`~~${worth}~~`);
-    descriptionParts.push(untilText);
-  } else {
+  if (worth && worth !== 'N/A') meta.push(`~~${worth}~~`);
+  meta.push(`**Free** until ${endDate || '—'}`);
+
+  const url = safeText(g.open_giveaway_url, 2048) || safeText(g.gamerpower_url, 2048) || '';
+  const linkLine = makeLinkLine({ browserUrl: url, platform });
+  const desc = linkLine ? `${meta.join(' ')}
+
+${linkLine}` : meta.join(' '); else {
     descriptionParts.push(untilText);
   }
 
   const embed = new EmbedBuilder()
     .setTitle(title || 'Giveaway')
-    .setDescription(descriptionParts.join(' '))
-    .setFooter({ text: `via gamerpower.com${publisher ? ' • ' + publisher : ''}` });
+    .setDescription(desc)
+    .setFooter({ text: `via .rabbitstuff.xyz${publisher ? `  •  © ${publisher}` : ''}` });
 
   // Important: do NOT set embed URL (otherwise Discord will hyperlink the title).
-  if (image && image !== 'N/A') embed.setImage(image);
+  if (image) embed.setImage(image);
 
-  const thumb = platformThumbnailUrl(platform);
+  const thumb = platformBadgeUrl(platform);
   if (thumb) embed.setThumbnail(thumb);
 
   return embed;
 }
 
-function makeButtons(g) {
-  const rows = [];
-  const url = safeText(g.open_giveaway_url, 2048) || safeText(g.gamerpower_url, 2048) || '';
-  const platform = pickPrimaryPlatform(g.platforms);
-
-  const row = new ActionRowBuilder();
-  if (url) {
-    row.addComponents(
-      new ButtonBuilder()
-        .setStyle(ButtonStyle.Link)
-        .setLabel('Open in browser ↗')
-        .setURL(url)
-    );
-
-    if (platform && platform.includes('steam')) {
-      // Link Buttons must be http/https. Keep label, point to store URL.
-      row.addComponents(
-        new ButtonBuilder()
-          .setStyle(ButtonStyle.Link)
-          .setLabel('Open in Steam Client ↗')
-          .setURL(url)
-      );
-    } else if (platform && platform.includes('epic')) {
-      row.addComponents(
-        new ButtonBuilder()
-          .setStyle(ButtonStyle.Link)
-          .setLabel('Open in Epic Games Launcher ↗')
-          .setURL(url)
-      );
-    }
-  }
-
-  if (row.components && row.components.length) rows.push(row);
-  return rows;
-}
+// Links are rendered inside embed description to match the screenshot (not Discord buttons).
 
 async function fetchGiveaways({ platforms, types }) {
   const p = normalizeList(platforms);
@@ -146,9 +157,7 @@ async function postGiveawayToGuild(client, guildId, channelId, g) {
   if (!ch || typeof ch.send !== 'function') return { ok: false, reason: 'channel_not_found' };
 
   const embed = makeEmbedFromGiveaway(g);
-  const components = makeButtons(g);
-
-  await ch.send({ embeds: [embed], components }).catch((e) => {
+  await ch.send({ embeds: [embed] }).catch((e) => {
     throw new Error(`Discord send failed: ${e && e.message ? e.message : String(e)}`);
   });
 
