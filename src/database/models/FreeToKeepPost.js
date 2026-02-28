@@ -19,4 +19,11 @@ const FreeToKeepPostSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Avoid reposting the same item in the same guild.
+// URL is the most stable identifier across runs.
+FreeToKeepPostSchema.index(
+  { guildId: 1, platform: 1, type: 1, url: 1, isTest: 1 },
+  { unique: true, partialFilterExpression: { url: { $type: 'string' }, guildId: { $type: 'string' } } }
+);
+
 module.exports = mongoose.models.FreeToKeepPost || mongoose.model('FreeToKeepPost', FreeToKeepPostSchema);

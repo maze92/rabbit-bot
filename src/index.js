@@ -33,6 +33,7 @@ const registerSlashCommands = require('./slash/register');
 // Maintenance & background systems
 const { startMaintenance } = require('./systems/maintenance');
 const startGameNews = require('./systems/gamenews');
+const startFreeToKeep = require('./systems/freeToKeep');
 const { startPresenceTracker } = require('./systems/presenceTracker');
 
 // Ensure critical MongoDB indexes (autoIndex is disabled in production).
@@ -58,8 +59,9 @@ async function ensureMongoIndexes() {
     const PresenceSession = safeRequire('./database/models/PresenceSession');
     const GameNewsFeed = safeRequire('./database/models/GameNewsFeed');
     const GameNews = safeRequire('./database/models/GameNews');
+    const FreeToKeepPost = safeRequire('./database/models/FreeToKeepPost');
 
-    [Ticket, TicketCounter, TicketLog, Infraction, DashboardLog, DashboardAudit, User, UserActivity, PresenceSession, GameNewsFeed, GameNews]
+    [Ticket, TicketCounter, TicketLog, Infraction, DashboardLog, DashboardAudit, User, UserActivity, PresenceSession, GameNewsFeed, GameNews, FreeToKeepPost]
       .filter(Boolean)
       .forEach((m) => models.push(m));
 
@@ -183,6 +185,14 @@ async function handleClientReady() {
     } catch (err) {
       console.error('[Startup] Failed to start Game News system:', err);
       status.setGameNewsRunning(false);
+    }
+
+    // Start FreeToKeep system
+    try {
+      await startFreeToKeep(client, config);
+      console.log('🎁 FreeToKeep system started.');
+    } catch (err) {
+      console.error('[Startup] Failed to start FreeToKeep system:', err);
     }
 
     // Basic presence as a fallback; can be refined later

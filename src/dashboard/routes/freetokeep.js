@@ -42,10 +42,11 @@ function registerFreeToKeepRoutes({
       channelId: c.channelId || null,
       pollIntervalSeconds: (typeof c.pollIntervalSeconds === 'number' && c.pollIntervalSeconds >= 60)
         ? Math.min(c.pollIntervalSeconds, 3600)
-        : 300,
-      maxPerCycle: (typeof c.maxPerCycle === 'number' && c.maxPerCycle >= 1)
-        ? Math.min(c.maxPerCycle, 10)
-        : 3,
+        : 60,
+      // 0/null => unlimited
+      maxPerCycle: (typeof c.maxPerCycle === 'number' && c.maxPerCycle >= 0)
+        ? Math.min(c.maxPerCycle, 50)
+        : 0,
       platforms: {
         epic: platforms.epic !== false,
         steam: platforms.steam !== false,
@@ -111,11 +112,11 @@ function registerFreeToKeepRoutes({
 
     const embed = {
       title: sanitizeText ? sanitizeText(item.title || '', 256) : (item.title || ''),
-      url: item.url,
+      // Intentionally no embed URL: title must NOT be a hyperlink.
       description: description || undefined,
       thumbnail: o.showThumbnail ? { url: thumbs[item.platform] || thumbs.epic } : undefined,
       image: o.showImage ? { url: item.imageUrl } : undefined,
-      footer: o.showFooter ? { text: 'via FreeToKeep • © ' + (item.publisher || item.platformName) } : undefined
+      footer: o.showFooter ? { text: 'via freestuffbot.xyz • © ' + (item.publisher || item.platformName) } : undefined
     };
 
     const components = [];

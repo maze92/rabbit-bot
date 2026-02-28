@@ -51,6 +51,38 @@ const guildConfigSchema = new Schema(
       categoryId: { type: String, default: null },
       deleteDelaySeconds: { type: Number, default: 10 },
       maxUsersPerRoom: { type: Number, default: null }
+    },
+
+    // FreeToKeep (Epic/Steam/Ubisoft) notifications
+    // Stored inside GuildConfig so dashboard config persists.
+    freeToKeep: {
+      enabled: { type: Boolean, default: false },
+      channelId: { type: String, default: null },
+
+      // Poll interval (seconds). Minimum 60.
+      pollIntervalSeconds: { type: Number, default: 60 },
+
+      // 0/null => unlimited per cycle.
+      maxPerCycle: { type: Number, default: 0 },
+
+      platforms: {
+        epic: { type: Boolean, default: true },
+        steam: { type: Boolean, default: true },
+        ubisoft: { type: Boolean, default: true }
+      },
+      types: {
+        keep: { type: Boolean, default: true },
+        weekend: { type: Boolean, default: false }
+      },
+      embedOptions: {
+        showPrice: { type: Boolean, default: true },
+        showUntil: { type: Boolean, default: true },
+        showThumbnail: { type: Boolean, default: true },
+        showImage: { type: Boolean, default: true },
+        showButtons: { type: Boolean, default: true },
+        showFooter: { type: Boolean, default: true },
+        showSteamClientButton: { type: Boolean, default: true }
+      }
     }
   },
   {
