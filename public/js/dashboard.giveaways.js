@@ -69,7 +69,7 @@
     }
 
     const title = escapeHtml(example.title);
-    const meta = escapeHtml((example.worth ? example.worth + ' ' : '') + 'Free until ' + (example.end_date || '—'));
+    const meta = escapeHtml((example.worth ? example.worth : '—') + ' • Free until ' + (example.end_date || '—'));
     const footerLeft = 'via gamerpower.com';
     const footerRight = example.publisher ? ('© ' + escapeHtml(example.publisher)) : '';
 
@@ -85,7 +85,7 @@
       '<div class="giveaway-preview__header">' +
         '<div>' +
           '<div class="giveaway-preview__title">' + title + '</div>' +
-          '<div class="giveaway-preview__meta">' + meta + '</div>' +
+          '<div class="giveaway-preview__meta-line">' + meta + '</div>' +
           '<div class="giveaway-preview__actions">' +
             linkBrowser + (linkClient ? linkClient : '') +
           '</div>' +
@@ -226,6 +226,26 @@
     await loadGiveawaysConfig();
   }
 
+  async function sendTest() {
+    const guildId = getGuildId();
+    if (!guildId) return;
+    const enabled = !!(q('giveawaysEnabled') && q('giveawaysEnabled').checked);
+    const sel = q('giveawaysChannel');
+    const channelId = sel && sel.value ? String(sel.value) : '';
+    if (!enabled) {
+      toast('error', 'Ativa giveaways para testar.');
+      return;
+    }
+    if (!channelId) {
+      toast('error', 'Seleciona um canal de publicação.');
+      return;
+    }
+    const platforms = readChecks('giveawaysPlatforms');
+    const platform = (platforms[0] || 'steam');
+    await apiPost('/giveaways/test', { guildId, channelId, platform });
+    toast('ok', 'Teste enviado.');
+  }
+
   function bindEvents() {
     const ids = ['giveawaysEnabled', 'giveawaysChannel', 'giveawaysPoll', 'giveawaysMaxPerCycle'];
     ids.forEach(function (id) {
@@ -243,6 +263,9 @@
 
     const btn = q('giveawaysSaveBtn');
     if (btn) btn.addEventListener('click', function () { saveGiveaways().catch(function () { toast('error', 'Erro ao guardar'); }); });
+
+    const testBtn = q('giveawaysTestBtn');
+    if (testBtn) testBtn.addEventListener('click', function () { sendTest().catch(function () { toast('error', 'Erro ao enviar teste'); }); });
   }
 
   // Public hook for core tab switcher
