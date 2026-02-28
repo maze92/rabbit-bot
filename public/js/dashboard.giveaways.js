@@ -72,8 +72,9 @@
     // Screenshot style: strikethrough worth then "Free until".
     const worthHtml = example.worth ? ('<span class="giveaway-preview__worth">' + escapeHtml(example.worth) + '</span>') : '';
     const meta = (worthHtml ? ('<span class="giveaway-preview__worth-wrap">' + worthHtml + '</span> ') : '') +
-      '<span>' + escapeHtml('Free until ' + (example.end_date || '—')) + '</span>';
-    const footerLeft = 'via gamerpower.com';
+      '<span><b>Free</b> until ' + escapeHtml(example.end_date || '—') + '</span>';
+
+    const footerLeft = 'via .rabbitstuff.xyz';
     const footerRight = example.publisher ? ('© ' + escapeHtml(example.publisher)) : '';
 
     const linkBrowser = '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;">Open in browser ↗</a>';
@@ -113,10 +114,9 @@
 
     function platformLogoUrl(p) {
       p = String(p || '').toLowerCase();
-      // Avoid Wikimedia 429 by using jsDelivr + weserv rasterizer (SVG→PNG + caching).
-      if (p.includes('steam')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/steam.svg&output=png&bg=ffffff&w=256&h=256';
-      if (p.includes('epic')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/epicgames.svg&output=png&bg=ffffff&w=256&h=256';
-      if (p.includes('ubisoft') || p.includes('uplay')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/ubisoft.svg&output=png&bg=ffffff&w=256&h=256';
+      if (p.includes('steam')) return '/assets/platform-badges/steam.png';
+      if (p.includes('epic')) return '/assets/platform-badges/epic.png';
+      if (p.includes('ubisoft') || p.includes('uplay')) return '/assets/platform-badges/ubisoft.png';
       return '';
     }
   }
