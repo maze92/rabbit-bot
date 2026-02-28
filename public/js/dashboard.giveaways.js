@@ -77,11 +77,11 @@
     const footerLeft = 'via .rabbitstuff.xyz';
     const footerRight = example.publisher ? ('© ' + escapeHtml(example.publisher)) : '';
 
-    const linkBrowser = '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;">Open in browser ↗</a>';
+    const linkBrowser = '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;"><b>Open in browser ↗</b></a>';
     const linkClient = showSteam
-      ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;">Open in Steam Client ↗</a>'
+      ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;"><b>Open in Steam Client ↗</b></a>'
       : (showEpic
-          ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;">Open in Epic Games Launcher ↗</a>'
+          ? '<a class="giveaway-preview__linkbtn" href="#" onclick="return false;"><b>Open in Epic Games Launcher ↗</b></a>'
           : '<span class="giveaway-preview__meta">' + escapeHtml(platformLabel(primaryPlatform)) + '</span>'
         );
 

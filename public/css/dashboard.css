@@ -2653,7 +2653,7 @@ details[open] > .details-summary:before {
 .giveaway-preview__actions{
   display:flex;
   flex-wrap:wrap;
-  gap:18px;
+  gap:30px;
   margin-bottom:10px;
 }
 
@@ -2661,24 +2661,25 @@ details[open] > .details-summary:before {
   color:#00a8fc;
   text-decoration:none;
   font-size:13px;
+  font-weight:700;
 }
 .giveaway-preview__linkbtn:hover{ text-decoration:underline; }
 
 .giveaway-preview__thumb{
-  width:56px;
-  height:56px;
+  width:44px;
+  height:44px;
   border-radius:50%;
   background:#e9eef5;
   display:flex;
   align-items:center;
   justify-content:center;
-  flex:0 0 56px;
+  flex:0 0 44px;
   border:1px solid rgba(0,0,0,0.15);
 }
 
 .giveaway-preview__thumb img{
-  width:46px;
-  height:46px;
+  width:34px;
+  height:34px;
   object-fit:contain;
 }
 
@@ -2693,7 +2694,7 @@ details[open] > .details-summary:before {
   width:100%;
   height:auto;
   display:block;
-  max-height:280px;
+  max-height:210px;
   object-fit:cover;
 }
 
