@@ -77,6 +77,13 @@ function setGiveawaysRunning(value = true) {
   status.giveawaysRunning = Boolean(value);
   if (value) status.lastGiveawaysStartedAt = new Date().toISOString();
 }
+
+// Backwards-compatible aliases (older modules expect bump* names)
+const bumpCommands = incrementCommands;
+const bumpInfractions = incrementInfractions;
+const bumpAutoMod = incrementAutoModActions;
+const bumpAntiSpam = incrementAntiSpamActions;
+
 module.exports = {
   getStatus,
   setDiscordReady,

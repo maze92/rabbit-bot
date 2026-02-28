@@ -40,10 +40,15 @@ function platformLabel(platform) {
   return platform || 'Platform';
 }
 
-function platformThumbnailDataUri(platform) {
-  // We avoid remote copyrighted assets. Generate a simple SVG data URI (Discord supports data URI? It usually doesn't).
-  // Discord does NOT support data URIs for thumbnails. So we leave thumbnail null.
-  // The message still matches the layout; title + buttons + image is the important part.
+function platformThumbnailUrl(platform) {
+  const p = String(platform || '').toLowerCase();
+  // Stable Wikimedia-hosted PNG previews (used only as embed thumbnail).
+  // Steam icon logo: https://commons.wikimedia.org/wiki/File:Steam_icon_logo.svg
+  if (p.includes('steam')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Steam_icon_logo.svg/240px-Steam_icon_logo.svg.png';
+  // Epic Games logo: https://commons.wikimedia.org/wiki/File:Epic_Games_logo.svg
+  if (p.includes('epic')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Epic_Games_logo.svg/240px-Epic_Games_logo.svg.png';
+  // Ubisoft logo: https://commons.wikimedia.org/wiki/File:Ubisoft_logo.svg
+  if (p.includes('ubisoft') || p.includes('uplay')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Ubisoft_logo.svg/240px-Ubisoft_logo.svg.png';
   return null;
 }
 
@@ -61,6 +66,7 @@ function makeEmbedFromGiveaway(g) {
   const endDate = safeText(g.end_date, 64);
   const publisher = safeText(g.publisher, 128);
   const image = safeText(g.image, 2048);
+  const platform = pickPrimaryPlatform(g.platforms);
   const descriptionParts = [];
 
   if (worth && worth !== 'N/A') descriptionParts.push(`${worth}`);
@@ -73,6 +79,9 @@ function makeEmbedFromGiveaway(g) {
 
   // Important: do NOT set embed URL (otherwise Discord will hyperlink the title).
   if (image && image !== 'N/A') embed.setImage(image);
+
+  const thumb = platformThumbnailUrl(platform);
+  if (thumb) embed.setThumbnail(thumb);
 
   return embed;
 }

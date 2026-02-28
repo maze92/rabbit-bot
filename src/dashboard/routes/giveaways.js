@@ -39,18 +39,22 @@ function registerGiveawaysRoutes(ctx) {
     maxPerCycle: z.number().int().min(0).max(50).optional()
   });
 
+  const ALLOWED_PLATFORMS = new Set(['steam', 'epic-games-store', 'ubisoft']);
+
   app.get('/api/giveaways/config', requireDashboardAuth, canManage, guardGuildQuery, async (req, res) => {
     try {
       const guildId = sanitizeId(req.query.guildId || '');
       const doc = await GuildConfig.findOne({ guildId }).lean().catch(() => null);
       const cfg = (doc && doc.giveaways) ? doc.giveaways : {};
+      const rawPlatforms = Array.isArray(cfg.platforms) ? cfg.platforms : ['steam'];
+      const filteredPlatforms = rawPlatforms.map(String).filter((p) => ALLOWED_PLATFORMS.has(String(p)));
       return res.json({
         ok: true,
         guildId,
         giveaways: {
           enabled: Boolean(cfg.enabled),
           channelId: cfg.channelId || null,
-          platforms: Array.isArray(cfg.platforms) ? cfg.platforms : ['steam'],
+          platforms: filteredPlatforms.length ? filteredPlatforms : ['steam'],
           types: Array.isArray(cfg.types) ? cfg.types : ['game'],
           pollIntervalSeconds: typeof cfg.pollIntervalSeconds === 'number' ? cfg.pollIntervalSeconds : 60,
           maxPerCycle: typeof cfg.maxPerCycle === 'number' ? cfg.maxPerCycle : 0
@@ -78,6 +82,10 @@ function registerGiveawaysRoutes(ctx) {
         ? next.platforms.map((s) => sanitizeText(s, { maxLen: 64, stripHtml: true })).filter(Boolean)
         : undefined;
 
+      const filteredPlatforms = platforms
+        ? platforms.map(String).filter((p) => ALLOWED_PLATFORMS.has(String(p)))
+        : undefined;
+
       const types = Array.isArray(next.types)
         ? next.types.map((s) => sanitizeText(s, { maxLen: 32, stripHtml: true })).filter(Boolean)
         : undefined;
@@ -85,7 +93,7 @@ function registerGiveawaysRoutes(ctx) {
       const update = {};
       if (typeof next.enabled === 'boolean') update['giveaways.enabled'] = next.enabled;
       if (next.channelId === null || typeof next.channelId === 'string') update['giveaways.channelId'] = next.channelId ? sanitizeId(next.channelId) : null;
-      if (platforms) update['giveaways.platforms'] = platforms;
+      if (filteredPlatforms) update['giveaways.platforms'] = filteredPlatforms;
       if (types) update['giveaways.types'] = types;
       if (typeof next.pollIntervalSeconds === 'number') update['giveaways.pollIntervalSeconds'] = next.pollIntervalSeconds;
       if (typeof next.maxPerCycle === 'number') update['giveaways.maxPerCycle'] = next.maxPerCycle;
