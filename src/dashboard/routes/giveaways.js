@@ -15,26 +15,30 @@ function registerGiveawaysRoutes(ctx) {
     sanitizeText,
     recordAudit,
     getActorFromRequest,
+    getClient,
     GuildConfig
   } = ctx;
 
   // Some deployments of this codebase expose a smaller ctx surface.
   // Express will throw if any middleware handler is undefined.
   const noop = (req, res, next) => next();
+  // Some of these are factories (return a middleware). Others are direct middleware.
   const auth = (typeof requireDashboardAuth === "function") ? requireDashboardAuth : noop;
   const rlMedium = (rateLimit && typeof rateLimit.medium === "function") ? rateLimit.medium : noop;
 
-  const guardGuildQuery = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: false })
-    : (req, res, next) => next();
+  const safeFactory = (factory, args) => {
+    try {
+      if (typeof factory !== 'function') return noop;
+      const mw = factory(args);
+      return (typeof mw === 'function') ? mw : noop;
+    } catch (_) {
+      return noop;
+    }
+  };
 
-  const guardGuildBody = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'body', key: 'guildId', optional: false })
-    : (req, res, next) => next();
-
-  const canManage = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canManageGameNews', 'canEditConfig'] })
-    : (req, res, next) => next();
+  const guardGuildQuery = safeFactory(requireGuildAccess, { from: 'query', key: 'guildId', optional: false });
+  const guardGuildBody  = safeFactory(requireGuildAccess, { from: 'body',  key: 'guildId', optional: false });
+  const canManage       = safeFactory(requirePerm, { anyOf: ['canManageGameNews', 'canEditConfig'] });
 
   const GiveawaysConfigSchema = z.object({
     enabled: z.boolean().optional(),
@@ -122,6 +126,73 @@ function registerGiveawaysRoutes(ctx) {
       return res.status(500).json({ ok: false, error: 'internal_error' });
     }
   });
+
+  // Send a test giveaway embed to the selected channel.
+  app.post("/api/giveaways/test", auth, canManage, rlMedium, guardGuildBody, async (req, res) => {
+    try {
+      const guildId = sanitizeId(req.body.guildId || '');
+      const channelId = sanitizeId(req.body.channelId || '');
+      const platform = sanitizeText(req.body.platform || 'steam', { maxLen: 64, stripHtml: true });
+      if (!guildId || !channelId) return res.status(400).json({ ok: false, error: 'missing_channel' });
+      if (!ALLOWED_PLATFORMS.has(String(platform))) return res.status(400).json({ ok: false, error: 'invalid_platform' });
+
+      const client = (typeof getClient === 'function') ? getClient() : null;
+      if (!client) return res.status(500).json({ ok: false, error: 'client_unavailable' });
+
+      const ch = await client.channels.fetch(channelId).catch(() => null);
+      if (!ch || typeof ch.send !== 'function') return res.status(404).json({ ok: false, error: 'channel_not_found' });
+
+      const payload = buildTestMessage({ platform });
+      await ch.send(payload);
+
+      return res.json({ ok: true });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: 'internal_error' });
+    }
+  });
+}
+
+function buildTestMessage({ platform }) {
+  const now = new Date();
+  const end = new Date(now.getTime() + 3 * 24 * 3600 * 1000);
+
+  const title = 'TEST • Paragnosia';
+  const worth = '€39.99';
+  const until = end.toLocaleDateString('pt-PT');
+  const image = 'https://images.igdb.com/igdb/image/upload/t_cover_big/co2l7m.jpg';
+  const url = String(platform).includes('steam')
+    ? 'https://store.steampowered.com/app/000000/Example'
+    : (String(platform).includes('epic')
+      ? 'https://store.epicgames.com/p/example'
+      : 'https://store.ubisoft.com/');
+
+  const thumb = String(platform).includes('steam')
+    ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Steam_icon_logo.svg/240px-Steam_icon_logo.svg.png'
+    : (String(platform).includes('epic')
+      ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Epic_Games_logo.svg/240px-Epic_Games_logo.svg.png'
+      : 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Ubisoft_logo.svg/240px-Ubisoft_logo.svg.png');
+
+  const embed = {
+    title,
+    description: `${worth} • Free until ${until}`,
+    color: 0x5865F2,
+    thumbnail: { url: thumb },
+    image: { url: image },
+    footer: { text: 'via gamerpower.com' }
+  };
+
+  const components = [
+    {
+      type: 1,
+      components: [
+        { type: 2, style: 5, label: 'Open in browser ↗', url },
+        ...(String(platform).includes('steam') ? [{ type: 2, style: 5, label: 'Open in Steam Client ↗', url: `steam://openurl/${url}` }] : []),
+        ...(String(platform).includes('epic') && url.includes('/p/') ? [{ type: 2, style: 5, label: 'Open in Epic Games Launcher ↗', url: `com.epicgames.launcher://store${url.substring(url.indexOf('/p/'))}` }] : [])
+      ]
+    }
+  ];
+
+  return { embeds: [embed], components };
 }
 
 module.exports = { registerGiveawaysRoutes };
