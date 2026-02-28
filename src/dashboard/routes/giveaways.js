@@ -207,8 +207,10 @@ function registerGiveawaysRoutes(ctx) {
       // Send once, then edit to set thumbnail to the CDN URL of the attached badge.
       const sent = await ch.send(payload);
       const fileName = (payload.files && payload.files[0] && payload.files[0].name) ? payload.files[0].name : null;
-      const att = sent && sent.attachments
-        ? (fileName ? (sent.attachments.find((a) => a && a.name === fileName) : null) || sent.attachments.first() : null)
+      const att = (sent && sent.attachments)
+        ? (fileName
+            ? (sent.attachments.find((a) => a && a.name === fileName) || sent.attachments.first())
+            : sent.attachments.first())
         : null;
       if (att && att.url && sent && sent.embeds && sent.embeds[0]) {
         const e0 = payload.embeds[0];
