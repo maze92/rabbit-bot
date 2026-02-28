@@ -70,6 +70,14 @@ function safeText(v, max = 1024) {
   return s;
 }
 
+function cleanGiveawayTitle(raw) {
+  let s = safeText(raw, 256);
+  // GamerPower sometimes appends platform noise like "(Steam) Giveaway" or "Steam Giveaway".
+  s = s.replace(/\s*\(?(steam|epic|ubisoft)\)?\s*giveaway\s*$/i, '');
+  s = s.replace(/\s*giveaway\s*$/i, '');
+  return s.trim();
+}
+
 function normalizeImageUrl(url) {
   const u = safeText(url, 2048);
   if (!u || u === 'N/A') return '';
@@ -94,21 +102,24 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
   const client = safeText(clientUrl, 2048);
   if (!browser && !client) return '';
 
+  // Discord markdown collapses normal spaces; use NBSP to mimic wide spacing.
+  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
+
   const links = [];
-  if (browser) links.push(`[Open in browser ↗](${browser})`);
+  if (browser) links.push(`**[Open in browser ↗](${browser})**`);
   const p = String(platform || '').toLowerCase();
   if (p.includes('steam')) {
-    if (client) links.push(`[Open in Steam Client ↗](${client})`);
+    if (client) links.push(`**[Open in Steam Client ↗](${client})**`);
   } else if (p.includes('epic')) {
-    if (client) links.push(`[Open in Epic Games Launcher ↗](${client})`);
+    if (client) links.push(`**[Open in Epic Games Launcher ↗](${client})**`);
   } else if (p.includes('ubisoft')) {
-    if (client) links.push(`[Open in Ubisoft ↗](${client})`);
+    if (client) links.push(`**[Open in Ubisoft ↗](${client})**`);
   }
-  return links.join('     ');
+  return links.join(SEP);
 }
 
 function makeEmbedFromGiveaway(g) {
-  const title = safeText(g.title, 256);
+  const title = cleanGiveawayTitle(g.title);
   const worth = safeText(g.worth, 64);
   const endDate = formatDateDMY(g.end_date);
   const publisher = safeText(g.publisher, 128);

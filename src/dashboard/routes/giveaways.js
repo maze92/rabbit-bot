@@ -165,6 +165,13 @@ function normalizeImageUrl(url) {
   return u.startsWith('http://') ? ('https://' + u.slice('http://'.length)) : u;
 }
 
+function cleanGiveawayTitle(raw) {
+  let s = String(raw || '').trim();
+  s = s.replace(/\s*\(?(steam|epic|ubisoft)\)?\s*giveaway\s*$/i, '');
+  s = s.replace(/\s*giveaway\s*$/i, '');
+  return s.trim();
+}
+
 function formatDateDMY(value) {
   const s = String(value || '').trim();
   if (!s || s === 'N/A') return '';
@@ -188,13 +195,14 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
   const browser = String(browserUrl || '').trim();
   const client = String(clientUrl || '').trim();
   if (!browser && !client) return '';
+  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
   const links = [];
-  if (browser) links.push(`[Open in browser ↗](${browser})`);
+  if (browser) links.push(`**[Open in browser ↗](${browser})**`);
   const p = String(platform || '').toLowerCase();
-  if (p.includes('steam')) { if (client) links.push(`[Open in Steam Client ↗](${client})`); }
-  else if (p.includes('epic')) { if (client) links.push(`[Open in Epic Games Launcher ↗](${client})`); }
-  else if (p.includes('ubisoft')) { if (client) links.push(`[Open in Ubisoft ↗](${client})`); }
-  return links.join('     ');
+  if (p.includes('steam')) { if (client) links.push(`**[Open in Steam Client ↗](${client})**`); }
+  else if (p.includes('epic')) { if (client) links.push(`**[Open in Epic Games Launcher ↗](${client})**`); }
+  else if (p.includes('ubisoft')) { if (client) links.push(`**[Open in Ubisoft ↗](${client})**`); }
+  return links.join(SEP);
 }
 
 async function buildTestMessage({ platform }) {
@@ -202,9 +210,12 @@ async function buildTestMessage({ platform }) {
   const url = `${GAMERPOWER_BASE}/filter?platform=${encodeURIComponent(platParam)}&type=game`;
   const res = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } }).catch(() => null);
   const list = res && res.ok ? await res.json().catch(() => []) : [];
-  const g = Array.isArray(list) && list.length ? list[0] : null;
+  // Prefer an item that has an image and links, otherwise fall back to the first.
+  const g = (Array.isArray(list) && list.length)
+    ? (list.find((it) => it && it.image && it.image !== 'N/A' && it.gamerpower_url) || list[0])
+    : null;
 
-  const title = g && g.title ? String(g.title) : 'TEST • Giveaway';
+  const title = g && g.title ? cleanGiveawayTitle(g.title) : 'TEST';
   const worth = g && g.worth ? String(g.worth) : '';
   const until = formatDateDMY(g && g.end_date ? g.end_date : '');
   const image = normalizeImageUrl(g && g.image ? g.image : '');
