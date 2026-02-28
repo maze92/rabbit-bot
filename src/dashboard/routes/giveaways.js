@@ -204,16 +204,16 @@ function registerGiveawaysRoutes(ctx) {
 
       const payload = await buildTestMessage({ platform });
 
-      // Prefer perfect PNG badge as attachment; if Discord rejects (rare), retry once with https thumb.
-      try {
-        await ch.send(payload);
-      } catch (e) {
-        const thumb = platformBadgePublicUrl(platform);
-        if (thumb && payload.embeds && payload.embeds[0]) {
-          payload.embeds[0].thumbnail = { url: thumb };
-        }
-        payload.files = [];
-        await ch.send(payload);
+      // Send once, then edit to set thumbnail to the CDN URL of the attached badge.
+      const sent = await ch.send(payload);
+      const fileName = (payload.files && payload.files[0] && payload.files[0].name) ? payload.files[0].name : null;
+      const att = sent && sent.attachments
+        ? (fileName ? (sent.attachments.find((a) => a && a.name === fileName) : null) || sent.attachments.first() : null)
+        : null;
+      if (att && att.url && sent && sent.embeds && sent.embeds[0]) {
+        const e0 = payload.embeds[0];
+        e0.thumbnail = { url: att.url };
+        await sent.edit({ embeds: [e0] }).catch(() => {});
       }
 
       return res.json({ ok: true });
@@ -315,7 +315,9 @@ async function buildTestMessage({ platform }) {
     description: linkLine ? `${meta}
 
 ${linkLine}` : meta,
-    thumbnail: badgeInfo ? { url: `attachment://${badgeInfo.name}` } : undefined,
+    // We attach the badge and then (after send) edit the message to use
+    // the uploaded CDN URL as thumbnail. This avoids attachment:// rendering issues.
+    thumbnail: undefined,
     image: image ? { url: image } : undefined,
     footer: { text: `via .rabbitstuff.xyz${publisher ? `  •  © ${publisher}` : ''}` }
   };

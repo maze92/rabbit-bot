@@ -229,12 +229,23 @@ async function postGiveawayToGuild(client, guildId, channelId, g, { forcedPlatfo
       throw new Error(`Platform badge missing on disk: ${built.badge.file}`);
     }
 
-    embed.setThumbnail(built.badge.url);
+    // Some clients are finicky with attachment:// thumbnails.
+    // We send with the badge attached, then edit the message to use the
+    // uploaded CDN URL as the thumbnail (still the same perfect PNG).
     try {
-      await ch.send({
+      const sent = await ch.send({
         embeds: [embed],
         files: [{ attachment: fs.createReadStream(built.badge.file), name: built.badge.name }]
       });
+
+      const att = sent && sent.attachments
+        ? (sent.attachments.find((a) => a && a.name === built.badge.name) || sent.attachments.first())
+        : null;
+      if (att && att.url) {
+        embed.setThumbnail(att.url);
+        await sent.edit({ embeds: [embed] }).catch(() => {});
+      }
+
       return { ok: true };
     } catch (e) {
       if (!allowFallback) {
