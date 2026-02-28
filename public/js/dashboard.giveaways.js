@@ -69,7 +69,10 @@
     }
 
     const title = escapeHtml(example.title);
-    const meta = escapeHtml((example.worth ? example.worth : '—') + ' • Free until ' + (example.end_date || '—'));
+    // Screenshot style: strikethrough worth then "Free until".
+    const worthHtml = example.worth ? ('<span class="giveaway-preview__worth">' + escapeHtml(example.worth) + '</span>') : '';
+    const meta = (worthHtml ? ('<span class="giveaway-preview__worth-wrap">' + worthHtml + '</span> ') : '') +
+      '<span>' + escapeHtml('Free until ' + (example.end_date || '—')) + '</span>';
     const footerLeft = 'via gamerpower.com';
     const footerRight = example.publisher ? ('© ' + escapeHtml(example.publisher)) : '';
 
@@ -110,9 +113,10 @@
 
     function platformLogoUrl(p) {
       p = String(p || '').toLowerCase();
-      if (p.includes('steam')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Steam_icon_logo.svg/240px-Steam_icon_logo.svg.png';
-      if (p.includes('epic')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Epic_Games_logo.svg/240px-Epic_Games_logo.svg.png';
-      if (p.includes('ubisoft') || p.includes('uplay')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Ubisoft_logo.svg/240px-Ubisoft_logo.svg.png';
+      // Avoid Wikimedia 429 by using jsDelivr + weserv rasterizer (SVG→PNG + caching).
+      if (p.includes('steam')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/steam.svg&output=png&bg=ffffff&w=256&h=256';
+      if (p.includes('epic')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/epicgames.svg&output=png&bg=ffffff&w=256&h=256';
+      if (p.includes('ubisoft') || p.includes('uplay')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/ubisoft.svg&output=png&bg=ffffff&w=256&h=256';
       return '';
     }
   }

@@ -2662,8 +2662,8 @@ details[open] > .details-summary:before {
 }
 
 .giveaway-preview__thumb {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 999px;
   overflow: hidden;
   flex: 0 0 auto;
@@ -2675,7 +2675,7 @@ details[open] > .details-summary:before {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 8px;
+  padding: 6px;
 }
 
 .giveaway-preview__title {
@@ -2689,6 +2689,11 @@ details[open] > .details-summary:before {
 .giveaway-preview__meta {
   color: #b5bac1;
   font-size: 13px;
+}
+
+.giveaway-preview__worth {
+  text-decoration: line-through;
+  opacity: 0.9;
 }
 
 .giveaway-preview__actions {
