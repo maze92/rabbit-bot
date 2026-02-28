@@ -97,13 +97,21 @@ function formatDateDMY(value) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+function parseToUnixSeconds(value) {
+  const s = safeText(value, 64);
+  if (!s || s === 'N/A') return null;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.floor(d.getTime() / 1000);
+}
+
 function makeLinkLine({ browserUrl, clientUrl, platform }) {
   const browser = safeText(browserUrl, 2048);
   const client = safeText(clientUrl, 2048);
   if (!browser && !client) return '';
 
   // Discord markdown collapses normal spaces; use NBSP to mimic wide spacing.
-  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
+  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
 
   const links = [];
   if (browser) links.push(`**[Open in browser ↗](${browser})**`);
@@ -122,13 +130,14 @@ function makeEmbedFromGiveaway(g) {
   const title = cleanGiveawayTitle(g.title);
   const worth = safeText(g.worth, 64);
   const endDate = formatDateDMY(g.end_date);
+  const endUnix = parseToUnixSeconds(g.end_date);
   const publisher = safeText(g.publisher, 128);
   const image = normalizeImageUrl(g.image);
   const platform = pickPrimaryPlatform(g.platforms);
   const meta = [];
 
   if (worth && worth !== 'N/A') meta.push(`~~${worth}~~`);
-  meta.push(`**Free** until ${endDate || '—'}`);
+  meta.push(`**Free** until ${endUnix ? `<t:${endUnix}:d>` : (endDate || '—')}`);
 
   const browserUrl = safeText(g.gamerpower_url, 2048) || '';
   const clientUrl = safeText(g.open_giveaway_url, 2048) || browserUrl;

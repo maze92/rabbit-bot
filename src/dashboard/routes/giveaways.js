@@ -115,6 +115,10 @@ function registerGiveawaysRoutes(ctx) {
 
       await GuildConfig.updateOne({ guildId }, { $set: update }, { upsert: true }).catch(() => null);
 
+      // Return the persisted state to keep the UI in sync (prevents "snap back" after save).
+      const doc = await GuildConfig.findOne({ guildId }).lean().catch(() => null);
+      const cfg = (doc && doc.giveaways) ? doc.giveaways : {};
+
       // Audit
       if (typeof recordAudit === 'function' && typeof getActorFromRequest === 'function') {
         const actor = getActorFromRequest(req);
@@ -126,7 +130,39 @@ function registerGiveawaysRoutes(ctx) {
         }).catch(() => {});
       }
 
-      return res.json({ ok: true });
+      return res.json({
+        ok: true,
+        giveaways: {
+          enabled: Boolean(cfg.enabled),
+          channelId: cfg.channelId || null,
+          platforms: Array.isArray(cfg.platforms) ? cfg.platforms : ['steam'],
+          types: Array.isArray(cfg.types) ? cfg.types : ['game'],
+          pollIntervalSeconds: typeof cfg.pollIntervalSeconds === 'number' ? cfg.pollIntervalSeconds : 60,
+          maxPerCycle: typeof cfg.maxPerCycle === 'number' ? cfg.maxPerCycle : 0
+        }
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: 'internal_error' });
+    }
+  });
+
+  // Preview helper: return one real giveaway item for the selected platform/type.
+  app.get('/api/giveaways/sample', auth, canManage, guardGuildQuery, async (req, res) => {
+    try {
+      const platform = sanitizeText(req.query.platform || 'steam', { maxLen: 64, stripHtml: true });
+      const type = sanitizeText(req.query.type || 'game', { maxLen: 32, stripHtml: true });
+      if (!ALLOWED_PLATFORMS.has(String(platform))) return res.status(400).json({ ok: false, error: 'invalid_platform' });
+
+      const url = `${GAMERPOWER_BASE}/filter?platform=${encodeURIComponent(String(platform))}&type=${encodeURIComponent(String(type))}`;
+      const gp = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } });
+      if (!gp.ok) return res.status(502).json({ ok: false, error: 'upstream_error' });
+      const list = await gp.json().catch(() => []);
+      const g = (Array.isArray(list) && list.length)
+        ? (list.find((it) => it && it.image && it.image !== 'N/A' && it.gamerpower_url) || list[0])
+        : null;
+      if (!g) return res.json({ ok: true, item: null });
+
+      return res.json({ ok: true, item: g });
     } catch (e) {
       return res.status(500).json({ ok: false, error: 'internal_error' });
     }
@@ -184,6 +220,14 @@ function formatDateDMY(value) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+function parseToUnixSeconds(value) {
+  const s = String(value || '').trim();
+  if (!s || s === 'N/A') return null;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.floor(d.getTime() / 1000);
+}
+
 function badgeAttachment(platform) {
   const p = String(platform || '').toLowerCase();
   if (p.includes('steam')) return { file: path.join(BADGE_DIR, 'steam.png'), name: 'steam.png' };
@@ -195,7 +239,7 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
   const browser = String(browserUrl || '').trim();
   const client = String(clientUrl || '').trim();
   if (!browser && !client) return '';
-  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
+  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
   const links = [];
   if (browser) links.push(`**[Open in browser ↗](${browser})**`);
   const p = String(platform || '').toLowerCase();
@@ -218,12 +262,14 @@ async function buildTestMessage({ platform }) {
   const title = g && g.title ? cleanGiveawayTitle(g.title) : 'TEST';
   const worth = g && g.worth ? String(g.worth) : '';
   const until = formatDateDMY(g && g.end_date ? g.end_date : '');
+  const untilUnix = parseToUnixSeconds(g && g.end_date ? g.end_date : '');
   const image = normalizeImageUrl(g && g.image ? g.image : '');
   const browserUrl = (g && g.gamerpower_url) ? String(g.gamerpower_url) : 'https://www.gamerpower.com/';
   const clientUrl = (g && g.open_giveaway_url) ? String(g.open_giveaway_url) : browserUrl;
   const publisher = g && g.publisher ? String(g.publisher) : '';
 
-  const meta = `${(worth && worth !== 'N/A') ? `~~${worth}~~ ` : ''}**Free** until ${until || '—'}`;
+  const untilText = untilUnix ? `<t:${untilUnix}:d>` : (until || '—');
+  const meta = `${(worth && worth !== 'N/A') ? `~~${worth}~~ ` : ''}**Free** until ${untilText}`;
   const linkLine = makeLinkLine({ browserUrl, clientUrl, platform: platParam });
 
   const badgeInfo = badgeAttachment(platParam);
