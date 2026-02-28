@@ -3,9 +3,11 @@
 // Dashboard routes to configure GamerPower giveaways per guild.
 
 const { z } = require('zod');
+const path = require('path');
+const { AttachmentBuilder } = require('discord.js');
 
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
-const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
+const BADGE_DIR = path.join(__dirname, '../../../public/assets/platform-badges');
 
 function registerGiveawaysRoutes(ctx) {
   const {
@@ -175,23 +177,23 @@ function formatDateDMY(value) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-function badgeUrl(platform) {
+function badgeAttachment(platform) {
   const p = String(platform || '').toLowerCase();
-  if (!PUBLIC_BASE_URL) return null;
-  if (p.includes('steam')) return `${PUBLIC_BASE_URL}/assets/platform-badges/steam.png`;
-  if (p.includes('epic')) return `${PUBLIC_BASE_URL}/assets/platform-badges/epic.png`;
-  return `${PUBLIC_BASE_URL}/assets/platform-badges/ubisoft.png`;
+  if (p.includes('steam')) return { file: path.join(BADGE_DIR, 'steam.png'), name: 'steam.png' };
+  if (p.includes('epic')) return { file: path.join(BADGE_DIR, 'epic.png'), name: 'epic.png' };
+  return { file: path.join(BADGE_DIR, 'ubisoft.png'), name: 'ubisoft.png' };
 }
 
-function makeLinkLine({ url, platform }) {
-  if (!url) return '';
-  const links = [`[Open in browser ↗](${url})`];
+function makeLinkLine({ browserUrl, clientUrl, platform }) {
+  const browser = String(browserUrl || '').trim();
+  const client = String(clientUrl || '').trim();
+  if (!browser && !client) return '';
+  const links = [];
+  if (browser) links.push(`[Open in browser ↗](${browser})`);
   const p = String(platform || '').toLowerCase();
-  if (p.includes('steam')) links.push(`[Open in Steam Client ↗](steam://openurl/${url})`);
-  if (p.includes('epic')) {
-    const m = url.match(/\/p\/([a-z0-9-]+)/i);
-    if (m && m[1]) links.push(`[Open in Epic Games Launcher ↗](com.epicgames.launcher://store/p/${m[1]})`);
-  }
+  if (p.includes('steam')) { if (client) links.push(`[Open in Steam Client ↗](${client})`); }
+  else if (p.includes('epic')) { if (client) links.push(`[Open in Epic Games Launcher ↗](${client})`); }
+  else if (p.includes('ubisoft')) { if (client) links.push(`[Open in Ubisoft ↗](${client})`); }
   return links.join('     ');
 }
 
@@ -206,23 +208,27 @@ async function buildTestMessage({ platform }) {
   const worth = g && g.worth ? String(g.worth) : '';
   const until = formatDateDMY(g && g.end_date ? g.end_date : '');
   const image = normalizeImageUrl(g && g.image ? g.image : '');
-  const openUrl = (g && (g.open_giveaway_url || g.gamerpower_url)) ? String(g.open_giveaway_url || g.gamerpower_url) : 'https://www.gamerpower.com/';
+  const browserUrl = (g && g.gamerpower_url) ? String(g.gamerpower_url) : 'https://www.gamerpower.com/';
+  const clientUrl = (g && g.open_giveaway_url) ? String(g.open_giveaway_url) : browserUrl;
   const publisher = g && g.publisher ? String(g.publisher) : '';
 
   const meta = `${(worth && worth !== 'N/A') ? `~~${worth}~~ ` : ''}**Free** until ${until || '—'}`;
-  const linkLine = makeLinkLine({ url: openUrl, platform: platParam });
+  const linkLine = makeLinkLine({ browserUrl, clientUrl, platform: platParam });
+
+  const badgeInfo = badgeAttachment(platParam);
+  const badgeFile = badgeInfo ? new AttachmentBuilder(badgeInfo.file, { name: badgeInfo.name }) : null;
 
   const embed = {
     title,
     description: linkLine ? `${meta}
 
 ${linkLine}` : meta,
-    thumbnail: badgeUrl(platParam) ? { url: badgeUrl(platParam) } : undefined,
+    thumbnail: badgeFile ? { url: `attachment://${badgeInfo.name}` } : undefined,
     image: image ? { url: image } : undefined,
     footer: { text: `via .rabbitstuff.xyz${publisher ? `  •  © ${publisher}` : ''}` }
   };
 
-  return { embeds: [embed] };
+  return { embeds: [embed], files: badgeFile ? [badgeFile] : [] };
 }
 
 module.exports = { registerGiveawaysRoutes };

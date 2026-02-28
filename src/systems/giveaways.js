@@ -5,16 +5,17 @@
 //
 // Docs: https://www.gamerpower.com/api-read
 
-const { EmbedBuilder } = require('discord.js');
+const path = require('path');
+const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const GuildConfig = require('../database/models/GuildConfig');
 const GiveawayPost = require('../database/models/GiveawayPost');
 const { fetchChannel } = require('../services/discordFetchCache');
 
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
 
-// Public base used for serving local assets (logos) to Discord.
-// Must be reachable from the internet (your dashboard domain).
-const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
+// We attach platform icons to each message to avoid hotlink/rate-limit issues and
+// avoid relying on PUBLIC_BASE_URL being configured.
+const BADGE_DIR = path.join(__dirname, '../../public/assets/platform-badges');
 
 function clampInt(n, { min = 0, max = 1_000_000, fallback = 0 } = {}) {
   const v = Number(n);
@@ -44,19 +45,21 @@ function platformLabel(platform) {
   return platform || 'Platform';
 }
 
-function platformBadgePath(platform) {
+function platformBadgeFile(platform) {
   const p = String(platform || '').toLowerCase();
-  if (p.includes('steam')) return '/assets/platform-badges/steam.png';
-  if (p.includes('epic')) return '/assets/platform-badges/epic.png';
-  if (p.includes('ubisoft') || p.includes('uplay')) return '/assets/platform-badges/ubisoft.png';
+  if (p.includes('steam')) return { file: path.join(BADGE_DIR, 'steam.png'), name: 'steam.png' };
+  if (p.includes('epic')) return { file: path.join(BADGE_DIR, 'epic.png'), name: 'epic.png' };
+  if (p.includes('ubisoft') || p.includes('uplay')) return { file: path.join(BADGE_DIR, 'ubisoft.png'), name: 'ubisoft.png' };
   return null;
 }
 
-function platformBadgeUrl(platform) {
-  const rel = platformBadgePath(platform);
-  if (!rel) return null;
-  if (!PUBLIC_BASE_URL) return null;
-  return `${PUBLIC_BASE_URL}${rel}`;
+function buildPlatformBadgeAttachment(platform) {
+  const info = platformBadgeFile(platform);
+  if (!info) return null;
+  return {
+    attachment: new AttachmentBuilder(info.file, { name: info.name }),
+    url: `attachment://${info.name}`
+  };
 }
 
 function safeText(v, max = 1024) {
@@ -86,16 +89,20 @@ function formatDateDMY(value) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-function makeLinkLine({ browserUrl, platform }) {
-  const url = safeText(browserUrl, 2048);
-  if (!url) return '';
-  const links = [`[Open in browser ↗](${url})`];
+function makeLinkLine({ browserUrl, clientUrl, platform }) {
+  const browser = safeText(browserUrl, 2048);
+  const client = safeText(clientUrl, 2048);
+  if (!browser && !client) return '';
+
+  const links = [];
+  if (browser) links.push(`[Open in browser ↗](${browser})`);
   const p = String(platform || '').toLowerCase();
   if (p.includes('steam')) {
-    links.push(`[Open in Steam Client ↗](steam://openurl/${url})`);
+    if (client) links.push(`[Open in Steam Client ↗](${client})`);
   } else if (p.includes('epic')) {
-    const m = url.match(/\/p\/([a-z0-9-]+)/i);
-    if (m && m[1]) links.push(`[Open in Epic Games Launcher ↗](com.epicgames.launcher://store/p/${m[1]})`);
+    if (client) links.push(`[Open in Epic Games Launcher ↗](${client})`);
+  } else if (p.includes('ubisoft')) {
+    if (client) links.push(`[Open in Ubisoft ↗](${client})`);
   }
   return links.join('     ');
 }
@@ -112,8 +119,9 @@ function makeEmbedFromGiveaway(g) {
   if (worth && worth !== 'N/A') meta.push(`~~${worth}~~`);
   meta.push(`**Free** until ${endDate || '—'}`);
 
-  const url = safeText(g.open_giveaway_url, 2048) || safeText(g.gamerpower_url, 2048) || '';
-  const linkLine = makeLinkLine({ browserUrl: url, platform });
+  const browserUrl = safeText(g.gamerpower_url, 2048) || '';
+  const clientUrl = safeText(g.open_giveaway_url, 2048) || browserUrl;
+  const linkLine = makeLinkLine({ browserUrl, clientUrl, platform });
   const desc = linkLine
     ? `${meta.join(' ')}\n\n${linkLine}`
     : meta.join(' ');
@@ -126,10 +134,10 @@ function makeEmbedFromGiveaway(g) {
   // Important: do NOT set embed URL (otherwise Discord will hyperlink the title).
   if (image) embed.setImage(image);
 
-  const thumb = platformBadgeUrl(platform);
-  if (thumb) embed.setThumbnail(thumb);
+  const badge = buildPlatformBadgeAttachment(platform);
+  if (badge) embed.setThumbnail(badge.url);
 
-  return embed;
+  return { embed, badge };
 }
 
 // Links are rendered inside embed description to match the screenshot (not Discord buttons).
@@ -154,8 +162,11 @@ async function postGiveawayToGuild(client, guildId, channelId, g) {
   const ch = await fetchChannel(client, channelId).catch(() => null);
   if (!ch || typeof ch.send !== 'function') return { ok: false, reason: 'channel_not_found' };
 
-  const embed = makeEmbedFromGiveaway(g);
-  await ch.send({ embeds: [embed] }).catch((e) => {
+  const built = makeEmbedFromGiveaway(g);
+  const embed = built.embed;
+  const files = built.badge ? [built.badge.attachment] : [];
+
+  await ch.send({ embeds: [embed], files }).catch((e) => {
     throw new Error(`Discord send failed: ${e && e.message ? e.message : String(e)}`);
   });
 
