@@ -147,7 +147,9 @@ function registerGiveawaysRoutes(ctx) {
 
       return res.json({ ok: true });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: 'internal_error' });
+      // Surface a trimmed error to help debugging in production logs/UI.
+      const msg = (e && e.message) ? String(e.message) : String(e);
+      return res.status(500).json({ ok: false, error: 'internal_error', message: msg.slice(0, 180) });
     }
   });
 }
@@ -166,29 +168,33 @@ function buildTestMessage({ platform }) {
       ? 'https://store.epicgames.com/p/example'
       : 'https://store.ubisoft.com/');
 
+  // Wikimedia frequently rate-limits hotlinking (429). Use a stable CDN + rasterizer.
+  // The weserv proxy converts SVG→PNG and caches.
   const thumb = String(platform).includes('steam')
-    ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Steam_icon_logo.svg/240px-Steam_icon_logo.svg.png'
+    ? 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/steam.svg&output=png&bg=ffffff&w=256&h=256'
     : (String(platform).includes('epic')
-      ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Epic_Games_logo.svg/240px-Epic_Games_logo.svg.png'
-      : 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Ubisoft_logo.svg/240px-Ubisoft_logo.svg.png');
+      ? 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/epicgames.svg&output=png&bg=ffffff&w=256&h=256'
+      : 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/ubisoft.svg&output=png&bg=ffffff&w=256&h=256');
 
   const embed = {
     title,
-    description: `${worth} • Free until ${until}`,
+    description: `~~${worth}~~ Free until ${until}`,
     color: 0x5865F2,
     thumbnail: { url: thumb },
     image: { url: image },
     footer: { text: 'via gamerpower.com' }
   };
 
+  // Discord Link Buttons only accept http/https URLs. Custom schemes (steam://, com.epicgames...) can throw.
+  // Keep the labels, but use the store URL (Steam/Epic desktop clients can still handle it via browser integration).
   const components = [
     {
       type: 1,
       components: [
         { type: 2, style: 5, label: 'Open in browser ↗', url },
-        ...(String(platform).includes('steam') ? [{ type: 2, style: 5, label: 'Open in Steam Client ↗', url: `steam://openurl/${url}` }] : []),
-        ...(String(platform).includes('epic') && url.includes('/p/') ? [{ type: 2, style: 5, label: 'Open in Epic Games Launcher ↗', url: `com.epicgames.launcher://store${url.substring(url.indexOf('/p/'))}` }] : [])
-      ]
+        ...(String(platform).includes('steam') ? [{ type: 2, style: 5, label: 'Open in Steam Client ↗', url }] : []),
+        ...(String(platform).includes('epic') ? [{ type: 2, style: 5, label: 'Open in Epic Games Launcher ↗', url }] : [])
+      ].slice(0, 5)
     }
   ];
 

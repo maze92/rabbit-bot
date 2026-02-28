@@ -42,13 +42,10 @@ function platformLabel(platform) {
 
 function platformThumbnailUrl(platform) {
   const p = String(platform || '').toLowerCase();
-  // Stable Wikimedia-hosted PNG previews (used only as embed thumbnail).
-  // Steam icon logo: https://commons.wikimedia.org/wiki/File:Steam_icon_logo.svg
-  if (p.includes('steam')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Steam_icon_logo.svg/240px-Steam_icon_logo.svg.png';
-  // Epic Games logo: https://commons.wikimedia.org/wiki/File:Epic_Games_logo.svg
-  if (p.includes('epic')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Epic_Games_logo.svg/240px-Epic_Games_logo.svg.png';
-  // Ubisoft logo: https://commons.wikimedia.org/wiki/File:Ubisoft_logo.svg
-  if (p.includes('ubisoft') || p.includes('uplay')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Ubisoft_logo.svg/240px-Ubisoft_logo.svg.png';
+  // Wikimedia rate-limits hotlinking (429) on some hosts. Use jsDelivr + weserv rasterizer.
+  if (p.includes('steam')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/steam.svg&output=png&bg=ffffff&w=256&h=256';
+  if (p.includes('epic')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/epicgames.svg&output=png&bg=ffffff&w=256&h=256';
+  if (p.includes('ubisoft') || p.includes('uplay')) return 'https://images.weserv.nl/?url=cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/ubisoft.svg&output=png&bg=ffffff&w=256&h=256';
   return null;
 }
 
@@ -69,8 +66,14 @@ function makeEmbedFromGiveaway(g) {
   const platform = pickPrimaryPlatform(g.platforms);
   const descriptionParts = [];
 
-  if (worth && worth !== 'N/A') descriptionParts.push(`${worth}`);
-  descriptionParts.push(`Free until ${endDate && endDate !== 'N/A' ? endDate : '—'}`);
+  const untilText = `Free until ${endDate && endDate !== 'N/A' ? endDate : '—'}`;
+  if (worth && worth !== 'N/A') {
+    // Match the screenshot style: strikethrough worth then free-until.
+    descriptionParts.push(`~~${worth}~~`);
+    descriptionParts.push(untilText);
+  } else {
+    descriptionParts.push(untilText);
+  }
 
   const embed = new EmbedBuilder()
     .setTitle(title || 'Giveaway')
@@ -101,26 +104,20 @@ function makeButtons(g) {
     );
 
     if (platform && platform.includes('steam')) {
-      // Steam client can open a URL via steam://openurl/
-      const steamUrl = 'steam://openurl/' + url;
+      // Link Buttons must be http/https. Keep label, point to store URL.
       row.addComponents(
         new ButtonBuilder()
           .setStyle(ButtonStyle.Link)
           .setLabel('Open in Steam Client ↗')
-          .setURL(steamUrl)
+          .setURL(url)
       );
     } else if (platform && platform.includes('epic')) {
-      // If URL contains /p/<slug> we can create Epic deep link. Otherwise omit.
-      const m = url.match(/\/p\/([^/?#]+)/i);
-      if (m && m[1]) {
-        const epic = 'com.epicgames.launcher://store/p/' + m[1];
-        row.addComponents(
-          new ButtonBuilder()
-            .setStyle(ButtonStyle.Link)
-            .setLabel('Open in Epic Games Launcher ↗')
-            .setURL(epic)
-        );
-      }
+      row.addComponents(
+        new ButtonBuilder()
+          .setStyle(ButtonStyle.Link)
+          .setLabel('Open in Epic Games Launcher ↗')
+          .setURL(url)
+      );
     }
   }
 
