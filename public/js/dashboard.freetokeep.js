@@ -20,8 +20,9 @@
       enabled: !!els.enabled.checked,
       guildId: gid(),
       channelId: els.channel.value || null,
-      pollIntervalSeconds: Number(els.interval.value || 300),
-      maxPerCycle: Number(els.max.value || 3),
+      pollIntervalSeconds: Number(els.interval.value || 60),
+      // 0 => unlimited
+      maxPerCycle: Number(els.max.value || 0),
       platforms: {
         epic: !!els.epic.checked,
         steam: !!els.steam.checked,
@@ -47,8 +48,8 @@
     cfg = cfg || {};
     els.enabled.checked = cfg.enabled === true;
     els.channel.value = cfg.channelId || '';
-    els.interval.value = cfg.pollIntervalSeconds || 300;
-    els.max.value = cfg.maxPerCycle || 3;
+    els.interval.value = (cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
+    els.max.value = (cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
     els.epic.checked = !cfg.platforms || cfg.platforms.epic !== false;
     els.steam.checked = !cfg.platforms || cfg.platforms.steam !== false;
     els.ubisoft.checked = !cfg.platforms || cfg.platforms.ubisoft !== false;
@@ -105,7 +106,9 @@
     }
     var e = preview.embed;
     var title = e.title || '';
-    var url = e.url || '';
+    // URL is intentionally not embedded in the title (no hyperlink).
+    // Navigation is handled by buttons.
+    var url = '';
     var desc = e.description || '';
     var thumb = (e.thumbnail && e.thumbnail.url) ? e.thumbnail.url : '';
     var img = (e.image && e.image.url) ? e.image.url : '';
@@ -129,8 +132,7 @@
     // Title must be bold only, with no hyperlinking
     html +=       '<div class="ftk-preview-title">' + window.OzarkDashboard.escapeHtml(title) + '</div>';
     if (desc) html += '<div class="ftk-preview-desc">' + window.OzarkDashboard.escapeHtml(desc) + '</div>';
-    // Keep the main URL visible but not as the title hyperlink
-    if (url) html += '<div class="ftk-preview-link">' + window.OzarkDashboard.escapeHtml(url) + '</div>';
+    // no URL line
     html +=     '</div>';
     if (thumb) html += '<img class="ftk-preview-thumb" src="' + window.OzarkDashboard.escapeHtml(thumb) + '" alt="" />';
     html +=   '</div>';
