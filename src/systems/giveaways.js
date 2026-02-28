@@ -6,7 +6,8 @@
 // Docs: https://www.gamerpower.com/api-read
 
 const path = require('path');
-const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const fs = require('fs');
+const { EmbedBuilder } = require('discord.js');
 const GuildConfig = require('../database/models/GuildConfig');
 const GiveawayPost = require('../database/models/GiveawayPost');
 const { fetchChannel } = require('../services/discordFetchCache');
@@ -72,10 +73,7 @@ function platformBadgeFile(platform) {
 function buildPlatformBadgeAttachment(platform) {
   const info = platformBadgeFile(platform);
   if (!info) return null;
-  return {
-    attachment: new AttachmentBuilder(info.file, { name: info.name }),
-    url: `attachment://${info.name}`
-  };
+  return { file: info.file, name: info.name, url: `attachment://${info.name}` };
 }
 
 function safeText(v, max = 1024) {
@@ -219,30 +217,38 @@ async function postGiveawayToGuild(client, guildId, channelId, g, { forcedPlatfo
   const built = makeEmbedFromGiveaway(g, { forcedPlatform });
   const embed = built.embed;
 
-  // Always TRY to send with the attached badge first (perfect PNGs).
-  // If the channel truly cannot accept attachments, retry once with a public https thumbnail.
-  const trySendWithAttachment = async () => {
-    if (!built.badge) return false;
+  // Platform badge MUST be a perfect PNG (your provided files). We send it as an attachment
+  // and reference it with attachment://... in the embed thumbnail.
+  //
+  // If this fails, it usually means: file missing in deployment, or the channel disallows
+  // attachments/embeds. We only fallback to an HTTPS URL if explicitly enabled.
+  const allowFallback = String(process.env.ALLOW_PLATFORM_ICON_FALLBACK || '').trim() === '1';
+
+  if (built.badge) {
+    if (!fs.existsSync(built.badge.file)) {
+      throw new Error(`Platform badge missing on disk: ${built.badge.file}`);
+    }
+
     embed.setThumbnail(built.badge.url);
-    await ch.send({ embeds: [embed], files: [built.badge.attachment] });
-    return true;
-  };
-
-  const trySendWithUrl = async () => {
-    if (built.badgeUrl) embed.setThumbnail(built.badgeUrl);
-    await ch.send({ embeds: [embed] });
-  };
-
-  try {
-    const sent = await trySendWithAttachment();
-    if (!sent) await trySendWithUrl();
-  } catch (e) {
     try {
-      await trySendWithUrl();
-    } catch (e2) {
-      throw new Error(`Discord send failed: ${e2 && e2.message ? e2.message : String(e2)}`);
+      await ch.send({
+        embeds: [embed],
+        files: [{ attachment: fs.createReadStream(built.badge.file), name: built.badge.name }]
+      });
+      return { ok: true };
+    } catch (e) {
+      if (!allowFallback) {
+        throw new Error(`Discord send failed (badge attachment): ${e && e.message ? e.message : String(e)}`);
+      }
+      // Optional fallback (not desired, but can keep the system alive if you choose).
+      if (built.badgeUrl) embed.setThumbnail(built.badgeUrl);
+      await ch.send({ embeds: [embed] });
+      return { ok: true };
     }
   }
+
+  // No badge for platform; send without thumbnail.
+  await ch.send({ embeds: [embed] });
 
   return { ok: true };
 }

@@ -4,7 +4,7 @@
 
 const { z } = require('zod');
 const path = require('path');
-const { AttachmentBuilder } = require('discord.js');
+const fs = require('fs');
 
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
 const BADGE_DIR = path.join(__dirname, '../../../public/assets/platform-badges');
@@ -306,19 +306,26 @@ async function buildTestMessage({ platform }) {
   const linkLine = makeLinkLine({ browserUrl, clientUrl, platform: platParam });
 
   const badgeInfo = badgeAttachment(platParam);
-  const badgeFile = badgeInfo ? new AttachmentBuilder(badgeInfo.file, { name: badgeInfo.name }) : null;
+  if (badgeInfo && !fs.existsSync(badgeInfo.file)) {
+    throw new Error(`Platform badge missing on disk: ${badgeInfo.file}`);
+  }
 
   const embed = {
     title,
     description: linkLine ? `${meta}
 
 ${linkLine}` : meta,
-    thumbnail: badgeFile ? { url: `attachment://${badgeInfo.name}` } : undefined,
+    thumbnail: badgeInfo ? { url: `attachment://${badgeInfo.name}` } : undefined,
     image: image ? { url: image } : undefined,
     footer: { text: `via .rabbitstuff.xyz${publisher ? `  •  © ${publisher}` : ''}` }
   };
 
-  return { embeds: [embed], files: badgeFile ? [badgeFile] : [] };
+  return {
+    embeds: [embed],
+    files: badgeInfo
+      ? [{ attachment: fs.createReadStream(badgeInfo.file), name: badgeInfo.name }]
+      : []
+  };
 }
 
 module.exports = { registerGiveawaysRoutes };
