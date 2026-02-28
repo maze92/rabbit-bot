@@ -18,6 +18,12 @@ function registerGiveawaysRoutes(ctx) {
     GuildConfig
   } = ctx;
 
+  // Some deployments of this codebase expose a smaller ctx surface.
+  // Express will throw if any middleware handler is undefined.
+  const noop = (req, res, next) => next();
+  const auth = (typeof requireDashboardAuth === "function") ? requireDashboardAuth : noop;
+  const rlMedium = (rateLimit && typeof rateLimit.medium === "function") ? rateLimit.medium : noop;
+
   const guardGuildQuery = typeof requireGuildAccess === 'function'
     ? requireGuildAccess({ from: 'query', key: 'guildId', optional: false })
     : (req, res, next) => next();
@@ -41,7 +47,7 @@ function registerGiveawaysRoutes(ctx) {
 
   const ALLOWED_PLATFORMS = new Set(['steam', 'epic-games-store', 'ubisoft']);
 
-  app.get('/api/giveaways/config', requireDashboardAuth, canManage, guardGuildQuery, async (req, res) => {
+  app.get("/api/giveaways/config", auth, canManage, guardGuildQuery, async (req, res) => {
     try {
       const guildId = sanitizeId(req.query.guildId || '');
       const doc = await GuildConfig.findOne({ guildId }).lean().catch(() => null);
@@ -65,7 +71,7 @@ function registerGiveawaysRoutes(ctx) {
     }
   });
 
-  app.post('/api/giveaways/config', requireDashboardAuth, canManage, rateLimit.medium, guardGuildBody, async (req, res) => {
+  app.post("/api/giveaways/config", auth, canManage, rlMedium, guardGuildBody, async (req, res) => {
     try {
       const guildId = sanitizeId(req.body.guildId || '');
       const payload = req.body && req.body.giveaways ? req.body.giveaways : req.body;
