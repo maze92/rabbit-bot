@@ -128,7 +128,8 @@
 
     let data = null;
     try {
-      data = await apiGet('/api/guilds/' + encodeURIComponent(guildId) + '/channels');
+      // NOTE: dashboard.js already prefixes API_BASE ("/api"), so paths here must be relative.
+      data = await apiGet('/guilds/' + encodeURIComponent(guildId) + '/channels');
     } catch (e) {
       data = null;
     }
@@ -158,7 +159,7 @@
     const guildId = getGuildId();
     if (!guildId) return;
 
-    const data = await apiGet('/api/giveaways/config?guildId=' + encodeURIComponent(guildId));
+    const data = await apiGet('/giveaways/config?guildId=' + encodeURIComponent(guildId));
 
     const cfg = data && data.giveaways ? data.giveaways : {};
     if (q('giveawaysEnabled')) q('giveawaysEnabled').checked = !!cfg.enabled;
@@ -211,7 +212,7 @@
       }
     };
 
-    await apiPost('/api/giveaways/config', payload);
+    await apiPost('/giveaways/config', payload);
 
     toast('ok', t('saved') || 'Guardado');
     const hint = q('giveawaysSavedHint');
