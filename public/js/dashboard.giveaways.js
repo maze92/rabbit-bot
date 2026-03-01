@@ -126,7 +126,8 @@
   async function renderPreview() {
     const enabled = !!(q('giveawaysEnabled') && q('giveawaysEnabled').checked);
     const platforms = readChecks('giveawaysPlatforms');
-    const types = readChecks('giveawaysTypes');
+    // Free-To-Keep posts only games; types are fixed to "game".
+    const types = ['game'];
 
     const primaryPlatform = (platforms[0] || 'steam');
     const pLower = String(primaryPlatform).toLowerCase();
@@ -136,7 +137,7 @@
     const logoUrl = platformLogoUrl(primaryPlatform);
 
     const token = ++renderToken;
-    const sample = await loadSampleFor(primaryPlatform, (types[0] || 'game'));
+    const sample = await loadSampleFor(primaryPlatform, 'game');
     if (token !== renderToken) return; // stale
 
     const example = sample || {
@@ -271,7 +272,7 @@
     }
 
     setChecks('giveawaysPlatforms', cfg.platforms || ['steam']);
-    setChecks('giveawaysTypes', cfg.types || ['game']);
+    // Types are fixed to game in Free-To-Keep.
 
     if (q('giveawaysPoll')) q('giveawaysPoll').value = String(cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
     if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
@@ -288,7 +289,7 @@
     const channelId = sel && sel.value ? String(sel.value) : null;
 
     const platforms = readChecks('giveawaysPlatforms');
-    const types = readChecks('giveawaysTypes');
+    const types = ['game'];
 
     const poll = q('giveawaysPoll') ? Number(q('giveawaysPoll').value) : 60;
     const maxPer = q('giveawaysMaxPerCycle') ? Number(q('giveawaysMaxPerCycle').value) : 0;
@@ -305,7 +306,7 @@
         enabled: enabled,
         channelId: channelId,
         platforms: platforms.length ? platforms : ['steam'],
-        types: types.length ? types : ['game'],
+        types: ['game'],
         pollIntervalSeconds: Math.max(60, Math.min(3600, Math.trunc(poll || 60))),
         maxPerCycle: Math.max(0, Math.min(50, Math.trunc(maxPer || 0)))
       }
@@ -332,7 +333,7 @@
         sel2.value = v2;
       }
       setChecks('giveawaysPlatforms', cfg.platforms || ['steam']);
-      setChecks('giveawaysTypes', cfg.types || ['game']);
+      // Types are fixed to game in Free-To-Keep.
       if (q('giveawaysPoll')) q('giveawaysPoll').value = String(cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
       if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
     }
@@ -375,7 +376,7 @@
       el.addEventListener('input', function () { renderPreview(); });
     });
 
-    ['giveawaysPlatforms', 'giveawaysTypes'].forEach(function (id) {
+    ['giveawaysPlatforms'].forEach(function (id) {
       const wrap = q(id);
       if (!wrap) return;
       wrap.addEventListener('change', function () { renderPreview(); });

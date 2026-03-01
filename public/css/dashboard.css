@@ -2624,6 +2624,13 @@ details[open] > .details-summary:before {
   max-width: 440px;
 }
 
+/* Free-To-Keep platform picker */
+.platform-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;}
+.platform-pill{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.03);cursor:pointer;user-select:none;}
+.platform-pill input{width:16px;height:16px;}
+.platform-pill__icon{width:22px;height:22px;border-radius:50%;object-fit:contain;}
+.platform-pill:hover{background:rgba(255,255,255,0.05);}
+
 .giveaway-preview__header{
   display:flex;
   justify-content:space-between;
@@ -2724,3 +2731,8 @@ details[open] > .details-summary:before {
 .status-label{opacity:.75;font-size:12px;}
 .status-value{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%;text-align:right;}
 .status-row--error .status-value{opacity:.9;}
+
+.ftk-grid{gap:18px;align-items:start;}
+@media (min-width: 980px){
+  #extras-giveaways-panel .preview-card{position:sticky;top:18px;}
+}

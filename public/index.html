@@ -558,7 +558,7 @@
                       </div>
 
 
-	                  <div class="grid-2">
+	                  <div class="grid-2 ftk-grid">
 	                    <div>
 	                      <div class="field">
 	                        <label class="switch">
@@ -577,23 +577,27 @@
 
 	                      <div class="field">
 	                        <label data-i18n="giveaways_platforms">Plataformas</label>
-	                        <div class="check-grid" id="giveawaysPlatforms">
-	                          <label class="check"><input type="checkbox" value="steam" /> Steam</label>
-	                          <label class="check"><input type="checkbox" value="epic-games-store" /> Epic Games Store</label>
-	                          <label class="check"><input type="checkbox" value="ubisoft" /> Ubisoft</label>
+	                        <div class="platform-grid" id="giveawaysPlatforms">
+	                          <label class="platform-pill">
+	                            <input type="checkbox" value="steam" />
+	                            <img class="platform-pill__icon" src="/assets/platform-badges/steam.png" alt="Steam">
+	                            <span>Steam</span>
+	                          </label>
+	                          <label class="platform-pill">
+	                            <input type="checkbox" value="epic-games-store" />
+	                            <img class="platform-pill__icon" src="/assets/platform-badges/epic.png" alt="Epic Games">
+	                            <span>Epic Games</span>
+	                          </label>
+	                          <label class="platform-pill">
+	                            <input type="checkbox" value="ubisoft" />
+	                            <img class="platform-pill__icon" src="/assets/platform-badges/ubisoft.png" alt="Ubisoft">
+	                            <span>Ubisoft</span>
+	                          </label>
 	                        </div>
+	                        <div class="hint" data-i18n="giveaways_only_games_hint">Este modo filtra apenas jogos Free-To-Keep (não inclui loot/beta).</div>
 	                      </div>
 
-	                      <div class="field">
-	                        <label data-i18n="giveaways_types">Tipos</label>
-	                        <div class="check-grid" id="giveawaysTypes">
-	                          <label class="check"><input type="checkbox" value="game" /> Game</label>
-	                          <label class="check"><input type="checkbox" value="loot" /> Loot</label>
-	                          <label class="check"><input type="checkbox" value="beta" /> Beta</label>
-	                        </div>
-	                      </div>
-
-	                      <div class="grid-2">
+	                      <div class="grid-2" style="margin-top: 2px;">
 	                        <div class="field">
 	                          <label for="giveawaysPoll" data-i18n="giveaways_poll">Intervalo (s)</label>
 	                          <input id="giveawaysPoll" class="input" type="number" min="60" max="3600" value="60" />
