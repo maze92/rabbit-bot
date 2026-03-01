@@ -271,13 +271,26 @@
     }
 
     const items = data && (data.items || data.channels) ? (data.items || data.channels) : [];
-    items.forEach(function (ch) {
-      if (!ch || !ch.id) return;
-      const opt = document.createElement('option');
-      opt.value = String(ch.id);
-      opt.textContent = (ch.name ? '#' + ch.name : ch.id);
-      sel.appendChild(opt);
-    });
+    // Cache for search filtering
+    window.OzarkDashboard = window.OzarkDashboard || {};
+    window.OzarkDashboard._giveawaysChannels = items;
+
+    function rebuildOptions(filter) {
+      sel.innerHTML = '<option value="">' + escapeHtml(t('select_channel') || 'Seleciona um canal') + '</option>';
+      const f = String(filter || '').trim().toLowerCase();
+      items.forEach(function (ch) {
+        if (!ch || !ch.id) return;
+        const name = ch.name ? String(ch.name) : '';
+        const label = (name ? '#' + name : String(ch.id));
+        if (f && !(label.toLowerCase().includes(f) || String(ch.id).includes(f))) return;
+        const opt = document.createElement('option');
+        opt.value = String(ch.id);
+        opt.textContent = label;
+        sel.appendChild(opt);
+      });
+    }
+
+    rebuildOptions(q('giveawaysChannelSearch') ? q('giveawaysChannelSearch').value : '');
 
     // Reapply desired value when options arrive
     if (desired) {
@@ -335,6 +348,14 @@
       toast('error', t('giveaways_err_channel') || 'Seleciona um canal de publicação.');
       return;
     }
+
+    const warn = q('giveawaysPlatformsWarn');
+    if (enabled && (!platforms || platforms.length === 0)) {
+      if (warn) warn.style.display = '';
+      toast('error', t('giveaways_platforms_warn') || 'Seleciona pelo menos uma plataforma.');
+      return;
+    }
+    if (warn) warn.style.display = 'none';
 
     const payload = {
       guildId: guildId,
@@ -404,7 +425,7 @@
     if (D.__giveawaysBound) return;
     D.__giveawaysBound = true;
 
-    const ids = ['giveawaysEnabled', 'giveawaysChannel', 'giveawaysPoll', 'giveawaysMaxPerCycle'];
+    const ids = ['giveawaysEnabled', 'giveawaysChannel', 'giveawaysPoll', 'giveawaysMaxPerCycle', 'giveawaysChannelSearch'];
     ids.forEach(function (id) {
       const el = q(id);
       if (!el) return;
@@ -415,8 +436,41 @@
     ['giveawaysPlatforms'].forEach(function (id) {
       const wrap = q(id);
       if (!wrap) return;
-      wrap.addEventListener('change', function () { renderPreview(); });
+      wrap.addEventListener('change', function () {
+        const warn = q('giveawaysPlatformsWarn');
+        if (warn) warn.style.display = 'none';
+        renderPreview();
+      });
     });
+
+    // Channel search filtering (uses cached channels)
+    const cs = q('giveawaysChannelSearch');
+    if (cs) {
+      cs.addEventListener('input', function () {
+        const guildId = getGuildId();
+        const sel = q('giveawaysChannel');
+        if (!guildId || !sel) return;
+        const items = (window.OzarkDashboard && window.OzarkDashboard._giveawaysChannels) ? window.OzarkDashboard._giveawaysChannels : [];
+        const desired = sel.value;
+        sel.innerHTML = '<option value="">' + escapeHtml(t('select_channel') || 'Seleciona um canal') + '</option>';
+        const f = String(cs.value || '').trim().toLowerCase();
+        items.forEach(function (ch) {
+          if (!ch || !ch.id) return;
+          const name = ch.name ? String(ch.name) : '';
+          const label = (name ? '#' + name : String(ch.id));
+          if (f && !(label.toLowerCase().includes(f) || String(ch.id).includes(f))) return;
+          const opt = document.createElement('option');
+          opt.value = String(ch.id);
+          opt.textContent = label;
+          sel.appendChild(opt);
+        });
+        // keep selection if still present
+        if (desired) {
+          const exists = !!sel.querySelector('option[value="' + CSS.escape(desired) + '"]');
+          if (exists) sel.value = desired;
+        }
+      });
+    }
 
     const btn = q('giveawaysSaveBtn');
     if (btn) btn.addEventListener('click', function () { saveGiveaways().catch(function () { toast('error', 'Erro ao guardar'); }); });

@@ -2625,11 +2625,14 @@ details[open] > .details-summary:before {
 }
 
 /* Free-To-Keep platform picker */
+.channel-picker{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+.hint-warn{color:rgba(255,190,90,0.95);}
 .platform-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;}
-.platform-pill{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.03);cursor:pointer;user-select:none;}
+.platform-pill{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.03);cursor:pointer;user-select:none;transition:background .12s ease,border-color .12s ease;}
 .platform-pill input{width:16px;height:16px;}
 .platform-pill__icon{width:22px;height:22px;border-radius:50%;object-fit:contain;}
 .platform-pill:hover{background:rgba(255,255,255,0.05);}
+.platform-pill:has(input:checked){border-color:rgba(0,168,252,0.55);background:rgba(0,168,252,0.10);}
 
 .giveaway-preview__header{
   display:flex;

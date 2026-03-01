@@ -573,9 +573,12 @@
 	                        <div id="giveawaysControls" class="ftk-controls">
 	                          <div class="field">
 	                            <label for="giveawaysChannel" data-i18n="giveaways_channel">Canal de publicação</label>
+	                            <div class="channel-picker">
+	                              <input id="giveawaysChannelSearch" class="input" type="text" data-i18n-placeholder="giveaways_channel_search" placeholder="Procurar canal…" />
 	                            <select id="giveawaysChannel" class="select">
 	                              <option value="" data-i18n="select_channel">Seleciona um canal</option>
 	                            </select>
+	                            </div>
 	                            <div class="hint" data-i18n="giveaways_channel_hint">O bot publica no canal selecionado assim que surgirem novos jogos.</div>
 	                          </div>
 
@@ -598,6 +601,7 @@
 	                            <span>Ubisoft</span>
 	                          </label>
 	                            </div>
+	                            <div class="hint hint-warn" id="giveawaysPlatformsWarn" style="display:none" data-i18n="giveaways_platforms_warn">Seleciona pelo menos uma plataforma.</div>
 	                            <div class="hint" data-i18n="giveaways_only_games_hint">Este modo filtra apenas jogos Free-To-Keep (não inclui loot/beta).</div>
 	                          </div>
 
