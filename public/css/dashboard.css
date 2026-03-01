@@ -2716,3 +2716,11 @@ details[open] > .details-summary:before {
   opacity:0.75;
   margin-top:8px;
 }
+
+
+/* Free-To-Keep status card */
+.status-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 12px;margin:12px 0;}
+.status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0;}
+.status-label{opacity:.75;font-size:12px;}
+.status-value{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%;text-align:right;}
+.status-row--error .status-value{opacity:.9;}

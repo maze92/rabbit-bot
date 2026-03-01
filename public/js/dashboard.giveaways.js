@@ -18,6 +18,67 @@
 
   function q(id) { return document.getElementById(id); }
 
+  function fmtTs(ts) {
+    if (!ts) return '—';
+    try {
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleString();
+    } catch {
+      return '—';
+    }
+  }
+
+  async function loadGiveawaysStatus() {
+    const guildId = (window.OzarkDashboard && window.OzarkDashboard.currentGuildId) ? window.OzarkDashboard.currentGuildId : null;
+    if (!guildId) return;
+
+    const data = await apiGet('/giveaways/status?guildId=' + encodeURIComponent(guildId));
+    const st = data && data.status ? data.status : null;
+
+    const elStatus = q('giveawaysStatusValue');
+    const elChannel = q('giveawaysStatusChannel');
+    const elLast = q('giveawaysStatusLast');
+    const elNext = q('giveawaysStatusNext');
+    const elSent = q('giveawaysStatusSent');
+    const elErrRow = q('giveawaysStatusErrorRow');
+    const elErr = q('giveawaysStatusError');
+
+    if (!st) {
+      if (elStatus) elStatus.textContent = 'Inativo';
+      if (elChannel) elChannel.textContent = '—';
+      if (elLast) elLast.textContent = '—';
+      if (elNext) elNext.textContent = '—';
+      if (elSent) elSent.textContent = '—';
+      if (elErrRow) elErrRow.style.display = 'none';
+      return;
+    }
+
+    if (elStatus) elStatus.textContent = st.enabled ? 'Ativo' : 'Inativo';
+    if (elChannel) {
+      const name = st.channelName ? ('#' + st.channelName) : (st.channelId ? ('#' + st.channelId) : '—');
+      elChannel.textContent = name;
+    }
+    if (elLast) elLast.textContent = fmtTs(st.lastPollAt);
+    if (elNext) elNext.textContent = fmtTs(st.nextPollAt);
+    if (elSent) elSent.textContent = fmtTs(st.lastSentAt);
+
+    if (st.lastError) {
+      if (elErrRow) elErrRow.style.display = 'flex';
+      if (elErr) elErr.textContent = st.lastError;
+    } else {
+      if (elErrRow) elErrRow.style.display = 'none';
+    }
+  }
+
+  function startStatusPolling() {
+    if (D.__giveawaysStatusTimer) return;
+    D.__giveawaysStatusTimer = setInterval(function () {
+      loadGiveawaysStatus().catch(function () {});
+    }, 10_000);
+  }
+
+
   function readChecks(containerId) {
     const root = q(containerId);
     if (!root) return [];
@@ -332,5 +393,7 @@
     bindEvents();
     await loadChannelsIntoSelect();
     await loadGiveawaysConfig();
+    await loadGiveawaysStatus().catch(function () {});
+    startStatusPolling();
   };
 })();
