@@ -44,20 +44,39 @@
     const elErrRow = q('giveawaysStatusErrorRow');
     const elErr = q('giveawaysStatusError');
 
+    const elHeadline = q('giveawaysHeadline');
+
     if (!st) {
-      if (elStatus) elStatus.textContent = 'Inativo';
+      if (elStatus) {
+        elStatus.textContent = t ? (t('giveaways_status_inactive') || 'Inativo') : 'Inativo';
+        elStatus.classList.remove('is-on');
+        elStatus.classList.add('is-off');
+      }
       if (elChannel) elChannel.textContent = '—';
       if (elLast) elLast.textContent = '—';
       if (elNext) elNext.textContent = '—';
       if (elSent) elSent.textContent = '—';
       if (elErrRow) elErrRow.style.display = 'none';
+      if (elHeadline) elHeadline.innerHTML = '';
       return;
     }
 
-    if (elStatus) elStatus.textContent = st.enabled ? 'Ativo' : 'Inativo';
+    if (elStatus) {
+      const on = !!st.enabled;
+      elStatus.textContent = on ? (t ? (t('giveaways_status_active') || 'Ativo') : 'Ativo') : (t ? (t('giveaways_status_inactive') || 'Inativo') : 'Inativo');
+      elStatus.classList.toggle('is-on', on);
+      elStatus.classList.toggle('is-off', !on);
+    }
     if (elChannel) {
       const name = st.channelName ? ('#' + st.channelName) : (st.channelId ? ('#' + st.channelId) : '—');
       elChannel.textContent = name;
+      if (elHeadline) {
+        if (st.enabled && name && name !== '—') {
+          elHeadline.innerHTML = (t ? (t('giveaways_headline_posting') || 'A publicar em') : 'A publicar em') + ' <strong>' + escapeHtml(name) + '</strong>';
+        } else {
+          elHeadline.innerHTML = '';
+        }
+      }
     }
     if (elLast) elLast.textContent = fmtTs(st.lastPollAt);
     if (elNext) elNext.textContent = fmtTs(st.nextPollAt);
@@ -76,6 +95,18 @@
     D.__giveawaysStatusTimer = setInterval(function () {
       loadGiveawaysStatus().catch(function () {});
     }, 10_000);
+  }
+
+  async function triggerGiveawaysNow() {
+    const guildId = getGuildId();
+    if (!guildId) return;
+    try {
+      await apiPost('/giveaways/trigger?guildId=' + encodeURIComponent(guildId), {});
+      toast((t && t('giveaways_trigger_ok')) || 'Verificação iniciada');
+      loadGiveawaysStatus().catch(function () {});
+    } catch (e) {
+      toast(((t && t('giveaways_trigger_fail')) || 'Falha a verificar') + (e && e.message ? (': ' + e.message) : ''));
+    }
   }
 
 
@@ -387,6 +418,9 @@
 
     const testBtn = q('giveawaysTestBtn');
     if (testBtn) testBtn.addEventListener('click', function () { sendTest().catch(function () { toast('error', 'Erro ao enviar teste'); }); });
+
+    const trigBtn = q('giveawaysTriggerBtn');
+    if (trigBtn) trigBtn.addEventListener('click', function () { triggerGiveawaysNow().catch(function () {}); });
   }
 
   // Public hook for core tab switcher

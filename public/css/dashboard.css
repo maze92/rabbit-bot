@@ -2732,6 +2732,13 @@ details[open] > .details-summary:before {
 .status-value{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%;text-align:right;}
 .status-row--error .status-value{opacity:.9;}
 
+.status-pill{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;line-height:18px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);}
+.status-pill.is-on{background:rgba(46, 204, 113, .18);border-color:rgba(46, 204, 113, .35);}
+.status-pill.is-off{background:rgba(231, 76, 60, .14);border-color:rgba(231, 76, 60, .28);opacity:.95;}
+
+.ftk-headline{margin-top:6px;margin-bottom:10px;font-size:12px;opacity:.82;}
+.ftk-headline strong{opacity:1;}
+
 .ftk-grid{gap:18px;align-items:start;}
 @media (min-width: 980px){
   #extras-giveaways-panel .preview-card{position:sticky;top:18px;}
