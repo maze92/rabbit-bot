@@ -29,7 +29,10 @@
           return resolve();
         }
         const script = document.createElement('script');
-        script.src = '/locales/' + lang + '.js';
+        // Cache-bust locale bundles aggressively. Some hosts/proxies cache /locales/*.js
+        // and browsers keep stale versions around.
+        var build = (window && (window.OZARK_BUILD || window.OZARK_VERSION)) ? (window.OZARK_BUILD || window.OZARK_VERSION) : String(Date.now());
+        script.src = '/locales/' + lang + '.js?v=' + encodeURIComponent(build);
         script.async = true;
         script.onload = function () {
           resolve();
