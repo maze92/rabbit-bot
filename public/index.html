@@ -561,24 +561,27 @@
 
 	                  <div class="grid-2 ftk-grid">
 	                    <div>
-	                      <div class="field">
-	                        <label class="switch">
-	                          <input type="checkbox" id="giveawaysEnabled" />
-	                          <span class="slider"></span>
-	                        </label>
-	                        <span class="switch-label" data-i18n="giveaways_enabled">Ativar giveaways</span>
-	                      </div>
+	                      <div class="ftk-config-card">
+	                        <div class="field">
+	                          <label class="switch">
+	                            <input type="checkbox" id="giveawaysEnabled" />
+	                            <span class="slider"></span>
+	                          </label>
+	                          <span class="switch-label" data-i18n="giveaways_enabled">Ativar Free-To-Keep</span>
+	                        </div>
 
-	                      <div class="field">
-	                        <label for="giveawaysChannel" data-i18n="giveaways_channel">Canal de publicação</label>
-	                        <select id="giveawaysChannel" class="select">
-	                          <option value="" data-i18n="select_channel">Seleciona um canal</option>
-	                        </select>
-	                      </div>
+	                        <div id="giveawaysControls" class="ftk-controls">
+	                          <div class="field">
+	                            <label for="giveawaysChannel" data-i18n="giveaways_channel">Canal de publicação</label>
+	                            <select id="giveawaysChannel" class="select">
+	                              <option value="" data-i18n="select_channel">Seleciona um canal</option>
+	                            </select>
+	                            <div class="hint" data-i18n="giveaways_channel_hint">O bot publica no canal selecionado assim que surgirem novos jogos.</div>
+	                          </div>
 
-	                      <div class="field">
-	                        <label data-i18n="giveaways_platforms">Plataformas</label>
-	                        <div class="platform-grid" id="giveawaysPlatforms">
+	                          <div class="field">
+	                            <label data-i18n="giveaways_platforms">Plataformas</label>
+	                            <div class="platform-grid" id="giveawaysPlatforms">
 	                          <label class="platform-pill">
 	                            <input type="checkbox" value="steam" />
 	                            <img class="platform-pill__icon" src="/assets/platform-badges/steam.png" alt="Steam">
@@ -594,26 +597,33 @@
 	                            <img class="platform-pill__icon" src="/assets/platform-badges/ubisoft.png" alt="Ubisoft">
 	                            <span>Ubisoft</span>
 	                          </label>
-	                        </div>
-	                        <div class="hint" data-i18n="giveaways_only_games_hint">Este modo filtra apenas jogos Free-To-Keep (não inclui loot/beta).</div>
-	                      </div>
+	                            </div>
+	                            <div class="hint" data-i18n="giveaways_only_games_hint">Este modo filtra apenas jogos Free-To-Keep (não inclui loot/beta).</div>
+	                          </div>
 
-	                      <div class="grid-2" style="margin-top: 2px;">
-	                        <div class="field">
-	                          <label for="giveawaysPoll" data-i18n="giveaways_poll">Intervalo (s)</label>
-	                          <input id="giveawaysPoll" class="input" type="number" min="60" max="3600" value="60" />
-	                        </div>
-	                        <div class="field">
-	                          <label for="giveawaysMaxPerCycle" data-i18n="giveaways_max_cycle">Máx / ciclo (0 = todos)</label>
-	                          <input id="giveawaysMaxPerCycle" class="input" type="number" min="0" max="50" value="0" />
-	                        </div>
-	                      </div>
+	                          <div class="grid-2" style="margin-top: 2px;">
+	                            <div class="field">
+	                              <label for="giveawaysPoll" data-i18n="giveaways_poll">Intervalo (s)</label>
+	                              <input id="giveawaysPoll" class="input" type="number" min="60" max="3600" value="60" />
+	                              <div class="hint" data-i18n="giveaways_poll_hint">Recomendado: 60–300s.</div>
+	                            </div>
+	                            <div class="field">
+	                              <label for="giveawaysMaxPerCycle" data-i18n="giveaways_max_cycle">Máx / ciclo (0 = todos)</label>
+	                              <input id="giveawaysMaxPerCycle" class="input" type="number" min="0" max="50" value="0" />
+	                            </div>
+	                          </div>
 
-	                      <div class="actions">
-	                        <button class="btn primary" id="giveawaysSaveBtn" data-i18n="save">Guardar</button>
-	                        <button class="btn" id="giveawaysTriggerBtn" data-i18n="giveaways_trigger">Verificar agora</button>
-	                        <button class="btn" id="giveawaysTestBtn" data-i18n="giveaways_test">Enviar teste</button>
-	                        <span class="hint" id="giveawaysSavedHint"></span>
+	                          <div class="actions ftk-actions">
+	                            <div class="actions-left">
+	                              <button class="btn primary" id="giveawaysSaveBtn" data-i18n="save">Guardar</button>
+	                              <span class="hint" id="giveawaysSavedHint"></span>
+	                            </div>
+	                            <div class="actions-right">
+	                              <button class="btn" id="giveawaysTriggerBtn" data-i18n="giveaways_trigger">Verificar agora</button>
+	                              <button class="btn" id="giveawaysTestBtn" data-i18n="giveaways_test">Enviar teste</button>
+	                            </div>
+	                          </div>
+	                        </div>
 	                      </div>
 	                    </div>
 

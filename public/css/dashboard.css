@@ -2743,3 +2743,11 @@ details[open] > .details-summary:before {
 @media (min-width: 980px){
   #extras-giveaways-panel .preview-card{position:sticky;top:18px;}
 }
+
+/* ---- Free-To-Keep (UI refinements) ---- */
+#extras-giveaways-panel .ftk-config-card{padding:12px;border:1px solid rgba(255,255,255,0.06);border-radius:12px;background:rgba(255,255,255,0.02)}
+#extras-giveaways-panel .ftk-controls.is-disabled{opacity:.55;filter:grayscale(.15);pointer-events:none}
+#extras-giveaways-panel .ftk-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#extras-giveaways-panel .ftk-actions .actions-left,#extras-giveaways-panel .ftk-actions .actions-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#extras-giveaways-panel .giveaway-preview{max-width:520px}
+#extras-giveaways-panel .giveaway-preview__image img{max-height:240px;object-fit:cover}

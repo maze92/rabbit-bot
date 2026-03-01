@@ -156,6 +156,11 @@
 
   async function renderPreview() {
     const enabled = !!(q('giveawaysEnabled') && q('giveawaysEnabled').checked);
+    const controls = q('giveawaysControls');
+    if (controls) {
+      if (enabled) controls.classList.remove('is-disabled');
+      else controls.classList.add('is-disabled');
+    }
     const platforms = readChecks('giveawaysPlatforms');
     // Free-To-Keep posts only games; types are fixed to "game".
     const types = ['game'];
