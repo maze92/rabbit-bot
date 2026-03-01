@@ -151,10 +151,39 @@ function registerGuildsRoutes({
       const guild = _client.guilds.cache.get(guildId) || null;
       if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
 
+      // Include parent/category + channel type info so dashboards can group/pin channels.
       const items = guild.channels.cache
         .filter((ch) => ch && ch.isTextBased?.() && !ch.isDMBased?.())
-        .map((ch) => ({ id: ch.id, name: ch.name }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .map((ch) => {
+          const parentId = ch.parentId || null;
+          const parent = parentId ? guild.channels.cache.get(parentId) : null;
+          const parentName = parent && parent.name ? String(parent.name) : null;
+
+          // Normalize a lightweight "kind" used by UI pickers.
+          // discord.js v14 types are numeric; we avoid importing enums here.
+          const rawType = ch.type;
+          const isThread = !!ch.isThread?.();
+          // GuildAnnouncement is 5 in discord.js v14 (ChannelType.GuildAnnouncement)
+          const isAnnouncement = (rawType === 5) || (String(rawType).toLowerCase().includes('announcement'));
+          const kind = isThread ? 'thread' : (isAnnouncement ? 'announcement' : 'text');
+
+          return {
+            id: ch.id,
+            name: ch.name,
+            parentId,
+            parentName,
+            kind,
+          };
+        })
+        .sort((a, b) => {
+          const pa = (a.parentName || '').toLowerCase();
+          const pb = (b.parentName || '').toLowerCase();
+          if (pa !== pb) return pa.localeCompare(pb);
+          const ka = (a.kind || '').toLowerCase();
+          const kb = (b.kind || '').toLowerCase();
+          if (ka !== kb) return ka.localeCompare(kb);
+          return String(a.name || '').localeCompare(String(b.name || ''));
+        });
 
       return res.json({ ok: true, items });
     } catch (err) {
