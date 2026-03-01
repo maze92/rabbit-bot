@@ -529,6 +529,7 @@
 	                  <p class="hint" data-i18n="giveaways_hint">
 	                    Publica automaticamente giveaways do GamerPower no canal escolhido, assim que aparecem.
 	                  </p>
+	                  <div class="ftk-summary" id="giveawaysSummary" aria-live="polite"></div>
 	                  <div class="ftk-headline" id="giveawaysHeadline"></div>
 
                       <div class="status-card" id="giveawaysStatusCard">
@@ -575,6 +576,7 @@
 	                            <label for="giveawaysChannel" data-i18n="giveaways_channel">Canal de publicação</label>
 	                            <div class="channel-picker">
 	                              <input id="giveawaysChannelSearch" class="input" type="text" data-i18n-placeholder="giveaways_channel_search" placeholder="Procurar canal…" />
+	                              <div class="ftk-channel-current" id="giveawaysChannelCurrent" style="display:none"></div>
 	                            <select id="giveawaysChannel" class="select">
 	                              <option value="" data-i18n="select_channel">Seleciona um canal</option>
 	                            </select>
@@ -605,17 +607,22 @@
 	                            <div class="hint" data-i18n="giveaways_only_games_hint">Este modo filtra apenas jogos Free-To-Keep (não inclui loot/beta).</div>
 	                          </div>
 
-	                          <div class="grid-2" style="margin-top: 2px;">
-	                            <div class="field">
-	                              <label for="giveawaysPoll" data-i18n="giveaways_poll">Intervalo (s)</label>
-	                              <input id="giveawaysPoll" class="input" type="number" min="60" max="3600" value="60" />
-	                              <div class="hint" data-i18n="giveaways_poll_hint">Recomendado: 60–300s.</div>
+	                          <details class="ftk-advanced" id="giveawaysAdvanced">
+	                            <summary data-i18n="giveaways_advanced">Definições avançadas</summary>
+	                            <div class="ftk-advanced__body">
+	                              <div class="grid-2" style="margin-top: 2px;">
+	                                <div class="field">
+	                                  <label for="giveawaysPoll" data-i18n="giveaways_poll">Intervalo (s)</label>
+	                                  <input id="giveawaysPoll" class="input" type="number" min="60" max="3600" value="60" />
+	                                  <div class="hint" data-i18n="giveaways_poll_hint">Recomendado: 60–300s.</div>
+	                                </div>
+	                                <div class="field">
+	                                  <label for="giveawaysMaxPerCycle" data-i18n="giveaways_max_cycle">Máx / ciclo (0 = todos)</label>
+	                                  <input id="giveawaysMaxPerCycle" class="input" type="number" min="0" max="50" value="0" />
+	                                </div>
+	                              </div>
 	                            </div>
-	                            <div class="field">
-	                              <label for="giveawaysMaxPerCycle" data-i18n="giveaways_max_cycle">Máx / ciclo (0 = todos)</label>
-	                              <input id="giveawaysMaxPerCycle" class="input" type="number" min="0" max="50" value="0" />
-	                            </div>
-	                          </div>
+	                          </details>
 
 	                          <div class="actions ftk-actions">
 	                            <div class="actions-left">
@@ -625,6 +632,7 @@
 	                            <div class="actions-right">
 	                              <button class="btn" id="giveawaysTriggerBtn" data-i18n="giveaways_trigger">Verificar agora</button>
 	                              <button class="btn" id="giveawaysTestBtn" data-i18n="giveaways_test">Enviar teste</button>
+	                              <button class="btn" id="giveawaysResetBtn" data-i18n="giveaways_reset">Repor</button>
 	                            </div>
 	                          </div>
 	                        </div>

@@ -97,6 +97,34 @@
     }, 10_000);
   }
 
+  function updateSummaryChips() {
+    const el = q('giveawaysSummary');
+    if (!el) return;
+    const enabled = !!(q('giveawaysEnabled') && q('giveawaysEnabled').checked);
+    const platforms = readChecks('giveawaysPlatforms');
+    const poll = q('giveawaysPoll') ? Number(q('giveawaysPoll').value || 0) : 0;
+    const maxPer = q('giveawaysMaxPerCycle') ? Number(q('giveawaysMaxPerCycle').value || 0) : 0;
+
+    const parts = [];
+    parts.push('<span class="ftk-chip"><strong>' + escapeHtml(enabled ? (t('giveaways_status_active') || 'Ativo') : (t('giveaways_status_inactive') || 'Inativo')) + '</strong></span>');
+    parts.push('<span class="ftk-chip">' + escapeHtml(t('giveaways_platforms') || 'Plataformas') + ': <strong>' + escapeHtml(String(platforms.length || 0)) + '</strong></span>');
+    parts.push('<span class="ftk-chip">' + escapeHtml(t('giveaways_poll') || 'Intervalo') + ': <strong>' + escapeHtml(String(poll || 60)) + 's</strong></span>');
+    parts.push('<span class="ftk-chip">' + escapeHtml(t('giveaways_max_cycle') || 'Máx / ciclo') + ': <strong>' + escapeHtml(String(maxPer || 0)) + '</strong></span>');
+    el.innerHTML = parts.join('');
+  }
+
+  function updateChannelCurrent() {
+    const box = q('giveawaysChannelCurrent');
+    const sel = q('giveawaysChannel');
+    if (!box || !sel) return;
+    const v = sel.value ? String(sel.value) : '';
+    if (!v) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    const opt = sel.querySelector('option[value="' + CSS.escape(v) + '"]');
+    const label = opt ? String(opt.textContent || '').trim() : ('#' + v);
+    box.style.display = '';
+    box.innerHTML = (t('giveaways_current_channel') || 'Canal selecionado') + ': <code>' + escapeHtml(label) + '</code>';
+  }
+
   async function triggerGiveawaysNow() {
     const guildId = getGuildId();
     if (!guildId) return;
@@ -199,6 +227,8 @@
 
     if (!enabled) {
       root.innerHTML = '<div class="empty">' + escapeHtml(t('giveaways_preview_disabled') || 'Ativa para ver a preview.') + '</div>';
+      updateSummaryChips();
+      updateChannelCurrent();
       return;
     }
 
@@ -236,6 +266,9 @@
         (footerRight ? '<span>' + footerRight + '</span>' : '') +
       '</div>';
 
+    updateSummaryChips();
+    updateChannelCurrent();
+
     function platformLabel(p) {
       p = String(p || '').toLowerCase();
       if (p.includes('steam')) return 'Steam';
@@ -246,9 +279,10 @@
 
     function platformLogoUrl(p) {
       p = String(p || '').toLowerCase();
-      if (p.includes('steam')) return '/assets/platform-badges/steam.png';
-      if (p.includes('epic')) return '/assets/platform-badges/epic.png';
-      if (p.includes('ubisoft') || p.includes('uplay')) return '/assets/platform-badges/ubisoft.png';
+      // Keep preview consistent with Discord: use the same public badge route.
+      if (p.includes('steam')) return '/platform-badge/steam.png?v=preview';
+      if (p.includes('epic')) return '/platform-badge/epic.png?v=preview';
+      if (p.includes('ubisoft') || p.includes('uplay')) return '/platform-badge/ubisoft.png?v=preview';
       return '';
     }
   }
@@ -302,6 +336,8 @@
         sel.value = '';
       }
     }
+
+    updateChannelCurrent();
   }
 
   async function loadGiveawaysConfig() {
@@ -327,6 +363,8 @@
     if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
 
     await renderPreview();
+    updateSummaryChips();
+    updateChannelCurrent();
   }
 
   async function saveGiveaways() {
@@ -398,6 +436,8 @@
     // Reload channels to make sure the chosen value exists in the select.
     await loadChannelsIntoSelect();
     await renderPreview();
+    updateSummaryChips();
+    updateChannelCurrent();
   }
 
   async function sendTest() {
@@ -432,6 +472,9 @@
       el.addEventListener('change', function () { renderPreview(); });
       el.addEventListener('input', function () { renderPreview(); });
     });
+
+    const sel = q('giveawaysChannel');
+    if (sel) sel.addEventListener('change', updateChannelCurrent);
 
     ['giveawaysPlatforms'].forEach(function (id) {
       const wrap = q(id);
@@ -480,6 +523,24 @@
 
     const trigBtn = q('giveawaysTriggerBtn');
     if (trigBtn) trigBtn.addEventListener('click', function () { triggerGiveawaysNow().catch(function () {}); });
+
+    const resetBtn = q('giveawaysResetBtn');
+    if (resetBtn) resetBtn.addEventListener('click', function () {
+      // reset UI defaults (does not auto-save)
+      if (q('giveawaysEnabled')) q('giveawaysEnabled').checked = false;
+      const sel = q('giveawaysChannel');
+      if (sel) sel.value = '';
+      if (q('giveawaysChannelSearch')) q('giveawaysChannelSearch').value = '';
+      setChecks('giveawaysPlatforms', ['steam', 'epic-games-store', 'ubisoft']);
+      if (q('giveawaysPoll')) q('giveawaysPoll').value = '60';
+      if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = '0';
+      const adv = q('giveawaysAdvanced');
+      if (adv) adv.open = false;
+      const warn = q('giveawaysPlatformsWarn');
+      if (warn) warn.style.display = 'none';
+      renderPreview();
+      toast('ok', (t('giveaways_reset_ok') || 'Valores repostos'));
+    });
   }
 
   // Public hook for core tab switcher
