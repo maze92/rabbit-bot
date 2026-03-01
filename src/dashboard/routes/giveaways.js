@@ -111,7 +111,8 @@ function registerGiveawaysRoutes(ctx) {
           channelId: cfg.channelId || null,
           publicBaseUrl: cfg.publicBaseUrl || null,
           platforms: filteredPlatforms.length ? filteredPlatforms : ['steam'],
-          types: Array.isArray(cfg.types) ? cfg.types : ['game'],
+          // Free-To-Keep mode posts only games.
+          types: ['game'],
           pollIntervalSeconds: typeof cfg.pollIntervalSeconds === 'number' ? cfg.pollIntervalSeconds : 60,
           maxPerCycle: typeof cfg.maxPerCycle === 'number' ? cfg.maxPerCycle : 0
         }
@@ -142,9 +143,8 @@ function registerGiveawaysRoutes(ctx) {
         ? platforms.map(String).filter((p) => ALLOWED_PLATFORMS.has(String(p)))
         : undefined;
 
-      const types = Array.isArray(next.types)
-        ? next.types.map((s) => sanitizeText(s, { maxLen: 32, stripHtml: true })).filter(Boolean)
-        : undefined;
+      // Free-To-Keep mode posts only games. Ignore user-provided types.
+      const types = ['game'];
 
       const update = {};
       if (typeof next.enabled === 'boolean') update['giveaways.enabled'] = next.enabled;
@@ -159,7 +159,7 @@ function registerGiveawaysRoutes(ctx) {
         : (derivedBase ? derivedBase.replace(/\/$/, '') : null);
       if (baseUrl) update['giveaways.publicBaseUrl'] = baseUrl;
       if (filteredPlatforms) update['giveaways.platforms'] = filteredPlatforms;
-      if (types) update['giveaways.types'] = types;
+      update['giveaways.types'] = types;
       if (typeof next.pollIntervalSeconds === 'number') update['giveaways.pollIntervalSeconds'] = next.pollIntervalSeconds;
       if (typeof next.maxPerCycle === 'number') update['giveaways.maxPerCycle'] = next.maxPerCycle;
 
@@ -187,7 +187,7 @@ function registerGiveawaysRoutes(ctx) {
           channelId: cfg.channelId || null,
           publicBaseUrl: cfg.publicBaseUrl || baseUrl || null,
           platforms: Array.isArray(cfg.platforms) ? cfg.platforms : ['steam'],
-          types: Array.isArray(cfg.types) ? cfg.types : ['game'],
+          types: ['game'],
           pollIntervalSeconds: typeof cfg.pollIntervalSeconds === 'number' ? cfg.pollIntervalSeconds : 60,
           maxPerCycle: typeof cfg.maxPerCycle === 'number' ? cfg.maxPerCycle : 0
         }

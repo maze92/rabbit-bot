@@ -309,7 +309,8 @@ async function startGiveaways(client) {
         guildId,
         channelId,
         platforms: Array.isArray(gcfg.platforms) ? gcfg.platforms : [],
-        types: Array.isArray(gcfg.types) ? gcfg.types : [],
+        // Free-To-Keep mode posts only games.
+        types: ['game'],
         pollIntervalSeconds: gcfg.pollIntervalSeconds || 60,
         lastError: null
       });
@@ -325,7 +326,7 @@ async function startGiveaways(client) {
       _setGuildStatus(guildId, { lastPollAt: now, nextPollAt: now + intervalSec * 1000 });
 
       const platforms = normalizeList(gcfg.platforms);
-      const types = normalizeList(gcfg.types);
+      const types = ['game'];
       const maxPerCycle = clampInt(gcfg.maxPerCycle, { min: 0, max: 50, fallback: 0 });
 
       const perPlatform = platforms.length ? platforms : ['steam'];
