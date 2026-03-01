@@ -19,14 +19,50 @@ const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
 // (which show up as extra images under the embed).
 const BADGE_DIR = path.join(__dirname, '../../public/assets/platform-badges');
 
-function platformBadgePublicUrl(platform, baseUrl) {
+function normalizeBaseUrl(u) {
+  if (!u) return '';
+  let s = String(u).trim();
+  if (!s) return '';
+  s = s.replace(/\/+$/g, '');
+  // Discord fetches are far more reliable over https.
+  s = s.replace(/^http:\/\//i, 'https://');
+  return s;
+}
+
+function resolvePublicBaseUrl(explicitBaseUrl) {
+  // Highest priority: env var (stable with reverse proxies)
+  const env = normalizeBaseUrl(process.env.PUBLIC_BASE_URL || process.env.DASHBOARD_PUBLIC_URL);
+  if (env) return env;
+
+  const saved = normalizeBaseUrl(explicitBaseUrl);
+  if (!saved) return '';
+
+  // Avoid obviously non-public hosts.
+  if (/localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(saved)) return '';
+  return saved;
+}
+
+function platformBadgePublicUrl(platform, explicitBaseUrl) {
   const p = String(platform || '').toLowerCase();
-  const base = (String(baseUrl || process.env.PUBLIC_BASE_URL || '')).trim().replace(/\/$/, '');
+  const base = resolvePublicBaseUrl(explicitBaseUrl);
   if (!base) return '';
   if (p.includes('steam')) return `${base}/assets/platform-badges/steam.png`;
   if (p.includes('epic')) return `${base}/assets/platform-badges/epic.png`;
   if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/assets/platform-badges/ubisoft.png`;
   return '';
+}
+
+async function verifyUrlReachable(url) {
+  if (!url) return false;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 3500);
+    const res = await fetch(url, { method: 'HEAD', signal: ctrl.signal });
+    clearTimeout(t);
+    return !!(res && res.ok);
+  } catch {
+    return false;
+  }
 }
 
 function clampInt(n, { min = 0, max = 1_000_000, fallback = 0 } = {}) {
@@ -172,7 +208,13 @@ function makeEmbedFromGiveaway(g, { forcedPlatform = null, publicBaseUrl = null 
   if (image) embed.setImage(image);
 
   const badgeUrl = platformBadgePublicUrl(platform, publicBaseUrl);
-  if (badgeUrl) embed.setThumbnail(badgeUrl);
+  if (badgeUrl) {
+    embed.setThumbnail(badgeUrl);
+    // Non-blocking diagnostic: if this can't be fetched from our side, Discord likely can't either.
+    verifyUrlReachable(badgeUrl).then((ok) => {
+      if (!ok) console.warn('[Giveaways] Badge URL not reachable:', badgeUrl);
+    }).catch(() => {});
+  }
 
   return { embed, platform, badgeUrl };
 }
