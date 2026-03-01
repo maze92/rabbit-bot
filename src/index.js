@@ -189,7 +189,9 @@ async function handleClientReady() {
 
     // Start GamerPower Free-To-Keep (Giveaways) system (posts when new items appear)
     try {
-      await startGiveaways(client);
+      const inst = await startGiveaways(client);
+      // Expose instance for dashboard actions (eg. "check now")
+      startGiveaways._instance = inst;
       console.log('🎁 Free-To-Keep system started.');
       if (status && typeof status.setGiveawaysRunning === 'function') {
         status.setGiveawaysRunning(true);

@@ -289,7 +289,7 @@ async function startGiveaways(client) {
     return cachedConfigs;
   }
 
-  async function tick() {
+  async function tick({ onlyGuildId = null, force = false } = {}) {
     if (stopped) return;
 
     const now = Date.now();
@@ -300,6 +300,7 @@ async function startGiveaways(client) {
     const configs = cachedConfigs || [];
     for (const cfg of configs) {
       const guildId = String(cfg.guildId || '');
+      if (onlyGuildId && String(onlyGuildId) !== guildId) continue;
       const gcfg = cfg.giveaways || {};
       const channelId = String(gcfg.channelId || '');
       if (!guildId || !channelId) continue;
@@ -317,7 +318,7 @@ async function startGiveaways(client) {
 
       const intervalSec = clampInt(gcfg.pollIntervalSeconds, { min: 60, max: 3600, fallback: 60 });
       const last = lastPollAt.get(guildId) || 0;
-      if (now - last < intervalSec * 1000) {
+      if (!force && now - last < intervalSec * 1000) {
         _setGuildStatus(guildId, { nextPollAt: last + intervalSec * 1000 });
         continue;
       }
@@ -378,6 +379,13 @@ async function startGiveaways(client) {
     }
   }
 
+  async function triggerGuild(guildId) {
+    if (!guildId) return { ok: false, reason: 'missing_guildId' };
+    await loadEnabledConfigs().catch(() => {});
+    await tick({ onlyGuildId: String(guildId), force: true }).catch(() => {});
+    return { ok: true };
+  }
+
   // Main loop at a conservative cadence; per-guild interval controls real posting.
   const timer = setInterval(() => {
     tick().catch(() => {});
@@ -391,9 +399,12 @@ async function startGiveaways(client) {
     stop: () => {
       stopped = true;
       clearInterval(timer);
-    }
+    },
+    triggerGuild
   };
 }
 
 startGiveaways.getStatus = getGiveawaysStatus;
+// Populated by src/index.js after start
+startGiveaways._instance = null;
 module.exports = startGiveaways;

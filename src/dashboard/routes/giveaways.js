@@ -5,6 +5,7 @@
 const { z } = require('zod');
 const path = require('path');
 const fs = require('fs');
+const startGiveaways = require('../../systems/giveaways');
 
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
 const BADGE_DIR = path.join(__dirname, '../../../public/assets/platform-badges');
@@ -223,7 +224,26 @@ function registerGiveawaysRoutes(ctx) {
       return res.status(500).json({ ok: false, message: e && e.message ? e.message : 'status error' });
     }
   });
-app.get('/api/giveaways/sample', auth, canManage, guardGuildQuery, async (req, res) => {
+
+  // Manual trigger ("Verificar agora")
+  app.post('/api/giveaways/trigger', auth, canManage, rlMedium, guardGuildQuery, async (req, res) => {
+    try {
+      const guildId = String(req.query.guildId || '');
+      if (!guildId) return res.status(400).json({ ok: false, message: 'guildId required' });
+
+      const inst = startGiveaways && startGiveaways._instance ? startGiveaways._instance : null;
+      if (!inst || typeof inst.triggerGuild !== 'function') {
+        return res.status(503).json({ ok: false, message: 'system not ready' });
+      }
+
+      await inst.triggerGuild(guildId);
+      return res.json({ ok: true });
+    } catch (e) {
+      return res.status(500).json({ ok: false, message: e && e.message ? String(e.message) : 'trigger error' });
+    }
+  });
+
+  app.get('/api/giveaways/sample', auth, canManage, guardGuildQuery, async (req, res) => {
     try {
       const platform = sanitizeText(req.query.platform || 'steam', { maxLen: 64, stripHtml: true });
       const type = sanitizeText(req.query.type || 'game', { maxLen: 32, stripHtml: true });
