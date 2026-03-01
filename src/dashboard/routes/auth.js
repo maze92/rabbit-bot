@@ -17,6 +17,13 @@ function registerAuthRoutes(ctx) {
   // Note: in-memory only. If you run multiple replicas, consider a shared store (e.g. Redis) to dedupe across instances.
   const oauthCodeCache = new Map(); // code -> { exp, redirectUrl }
   const oauthInflight = new Map();  // key -> exp
+  // Global backoff for Discord OAuth token exchange 429s (shared IP/app limits).
+  // When Discord tells us to wait minutes, do NOT keep retrying inside a single request.
+  let oauthTokenCooldownUntilMs = 0;
+  function oauthCooldownRemainingSec() {
+    const rem = Math.ceil((oauthTokenCooldownUntilMs - Date.now()) / 1000);
+    return rem > 0 ? rem : 0;
+  }
   function nowMs() { return Date.now(); }
   function sweepMaps() {
     const n = nowMs();
@@ -173,6 +180,21 @@ const redirectUri = getRedirectUri(req);
 let tokenJson = null;
 let tokenRes = null;
 
+// If Discord told us to cool down for a long window, don't hammer /oauth2/token.
+const cooldownSec = oauthCooldownRemainingSec();
+if (cooldownSec > 0) {
+  res.setHeader('Retry-After', String(cooldownSec));
+  return res.status(429).send(
+    '<!doctype html><meta charset="utf-8" />' +
+    '<title>Rate limited</title>' +
+    '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
+    '<h2>Discord rate limit reached</h2>' +
+    '<p>O Discord limitou temporariamente pedidos de login (HTTP 429).</p>' +
+    `<p>Tenta novamente daqui a <b>${cooldownSec}</b> segundos.</p>` +
+    '</div>'
+  );
+}
+
 for (let attempt = 0; attempt < 4; attempt++) {
   tokenRes = await fetch('https://discord.com/api/oauth2/token', {
     method: 'POST',
@@ -195,10 +217,24 @@ for (let attempt = 0; attempt < 4; attempt++) {
       Number.isFinite(Number(body && body.retry_after)) ? Number(body.retry_after) : 0
     );
 
-    const waitSec = Math.min(15, Math.max(1, Math.ceil(retryAfterSec || 1)));
-    console.warn('[OAuth] Token exchange rate limited (429). retryAfterSec=', retryAfterSec, 'waiting', waitSec, 's');
+    // If Discord asks for a long cooldown (minutes), don't spin retries; set a global cooldown.
+    if (retryAfterSec >= 10) {
+      oauthTokenCooldownUntilMs = Date.now() + Math.ceil(retryAfterSec) * 1000;
+      console.warn('[OAuth] Token exchange rate limited (429). retryAfterSec=', retryAfterSec, 'cooldown until', new Date(oauthTokenCooldownUntilMs).toISOString());
+      res.setHeader('Retry-After', String(Math.ceil(retryAfterSec)));
+      return res.status(429).send(
+        '<!doctype html><meta charset="utf-8" />' +
+        '<title>Rate limited</title>' +
+        '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
+        '<h2>Discord rate limit reached</h2>' +
+        '<p>O Discord limitou temporariamente pedidos de login (HTTP 429).</p>' +
+        `<p>Tenta novamente daqui a <b>${Math.ceil(retryAfterSec)}</b> segundos.</p>` +
+        '</div>'
+      );
+    }
 
-    // Wait (up to 15s) and retry. This avoids forcing the user to restart OAuth.
+    const waitSec = Math.min(9, Math.max(1, Math.ceil(retryAfterSec || 1)));
+    console.warn('[OAuth] Token exchange rate limited (429). retryAfterSec=', retryAfterSec, 'waiting', waitSec, 's');
     await sleep(waitSec * 1000);
     continue;
   }
