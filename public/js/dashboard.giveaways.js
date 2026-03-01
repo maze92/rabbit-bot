@@ -309,20 +309,91 @@
     window.OzarkDashboard = window.OzarkDashboard || {};
     window.OzarkDashboard._giveawaysChannels = items;
 
+    function makeOpt(value, text) {
+      const opt = document.createElement('option');
+      opt.value = String(value);
+      opt.textContent = text;
+      return opt;
+    }
+
+    function groupKey(ch) {
+      const kind = (ch && ch.kind) ? String(ch.kind) : 'text';
+      const parent = (ch && ch.parentName) ? String(ch.parentName) : '';
+      return kind + '|' + parent;
+    }
+
+    function kindLabel(kind) {
+      kind = String(kind || '').toLowerCase();
+      if (kind === 'announcement') return (t('channels_group_announcements') || 'Anúncios');
+      if (kind === 'thread') return (t('channels_group_threads') || 'Threads');
+      return (t('channels_group_text') || 'Texto');
+    }
+
     function rebuildOptions(filter) {
-      sel.innerHTML = '<option value="">' + escapeHtml(t('select_channel') || 'Seleciona um canal') + '</option>';
       const f = String(filter || '').trim().toLowerCase();
+      const selectedId = (sel.dataset.desiredValue || sel.value || '').trim();
+
+      sel.innerHTML = '';
+      sel.appendChild(makeOpt('', (t('select_channel') || 'Seleciona um canal')));
+
+      // Pin selected channel at the top (even if filtered out)
+      if (selectedId) {
+        const selected = items.find((c) => c && String(c.id) === String(selectedId)) || null;
+        if (selected) {
+          const og = document.createElement('optgroup');
+          og.label = (t('channels_group_selected') || 'Selecionado');
+          const name = selected.name ? String(selected.name) : '';
+          const label = name ? ('#' + name) : String(selected.id);
+          og.appendChild(makeOpt(selected.id, label));
+          sel.appendChild(og);
+        }
+      }
+
+      // Group channels by kind, then category.
+      const buckets = new Map();
       items.forEach(function (ch) {
         if (!ch || !ch.id) return;
         const name = ch.name ? String(ch.name) : '';
-        const label = (name ? '#' + name : String(ch.id));
+        const label = name ? ('#' + name) : String(ch.id);
         if (f && !(label.toLowerCase().includes(f) || String(ch.id).includes(f))) return;
-        const opt = document.createElement('option');
-        opt.value = String(ch.id);
-        opt.textContent = label;
-        sel.appendChild(opt);
+        const k = groupKey(ch);
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k).push({ id: ch.id, label, kind: ch.kind || 'text', parentName: ch.parentName || '' });
+      });
+
+      // Order groups: text, announcements, threads; within: category name.
+      const orderKind = { text: 0, announcement: 1, thread: 2 };
+      const groups = Array.from(buckets.values());
+      const keys = Array.from(buckets.keys());
+      const groupObjs = keys.map((k, i) => {
+        const parts = k.split('|');
+        return { kind: parts[0] || 'text', parentName: parts.slice(1).join('|') || '', items: groups[i] };
+      });
+      groupObjs.sort((a, b) => {
+        const ka = orderKind[String(a.kind).toLowerCase()] ?? 99;
+        const kb = orderKind[String(b.kind).toLowerCase()] ?? 99;
+        if (ka !== kb) return ka - kb;
+        return String(a.parentName || '').localeCompare(String(b.parentName || ''));
+      });
+
+      // Render groups: kind label as optgroup, with category separators via prefix.
+      // If we have category names, we create nested optgroups by encoding "Kind — Category".
+      groupObjs.forEach(function (g) {
+        const cat = (g.parentName || '').trim();
+        const label = cat ? (kindLabel(g.kind) + ' — ' + cat) : kindLabel(g.kind);
+        const og = document.createElement('optgroup');
+        og.label = label;
+        g.items.forEach(function (it) {
+          // Avoid duplicating the pinned selected channel in groups.
+          if (selectedId && String(it.id) === String(selectedId)) return;
+          og.appendChild(makeOpt(it.id, it.label));
+        });
+        if (og.children.length) sel.appendChild(og);
       });
     }
+
+    // Expose for the search input to rebuild without duplicating logic.
+    window.OzarkDashboard._giveawaysRebuildChannels = rebuildOptions;
 
     rebuildOptions(q('giveawaysChannelSearch') ? q('giveawaysChannelSearch').value : '');
 
@@ -486,32 +557,12 @@
       });
     });
 
-    // Channel search filtering (uses cached channels)
+    // Channel search filtering (uses the cached rebuild function).
     const cs = q('giveawaysChannelSearch');
     if (cs) {
       cs.addEventListener('input', function () {
-        const guildId = getGuildId();
-        const sel = q('giveawaysChannel');
-        if (!guildId || !sel) return;
-        const items = (window.OzarkDashboard && window.OzarkDashboard._giveawaysChannels) ? window.OzarkDashboard._giveawaysChannels : [];
-        const desired = sel.value;
-        sel.innerHTML = '<option value="">' + escapeHtml(t('select_channel') || 'Seleciona um canal') + '</option>';
-        const f = String(cs.value || '').trim().toLowerCase();
-        items.forEach(function (ch) {
-          if (!ch || !ch.id) return;
-          const name = ch.name ? String(ch.name) : '';
-          const label = (name ? '#' + name : String(ch.id));
-          if (f && !(label.toLowerCase().includes(f) || String(ch.id).includes(f))) return;
-          const opt = document.createElement('option');
-          opt.value = String(ch.id);
-          opt.textContent = label;
-          sel.appendChild(opt);
-        });
-        // keep selection if still present
-        if (desired) {
-          const exists = !!sel.querySelector('option[value="' + CSS.escape(desired) + '"]');
-          if (exists) sel.value = desired;
-        }
+        const fn = (window.OzarkDashboard && window.OzarkDashboard._giveawaysRebuildChannels) ? window.OzarkDashboard._giveawaysRebuildChannels : null;
+        if (fn) fn(cs.value);
       });
     }
 

@@ -451,6 +451,12 @@ window.OzarkLocales.pt = {
   'giveaways_advanced': 'Definições avançadas',
   'giveaways_reset': 'Repor',
   'giveaways_reset_ok': 'Valores repostos',
+
+  // Channel picker grouping
+  'channels_group_selected': 'Selecionado',
+  'channels_group_text': 'Texto',
+  'channels_group_announcements': 'Anúncios',
+  'channels_group_threads': 'Threads',
   'giveaways_current_channel': 'Canal selecionado',
   'giveaways_trigger_ok': 'Verificação iniciada',
   'giveaways_trigger_fail': 'Falha ao verificar',

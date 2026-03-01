@@ -450,6 +450,12 @@ window.OzarkLocales.en = {
   giveaways_advanced: 'Advanced settings',
   giveaways_reset: 'Reset',
   giveaways_reset_ok: 'Defaults restored',
+
+  // Channel picker grouping
+  channels_group_selected: 'Selected',
+  channels_group_text: 'Text',
+  channels_group_announcements: 'Announcements',
+  channels_group_threads: 'Threads',
   giveaways_current_channel: 'Selected channel',
   giveaways_trigger_ok: 'Check started',
   giveaways_trigger_fail: 'Check failed',
