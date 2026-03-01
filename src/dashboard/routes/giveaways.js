@@ -198,7 +198,32 @@ function registerGiveawaysRoutes(ctx) {
   });
 
   // Preview helper: return one real giveaway item for the selected platform/type.
-  app.get('/api/giveaways/sample', auth, canManage, guardGuildQuery, async (req, res) => {
+  
+  // Status endpoint for dashboard UI (in-memory)
+  app.get('/api/giveaways/status', auth, canManage, guardGuildQuery, async (req, res) => {
+    try {
+      const guildId = String(req.query.guildId || '');
+      if (!guildId) return res.status(400).json({ ok: false, message: 'guildId required' });
+
+      let sys = null;
+      try { sys = require('../../systems/giveaways'); } catch {}
+      const st = (sys && typeof sys.getStatus === 'function') ? sys.getStatus(guildId) : null;
+
+      let channelName = null;
+      try {
+        const channelId = st && st.channelId ? String(st.channelId) : '';
+        if (ctx.client && channelId) {
+          const ch = await ctx.client.channels.fetch(channelId).catch(() => null);
+          if (ch && ch.name) channelName = ch.name;
+        }
+      } catch {}
+
+      return res.json({ ok: true, status: st ? { ...st, channelName } : null });
+    } catch (e) {
+      return res.status(500).json({ ok: false, message: e && e.message ? e.message : 'status error' });
+    }
+  });
+app.get('/api/giveaways/sample', auth, canManage, guardGuildQuery, async (req, res) => {
     try {
       const platform = sanitizeText(req.query.platform || 'steam', { maxLen: 64, stripHtml: true });
       const type = sanitizeText(req.query.type || 'game', { maxLen: 32, stripHtml: true });

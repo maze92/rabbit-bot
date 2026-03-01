@@ -19,6 +19,18 @@ const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
 // (which show up as extra images under the embed).
 const BADGE_DIR = path.join(__dirname, '../../public/assets/platform-badges');
 
+// In-memory status for dashboard UI
+const _statusByGuild = new Map();
+function _setGuildStatus(guildId, patch) {
+  if (!guildId) return;
+  const prev = _statusByGuild.get(guildId) || {};
+  _statusByGuild.set(guildId, { ...prev, ...patch });
+}
+function getGiveawaysStatus(guildId) {
+  if (!guildId) return null;
+  return _statusByGuild.get(String(guildId)) || null;
+}
+
 function normalizeBaseUrl(u) {
   if (!u) return '';
   let s = String(u).trim();
@@ -292,11 +304,25 @@ async function startGiveaways(client) {
       const channelId = String(gcfg.channelId || '');
       if (!guildId || !channelId) continue;
 
+      _setGuildStatus(guildId, {
+        enabled: true,
+        guildId,
+        channelId,
+        platforms: Array.isArray(gcfg.platforms) ? gcfg.platforms : [],
+        types: Array.isArray(gcfg.types) ? gcfg.types : [],
+        pollIntervalSeconds: gcfg.pollIntervalSeconds || 60,
+        lastError: null
+      });
+
       const intervalSec = clampInt(gcfg.pollIntervalSeconds, { min: 60, max: 3600, fallback: 60 });
       const last = lastPollAt.get(guildId) || 0;
-      if (now - last < intervalSec * 1000) continue;
+      if (now - last < intervalSec * 1000) {
+        _setGuildStatus(guildId, { nextPollAt: last + intervalSec * 1000 });
+        continue;
+      }
 
       lastPollAt.set(guildId, now);
+      _setGuildStatus(guildId, { lastPollAt: now, nextPollAt: now + intervalSec * 1000 });
 
       const platforms = normalizeList(gcfg.platforms);
       const types = normalizeList(gcfg.types);
@@ -311,7 +337,8 @@ async function startGiveaways(client) {
         let items = [];
         try {
           items = await fetchGiveaways({ platform: plat, types });
-        } catch (_) {
+        } catch (e) {
+          _setGuildStatus(guildId, { lastError: (e && e.message) ? String(e.message).slice(0, 180) : 'Fetch failed', lastErrorAt: Date.now() });
           continue;
         }
 
@@ -340,7 +367,9 @@ async function startGiveaways(client) {
               url: it.open_giveaway_url || it.giveaway_url || it.gamerpower_url || null
             }).catch(() => {});
             postedCount += 1;
-          } catch (_) {
+            _setGuildStatus(guildId, { lastSentAt: Date.now(), lastSuccessAt: Date.now(), lastPostedTitle: it.title || null });
+          } catch (e) {
+            _setGuildStatus(guildId, { lastError: (e && e.message) ? String(e.message).slice(0, 180) : 'Send failed', lastErrorAt: Date.now() });
             // If sending fails, don't mark as posted.
           }
         }
@@ -365,4 +394,5 @@ async function startGiveaways(client) {
   };
 }
 
+startGiveaways.getStatus = getGiveawaysStatus;
 module.exports = startGiveaways;
