@@ -9,13 +9,13 @@ const fs = require('fs');
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
 const BADGE_DIR = path.join(__dirname, '../../../public/assets/platform-badges');
 
-function platformBadgePublicUrl(platform, baseUrl) {
+function platformBadgePublicUrl(platform, baseUrl, cacheKey) {
   const p = String(platform || '').toLowerCase();
-  const base = (String(baseUrl || process.env.PUBLIC_BASE_URL || '')).trim().replace(/\/$/, '');
+  const base = (String(baseUrl || process.env.PUBLIC_BASE_URL || '')).trim().replace(/\/+$/g, '');
   if (!base) return '';
-  if (p.includes('steam')) return `${base}/platform-badge/steam.png?v=steam`;
-  if (p.includes('epic')) return `${base}/platform-badge/epic.png?v=epic`;
-  if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/platform-badge/ubisoft.png?v=ubisoft`;
+  if (p.includes('steam')) return `${base}/platform-badge/steam.png?v=steam-${cacheKey || '1'}`;
+  if (p.includes('epic')) return `${base}/platform-badge/epic.png?v=epic-${cacheKey || '1'}`;
+  if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/platform-badge/ubisoft.png?v=ubisoft-${cacheKey || '1'}`;
   return '';
 }
 
@@ -338,7 +338,7 @@ async function buildTestMessage({ platform, req }) {
     throw new Error(`Platform badge missing on disk: ${badgePath}`);
   }
   const base = (process.env.PUBLIC_BASE_URL || '').trim() || (req ? derivePublicBaseUrl(req) : null);
-  const badgeUrl = base ? platformBadgePublicUrl(platParam, base) : '';
+  const badgeUrl = base ? platformBadgePublicUrl(platParam, base, Date.now()) : '';
 
   const embed = {
     title,

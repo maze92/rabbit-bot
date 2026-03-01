@@ -42,15 +42,15 @@ function resolvePublicBaseUrl(explicitBaseUrl) {
   return saved;
 }
 
-function platformBadgePublicUrl(platform, explicitBaseUrl) {
+function platformBadgePublicUrl(platform, explicitBaseUrl, cacheKey) {
   const p = String(platform || '').toLowerCase();
   const base = resolvePublicBaseUrl(explicitBaseUrl);
   if (!base) return '';
-  // Serve through a dedicated route to ensure correct headers and to avoid any auth/static path issues.
-  // Add a stable cache-buster per platform so Discord doesn't reuse a previously cached thumbnail URL.
-  if (p.includes('steam')) return `${base}/platform-badge/steam.png?v=steam`;
-  if (p.includes('epic')) return `${base}/platform-badge/epic.png?v=epic`;
-  if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/platform-badge/ubisoft.png?v=ubisoft`;
+  // Cache-bust per item to avoid Discord reusing a previously cached thumbnail URL.
+  const k = cacheKey || '1';
+  if (p.includes('steam')) return `${base}/platform-badge/steam.png?v=steam-${k}`;
+  if (p.includes('epic')) return `${base}/platform-badge/epic.png?v=epic-${k}`;
+  if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/platform-badge/ubisoft.png?v=ubisoft-${k}`;
   return '';
 }
 
@@ -209,7 +209,7 @@ function makeEmbedFromGiveaway(g, { forcedPlatform = null, publicBaseUrl = null 
   // Important: do NOT set embed URL (otherwise Discord will hyperlink the title).
   if (image) embed.setImage(image);
 
-  const badgeUrl = platformBadgePublicUrl(platform, publicBaseUrl);
+  const badgeUrl = platformBadgePublicUrl(platform, publicBaseUrl, g.id || g.giveaway_id || Date.now());
   if (badgeUrl) {
     embed.setThumbnail(badgeUrl);
     // Non-blocking diagnostic: if this can't be fetched from our side, Discord likely can't either.
