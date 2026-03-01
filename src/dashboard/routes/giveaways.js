@@ -13,9 +13,9 @@ function platformBadgePublicUrl(platform, baseUrl) {
   const p = String(platform || '').toLowerCase();
   const base = (String(baseUrl || process.env.PUBLIC_BASE_URL || '')).trim().replace(/\/$/, '');
   if (!base) return '';
-  if (p.includes('steam')) return `${base}/assets/platform-badges/steam.png`;
-  if (p.includes('epic')) return `${base}/assets/platform-badges/epic.png`;
-  if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/assets/platform-badges/ubisoft.png`;
+  if (p.includes('steam')) return `${base}/platform-badge/steam.png?v=steam`;
+  if (p.includes('epic')) return `${base}/platform-badge/epic.png?v=epic`;
+  if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/platform-badge/ubisoft.png?v=ubisoft`;
   return '';
 }
 
@@ -76,6 +76,25 @@ function registerGiveawaysRoutes(ctx) {
   }
 
   const ALLOWED_PLATFORMS = new Set(['steam', 'epic-games-store', 'ubisoft']);
+
+  // Public, unauthenticated route to serve platform badges with correct headers.
+  // Discord will fetch these URLs directly for embed thumbnails.
+  app.get('/platform-badge/:name', (req, res) => {
+    const name = String(req.params.name || '').toLowerCase();
+    const file = (name === 'steam.png') ? 'steam.png'
+      : (name === 'epic.png') ? 'epic.png'
+      : (name === 'ubisoft.png') ? 'ubisoft.png'
+      : null;
+    if (!file) return res.status(404).end();
+
+    const full = path.join(BADGE_DIR, file);
+    if (!fs.existsSync(full)) return res.status(404).end();
+
+    // Avoid caches serving stale/incorrect images.
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    return res.sendFile(full);
+  });
 
   app.get("/api/giveaways/config", auth, canManage, guardGuildQuery, async (req, res) => {
     try {

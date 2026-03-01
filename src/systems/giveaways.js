@@ -46,9 +46,11 @@ function platformBadgePublicUrl(platform, explicitBaseUrl) {
   const p = String(platform || '').toLowerCase();
   const base = resolvePublicBaseUrl(explicitBaseUrl);
   if (!base) return '';
-  if (p.includes('steam')) return `${base}/assets/platform-badges/steam.png`;
-  if (p.includes('epic')) return `${base}/assets/platform-badges/epic.png`;
-  if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/assets/platform-badges/ubisoft.png`;
+  // Serve through a dedicated route to ensure correct headers and to avoid any auth/static path issues.
+  // Add a stable cache-buster per platform so Discord doesn't reuse a previously cached thumbnail URL.
+  if (p.includes('steam')) return `${base}/platform-badge/steam.png?v=steam`;
+  if (p.includes('epic')) return `${base}/platform-badge/epic.png?v=epic`;
+  if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/platform-badge/ubisoft.png?v=ubisoft`;
   return '';
 }
 
@@ -214,6 +216,10 @@ function makeEmbedFromGiveaway(g, { forcedPlatform = null, publicBaseUrl = null 
     verifyUrlReachable(badgeUrl).then((ok) => {
       if (!ok) console.warn('[Giveaways] Badge URL not reachable:', badgeUrl);
     }).catch(() => {});
+  } else {
+    // Helpful diagnostic when base URL is missing/misconfigured.
+    const base = resolvePublicBaseUrl(publicBaseUrl);
+    if (!base) console.warn('[Giveaways] Missing PUBLIC_BASE_URL (or saved publicBaseUrl). Platform badge will not render.');
   }
 
   return { embed, platform, badgeUrl };
