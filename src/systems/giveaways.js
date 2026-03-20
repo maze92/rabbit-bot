@@ -1,9 +1,4 @@
 // src/systems/giveaways.js
-//
-// Polls GamerPower giveaways and posts new items into configured guild channels.
-// Uses /api/filter to support grouped platforms/types.
-//
-// Docs: https://www.gamerpower.com/api-read
 
 const path = require('path');
 const fs = require('fs');
@@ -13,76 +8,15 @@ const GiveawayPost = require('../database/models/GiveawayPost');
 const { fetchChannel } = require('../services/discordFetchCache');
 
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
-
-// Platform badges are served by our own dashboard as static files.
-// This avoids third-party hotlink/rate limits and also avoids Discord attachment thumbnails
-// (which show up as extra images under the embed).
 const BADGE_DIR = path.join(__dirname, '../../public/assets/platform-badges');
 
-// In-memory status for dashboard UI
 const _statusByGuild = new Map();
+const runningGuilds = new Set(); // ✅ FIX: lock por guild
+
 function _setGuildStatus(guildId, patch) {
   if (!guildId) return;
   const prev = _statusByGuild.get(guildId) || {};
   _statusByGuild.set(guildId, { ...prev, ...patch });
-}
-function getGiveawaysStatus(guildId) {
-  if (!guildId) return null;
-  return _statusByGuild.get(String(guildId)) || null;
-}
-
-function normalizeBaseUrl(u) {
-  if (!u) return '';
-  let s = String(u).trim();
-  if (!s) return '';
-  s = s.replace(/\/+$/g, '');
-  // Discord fetches are far more reliable over https.
-  s = s.replace(/^http:\/\//i, 'https://');
-  return s;
-}
-
-function resolvePublicBaseUrl(explicitBaseUrl) {
-  // Highest priority: env var (stable with reverse proxies)
-  const env = normalizeBaseUrl(process.env.PUBLIC_BASE_URL || process.env.DASHBOARD_PUBLIC_URL);
-  if (env) return env;
-
-  const saved = normalizeBaseUrl(explicitBaseUrl);
-  if (!saved) return '';
-
-  // Avoid obviously non-public hosts.
-  if (/localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(saved)) return '';
-  return saved;
-}
-
-function platformBadgePublicUrl(platform, explicitBaseUrl, cacheKey) {
-  const p = String(platform || '').toLowerCase();
-  const base = resolvePublicBaseUrl(explicitBaseUrl);
-  if (!base) return '';
-  // Cache-bust per item to avoid Discord reusing a previously cached thumbnail URL.
-  const k = cacheKey || '1';
-  if (p.includes('steam')) return `${base}/platform-badge/steam.png?v=steam-${k}`;
-  if (p.includes('epic')) return `${base}/platform-badge/epic.png?v=epic-${k}`;
-  if (p.includes('ubisoft') || p.includes('uplay')) return `${base}/platform-badge/ubisoft.png?v=ubisoft-${k}`;
-  return '';
-}
-
-async function verifyUrlReachable(url) {
-  if (!url) return false;
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 3500);
-    const res = await fetch(url, { method: 'HEAD', signal: ctrl.signal });
-    clearTimeout(t);
-    return !!(res && res.ok);
-  } catch {
-    return false;
-  }
-}
-
-function clampInt(n, { min = 0, max = 1_000_000, fallback = 0 } = {}) {
-  const v = Number(n);
-  if (!Number.isFinite(v)) return fallback;
-  return Math.max(min, Math.min(max, Math.trunc(v)));
 }
 
 function normalizeList(arr) {
@@ -90,321 +24,187 @@ function normalizeList(arr) {
   return arr.map((s) => String(s || '').trim()).filter(Boolean);
 }
 
-function pickPrimaryPlatform(platforms) {
-  const p = String(platforms || '').toLowerCase();
-  // API sometimes returns comma-separated, sometimes a single string.
-  const parts = p.split(/\s*,\s*/).filter(Boolean);
-  return parts[0] || null;
-}
-
-function platformLabel(platform) {
-  const p = String(platform || '').toLowerCase();
-  if (p.includes('steam')) return 'Steam';
-  if (p.includes('epic')) return 'Epic Games';
-  if (p.includes('ubisoft') || p.includes('uplay')) return 'Ubisoft';
-  if (p.includes('gog')) return 'GOG';
-  if (p.includes('itch')) return 'itch.io';
-  return platform || 'Platform';
-}
-
-function platformBadgeFile(platform) {
-  const p = String(platform || '').toLowerCase();
-  if (p.includes('steam')) return path.join(BADGE_DIR, 'steam.png');
-  if (p.includes('epic')) return path.join(BADGE_DIR, 'epic.png');
-  if (p.includes('ubisoft') || p.includes('uplay')) return path.join(BADGE_DIR, 'ubisoft.png');
-  return null;
-}
-
 function safeText(v, max = 1024) {
   if (v == null) return '';
   let s = String(v);
-  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   if (s.length > max) s = s.slice(0, max);
   return s;
 }
 
 function cleanGiveawayTitle(raw) {
   let s = safeText(raw, 256);
-  // Some items prepend platform branding like "(Epic Games)".
-  s = s.replace(/^\s*\((steam|epic\s*games?|ubisoft)\)\s*/i, '');
-  s = s.replace(/^\s*(steam|epic\s*games?|ubisoft)\s*:\s*/i, '');
-  // GamerPower sometimes appends platform noise like "(Steam) Giveaway" or "Steam Giveaway".
-  s = s.replace(/\s*\(?(steam|epic|ubisoft)\)?\s*giveaway\s*$/i, '');
+  s = s.replace(/^\s*\((steam|epic|ubisoft)\)\s*/i, '');
   s = s.replace(/\s*giveaway\s*$/i, '');
   return s.trim();
 }
 
 function normalizeImageUrl(url) {
-  const u = safeText(url, 2048);
-  if (!u || u === 'N/A') return '';
-  if (u.startsWith('http://')) return 'https://' + u.slice('http://'.length);
-  return u;
+  if (!url || url === 'N/A') return '';
+  if (url.startsWith('http://')) return 'https://' + url.slice(7);
+  return url;
 }
 
-function formatDateDMY(value) {
-  const s = safeText(value, 64);
-  if (!s || s === 'N/A') return '';
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const yyyy = String(d.getUTCFullYear());
-  return `${dd}/${mm}/${yyyy}`;
-}
-
-function parseToUnixSeconds(value) {
-  const s = safeText(value, 64);
-  if (!s || s === 'N/A') return null;
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return null;
-  return Math.floor(d.getTime() / 1000);
+function formatDate(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d)) return value;
+  return `<t:${Math.floor(d.getTime() / 1000)}:d>`;
 }
 
 function makeLinkLine({ browserUrl, clientUrl, platform }) {
-  const browser = safeText(browserUrl, 2048);
-  const client = safeText(clientUrl, 2048);
-  if (!browser && !client) return '';
-
-  // Discord markdown collapses normal spaces; use NBSP to mimic wide spacing.
-  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
+  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
 
   const links = [];
-  if (browser) links.push(`**[Open in browser ↗](${browser})**`);
+  if (browserUrl) links.push(`**[Open in browser ↗](${browserUrl})**`);
+
   const p = String(platform || '').toLowerCase();
   if (p.includes('steam')) {
-    if (client) links.push(`**[Open in Steam Client ↗](${client})**`);
+    if (clientUrl) links.push(`**[Open in Steam Client ↗](${clientUrl})**`);
   } else if (p.includes('epic')) {
-    if (client) links.push(`**[Open in Epic Games ↗](${client})**`);
+    if (clientUrl) links.push(`**[Open in Epic Games ↗](${clientUrl})**`);
   } else if (p.includes('ubisoft')) {
-    if (client) links.push(`**[Open in Ubisoft Games ↗](${client})**`);
+    if (clientUrl) links.push(`**[Open in Ubisoft Games ↗](${clientUrl})**`);
   }
+
   return links.join(SEP);
 }
 
-function resolvePlatformFromItem(g, fallbackPlatform) {
-  const fromItem = pickPrimaryPlatform(g && g.platforms);
-  const norm = (p) => String(p || '').toLowerCase();
-  if (fromItem && (norm(fromItem).includes('steam') || norm(fromItem).includes('epic') || norm(fromItem).includes('ubisoft') || norm(fromItem).includes('uplay'))) {
-    return fromItem;
-  }
-  return fallbackPlatform || fromItem || null;
-}
-
-function makeEmbedFromGiveaway(g, { forcedPlatform = null, publicBaseUrl = null } = {}) {
+function makeEmbed(g, platform, publicBaseUrl) {
   const title = cleanGiveawayTitle(g.title);
-  const worth = safeText(g.worth, 64);
-  const endDate = formatDateDMY(g.end_date);
-  const endUnix = parseToUnixSeconds(g.end_date);
-  const publisher = safeText(g.publisher, 128);
   const image = normalizeImageUrl(g.image);
-  const platform = resolvePlatformFromItem(g, forcedPlatform);
-  const meta = [];
 
-  if (worth && worth !== 'N/A') meta.push(`~~${worth}~~`);
-  meta.push(`**Free** until ${endUnix ? `<t:${endUnix}:d>` : (endDate || '—')}`);
+  const browserUrl = g.giveaway_url || g.gamerpower_url || '';
+  const clientUrl = g.open_giveaway_url || '';
 
-  // "Open in browser" should open the game's giveaway/store page when possible.
-  // GamerPower often provides giveaway_url (store page) and open_giveaway_url (client/open flow).
-  const browserUrl = safeText(g.giveaway_url, 2048) || safeText(g.open_giveaway_url, 2048) || safeText(g.gamerpower_url, 2048) || '';
-  const clientUrl = safeText(g.open_giveaway_url, 2048) || '';
-  const linkLine = makeLinkLine({ browserUrl, clientUrl, platform });
-  const desc = linkLine
-    ? `${meta.join(' ')}\n\n${linkLine}`
-    : meta.join(' ');
+  const desc =
+    `**Free** until ${formatDate(g.end_date)}\n\n` +
+    makeLinkLine({ browserUrl, clientUrl, platform });
 
   const embed = new EmbedBuilder()
-    .setTitle(title || 'Giveaway')
+    .setTitle(title)
     .setDescription(desc)
-    .setFooter({ text: `via .rabbitstuff.xyz${publisher ? `  •  © ${publisher}` : ''}` });
+    .setFooter({ text: 'via .rabbitstuff.xyz' });
 
-  // Important: do NOT set embed URL (otherwise Discord will hyperlink the title).
   if (image) embed.setImage(image);
 
-  const badgeUrl = platformBadgePublicUrl(platform, publicBaseUrl, g.id || g.giveaway_id || Date.now());
-  if (badgeUrl) {
-    embed.setThumbnail(badgeUrl);
-    // Non-blocking diagnostic: if this can't be fetched from our side, Discord likely can't either.
-    verifyUrlReachable(badgeUrl).then((ok) => {
-      if (!ok) console.warn('[Giveaways] Badge URL not reachable:', badgeUrl);
-    }).catch(() => {});
-  } else {
-    // Helpful diagnostic when base URL is missing/misconfigured.
-    const base = resolvePublicBaseUrl(publicBaseUrl);
-    if (!base) console.warn('[Giveaways] Missing PUBLIC_BASE_URL (or saved publicBaseUrl). Platform badge will not render.');
+  // ✅ badge real
+  if (publicBaseUrl) {
+    const p = platform.toLowerCase();
+    if (p.includes('steam'))
+      embed.setThumbnail(`${publicBaseUrl}/platform-badge/steam.png`);
+    if (p.includes('epic'))
+      embed.setThumbnail(`${publicBaseUrl}/platform-badge/epic.png`);
+    if (p.includes('ubisoft'))
+      embed.setThumbnail(`${publicBaseUrl}/platform-badge/ubisoft.png`);
   }
 
-  return { embed, platform, badgeUrl };
+  return embed;
 }
 
-// Links are rendered inside embed description to match the screenshot (not Discord buttons).
-
-async function fetchGiveaways({ platform, types }) {
-  const p = String(platform || 'pc').trim() || 'pc';
-  const t = normalizeList(types);
-  // Use the /giveaways endpoint for single-platform fetches; it tends to be more consistent
-  // than /filter for some platforms (notably Ubisoft).
-  const typeParam = t.length ? t[0] : 'game';
-
-  const url = `${GAMERPOWER_BASE}/giveaways?platform=${encodeURIComponent(p)}&type=${encodeURIComponent(typeParam)}`;
-  const res = await fetch(url, { method: 'GET', headers: { 'accept': 'application/json' } });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`GamerPower fetch failed: ${res.status} ${body.slice(0, 200)}`);
-  }
-  const json = await res.json();
-  return Array.isArray(json) ? json : [];
+async function fetchGiveaways(platform) {
+  const url = `${GAMERPOWER_BASE}/giveaways?platform=${platform}&type=game`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('API error');
+  return await res.json();
 }
 
-async function postGiveawayToGuild(client, guildId, channelId, g, { forcedPlatform = null, publicBaseUrl = null } = {}) {
-  const ch = await fetchChannel(client, channelId).catch(() => null);
-  if (!ch || typeof ch.send !== 'function') return { ok: false, reason: 'channel_not_found' };
+async function postGiveaway(client, guildId, channelId, g, platform, publicBaseUrl) {
+  const ch = await fetchChannel(client, channelId);
+  if (!ch) return;
 
-  const built = makeEmbedFromGiveaway(g, { forcedPlatform, publicBaseUrl });
-  const embed = built.embed;
-
-  // If we have a configured public base URL, ensure the corresponding badge file exists on disk.
-  // This catches broken deployments early.
-  const badgeFile = platformBadgeFile(built.platform);
-  if ((publicBaseUrl || process.env.PUBLIC_BASE_URL || '').trim() && badgeFile && !fs.existsSync(badgeFile)) {
-    throw new Error(`Platform badge missing on disk: ${badgeFile}`);
-  }
-
+  const embed = makeEmbed(g, platform, publicBaseUrl);
   await ch.send({ embeds: [embed] });
-  return { ok: true };
 }
 
 async function startGiveaways(client) {
-  if (!client) throw new Error('startGiveaways requires a Discord client');
-
   let stopped = false;
-  const lastPollAt = new Map(); // guildId -> ts
-  let lastConfigsFetchAt = 0;
-  let cachedConfigs = [];
+  const lastPoll = new Map();
 
-  async function loadEnabledConfigs() {
-    const docs = await GuildConfig.find({ 'giveaways.enabled': true }).lean().catch(() => []);
-    cachedConfigs = Array.isArray(docs) ? docs : [];
-    lastConfigsFetchAt = Date.now();
-    return cachedConfigs;
-  }
-
-  async function tick({ onlyGuildId = null, force = false } = {}) {
+  async function tick() {
     if (stopped) return;
 
-    const now = Date.now();
-    if (!lastConfigsFetchAt || now - lastConfigsFetchAt > 60_000) {
-      await loadEnabledConfigs().catch(() => {});
-    }
+    const configs = await GuildConfig.find({ 'giveaways.enabled': true }).lean();
 
-    const configs = cachedConfigs || [];
     for (const cfg of configs) {
-      const guildId = String(cfg.guildId || '');
-      if (onlyGuildId && String(onlyGuildId) !== guildId) continue;
+      const guildId = String(cfg.guildId);
       const gcfg = cfg.giveaways || {};
-      const channelId = String(gcfg.channelId || '');
+      const channelId = gcfg.channelId;
+
       if (!guildId || !channelId) continue;
 
-      _setGuildStatus(guildId, {
-        enabled: true,
-        guildId,
-        channelId,
-        platforms: Array.isArray(gcfg.platforms) ? gcfg.platforms : [],
-        // Free-To-Keep mode posts only games.
-        types: ['game'],
-        pollIntervalSeconds: gcfg.pollIntervalSeconds || 60,
-        lastError: null
-      });
+      // ✅ FIX: lock
+      if (runningGuilds.has(guildId)) continue;
+      runningGuilds.add(guildId);
 
-      const intervalSec = clampInt(gcfg.pollIntervalSeconds, { min: 60, max: 3600, fallback: 60 });
-      const last = lastPollAt.get(guildId) || 0;
-      if (!force && now - last < intervalSec * 1000) {
-        _setGuildStatus(guildId, { nextPollAt: last + intervalSec * 1000 });
-        continue;
-      }
+      try {
+        const now = Date.now();
+        const last = lastPoll.get(guildId) || 0;
+        const interval = (gcfg.pollIntervalSeconds || 60) * 1000;
 
-      lastPollAt.set(guildId, now);
-      _setGuildStatus(guildId, { lastPollAt: now, nextPollAt: now + intervalSec * 1000 });
+        if (now - last < interval) continue;
+        lastPoll.set(guildId, now);
 
-      const platforms = normalizeList(gcfg.platforms);
-      const types = ['game'];
-      const maxPerCycle = clampInt(gcfg.maxPerCycle, { min: 0, max: 50, fallback: 0 });
+        const sentThisCycle = new Set(); // ✅ FIX
 
-      const perPlatform = platforms.length ? platforms : ['steam'];
-      let postedCount = 0;
+        const platforms = normalizeList(gcfg.platforms).length
+          ? gcfg.platforms
+          : ['steam'];
 
-      for (const plat of perPlatform) {
-        if (maxPerCycle > 0 && postedCount >= maxPerCycle) break;
+        for (const plat of platforms) {
+          const items = await fetchGiveaways(plat);
 
-        let items = [];
-        try {
-          items = await fetchGiveaways({ platform: plat, types });
-        } catch (e) {
-          _setGuildStatus(guildId, { lastError: (e && e.message) ? String(e.message).slice(0, 180) : 'Fetch failed', lastErrorAt: Date.now() });
-          continue;
-        }
+          for (const it of items.reverse()) {
+            const uniqueKey =
+              it.open_giveaway_url ||
+              it.giveaway_url ||
+              it.gamerpower_url ||
+              it.id;
 
-        if (!Array.isArray(items) || !items.length) continue;
+            // ✅ FIX: evitar duplicados no ciclo
+            if (sentThisCycle.has(uniqueKey)) continue;
+            sentThisCycle.add(uniqueKey);
 
-        // Post oldest->newest within the cycle to preserve chronology.
-        const candidates = items
-          .filter((it) => it && typeof it.id === 'number')
-          .slice()
-          .reverse();
+            // ✅ FIX: dedupe DB forte
+            const exists = await GiveawayPost.findOne({
+              guildId,
+              $or: [{ giveawayId: it.id }, { url: uniqueKey }]
+            });
 
-        for (const it of candidates) {
-          if (maxPerCycle > 0 && postedCount >= maxPerCycle) break;
+            if (exists) continue;
 
-          const exists = await GiveawayPost.findOne({ guildId, giveawayId: it.id }).lean().catch(() => null);
-          if (exists) continue;
+            await postGiveaway(
+              client,
+              guildId,
+              channelId,
+              it,
+              plat,
+              gcfg.publicBaseUrl
+            );
 
-          try {
-            await postGiveawayToGuild(client, guildId, channelId, it, { forcedPlatform: plat, publicBaseUrl: gcfg.publicBaseUrl || null });
             await GiveawayPost.create({
               guildId,
               giveawayId: it.id,
-              platform: plat,
-              type: it.type || null,
-              title: it.title || null,
-              url: it.open_giveaway_url || it.giveaway_url || it.gamerpower_url || null
-            }).catch(() => {});
-            postedCount += 1;
-            _setGuildStatus(guildId, { lastSentAt: Date.now(), lastSuccessAt: Date.now(), lastPostedTitle: it.title || null });
-          } catch (e) {
-            _setGuildStatus(guildId, { lastError: (e && e.message) ? String(e.message).slice(0, 180) : 'Send failed', lastErrorAt: Date.now() });
-            // If sending fails, don't mark as posted.
+              url: uniqueKey
+            });
           }
         }
+      } catch (err) {
+        console.error('[Giveaways error]', err.message);
+      } finally {
+        runningGuilds.delete(guildId); // ✅ unlock
       }
     }
   }
 
-  async function triggerGuild(guildId) {
-    if (!guildId) return { ok: false, reason: 'missing_guildId' };
-    await loadEnabledConfigs().catch(() => {});
-    await tick({ onlyGuildId: String(guildId), force: true }).catch(() => {});
-    return { ok: true };
-  }
-
-  // Main loop at a conservative cadence; per-guild interval controls real posting.
-  const timer = setInterval(() => {
-    tick().catch(() => {});
-  }, 15_000);
-
-  // Initial load
-  loadEnabledConfigs().catch(() => {});
-  tick().catch(() => {});
+  const timer = setInterval(tick, 15000);
+  tick();
 
   return {
     stop: () => {
       stopped = true;
       clearInterval(timer);
-    },
-    triggerGuild
+    }
   };
 }
 
-startGiveaways.getStatus = getGiveawaysStatus;
-// Populated by src/index.js after start
-startGiveaways._instance = null;
 module.exports = startGiveaways;
