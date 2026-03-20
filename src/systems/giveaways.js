@@ -1,5 +1,3 @@
-// src/systems/giveaways.js
-
 const path = require('path');
 const fs = require('fs');
 const { EmbedBuilder } = require('discord.js');
@@ -10,14 +8,7 @@ const { fetchChannel } = require('../services/discordFetchCache');
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
 const BADGE_DIR = path.join(__dirname, '../../public/assets/platform-badges');
 
-const _statusByGuild = new Map();
-const runningGuilds = new Set(); // ✅ FIX: lock por guild
-
-function _setGuildStatus(guildId, patch) {
-  if (!guildId) return;
-  const prev = _statusByGuild.get(guildId) || {};
-  _statusByGuild.set(guildId, { ...prev, ...patch });
-}
+const runningGuilds = new Set();
 
 function normalizeList(arr) {
   if (!Array.isArray(arr)) return [];
@@ -31,11 +22,32 @@ function safeText(v, max = 1024) {
   return s;
 }
 
+/* =========================
+   ✅ FIX PRINCIPAL AQUI
+========================= */
 function cleanGiveawayTitle(raw) {
   let s = safeText(raw, 256);
-  s = s.replace(/^\s*\((steam|epic|ubisoft)\)\s*/i, '');
+
+  // (Steam), (Epic Games), (Steam) Key
+  s = s.replace(/^\s*\((steam|epic\s*games?|ubisoft)(\s*key)?\)\s*/i, '');
+
+  // Steam: Game
+  s = s.replace(/^\s*(steam|epic\s*games?|ubisoft)\s*:\s*/i, '');
+
+  // (Steam) Giveaway / Steam Giveaway
+  s = s.replace(/\s*\(?(steam|epic\s*games?|ubisoft)\)?\s*giveaway\s*$/i, '');
+
+  // Remove "Key"
+  s = s.replace(/\s*key\s*$/i, '');
+
+  // Remove "Giveaway"
   s = s.replace(/\s*giveaway\s*$/i, '');
-  return s.trim();
+
+  s = s.trim();
+
+  if (!s) return 'Free Game';
+
+  return s;
 }
 
 function normalizeImageUrl(url) {
@@ -52,7 +64,7 @@ function formatDate(value) {
 }
 
 function makeLinkLine({ browserUrl, clientUrl, platform }) {
-  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
+  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
 
   const links = [];
   if (browserUrl) links.push(`**[Open in browser ↗](${browserUrl})**`);
@@ -87,13 +99,15 @@ function makeEmbed(g, platform, publicBaseUrl) {
 
   if (image) embed.setImage(image);
 
-  // ✅ badge real
   if (publicBaseUrl) {
     const p = platform.toLowerCase();
+
     if (p.includes('steam'))
       embed.setThumbnail(`${publicBaseUrl}/platform-badge/steam.png`);
+
     if (p.includes('epic'))
       embed.setThumbnail(`${publicBaseUrl}/platform-badge/epic.png`);
+
     if (p.includes('ubisoft'))
       embed.setThumbnail(`${publicBaseUrl}/platform-badge/ubisoft.png`);
   }
@@ -104,7 +118,9 @@ function makeEmbed(g, platform, publicBaseUrl) {
 async function fetchGiveaways(platform) {
   const url = `${GAMERPOWER_BASE}/giveaways?platform=${platform}&type=game`;
   const res = await fetch(url);
+
   if (!res.ok) throw new Error('API error');
+
   return await res.json();
 }
 
@@ -132,7 +148,6 @@ async function startGiveaways(client) {
 
       if (!guildId || !channelId) continue;
 
-      // ✅ FIX: lock
       if (runningGuilds.has(guildId)) continue;
       runningGuilds.add(guildId);
 
@@ -144,7 +159,7 @@ async function startGiveaways(client) {
         if (now - last < interval) continue;
         lastPoll.set(guildId, now);
 
-        const sentThisCycle = new Set(); // ✅ FIX
+        const sentThisCycle = new Set();
 
         const platforms = normalizeList(gcfg.platforms).length
           ? gcfg.platforms
@@ -160,11 +175,9 @@ async function startGiveaways(client) {
               it.gamerpower_url ||
               it.id;
 
-            // ✅ FIX: evitar duplicados no ciclo
             if (sentThisCycle.has(uniqueKey)) continue;
             sentThisCycle.add(uniqueKey);
 
-            // ✅ FIX: dedupe DB forte
             const exists = await GiveawayPost.findOne({
               guildId,
               $or: [{ giveawayId: it.id }, { url: uniqueKey }]
@@ -191,7 +204,7 @@ async function startGiveaways(client) {
       } catch (err) {
         console.error('[Giveaways error]', err.message);
       } finally {
-        runningGuilds.delete(guildId); // ✅ unlock
+        runningGuilds.delete(guildId);
       }
     }
   }
