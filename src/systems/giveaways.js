@@ -1,12 +1,9 @@
-const path = require('path');
-const fs = require('fs');
 const { EmbedBuilder } = require('discord.js');
 const GuildConfig = require('../database/models/GuildConfig');
 const GiveawayPost = require('../database/models/GiveawayPost');
 const { fetchChannel } = require('../services/discordFetchCache');
 
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
-const BADGE_DIR = path.join(__dirname, '../../public/assets/platform-badges');
 
 const runningGuilds = new Set();
 
@@ -23,28 +20,18 @@ function safeText(v, max = 1024) {
 }
 
 /* =========================
-   ✅ FIX PRINCIPAL AQUI
+   CLEAN TITLE (FIX COMPLETO)
 ========================= */
 function cleanGiveawayTitle(raw) {
   let s = safeText(raw, 256);
 
-  // (Steam), (Epic Games), (Steam) Key
   s = s.replace(/^\s*\((steam|epic\s*games?|ubisoft)(\s*key)?\)\s*/i, '');
-
-  // Steam: Game
   s = s.replace(/^\s*(steam|epic\s*games?|ubisoft)\s*:\s*/i, '');
-
-  // (Steam) Giveaway / Steam Giveaway
   s = s.replace(/\s*\(?(steam|epic\s*games?|ubisoft)\)?\s*giveaway\s*$/i, '');
-
-  // Remove "Key"
   s = s.replace(/\s*key\s*$/i, '');
-
-  // Remove "Giveaway"
   s = s.replace(/\s*giveaway\s*$/i, '');
 
   s = s.trim();
-
   if (!s) return 'Free Game';
 
   return s;
@@ -70,6 +57,7 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
   if (browserUrl) links.push(`**[Open in browser ↗](${browserUrl})**`);
 
   const p = String(platform || '').toLowerCase();
+
   if (p.includes('steam')) {
     if (clientUrl) links.push(`**[Open in Steam Client ↗](${clientUrl})**`);
   } else if (p.includes('epic')) {
@@ -81,15 +69,30 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
   return links.join(SEP);
 }
 
+/* =========================
+   EMBED FINAL
+========================= */
 function makeEmbed(g, platform, publicBaseUrl) {
   const title = cleanGiveawayTitle(g.title);
   const image = normalizeImageUrl(g.image);
+  const worth = safeText(g.worth, 64);
 
   const browserUrl = g.giveaway_url || g.gamerpower_url || '';
   const clientUrl = g.open_giveaway_url || '';
 
+  const meta = [];
+
+  // ✅ preço antigo riscado
+  if (worth && worth !== 'N/A') {
+    meta.push(`~~${worth}~~`);
+  }
+
+  // ✅ FREE
+  meta.push(`**Free** until ${formatDate(g.end_date)}`);
+
   const desc =
-    `**Free** until ${formatDate(g.end_date)}\n\n` +
+    meta.join(' ') +
+    `\n\n` +
     makeLinkLine({ browserUrl, clientUrl, platform });
 
   const embed = new EmbedBuilder()
@@ -99,6 +102,7 @@ function makeEmbed(g, platform, publicBaseUrl) {
 
   if (image) embed.setImage(image);
 
+  // ✅ logos corretos
   if (publicBaseUrl) {
     const p = platform.toLowerCase();
 
@@ -132,6 +136,9 @@ async function postGiveaway(client, guildId, channelId, g, platform, publicBaseU
   await ch.send({ embeds: [embed] });
 }
 
+/* =========================
+   MAIN SYSTEM
+========================= */
 async function startGiveaways(client) {
   let stopped = false;
   const lastPoll = new Map();
@@ -148,6 +155,7 @@ async function startGiveaways(client) {
 
       if (!guildId || !channelId) continue;
 
+      // ✅ LOCK
       if (runningGuilds.has(guildId)) continue;
       runningGuilds.add(guildId);
 
@@ -175,9 +183,11 @@ async function startGiveaways(client) {
               it.gamerpower_url ||
               it.id;
 
+            // ✅ evitar duplicados no mesmo ciclo
             if (sentThisCycle.has(uniqueKey)) continue;
             sentThisCycle.add(uniqueKey);
 
+            // ✅ dedupe DB
             const exists = await GiveawayPost.findOne({
               guildId,
               $or: [{ giveawayId: it.id }, { url: uniqueKey }]
