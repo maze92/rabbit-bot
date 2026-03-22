@@ -1,3 +1,7 @@
+// src/systems/giveaways.js
+
+const path = require('path');
+const fs = require('fs');
 const { EmbedBuilder } = require('discord.js');
 const GuildConfig = require('../database/models/GuildConfig');
 const GiveawayPost = require('../database/models/GiveawayPost');
@@ -5,229 +9,207 @@ const { fetchChannel } = require('../services/discordFetchCache');
 
 const GAMERPOWER_BASE = 'https://www.gamerpower.com/api';
 
+const BADGE_DIR = path.join(__dirname, '../../public/assets/platform-badges');
+
 const runningGuilds = new Set();
 
-function normalizeList(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr.map((s) => String(s || '').trim()).filter(Boolean);
-}
+function cleanTitle(title) {
+  if (!title) return 'Giveaway';
 
-function safeText(v, max = 1024) {
-  if (v == null) return '';
-  let s = String(v);
-  if (s.length > max) s = s.slice(0, max);
-  return s;
-}
-
-/* =========================
-   CLEAN TITLE (FIX COMPLETO)
-========================= */
-function cleanGiveawayTitle(raw) {
-  let s = safeText(raw, 256);
-
-  s = s.replace(/^\s*\((steam|epic\s*games?|ubisoft)(\s*key)?\)\s*/i, '');
-  s = s.replace(/^\s*(steam|epic\s*games?|ubisoft)\s*:\s*/i, '');
-  s = s.replace(/\s*\(?(steam|epic\s*games?|ubisoft)\)?\s*giveaway\s*$/i, '');
-  s = s.replace(/\s*key\s*$/i, '');
-  s = s.replace(/\s*giveaway\s*$/i, '');
-
-  s = s.trim();
-  if (!s) return 'Free Game';
-
-  return s;
-}
-
-function normalizeImageUrl(url) {
-  if (!url || url === 'N/A') return '';
-  if (url.startsWith('http://')) return 'https://' + url.slice(7);
-  return url;
+  return String(title)
+    .replace(/^\s*\((steam|epic\s*games?|ubisoft|steam key)\)\s*/i, '')
+    .replace(/^\s*(steam|epic\s*games?|ubisoft|steam key)\s*:\s*/i, '')
+    .replace(/\s*\(?(steam|epic|ubisoft)\)?\s*giveaway\s*$/i, '')
+    .replace(/\s*giveaway\s*$/i, '')
+    .trim();
 }
 
 function formatDate(value) {
-  if (!value) return '—';
+  if (!value || value === 'N/A') return '—';
+
   const d = new Date(value);
-  if (isNaN(d)) return value;
-  return `<t:${Math.floor(d.getTime() / 1000)}:d>`;
+  if (isNaN(d.getTime())) return value;
+
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+
+  return `${day}/${month}/${year}`;
 }
 
-function makeLinkLine({ browserUrl, clientUrl, platform }) {
-  const SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
+function parseUnix(value) {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  return Math.floor(d.getTime() / 1000);
+}
+
+function resolvePlatform(it, fallback) {
+  const p = String(it.platforms || '').toLowerCase();
+
+  if (p.includes('steam')) return 'steam';
+  if (p.includes('epic')) return 'epic';
+  if (p.includes('ubisoft') || p.includes('uplay')) return 'ubisoft';
+
+  return fallback;
+}
+
+function badgeUrl(platform, base, id) {
+  if (!base) return '';
+
+  if (platform === 'steam') return `${base}/platform-badge/steam.png?v=${id}`;
+  if (platform === 'epic') return `${base}/platform-badge/epic.png?v=${id}`;
+  if (platform === 'ubisoft') return `${base}/platform-badge/ubisoft.png?v=${id}`;
+
+  return '';
+}
+
+function buildLinks(g, platform) {
+  const browser = g.giveaway_url || g.gamerpower_url || '';
+  const client = g.open_giveaway_url || '';
+
+  const SEP = '   ';
 
   const links = [];
-  if (browserUrl) links.push(`**[Open in browser ↗](${browserUrl})**`);
 
-  const p = String(platform || '').toLowerCase();
+  if (browser) {
+    links.push(`**[Open in browser ↗](${browser})**`);
+  }
 
-  if (p.includes('steam')) {
-    if (clientUrl) links.push(`**[Open in Steam Client ↗](${clientUrl})**`);
-  } else if (p.includes('epic')) {
-    if (clientUrl) links.push(`**[Open in Epic Games ↗](${clientUrl})**`);
-  } else if (p.includes('ubisoft')) {
-    if (clientUrl) links.push(`**[Open in Ubisoft Games ↗](${clientUrl})**`);
+  if (client) {
+    if (platform === 'steam') {
+      links.push(`**[Open in Steam Client ↗](${client})**`);
+    } else if (platform === 'epic') {
+      links.push(`**[Open in Epic Games ↗](${client})**`);
+    } else if (platform === 'ubisoft') {
+      links.push(`**[Open in Ubisoft Games ↗](${client})**`);
+    }
   }
 
   return links.join(SEP);
 }
 
-/* =========================
-   EMBED FINAL
-========================= */
-function makeEmbed(g, platform, publicBaseUrl) {
-  const title = cleanGiveawayTitle(g.title);
-  const image = normalizeImageUrl(g.image);
-  const worth = safeText(g.worth, 64);
+function makeEmbed(g, platform, baseUrl) {
+  const title = cleanTitle(g.title);
 
-  const browserUrl = g.giveaway_url || g.gamerpower_url || '';
-  const clientUrl = g.open_giveaway_url || '';
+  const worth = g.worth && g.worth !== 'N/A' ? `~~${g.worth}~~` : '';
+  const endUnix = parseUnix(g.end_date);
+  const endDate = formatDate(g.end_date);
 
-  const meta = [];
+  const freeLine = `**Free** until ${endUnix ? `<t:${endUnix}:d>` : endDate}`;
 
-  // ✅ preço antigo riscado
-  if (worth && worth !== 'N/A') {
-    meta.push(`~~${worth}~~`);
-  }
+  const links = buildLinks(g, platform);
 
-  // ✅ FREE
-  meta.push(`**Free** until ${formatDate(g.end_date)}`);
-
-  const desc =
-    meta.join(' ') +
-    `\n\n` +
-    makeLinkLine({ browserUrl, clientUrl, platform });
+  const description = [worth, freeLine].filter(Boolean).join(' ') +
+    (links ? `\n\n${links}` : '');
 
   const embed = new EmbedBuilder()
     .setTitle(title)
-    .setDescription(desc)
+    .setDescription(description)
     .setFooter({ text: 'via .rabbitstuff.xyz' });
 
-  if (image) embed.setImage(image);
+  if (g.image) embed.setImage(g.image);
 
-  // ✅ logos corretos
-  if (publicBaseUrl) {
-    const p = platform.toLowerCase();
-
-    if (p.includes('steam'))
-      embed.setThumbnail(`${publicBaseUrl}/platform-badge/steam.png`);
-
-    if (p.includes('epic'))
-      embed.setThumbnail(`${publicBaseUrl}/platform-badge/epic.png`);
-
-    if (p.includes('ubisoft'))
-      embed.setThumbnail(`${publicBaseUrl}/platform-badge/ubisoft.png`);
-  }
+  const badge = badgeUrl(platform, baseUrl, g.id || Date.now());
+  if (badge) embed.setThumbnail(badge);
 
   return embed;
 }
 
 async function fetchGiveaways(platform) {
-  const url = `${GAMERPOWER_BASE}/giveaways?platform=${platform}&type=game`;
-  const res = await fetch(url);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
 
-  if (!res.ok) throw new Error('API error');
+  try {
+    const url = `${GAMERPOWER_BASE}/giveaways?platform=${platform}&type=game`;
+    const res = await fetch(url, { signal: controller.signal });
 
-  return await res.json();
+    if (!res.ok) throw new Error('API error');
+
+    return await res.json();
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
-async function postGiveaway(client, guildId, channelId, g, platform, publicBaseUrl) {
-  const ch = await fetchChannel(client, channelId);
+async function postGiveaway(client, guildId, channelId, g, platform, baseUrl) {
+  const ch = await fetchChannel(client, channelId).catch(() => null);
   if (!ch) return;
 
-  const embed = makeEmbed(g, platform, publicBaseUrl);
+  const embed = makeEmbed(g, platform, baseUrl);
+
   await ch.send({ embeds: [embed] });
 }
 
-/* =========================
-   MAIN SYSTEM
-========================= */
 async function startGiveaways(client) {
-  let stopped = false;
-  const lastPoll = new Map();
-
-  async function tick() {
-    if (stopped) return;
-
+  setInterval(async () => {
     const configs = await GuildConfig.find({ 'giveaways.enabled': true }).lean();
 
     for (const cfg of configs) {
       const guildId = String(cfg.guildId);
-      const gcfg = cfg.giveaways || {};
-      const channelId = gcfg.channelId;
+      const gcfg = cfg.giveaways;
 
-      if (!guildId || !channelId) continue;
-
-      // ✅ LOCK
       if (runningGuilds.has(guildId)) continue;
       runningGuilds.add(guildId);
 
       try {
-        const now = Date.now();
-        const last = lastPoll.get(guildId) || 0;
-        const interval = (gcfg.pollIntervalSeconds || 60) * 1000;
-
-        if (now - last < interval) continue;
-        lastPoll.set(guildId, now);
+        const channelId = gcfg.channelId;
+        const platforms = gcfg.platforms || ['steam'];
+        const maxPerCycle = gcfg.maxPerCycle || 5;
 
         const sentThisCycle = new Set();
-
-        const platforms = normalizeList(gcfg.platforms).length
-          ? gcfg.platforms
-          : ['steam'];
+        let sentCount = 0;
 
         for (const plat of platforms) {
+          if (sentCount >= maxPerCycle) break;
+
           const items = await fetchGiveaways(plat);
 
           for (const it of items.reverse()) {
-            const uniqueKey =
-              it.open_giveaway_url ||
-              it.giveaway_url ||
-              it.gamerpower_url ||
-              it.id;
+            if (!it?.id) continue;
+            if (sentCount >= maxPerCycle) break;
 
-            // ✅ evitar duplicados no mesmo ciclo
+            const uniqueKey = it.open_giveaway_url || it.giveaway_url;
+
             if (sentThisCycle.has(uniqueKey)) continue;
-            sentThisCycle.add(uniqueKey);
 
-            // ✅ dedupe DB
             const exists = await GiveawayPost.findOne({
               guildId,
               $or: [{ giveawayId: it.id }, { url: uniqueKey }]
-            });
+            }).lean();
 
             if (exists) continue;
+
+            const platform = resolvePlatform(it, plat);
 
             await postGiveaway(
               client,
               guildId,
               channelId,
               it,
-              plat,
+              platform,
               gcfg.publicBaseUrl
             );
 
             await GiveawayPost.create({
               guildId,
               giveawayId: it.id,
-              url: uniqueKey
+              url: uniqueKey,
+              platform
             });
+
+            sentThisCycle.add(uniqueKey);
+            sentCount++;
           }
         }
       } catch (err) {
-        console.error('[Giveaways error]', err.message);
+        console.error('[Giveaways]', err);
       } finally {
         runningGuilds.delete(guildId);
       }
     }
-  }
-
-  const timer = setInterval(tick, 15000);
-  tick();
-
-  return {
-    stop: () => {
-      stopped = true;
-      clearInterval(timer);
-    }
-  };
+  }, 15000);
 }
 
 module.exports = startGiveaways;
