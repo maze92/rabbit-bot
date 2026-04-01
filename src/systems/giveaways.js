@@ -17,10 +17,11 @@ function cleanTitle(title) {
   if (!title) return 'Giveaway';
 
   return String(title)
-    .replace(/^\s*\((steam|epic\s*games?|ubisoft|steam key)\)\s*/i, '')
-    .replace(/^\s*(steam|epic\s*games?|ubisoft|steam key)\s*:\s*/i, '')
-    .replace(/\s*\(?(steam|epic|ubisoft)\)?\s*giveaway\s*$/i, '')
-    .replace(/\s*giveaway\s*$/i, '')
+    .replace(/^\s*[\[\(]?(steam|epic\s*games?|ubisoft|steam\s*key)[\]\)]?\s*[:\-\s]*/i, '')
+    .replace(/\s*[\[\(](steam|epic\s*games?|ubisoft|steam\s*key)[\]\)]\s*$/i, '')
+    .replace(/\s*\(?(steam|epic|ubisoft)?\)?\s*giveaway\s*$/i, '')
+    .replace(/^[\s\-\:\/\|]+|[\s\-\:\/\|]+$/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
