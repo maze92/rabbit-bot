@@ -17,9 +17,13 @@ function cleanTitle(title) {
   if (!title) return 'Giveaway';
 
   return String(title)
+    // 1. Remove prefixos como [Steam], (Epic Games:
     .replace(/^\s*[\[\(]?(steam|epic\s*games?|ubisoft|steam\s*key)[\]\)]?\s*[:\-\s]*/i, '')
-    .replace(/\s*[\[\(](steam|epic\s*games?|ubisoft|steam\s*key)[\]\)]\s*$/i, '')
+    // 2. CORREÇÃO: Remove sufixos mesmo que falte o parêntese de fechar
+    .replace(/\s*[\[\(]?(steam|epic\s*games?|ubisoft|steam\s*key)[\]\)]?\s*$/i, '')
+    // 3. Remove a palavra "giveaway" isolada no fim
     .replace(/\s*\(?(steam|epic|ubisoft)?\)?\s*giveaway\s*$/i, '')
+    // 4. Limpeza de caracteres residuais e espaços duplos
     .replace(/^[\s\-\:\/\|]+|[\s\-\:\/\|]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
