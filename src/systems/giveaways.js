@@ -17,14 +17,23 @@ function cleanTitle(title) {
   if (!title) return 'Giveaway';
 
   return String(title)
-    // 1. Remove prefixos como [Steam], (Epic Games:
+    // 1. Remove prefixos: [Steam], (Epic Games), etc.
     .replace(/^\s*[\[\(]?(steam|epic\s*games?|ubisoft|steam\s*key)[\]\)]?\s*[:\-\s]*/i, '')
-    // 2. CORREÇÃO: Remove sufixos mesmo que falte o parêntese de fechar
-    .replace(/\s*[\[\(]?(steam|epic\s*games?|ubisoft|steam\s*key)[\]\)]?\s*$/i, '')
-    // 3. Remove a palavra "giveaway" isolada no fim
-    .replace(/\s*\(?(steam|epic|ubisoft)?\)?\s*giveaway\s*$/i, '')
-    // 4. Limpeza de caracteres residuais e espaços duplos
+    
+    // 2. Remove sufixos combinados: (Epic Games Giveaway), (Steam Key), [Steam], etc.
+    // Esta regex agora captura a plataforma e a palavra giveaway juntas ou separadas no fim
+    .replace(/\s*[\[\(]?(steam|epic\s*games?|ubisoft|steam\s*key)?\s*\(?giveaway\)?\s*[\]\)]?$/i, '')
+
+    // 3. Segunda passagem para garantir que nomes de plataformas sozinhos no fim sejam limpos
+    // (Caso o giveaway tenha sido removido mas a plataforma tenha ficado)
+    .replace(/\s*[\[\(]?(steam|epic\s*games?|ubisoft|steam\s*key)[\]\)]?$/i, '')
+
+    // 4. Limpeza de caracteres residuais (pontuação solta no início ou fim)
     .replace(/^[\s\-\:\/\|]+|[\s\-\:\/\|]+$/g, '')
+    
+    // 5. Remove parênteses ou colchetes que sobraram abertos no final (ex: "Jogo (")
+    .replace(/\s*[\[\(]\s*$/, '')
+    
     .replace(/\s+/g, ' ')
     .trim();
 }
