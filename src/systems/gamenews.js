@@ -27,7 +27,7 @@ function clampNumber(n, min, max) {
 
 function hasSendPerm(channel, client) {
   try {
-    return channel?.permissionsFor?.(client.user)?.has?.('SendMessages');
+    return channel?.permissionsFor?.(client.user)?.has?.(['SendMessages', 'EmbedLinks']);
   } catch {
     return false;
   }
@@ -416,7 +416,8 @@ function getNewItemsByHashes(items, lastHashes) {
   if (!Array.isArray(items) || items.length === 0) return [];
   const set = new Set(Array.isArray(lastHashes) ? lastHashes : []);
 
-  if (set.size === 0) return [items[0]];
+  // Empty history = first run: every item is new. The caller trims via maxPerCycle.
+  if (set.size === 0) return items.slice();
 
   const newOnes = [];
   for (const it of items) {
@@ -531,7 +532,21 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
       `📰 GameNews: enviado **${feed.name}** -> **${item.title || 'Untitled'}**`
     ).catch(() => null);
   }
-}async function getFeedsFromDb() {
+}
+
+let feedsCacheAt = 0;
+let feedsCacheItems = null;
+const FEEDS_CACHE_MS = 5_000;
+
+function invalidateFeedsCache() {
+  feedsCacheAt = 0;
+  feedsCacheItems = null;
+}
+
+async function getFeedsFromDb() {
+  if (feedsCacheItems && (Date.now() - feedsCacheAt) < FEEDS_CACHE_MS) {
+    return feedsCacheItems;
+  }
   if (!GameNewsFeed) return [];
   try {
     const docs = await GameNewsFeed.find({}).lean();
@@ -569,10 +584,13 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
         logChannelId: d.logChannelId || null,
         enabled: d.enabled !== false,
         // Per-feed interval override (ms). Falls back to config.gameNews.interval when null/invalid.
-        intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null
+        intervalMs: typeof d.intervalMs === 'number' ? d.intervalMs : null,
+        maxPerCycle: typeof d.maxPerCycle === 'number' ? d.maxPerCycle : null
       });
     }
 
+    feedsCacheItems = out;
+    feedsCacheAt = Date.now();
     return out;
   } catch (err) {
     console.error('[GameNews] Failed to load feeds from DB:', err?.message || err);
