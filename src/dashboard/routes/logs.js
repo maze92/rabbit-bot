@@ -1,5 +1,7 @@
 // src/dashboard/routes/logs.js
 
+const { escapeRegex } = require('../../utils/regex');
+
 module.exports = {
   registerLogsRoutes
 };
@@ -21,6 +23,20 @@ function registerLogsRoutes(opts) {
   } = opts;
 
   if (!app) throw new Error('registerLogsRoutes: app is required');
+
+  // Case-insensitive text search across the log fields actually stored.
+  // (DashboardLog has no text index, so $text would fail at query time.)
+  const buildSearchFilter = (search) => {
+    const rx = new RegExp(escapeRegex(search), 'i');
+    return {
+      $or: [
+        { title: rx },
+        { description: rx },
+        { 'user.tag': rx },
+        { 'executor.tag': rx }
+      ]
+    };
+  };
 
   // List logs (DB-backed if available, otherwise in-memory)
   const canViewLogs = typeof requirePerm === 'function'
@@ -152,8 +168,8 @@ function registerLogsRoutes(opts) {
       const q = {};
       if (guildId) q['guild.id'] = guildId;
       if (hasSince) q.createdAt = { $gte: since };
-      if (type) q.title = { $regex: type, $options: 'i' };
-      if (search) q.$text = { $search: search };
+      if (type) q.title = { $regex: escapeRegex(type), $options: 'i' };
+      if (search) Object.assign(q, buildSearchFilter(search));
 
       const total = await DashboardLog.countDocuments(q);
       const docs = await DashboardLog
@@ -266,8 +282,8 @@ function registerLogsRoutes(opts) {
       } else {
         const q = {};
         if (guildId) q['guild.id'] = guildId;
-        if (type) q.title = { $regex: type, $options: 'i' };
-        if (search) q.$text = { $search: search };
+        if (type) q.title = { $regex: escapeRegex(type), $options: 'i' };
+        if (search) Object.assign(q, buildSearchFilter(search));
 
         items = await DashboardLog
           .find(q)

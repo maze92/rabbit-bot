@@ -116,16 +116,6 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, canEditConfig, gua
       };
     }
 
-    if (maintenanceMode && typeof maintenanceMode === 'object') {
-      payload.maintenanceMode = {
-        enabled: maintenanceMode.enabled === true,
-        message: typeof maintenanceMode.message === 'string' && maintenanceMode.message.trim()
-          ? maintenanceMode.message.trim().slice(0, 180)
-          : null,
-        allowStaff: maintenanceMode.allowStaff !== false
-      };
-    }
-
     // Validação extra com Zod para garantir que o payload tem apenas valores esperados
     const candidate = {
       logChannelId: payload.logChannelId,

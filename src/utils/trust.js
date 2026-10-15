@@ -11,7 +11,7 @@ function getTrustConfig() {
     enabled: cfg.enabled !== false,
 
     // base range
-    base: cfg.base ?? 30,
+    base: cfg.base ?? 50,
     min: cfg.min ?? 0,
     max: cfg.max ?? 100,
 
@@ -24,8 +24,8 @@ function getTrustConfig() {
     regenMaxDays: cfg.regenMaxDays ?? 30,
 
     // thresholds
-    lowThreshold: cfg.lowThreshold ?? 10,
-    highThreshold: cfg.highThreshold ?? 60,
+    lowThreshold: cfg.lowThreshold ?? 25,
+    highThreshold: cfg.highThreshold ?? 75,
 
     // dynamic penalties / bonuses
     lowTrustWarningsPenalty: cfg.lowTrustWarningsPenalty ?? 1,

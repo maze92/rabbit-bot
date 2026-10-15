@@ -12,6 +12,7 @@ function registerModRoutes({
   recordAudit,
   ModWarnSchema,
   ModMuteSchema,
+  ModUnmuteSchema,
   parseDuration,
   formatDuration,
   config,
@@ -256,9 +257,9 @@ function registerModRoutes({
   app.post('/api/mod/unmute', requireDashboardAuth, canAct, guardGuildBody, rlUnmute, async (req, res) => {
     try {
       const body = req.body || {};
-      const parseResult = ModWarnSchema.safeParse(body);
+      const parseResult = ModUnmuteSchema.safeParse(body);
       if (!parseResult.success) {
-        return res.status(400).json({ ok: false, error: 'Invalid warn payload' });
+        return res.status(400).json({ ok: false, error: 'Invalid unmute payload' });
       }
 
       const { guildId: g0, userId: u0, reason: r0 } = parseResult.data;

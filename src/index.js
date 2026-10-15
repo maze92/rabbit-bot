@@ -142,7 +142,6 @@ if (mongoose && mongoose.connection) {
 }
 
 // -----------------------------
-// Orchestr// -----------------------------
 // Orchestrated Discord "ready"
 // -----------------------------
 

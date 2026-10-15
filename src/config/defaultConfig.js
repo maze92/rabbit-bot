@@ -137,8 +137,11 @@ const baseConfig = {
     requireAuth: true,
     // Lista de origens permitidas para o Socket.IO (dashboard).
     // Production dashboard origin(s). Keep this list tight.
-    // If you change your Koyeb domain, update this value or set DASHBOARD_ORIGIN.
-    allowedOrigins: ['https://rabbit-bot.koyeb.app'],
+    // DASHBOARD_ORIGIN (comma-separated) tem prioridade; caso contrário usa o domínio Koyeb por defeito.
+    allowedOrigins: (process.env.DASHBOARD_ORIGIN || 'https://rabbit-bot.koyeb.app')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
     // Canal global de logs do Dashboard (fallback, caso a guild ainda não tenha dashboardLogChannelId definido)
     dashboardLogsChannelId: process.env.DASHBOARD_LOG_CHANNEL_ID || null
   },

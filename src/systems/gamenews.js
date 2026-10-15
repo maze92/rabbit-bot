@@ -17,8 +17,8 @@ try {
 }
 
 const logger = require('./logger');
-// Node 20+ includes AbortController. Keep a safe fallback.
-const AbortController = global.AbortController || require('abort-controller');
+// Node 20+ (see package.json engines) provides AbortController globally.
+const { AbortController } = globalThis;
 
 function clampNumber(n, min, max) {
   if (!Number.isFinite(n)) return null;

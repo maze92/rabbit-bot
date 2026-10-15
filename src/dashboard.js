@@ -73,11 +73,6 @@ const ADMIN_PERMISSIONS = Object.freeze({
 
 
 
-if (process.env.NODE_ENV === 'production' && !process.env.DASHBOARD_JWT_SECRET) {
-  console.warn('[Dashboard Auth] DASHBOARD_JWT_SECRET is not set in production. Please configure a strong secret.');
-}
-
-
 // ------------------------------
 // Sanitização / hardening (dashboard)
 // ------------------------------
@@ -354,9 +349,6 @@ const server = http.createServer(app);
 
 // App hardening (dashboard)
 app.disable('x-powered-by');
-
-// Behind reverse proxies (Koyeb), trust the first hop so req.ip and protocol are correct.
-app.set('trust proxy', 1);
 
 // Basic security headers for dashboard API
 // We disable the default CSP for now to avoid breaking inline scripts/styles.
@@ -782,6 +774,7 @@ registerModRoutes({
   recordAudit,
   ModWarnSchema,
   ModMuteSchema,
+  ModUnmuteSchema,
   parseDuration,
   formatDuration,
   config,

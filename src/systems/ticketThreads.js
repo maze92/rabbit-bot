@@ -199,7 +199,7 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
       .addFields(
         {
           name: 'Número do ticket',
-          value: `\`${String(ticketNumber).padStart(3, '0')}\``,
+          value: `\`${String(createdTicketNumber).padStart(3, '0')}\``,
           inline: true
         },
         {
@@ -208,7 +208,7 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
           inline: true
         }
       )
-      .setFooter({ text: `Ticket #${String(ticketNumber).padStart(3, '0')}` })
+      .setFooter({ text: `Ticket #${String(createdTicketNumber).padStart(3, '0')}` })
       .setTimestamp();
 
     const controlMessage = await thread.send({ embeds: [embed] });

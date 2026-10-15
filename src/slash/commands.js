@@ -134,6 +134,8 @@ module.exports = function buildSlashCommands(prefix) {
         .setDescriptionLocalizations({
           'pt-BR': 'Número de registos a mostrar (máx. 50)',
         })
+        .setMinValue(1)
+        .setMaxValue(50)
         .setRequired(false)
     );
 
