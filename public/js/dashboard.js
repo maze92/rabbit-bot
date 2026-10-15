@@ -753,14 +753,16 @@ function setPanelLoading(panelId, isLoading) {
       } else {
         el.classList.add('status-offline');
         el.textContent = t('badge_bot_offline');
+        bannerState.lastBotOk = false;
         refreshGlobalBanner();
-      bannerState.lastBotOk = false;
       }
     } catch (e) {
       console.error('Failed to refresh bot status badge', e);
       el.classList.remove('status-online');
       el.classList.add('status-offline');
-      
+      el.textContent = t('badge_bot_offline');
+      bannerState.lastBotOk = false;
+      refreshGlobalBanner();
     }
   }
 

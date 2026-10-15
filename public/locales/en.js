@@ -1,8 +1,8 @@
 window.OzarkLocales = window.OzarkLocales || {};
 window.OzarkLocales.en = {
   'app_subtitle': 'Moderation & management dashboard',
-  'badge_bot_offline': 'Bot offline',
-  'badge_bot_online': 'Bot online',
+  'badge_bot_offline': 'Offline',
+  'badge_bot_online': 'Online',
   'badge_profile': 'Profile: {profile}',
   'badge_access': 'Access: {access}',
   'access_select_guild': 'Select server',

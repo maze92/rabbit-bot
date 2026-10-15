@@ -30,7 +30,7 @@
   }
 
   async function loadGiveawaysStatus() {
-    const guildId = (window.OzarkDashboard && window.OzarkDashboard.currentGuildId) ? window.OzarkDashboard.currentGuildId : null;
+    const guildId = getGuildId();
     if (!guildId) return;
 
     const data = await apiGet('/giveaways/status?guildId=' + encodeURIComponent(guildId));

@@ -1,8 +1,8 @@
 window.OzarkLocales = window.OzarkLocales || {};
 window.OzarkLocales.pt = {
   'app_subtitle': 'Dashboard de moderação e gestão',
-  'badge_bot_offline': 'Bot offline',
-  'badge_bot_online': 'Bot online',
+  'badge_bot_offline': 'Offline',
+  'badge_bot_online': 'Online',
   'badge_profile': 'Perfil: {profile}',
   'badge_access': 'Acesso: {access}',
   'access_select_guild': 'Selecionar servidor',
