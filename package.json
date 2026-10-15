@@ -6,7 +6,13 @@
   "scripts": {
     "start": "NODE_ENV=production node src/index.js",
     "dev": "NODE_ENV=development node src/index.js",
-    "test": "node tests/run-tests.js",
+    "test": "node tests/run-tests.js && node tests/unit/run-unit.js && node tests/integration/run-integration.js",
+    "test:unit": "node tests/unit/run-unit.js",
+    "test:integration": "node tests/integration/run-integration.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "i18n:audit": "node scripts/i18n-audit.js"
   },
   "keywords": [
@@ -44,5 +50,10 @@
     "helmet": "^7.0.0",
     "cors": "^2.8.5",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2"
   }
 }

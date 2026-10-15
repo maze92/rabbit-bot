@@ -114,7 +114,7 @@ npm install
 
 ### 4. Configurar variáveis de ambiente
 
-Cria um ficheiro `.env` na raiz com algo deste género:
+Cria um ficheiro `.env` na raiz com algo deste género (a lista completa, com comentários, está em [`.env.example`](.env.example)):
 
 ```ini
 DISCORD_TOKEN=seu_token_do_bot
@@ -147,6 +147,11 @@ SLASH_SCOPE=global
 # Em produção atrás de Koyeb/NGINX, o bot usa "trust proxy" por defeito.
 # Podes desligar com:
 # TRUST_PROXY=false
+
+## Observabilidade (opcional)
+# Token para consultar métricas internas sem sessão da dashboard.
+# METRICS_TOKEN=coloca_um_token_aleatorio_longo
+
 PORT=3000
 NODE_ENV=production
 ```
@@ -204,7 +209,31 @@ Além disso, podes validar traduções (i18n) com:
 npm run i18n:audit
 ```
 
+Lint e formatação (ESLint + Prettier):
+
+```bash
+npm run lint         # verifica
+npm run lint:fix     # corrige o que for seguro
+npm run format       # formata com Prettier
+npm run format:check # verifica formatação sem alterar ficheiros
+```
+
 Recomendado: ativar CI no GitHub (workflow incluído em `.github/workflows/ci.yml`).
+
+---
+
+## 📈 Observabilidade
+
+- `GET /health` — estado da ligação ao Discord/MongoDB e contadores de utilização.
+- `GET /api/internal/metrics` — contadores internos e latência por rota (média, p95, máximo).
+  Requer sessão com papel `ADMIN` na dashboard ou o header `x-metrics-token` igual a `METRICS_TOKEN`:
+
+```bash
+curl -H "x-metrics-token: $METRICS_TOKEN" https://o-teu-dominio/api/internal/metrics
+```
+
+- `GET /api/internal/metrics?format=prometheus` — o mesmo snapshot em formato de texto Prometheus,
+  pronto para scraping (`text/plain; version=0.0.4`).
 
 ---
 
