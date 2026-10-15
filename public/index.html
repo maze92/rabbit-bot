@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>.rabbit Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/css/tokens.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/css/dashboard.css?v=__ASSET_VERSION__">
+</head>
+<body>
+  <a class="skip-link" href="#mainContent" data-i18n="skip_to_content">Saltar para o conteúdo</a>
+  <div id="loginScreen" class="login-screen hidden">
+    <div class="login-card">
+      <h1 data-i18n="login_title">Login</h1>
+      <p class="login-subtitle" data-i18n="login_subtitle">Autentica-te para aceder ao painel.</p>
+      <button type="button" class="btn btn-discord" id="loginDiscordBtn" data-i18n="login_with_discord">Entrar com Discord</button>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+
+  <div id="guildSelectScreen" class="login-screen hidden">
+    <div class="login-card">
+      <h1 data-i18n="guild_select_title">Selecionar servidor</h1>
+      <p class="login-subtitle" data-i18n="guild_select_subtitle">Escolhe o servidor que queres gerir.</p>
+      <div id="guildSelectList" class="guild-select-list"></div>
+      <div class="login-error" id="guildSelectError"></div>
+    </div>
+  </div>
+
+  <div class="app" id="appRoot">
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="logo">.rabbit</div>
+        <div class="divider"></div>
+        <div class="top-info">
+          <div data-i18n="app_subtitle">Painel de gestão e moderação</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <select id="guildPicker" class="select">
+          <option value="" data-i18n="select_guild">Selecione um servidor</option>
+        </select>
+
+        <button type="button" class="badge badge-logout" id="logoutBtn" data-i18n="logout" aria-label="Sair">Sair</button>
+
+        <span class="badge hidden" id="badgeProfile"></span>
+        <span class="badge hidden" id="badgeAccess"></span>
+
+        <span class="badge" id="badgeBot" role="status" aria-live="polite">Online</span>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="tabs" id="tabs" role="tablist" data-i18n-aria-label="tabs_aria_label">
+      <button class="tab active" id="tabbtn-overview" role="tab" aria-selected="true" aria-controls="tab-overview" tabindex="0" data-tab="overview" data-i18n="tab_overview">Visão geral</button>
+      <button class="tab" id="tabbtn-logs" role="tab" aria-selected="false" aria-controls="tab-logs" tabindex="-1" data-tab="logs" data-i18n="tab_logs">Moderação</button>
+      <button class="tab" id="tabbtn-gamenews" role="tab" aria-selected="false" aria-controls="tab-gamenews" tabindex="-1" data-tab="gamenews" data-i18n="tab_gamenews">Extras</button>
+      <button class="tab" id="tabbtn-user" role="tab" aria-selected="false" aria-controls="tab-user" tabindex="-1" data-tab="user" data-i18n="tab_user">Utilizadores</button>
+      <button class="tab" id="tabbtn-config" role="tab" aria-selected="false" aria-controls="tab-config" tabindex="-1" data-tab="config" data-i18n="tab_config">Configuração</button>
+    </div>
+
+    <!-- Aviso quando não há servidor selecionado -->
+    <div id="tabWarning" class="tab-warning hidden" data-i18n="warn_select_guild">
+      Selecione um servidor para aceder às restantes secções.
+    </div>
+    <!-- Banner global (estado / avisos contextuais) -->
+    <div id="globalBanner" class="global-banner hidden" role="region" aria-label="Avisos">
+      <div class="global-banner__content">
+        <div class="global-banner__title" id="globalBannerTitle"></div>
+        <div class="global-banner__message" id="globalBannerMessage"></div>
+      </div>
+      <div class="global-banner__actions" id="globalBannerActions"></div>
+      <button type="button" class="icon-btn global-banner__close" id="globalBannerClose" aria-label="Fechar">×</button>
+    </div>
+
+
+    <!-- Sections -->
+    <main class="sections" id="mainContent" tabindex="-1">
+      <!-- Overview -->
+      <section class="section active" id="tab-overview" role="tabpanel" aria-labelledby="tabbtn-overview">
+        <div class="card">
+          <h2 data-i18n="overview_title">Visão geral</h2>
+          <p class="hint" data-i18n="overview_hint">
+            Resumo de alto nível sobre o estado do bot, servidores ligados e atividade recente.
+          </p>
+          <div class="grid-3">
+            <div class="kpi">
+              <div class="kpi-label" data-i18n="kpi_guilds">Servidores ligados</div>
+              <div class="kpi-value" id="kpiGuilds">—</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label" data-i18n="kpi_users">Utilizadores monitorizados</div>
+              <div class="kpi-value" id="kpiUsers">—</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label" data-i18n="kpi_actions_24h">Ações de moderação (últimas 24h)</div>
+              <div class="kpi-value" id="kpiActions24h">—</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Logs / Moderação -->
+      <section class="section" id="tab-logs" role="tabpanel" aria-labelledby="tabbtn-logs">
+        <div class="card">
+          <h2 data-i18n="logs_title">Hub de moderação</h2>
+          <p class="hint" data-i18n="logs_hint">
+            Consulta centralizada de avisos, mutes, bans e restantes ações de moderação.
+          </p>
+          
+          
+          
+          <div class="user-layout moderation-panels" id="moderationOverviewLayout">
+            <div class="user-detail mini-panel" id="modServerInsightsPanel">
+              <div class="mini-panel-header">
+                <div>
+                  <h3 data-i18n="logs_server_insights_title">Análises do Servidor</h3>
+                  <p class="hint" data-i18n="logs_server_insights_hint">
+                    Resumo rápido das ações de moderação.
+                  </p>
+                </div>
+              </div>
+              <div class="chips" id="modServerInsightsRange">
+                  <button class="chip chip-active" data-range="7d" data-i18n="range_7d">7d</button>
+                  <button class="chip" data-range="14d" data-i18n="range_14d">14d</button>
+                  <button class="chip" data-range="30d" data-i18n="range_30d">30d</button>
+              </div>
+              <div id="modServerInsightsContent">
+                <div class="empty" data-i18n="logs_server_insights_empty">
+                  Ainda não existem dados de moderação no período selecionado.
+                </div>
+              </div>
+            </div>
+
+            <div class="user-detail mini-panel" id="modTicketsPanel">
+              <div class="mini-panel-header">
+                <div>
+                  <h3 data-i18n="logs_tickets_panel_title">Análises de Tickets</h3>
+                  <p class="hint" data-i18n="logs_tickets_panel_hint">
+                    Vista dos tickets recebidos por período.
+                  </p>
+                </div>
+              </div>
+              <div class="chips" id="modTicketsRange">
+                  <button class="chip chip-active" data-range="7d" data-i18n="range_7d">7d</button>
+                  <button class="chip" data-range="14d" data-i18n="range_14d">14d</button>
+                  <button class="chip" data-range="30d" data-i18n="range_30d">30d</button>
+              </div>
+              <ul class="simple-list" id="modTicketsList">
+                <li class="empty" data-i18n="logs_tickets_panel_empty">
+                  Não existem tickets no período selecionado.
+                </li>
+              </ul>
+              <div class="pagination pagination-small">
+                <button class="btn btn-ghost" id="modTicketsPrevPage">&laquo;</button>
+                <button class="btn btn-ghost" id="modTicketsNextPage">&raquo;</button>
+              </div>
+            </div>
+
+            <div class="user-detail mini-panel" id="modTopOnlinePanel">
+              <h3 data-i18n="logs_top_online_title">Registo de Utilizadores Online</h3>
+              <p class="hint" data-i18n="logs_top_online_hint">
+                Vista rápida dos utilizadores mais presentes no servidor.
+              </p>
+              <div class="chips" id="modTopOnlineRange">
+                <button class="chip chip-active" data-range="7d" data-i18n="range_7d">7d</button>
+                <button class="chip" data-range="14d" data-i18n="range_14d">14d</button>
+                <button class="chip" data-range="30d" data-i18n="range_30d">30d</button>
+              </div>
+              <ul class="simple-list" id="modTopOnlineList">
+                <li class="empty" data-i18n="logs_top_online_soon">
+                  Em breve: painel alimentado por dados reais de presença.
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="user-detail mini-panel" id="modServerRecordsPanel">
+          <h3 data-i18n="logs_server_records_title">Registos do Servidor</h3>
+          <p class="hint" data-i18n="logs_server_records_hint">
+            Resumo rápido das ações de moderação nas últimas 24 horas.
+          </p>
+          <div class="row gap">
+            <input
+              id="logSearch"
+              class="input"
+              type="search"
+              data-i18n-aria-label="logs_search_aria"
+              aria-label="Procurar logs"
+              data-i18n-placeholder="logs_search_placeholder"
+              placeholder="Procurar por utilizador, moderador ou detalhe do log"
+            >
+            <label class="date-field">
+              <span data-i18n="logs_filter_from">De</span>
+              <input id="logFrom" class="input xs" type="date" data-i18n-aria-label="logs_filter_from">
+            </label>
+            <label class="date-field">
+              <span data-i18n="logs_filter_to">Até</span>
+              <input id="logTo" class="input xs" type="date" data-i18n-aria-label="logs_filter_to">
+            </label>
+            <select id="logType" class="select sm">
+              <option value="" data-i18n="logs_filter_all">Todos os tipos</option>
+              <option value="warn" data-i18n="logs_filter_warn">Warn</option>
+              <option value="mute" data-i18n="logs_filter_mute">Mute</option>
+              <option value="unmute" data-i18n="logs_filter_unmute">Unmute</option>
+              <option value="kick" data-i18n="logs_filter_kick">Kick</option>
+              <option value="ban" data-i18n="logs_filter_ban">Ban</option>
+              <option value="tickets" data-i18n="logs_filter_tickets">Tickets</option>
+            </select>
+            <select id="logLimit" class="select xs">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+            <button class="btn" id="btnReloadLogs" data-i18n="logs_reload">Recarregar</button>
+            <button class="btn" id="btnExportLogs" data-i18n="logs_export_csv">Exportar CSV</button>
+          </div>
+          <div id="logsList" class="list">
+            <div class="empty" data-i18n="logs_empty">
+              Não existem registos para o filtro atual.
+            </div>
+          <div class="row mt-2">
+            <button class="btn" id="btnLogsLoadMore" data-i18n="logs_load_more">Carregar mais</button>
+          </div>
+          </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Tickets -->
+            <!-- Extras -->
+      <section class="section" id="tab-gamenews" role="tabpanel" aria-labelledby="tabbtn-gamenews">
+        <div class="card">
+          <h2 data-i18n="extras_title">Funcionalidades</h2>
+          <p class="hint" data-i18n="extras_hint">
+            Ferramentas adicionais do bot: feeds de notícias e voz temporária.
+          </p>
+
+          <div class="subtabs" role="tablist" data-i18n-aria-label="subtabs_aria_label">
+            <button class="subtab active" id="subtabbtn-feeds" role="tab" aria-selected="true" aria-controls="extras-feeds-panel" tabindex="0" data-subtab="feeds" data-i18n="extras_feeds_tab">Feeds</button>
+            <button class="subtab" id="subtabbtn-tempvoice" role="tab" aria-selected="false" aria-controls="extras-tempvoice-panel" tabindex="-1" data-subtab="tempvoice" data-i18n="extras_tempvoice_tab">Voz temporária</button>
+            <button class="subtab" id="subtabbtn-tickets" role="tab" aria-selected="false" aria-controls="extras-tickets-panel" tabindex="-1" data-subtab="tickets" data-i18n="extras_tickets_tab">Tickets</button>
+            <button class="subtab" id="subtabbtn-trust" role="tab" aria-selected="false" aria-controls="extras-trust-panel" tabindex="-1" data-subtab="trust" data-i18n="extras_trust_tab">Trust & Punições</button>
+            <button class="subtab" id="subtabbtn-giveaways" role="tab" aria-selected="false" aria-controls="extras-giveaways-panel" tabindex="-1" data-subtab="giveaways" data-i18n="tab_giveaways">Giveaways</button>
+          </div>
+
+          <div class="subtab-panels">
+            <div class="subtab-panel active" id="extras-feeds-panel" role="tabpanel" aria-labelledby="subtabbtn-feeds">
+<div class="card">
+    <h2 data-i18n="gamenews_title">GameNews</h2>
+    <p class="hint" data-i18n="gamenews_hint">
+      Estado dos feeds de notícias e últimas publicações.
+    </p>
+
+    <div class="user-layout gamenews-layout">
+      <!-- Lado esquerdo: lista + ações gerais -->
+      <div>
+        <div class="row gap mb-2">
+          <button id="btnAddGameNewsFeed" class="btn xs" type="button" data-i18n="gamenews_add_feed">
+            Adicionar
+          </button>
+        </div>
+
+        <div class="list" id="gamenewsFeedsList">
+          <div class="empty" data-i18n="gamenews_editor_empty">
+            Nenhum feed de GameNews configurado neste momento.
+          </div>
+        </div>
+      </div>
+
+      <!-- Lado direito: painel de detalhe (como userDetailPanel) -->
+      <div class="user-detail gamenews-detail mini-panel" id="gamenewsFeedDetailPanel">
+        <div class="empty" data-i18n="gamenews_detail_empty">
+          Selecione um feed para ver os detalhes e editar a configuração.
+        </div>
+      </div>
+    </div>
+  </div>
+            </div>
+
+                          <div class="subtab-panel" id="extras-tempvoice-panel" role="tabpanel" aria-labelledby="subtabbtn-tempvoice">
+                <div class="card subcard">
+                  <h2 data-i18n="tempvoice_title">Voz temporária</h2>
+                  <p class="history-hint" data-i18n="tempvoice_hint">
+                    Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.
+                  </p>
+
+                  <div class="row gap mb-2">
+                    <select id="tempVoiceAddBaseSelect" class="select flex-1"></select>
+                    <button id="btnTempVoiceAddBase" class="btn xs" type="button" data-i18n="tempvoice_add_base_btn">
+                      Adicionar
+                    </button>
+                  </div>
+
+                  <div class="user-layout">
+                    <div>
+                      <div class="list" id="tempVoiceBaseList">
+                        <div class="empty" data-i18n="tempvoice_base_list_empty">
+                          Ainda não existem canais base configurados.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="user-detail mini-panel" id="tempVoiceDetailPanel">
+                      <div class="empty" id="tempVoiceDetailEmpty" data-i18n="tempvoice_detail_empty">
+                        Selecione um canal base para editar as configurações.
+                      </div>
+
+                      <div id="tempVoiceDetailContent" class="hidden">
+                        <h3 data-i18n="tempvoice_detail_title">Configurações de Canal de Voz Temporário</h3>
+                        <p class="history-hint" data-i18n="tempvoice_detail_hint">
+                          Define o comportamento global das salas temporárias criadas a partir dos canais base.
+                        </p>
+
+                        <h4 id="tempVoiceCurrentBaseLabel" class="subtitle" data-i18n="tempvoice_current_base">
+                          Canal base: (nenhum selecionado)
+                        </h4>
+
+                        <div class="field">
+                          <label for="tempVoiceEnabled" data-i18n="tempvoice_enabled_label">Ativar voz temporária</label>
+                          <select id="tempVoiceEnabled" class="select">
+                            <option value="false" data-i18n="tempvoice_disabled">Desativado</option>
+                            <option value="true" data-i18n="tempvoice_enabled">Ativado</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label for="tempVoiceCategoryId" data-i18n="tempvoice_category_label">Categoria para criar salas temporárias</label>
+                          <select id="tempVoiceCategoryId" class="input"></select>
+                        </div>
+
+                        <div class="field">
+                          <label for="tempVoiceDeleteDelay" data-i18n="tempvoice_delete_delay_label">Tempo para apagar sala vazia (segundos)</label>
+                          <input id="tempVoiceDeleteDelay" class="input" type="number" min="2" max="600" step="1" />
+                        </div>
+                        
+                        <div class="field">
+                          <label for="tempVoiceMaxUsers" data-i18n="tempvoice_max_users_label">Limite máximo de utilizadores por sala</label>
+                          <input id="tempVoiceMaxUsers" class="input" type="number" min="1" max="99" step="1" placeholder="(opcional)" />
+                        </div>
+
+                        <div class="field field-spaced-top">
+                          <h4 class="mt-0 mb-2" data-i18n="tempvoice_actions_title">Ações</h4>
+                          <div class="actions tempvoice-actions-top">
+                            <button id="btnSaveTempVoice" class="btn xs" type="button" data-i18n="tempvoice_save_btn">
+                              Guardar
+                            </button>
+                            <button id="btnDeleteTempVoiceBase" class="btn xs danger" type="button" data-i18n="tempvoice_delete_btn">
+                              Remover
+                            </button>
+                          </div>
+                          <div class="hint hidden mt-1" id="tvDirtyHint"></div>
+                        </div>
+
+                        <div class="field field-spaced-top">
+                          <div class="tempvoice-active-header">
+                            <h4 data-i18n="tempvoice_active_title">Salas temporárias ativas</h4>
+                          </div>
+                          <div class="list" id="tempVoiceActiveList">
+                            <div class="empty" data-i18n="tempvoice_active_empty">
+                              Não existem salas temporárias neste momento.
+                            </div>
+                          </div>
+                        </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+	          
+	              <div class="subtab-panel" id="extras-tickets-panel" role="tabpanel" aria-labelledby="subtabbtn-tickets">
+                <div class="card subcard">
+                  <h2 data-i18n="tickets_extras_title">Tickets</h2>
+                  <p class="hint" data-i18n="tickets_extras_hint">
+                    Configuração do canal de suporte e comportamento básico do sistema de tickets.
+                  </p>
+
+                  <details class="card mt-3" open>
+                    <summary class="details-summary" data-i18n="tickets_config_summary">Configuração</summary>
+                    <div class="row gap mt-3">
+                      <div class="col">
+                        <label for="configTicketChannel" data-i18n="config_ticket_channel">Canal de suporte (tickets)</label>
+                        <select id="configTicketChannel" class="select"></select>
+                        <p class="hint" data-i18n="config_ticket_channel_hint">
+                          Canal onde será publicada a mensagem de suporte com o emoji para abrir tickets.
+                        </p>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="card mt-3">
+                    <summary class="details-summary" data-i18n="tickets_how_summary">Como funciona</summary>
+                    <div class="mt-3">
+                      <p class="hint" data-i18n="tickets_extras_info_body">
+                        Quando configuras um canal de suporte, o sistema permite abrir threads de ticket a partir de uma mensagem fixa com o emoji 🎫. Cada ticket fica registado e pode ser consultado na tab de moderação.
+                      </p>
+                      <p class="hint" data-i18n="tickets_extras_logs_hint">
+                        Esta secção utiliza o sistema de logs de tickets existente. Os registos aparecem em "Análises de Tickets" e em "Registos do Servidor" na tab Hub de moderação.
+                      </p>
+                    </div>
+                  </details>
+
+                  <div class="card mt-3">
+                    <div class="users-layout">
+                      <div class="users-left">
+                        <div class="toolbar">
+                          <div class="title" data-i18n="tickets_manage_title">Tickets ativos</div>
+                          <div class="toolbar-actions">
+                            <input id="ticketsSearch" class="input md" type="text" placeholder="Pesquisar..." data-i18n-placeholder="tickets_search_placeholder" />
+                            <select id="ticketsStatusFilter" class="select xs">
+                              <option value="open" data-i18n="tickets_filter_open">Abertos</option>
+                              <option value="closed" data-i18n="tickets_filter_closed">Fechados</option>
+                              <option value="all" data-i18n="tickets_filter_all">Todos</option>
+                            </select>
+                            <button id="btnReloadTickets" class="btn xs" type="button" data-i18n="reload">Recarregar</button>
+                          </div>
+                        </div>
+                        <div class="list" id="ticketsList">
+                          <div class="empty" data-i18n="tickets_select_guild">Selecione um servidor para ver tickets.</div>
+                        </div>
+                        <div class="row-end mt-2">
+                          <button id="btnTicketsLoadMore" class="btn xs hidden" type="button" data-i18n="tickets_load_more">Carregar mais</button>
+                        </div>
+                      </div>
+
+                      <div class="users-right">
+                        <div id="ticketDetailPanel" class="mini-panel">
+                          <div class="empty" data-i18n="tickets_detail_empty">Selecione um ticket para ver detalhes.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="subtab-panel" id="extras-trust-panel" role="tabpanel" aria-labelledby="subtabbtn-trust">
+                <div class="card subcard">
+                  <h2 data-i18n="extras_trust_title">Sistema de Trust</h2>
+                  <p class="hint" data-i18n="extras_trust_hint">
+                    Visão geral do sistema de confiança usado para avaliar o risco dos utilizadores com base no seu histórico.
+                  </p>
+
+                  <div class="trust-layout">
+                    <div class="trust-form-block">
+                      <h4 data-i18n="extras_trust_levels_title">Níveis de confiança</h4>
+                      <p data-i18n="extras_trust_levels_body">
+                        Os utilizadores recebem automaticamente níveis Alto, Médio ou Baixo com base nas infrações registadas.
+                      </p>
+
+                      <div class="trust-form-row">
+                        <label for="trustPresetSelect" data-i18n="trust_preset_label">Preset</label>
+                        <div class="row gap">
+                          <select id="trustPresetSelect" class="select" disabled>
+                            <option value="balanced" data-i18n="trust_preset_balanced">Equilibrado</option>
+                            <option value="strict" data-i18n="trust_preset_strict">Rigoroso</option>
+                            <option value="relaxed" data-i18n="trust_preset_relaxed">Flexível</option>
+                            <option value="custom" data-i18n="trust_preset_custom">Personalizado</option>
+                          </select>
+                          <button id="btnApplyTrustPreset" class="btn xs" type="button" disabled data-i18n="trust_preset_apply">Aplicar</button>
+                        </div>
+                        <div class="hint" data-i18n="trust_preset_hint">Escolha um preset e aplique. Depois pode ajustar manualmente e guardar.</div>
+                      </div>
+
+                      <div class="trust-form-row">
+                        <label for="trustBaseInput" data-i18n="config_trust_base">Base level</label>
+                        <input id="trustBaseInput" type="number" class="input" value="50" disabled />
+                      </div>
+
+                      <div class="trust-form-row">
+                        <label data-i18n="config_trust_minmax">Minimum / Maximum</label>
+                        <div class="row gap">
+                          <input id="trustMinInput" type="number" class="input xs" value="0" disabled />
+                          <input id="trustMaxInput" type="number" class="input xs" value="100" disabled />
+                        </div>
+                      </div>
+
+                      <div class="trust-form-row">
+                        <label data-i18n="config_trust_penalties">Penalties</label>
+                        <div class="row gap">
+                          <input id="trustWarnPenaltyInput" type="number" class="input xs" placeholder="WARN" value="10" disabled />
+                          <input id="trustMutePenaltyInput" type="number" class="input xs" placeholder="MUTE" value="25" disabled />
+                        </div>
+                      </div>
+
+                      <div class="trust-form-row">
+                        <label data-i18n="config_trust_regen">Regeneration</label>
+                        <div class="row gap">
+                          <input id="trustRegenPerDayInput" type="number" class="input xs" placeholder="por dia" value="5" disabled />
+                          <input id="trustRegenMaxDaysInput" type="number" class="input xs" placeholder="máx. dias" value="14" disabled />
+                        </div>
+                      </div>
+
+                      <div class="trust-form-row">
+                        <label data-i18n="config_trust_risk">Thresholds</label>
+                        <div class="row gap">
+                          <input id="trustLowThresholdInput" type="number" class="input xs" placeholder="baixo" value="30" disabled />
+                          <input id="trustHighThresholdInput" type="number" class="input xs" placeholder="alto" value="70" disabled />
+                        </div>
+                      </div>
+
+                      <div class="row gap mt-3">
+                        <button id="btnSaveTrustConfig" class="btn xs" type="button" disabled data-i18n="trust_save">Guardar Trust</button>
+                        <span class="hint" id="trustSaveStatus"></span>
+                      </div>
+                    </div>
+                    <div class="trust-preview-block">
+                      <h4 data-i18n="extras_trust_preview_title">Resumo</h4>
+
+                      <div class="trust-config-grid">
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="trust_preview_base">Base</div>
+                          <div class="value" id="trustBaseValue">—</div>
+                        </div>
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="trust_preview_minmax">Mín / Máx</div>
+                          <div class="value" id="trustMinMaxValue">—</div>
+                        </div>
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="trust_preview_penalties">Penalizações</div>
+                          <div class="value" id="trustPenaltiesValue">—</div>
+                        </div>
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="trust_preview_regen">Regeneração</div>
+                          <div class="value" id="trustRegenValue">—</div>
+                        </div>
+                        <div class="trust-config-item">
+                          <div class="label" data-i18n="trust_preview_risk">Thresholds</div>
+                          <div class="value" id="trustRiskValue">—</div>
+                        </div>
+                      </div>
+
+                      <h4 class="mt-3" data-i18n="trust_distribution_title">Distribuição por nível</h4>
+                      <div id="trustDistribution" class="trust-dist">
+                        <div class="hint" data-i18n="trust_distribution_loading">A carregar…</div>
+                      </div>
+
+                      <h4 class="mt-3" data-i18n="extras_trust_info_title">Como funciona</h4>
+                      <div class="trust-info" data-i18n="extras_trust_info_body"></div>
+                    </div>
+
+	                  </div>
+	                </div>
+	              </div>
+
+	              <div class="subtab-panel" id="extras-giveaways-panel" role="tabpanel" aria-labelledby="subtabbtn-giveaways">
+	                <div class="card card-flush">
+	                  <h2 data-i18n="giveaways_title">Giveaways</h2>
+	                  <p class="hint" data-i18n="giveaways_hint">
+	                    Publica automaticamente giveaways do GamerPower no canal escolhido, assim que aparecem.
+	                  </p>
+	                  <div class="ftk-summary" id="giveawaysSummary" aria-live="polite"></div>
+	                  <div class="ftk-headline" id="giveawaysHeadline"></div>
+
+                      <div class="status-card" id="giveawaysStatusCard" role="status" aria-live="polite">
+                        <div class="status-row">
+                          <span class="status-label" data-i18n="giveaways_status">Estado</span>
+						  <span class="status-pill" id="giveawaysStatusValue">—</span>
+                        </div>
+                        <div class="status-row">
+                          <span class="status-label" data-i18n="giveaways_status_channel">Canal</span>
+                          <span class="status-value" id="giveawaysStatusChannel">—</span>
+                        </div>
+                        <div class="status-row">
+                          <span class="status-label" data-i18n="giveaways_status_last">Última verificação</span>
+                          <span class="status-value" id="giveawaysStatusLast">—</span>
+                        </div>
+                        <div class="status-row">
+                          <span class="status-label" data-i18n="giveaways_status_next">Próxima verificação</span>
+                          <span class="status-value" id="giveawaysStatusNext">—</span>
+                        </div>
+                        <div class="status-row">
+                          <span class="status-label" data-i18n="giveaways_status_last_sent">Último envio</span>
+                          <span class="status-value" id="giveawaysStatusSent">—</span>
+                        </div>
+                        <div class="status-row status-row--error hidden" id="giveawaysStatusErrorRow">
+                          <span class="status-label" data-i18n="giveaways_status_error">Erro</span>
+                          <span class="status-value" id="giveawaysStatusError">—</span>
+                        </div>
+                      </div>
+
+
+	                  <div class="grid-2 ftk-grid">
+	                    <div>
+	                      <div class="ftk-config-card">
+	                        <div class="field">
+	                          <label class="switch">
+	                            <input type="checkbox" id="giveawaysEnabled" />
+	                            <span class="slider"></span>
+	                          </label>
+	                          <span class="switch-label" data-i18n="giveaways_enabled">Ativar Free-To-Keep</span>
+	                        </div>
+
+	                        <div id="giveawaysControls" class="ftk-controls">
+	                          <div class="field">
+	                            <label for="giveawaysChannel" data-i18n="giveaways_channel">Canal de publicação</label>
+	                            <div class="channel-picker">
+	                              <input id="giveawaysChannelSearch" class="input" type="text" data-i18n-placeholder="giveaways_channel_search" placeholder="Procurar canal…" />
+	                              <div class="ftk-channel-current hidden" id="giveawaysChannelCurrent"></div>
+	                            <select id="giveawaysChannel" class="select">
+	                              <option value="" data-i18n="select_channel">Seleciona um canal</option>
+	                            </select>
+	                            </div>
+	                            <div class="hint" data-i18n="giveaways_channel_hint">O bot publica no canal selecionado assim que surgirem novos jogos.</div>
+	                          </div>
+
+	                          <div class="field">
+	                            <label data-i18n="giveaways_platforms">Plataformas</label>
+	                            <div class="platform-grid" id="giveawaysPlatforms">
+	                          <label class="platform-pill">
+	                            <input type="checkbox" value="steam" />
+	                            <img class="platform-pill__icon" src="/assets/platform-badges/steam.png" alt="Steam">
+	                            <span>Steam</span>
+	                          </label>
+	                          <label class="platform-pill">
+	                            <input type="checkbox" value="epic-games-store" />
+	                            <img class="platform-pill__icon" src="/assets/platform-badges/epic.png" alt="Epic Games">
+	                            <span>Epic Games</span>
+	                          </label>
+	                          <label class="platform-pill">
+	                            <input type="checkbox" value="ubisoft" />
+	                            <img class="platform-pill__icon" src="/assets/platform-badges/ubisoft.png" alt="Ubisoft">
+	                            <span>Ubisoft</span>
+	                          </label>
+	                            </div>
+	                            <div class="hint hint-warn hidden" id="giveawaysPlatformsWarn" data-i18n="giveaways_platforms_warn">Seleciona pelo menos uma plataforma.</div>
+	                            <div class="hint" data-i18n="giveaways_only_games_hint">Este modo filtra apenas jogos Free-To-Keep (não inclui loot/beta).</div>
+	                          </div>
+
+	                          <details class="ftk-advanced" id="giveawaysAdvanced">
+	                            <summary data-i18n="giveaways_advanced">Definições avançadas</summary>
+	                            <div class="ftk-advanced__body">
+	                              <div class="grid-2 mt-1">
+	                                <div class="field">
+	                                  <label for="giveawaysPoll" data-i18n="giveaways_poll">Intervalo (s)</label>
+	                                  <input id="giveawaysPoll" class="input" type="number" min="60" max="3600" value="60" />
+	                                  <div class="hint" data-i18n="giveaways_poll_hint">Recomendado: 60–300s.</div>
+	                                </div>
+	                                <div class="field">
+	                                  <label for="giveawaysMaxPerCycle" data-i18n="giveaways_max_cycle">Máx / ciclo (0 = todos)</label>
+	                                  <input id="giveawaysMaxPerCycle" class="input" type="number" min="0" max="50" value="0" />
+	                                </div>
+	                              </div>
+	                            </div>
+	                          </details>
+
+	                          <div class="actions ftk-actions">
+	                            <div class="actions-left">
+	                              <button class="btn primary" id="giveawaysSaveBtn" data-i18n="save">Guardar</button>
+	                              <span class="hint" id="giveawaysSavedHint"></span>
+	                            </div>
+	                            <div class="actions-right">
+	                              <button class="btn" id="giveawaysTriggerBtn" data-i18n="giveaways_trigger">Verificar agora</button>
+	                              <button class="btn" id="giveawaysTestBtn" data-i18n="giveaways_test">Enviar teste</button>
+	                              <button class="btn" id="giveawaysResetBtn" data-i18n="giveaways_reset">Repor</button>
+	                            </div>
+	                          </div>
+	                        </div>
+	                      </div>
+	                    </div>
+
+	                    <div>
+	                      <div class="preview-card">
+	                        <div class="preview-title" data-i18n="preview">Preview</div>
+	                        <div id="giveawaysPreview" class="giveaway-preview"></div>
+	                      </div>
+	                    </div>
+	                  </div>
+	                </div>
+	              </div>
+
+	            </div>
+	          </div>
+	        </section>
+
+      <section class="section" id="tab-user" role="tabpanel" aria-labelledby="tabbtn-user">
+        <div class="card">
+          <h2 data-i18n="users_title">Utilizadores</h2>
+          <p class="hint" data-i18n="users_hint">Consulta rápida de utilizadores e histórico de moderação por utilizador.</p>
+          <p class="hint users-members" id="usersMemberCount"></p>
+
+          <div class="user-layout users-layout">
+            <div>
+              <div class="row gap mb-2">
+                <input id="usersSearch" class="input" data-i18n-placeholder="users_search_placeholder" placeholder="Procurar utilizador ou ID">
+                <select id="usersLimit" class="select xs">
+                  <option value="25">25</option>
+                  <option value="50" selected>50</option>
+                  <option value="100">100</option>
+                </select>
+                <label class="checkbox-inline">
+                  <input type="checkbox" id="usersIncludeBots">
+                  <span data-i18n="users_include_bots">Mostrar bots</span>
+                </label>
+                <button class="btn" id="btnReloadUsers" data-i18n="users_reload">Recarregar</button>
+                <button class="btn" id="btnSyncUsers" data-i18n="users_sync">Sincronizar</button>
+              </div>
+
+              <div class="hint users-results" id="usersResultCount" role="status" aria-live="polite"></div>
+
+              <div class="list" id="usersList">
+                <div class="empty" data-i18n="users_empty">Selecione um servidor para ver utilizadores.</div>
+              </div>
+
+              <div class="row mt-2">
+                <button class="btn" id="btnUsersLoadMore" data-i18n="users_load_more">Carregar mais</button>
+              </div>
+            </div>
+
+            <div class="user-detail mini-panel" id="userDetailPanel">
+              <div class="empty" data-i18n="users_detail_empty">Selecione um utilizador para ver o histórico de moderação e tickets.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="tab-config" role="tabpanel" aria-labelledby="tabbtn-config">
+        <div class="card">
+          <h2 data-i18n="config_title">Configuração do servidor</h2>
+          <p class="hint" data-i18n="config_hint">Defina canais, cargos de staff e preferências de registo para este servidor.</p>
+
+          <div class="config-nav" aria-label="Config navigation">
+            <a class="config-pill" href="#config-section-guild" data-i18n="config_nav_guild">Servidor</a>
+            <a class="config-pill" href="#config-section-logs" data-i18n="config_nav_logs">Logs</a>
+            <a class="config-pill" href="#config-section-access" data-i18n="config_nav_access">Acesso</a>
+            <a class="config-pill" href="#config-section-maintenance" data-i18n="config_nav_maintenance">Manutenção</a>
+            <a class="config-pill" href="#config-section-advanced" data-i18n="config_nav_advanced">Avançado</a>
+          </div>
+
+          <div class="config-form">
+            <div class="card subcard" id="config-section-guild">
+              <h3 data-i18n="config_guild_settings_title">Preferências do servidor</h3>
+              <p class="hint" data-i18n="config_guild_settings_hint">Defina o idioma principal e a timezone usados pela dashboard para este servidor.</p>
+
+              <div class="row gap">
+                <div class="field">
+                  <label for="configServerLanguage" data-i18n="config_server_language_label">Idioma principal do servidor</label>
+                  <select id="configServerLanguage" class="select">
+                    <option value="auto" data-i18n="config_server_language_auto">Automático (seguir idioma do cliente)</option>
+                    <option value="pt" data-i18n="config_server_language_pt">Português</option>
+                    <option value="en" data-i18n="config_server_language_en">English</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="configServerTimezone" data-i18n="config_server_timezone_label">Timezone do servidor</label>
+                  <input id="configServerTimezone" class="input" type="text" placeholder="Europe/Lisbon" />
+                </div>
+              </div>
+              <p class="hint" data-i18n="config_server_timezone_hint">Use um identificador IANA (por exemplo, Europe/Lisbon). Se ficar vazio, é usado o fuso horário padrão do servidor.</p>
+            </div>
+
+            <div class="card subcard" id="config-section-logs">
+              <h3 data-i18n="config_logs_section_title">Registos e canais de logs</h3>
+              <p class="hint" data-i18n="config_logs_section_hint">Defina os canais onde serão enviados os registos principais e os logs da própria dashboard.</p>
+
+              <div class="row gap">
+                <div class="col">
+                  <label for="configLogChannel" data-i18n="config_log_channel">Canal de logs principal</label>
+                  <select id="configLogChannel" class="select"></select>
+                </div>
+                <div class="col">
+                  <label for="configDashboardLogChannel" data-i18n="config_dashboard_log_channel">Canal de logs da dashboard</label>
+                  <select id="configDashboardLogChannel" class="select"></select>
+                </div>
+              </div>
+            </div>
+
+            <div class="card subcard" id="config-section-access">
+              <h3 data-i18n="config_access_section_title">Acesso e cargos de staff</h3>
+              <p class="hint" data-i18n="config_access_section_hint">O login na dashboard é feito apenas via Discord OAuth e é restrito a Owners e Administradores do servidor. Aqui definis apenas os cargos de staff usados pelo bot.</p>
+
+              <div class="row gap staff-roles-row">
+                <div class="col">
+                  <label for="configStaffRoles" data-i18n="config_staff_roles">Cargos de staff</label>
+                  <select id="configStaffRoles" class="select role-picker-hidden" multiple></select>
+                  <div class="role-picker" data-target="configStaffRoles">
+                    <div class="role-chips" id="configStaffRolesChips"></div>
+                    <div class="role-add-row">
+                      <select id="configStaffRolesAdd" class="select"></select>
+                      <button type="button" class="btn xs" id="configStaffRolesAddBtn" data-i18n="config_rolepicker_add">Adicionar</button>
+                    </div>
+                  </div>
+                  <p class="hint" data-i18n="config_staff_roles_hint">Se vazio, são usadas as roles de staff globais definidas no ficheiro de configuração.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card subcard" id="config-section-maintenance">
+              <h3 data-i18n="config_maintenance_title">Modo de manutenção</h3>
+              <p class="hint" data-i18n="config_maintenance_hint">Quando ativo, o bot limita comandos a Administradores/Owner e cargos de staff. Restantes utilizadores recebem uma mensagem curta.</p>
+
+              <div class="row gap">
+                <div class="col">
+                  <label for="configMaintenanceEnabled" data-i18n="config_maintenance_enabled_label">Ativar manutenção</label>
+                  <select id="configMaintenanceEnabled" class="select">
+                    <option value="false" data-i18n="common_no">Não</option>
+                    <option value="true" data-i18n="common_yes">Sim</option>
+                  </select>
+                </div>
+                <div class="col">
+                  <label for="configMaintenanceMessage" data-i18n="config_maintenance_message_label">Mensagem</label>
+                  <input id="configMaintenanceMessage" class="input" type="text" maxlength="180" data-i18n-placeholder="config_maintenance_message_placeholder" placeholder="O bot está em manutenção. Tenta mais tarde." />
+                </div>
+              </div>
+            </div>
+
+            <div class="card subcard" id="config-section-advanced">
+              <details class="config-advanced">
+                <summary data-i18n="config_json_section_title">Avançado: importar/exportar configuração</summary>
+                <p class="hint" data-i18n="config_json_section_hint">Exporta a configuração atual deste servidor para JSON ou aplica rapidamente uma configuração já preparada.</p>
+
+                <div class="row gap">
+                  <div class="col">
+                    <label data-i18n="config_json_export_label">Exportar configuração atual</label>
+                    <textarea id="configJsonExport" class="input" rows="6" readonly></textarea>
+                    <button type="button" class="btn small" id="configJsonExportBtn" data-i18n="config_json_export_btn">Gerar JSON</button>
+                  </div>
+                  <div class="col">
+                    <label for="configJsonImport" data-i18n="config_json_import_label">Importar configuração (JSON)</label>
+                    <textarea id="configJsonImport" class="input" rows="6"></textarea>
+                    <button type="button" class="btn small primary" id="configJsonImportBtn" data-i18n="config_json_import_btn">Aplicar JSON</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <div class="config-actions-footer">
+            <button type="button" class="btn small" id="btnReloadGuildConfig" data-i18n="config_reload">Recarregar</button>
+            <button type="button" class="btn small primary" id="btnSaveGuildConfig" data-i18n="config_save">Guardar configuração</button>
+          </div>
+          <div id="configStatus" class="hint mt-2"></div>
+        </div>
+      </section>
+
+</main>
+  </div>
+
+
+  <script>window.OZARK_BUILD="20260209a";</script>
+  <script src="/js/i18n.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/js/dashboard.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/js/dashboard.users.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/js/dashboard.moderation.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/js/dashboard.gamenews.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/js/dashboard.tickets.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/js/dashboard.giveaways.js?v=__ASSET_VERSION__" defer></script>
+
+</body>
+</html>
