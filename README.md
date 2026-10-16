@@ -17,7 +17,6 @@
 - **discord.js** ^14.25.1
 - **Express** (API + dashboard)
 - **MongoDB** (armazenamento de configurações, infrações, tickets, etc.)
-- **Socket.io** (atualizações em tempo real na dashboard)
 - Frontend em **HTML + CSS + JavaScript vanilla**, sem frameworks pesadas.
 
 ---
@@ -34,7 +33,7 @@
 - Mini-painéis de análise:
   - **Análises do Servidor** – resumo rápido das ações de moderação por intervalo (24h / 7d / 30d / 1 ano).
   - **Análises de Tickets** – lista dos tickets mais recentes, com paginação.
-  - **Registo de Utilizadores Online** – preparado para receber dados reais de presença.
+  - **Registo de Utilizadores Online** – utilizadores mais ativos por período (7d/14d/30d).
 
 ### 🎟️ Sistema de Tickets
 
@@ -68,7 +67,7 @@
 
 ### 🌐 Dashboard web
 
-- Autenticação recomendada por **Discord OAuth 2.0** + sessão JWT.
+- Autenticação por **Discord OAuth 2.0** + sessão JWT.
 - A lista de servidores é filtrada: apenas aparecem guilds onde o utilizador é **Owner** ou tem permissão **Administrator**.
 - Seleção de servidor e tabs por contexto:
   - **Visão geral**
@@ -84,7 +83,7 @@
 
 - Sistema de i18n centralizado no frontend.
 - Idioma atual guardado em `state.lang` e persistido no browser.
-- Ficheiros de idioma em `public/locales/` (ex.: `pt.js`), preparados para crescer para `en`, `es`, etc.
+- Ficheiros de idioma em `public/locales/` (`pt.js` e `en.js`), preparados para crescer para mais idiomas.
 - Suporte para placeholders e texto dinâmico no frontend via `t(key, params)`.
 
 ---
@@ -118,20 +117,20 @@ Cria um ficheiro `.env` na raiz com algo deste género (a lista completa, com co
 
 ```ini
 DISCORD_TOKEN=seu_token_do_bot
-MONGODB_URI=mongodb://localhost:27017/rabbit-bot
+MONGO_URI=mongodb://localhost:27017/rabbit-bot
 
-## Dashboard Auth (recomendado)
-# Discord OAuth 2.0 (cria uma aplicação no Developer Portal)
-DISCORD_CLIENT_ID=seu_client_id
-DISCORD_CLIENT_SECRET=seu_client_secret
-# Ex.: http://localhost:3000/api/auth/callback
-DASHBOARD_CALLBACK_URL=http://localhost:3000/api/auth/callback
+## Dashboard Auth (Discord OAuth 2.0 — obrigatório)
+# Cria uma aplicação no Developer Portal e gera o client secret
+DISCORD_OAUTH_CLIENT_ID=seu_client_id
+DISCORD_OAUTH_CLIENT_SECRET=seu_client_secret
+# Opcional: sobrepõe o redirect calculado automaticamente
+# DISCORD_OAUTH_REDIRECT_URI=https://o-teu-dominio/api/auth/discord/callback
 
 # JWT secret forte (>= 32 chars)
 DASHBOARD_JWT_SECRET=coloca_um_segredo_muito_forte_aqui
 
-# (LEGACY) Token fixo da dashboard. Não recomendado em produção.
-# DASHBOARD_TOKEN=token_para_dashboard
+# Origens permitidas (CORS) — obrigatório em produção
+DASHBOARD_ORIGIN=https://o-teu-dominio
 
 ## Slash commands
 # Para evitar comandos duplicados no Discord, escolhe um scope:
@@ -152,7 +151,7 @@ SLASH_SCOPE=global
 # Token para consultar métricas internas sem sessão da dashboard.
 # METRICS_TOKEN=coloca_um_token_aleatorio_longo
 
-PORT=3000
+PORT=8000
 NODE_ENV=production
 ```
 
@@ -259,7 +258,6 @@ public/
 
 ## 🗺️ Roadmap (ideias futuras)
 
-- Alimentar o painel de **Registo de Utilizadores Online** com dados reais de presença.
 - Melhorar relatórios de tickets (filtros avançados, estados, exportação).
 - Suporte completo a múltiplos idiomas (`en`, `es`, …).
 - Mais widgets de saúde/status do servidor na Visão Geral.

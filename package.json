@@ -30,12 +30,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/maze92/ozark-bot.git"
+    "url": "https://github.com/maze92/rabbit-bot.git"
   },
   "bugs": {
-    "url": "https://github.com/maze92/ozark-bot/issues"
+    "url": "https://github.com/maze92/rabbit-bot/issues"
   },
-  "homepage": "https://github.com/maze92/ozark-bot#readme",
+  "homepage": "https://github.com/maze92/rabbit-bot#readme",
   "engines": {
     "node": "20.x"
   },
