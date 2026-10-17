@@ -199,6 +199,7 @@ function registerFeaturesRoutes({
   requireDashboardAuth,
   requirePerm,
   requireGuildAccess,
+  requirePremium,
   sanitizeId,
   GuildConfig,
   getClient
@@ -218,6 +219,22 @@ function registerFeaturesRoutes({
   const canEditConfig = typeof requirePerm === 'function'
     ? requirePerm({ anyOf: ['canEditConfig'] })
     : (req, res, next) => next();
+
+  const premiumGuardBody = typeof requirePremium === 'function'
+    ? requirePremium({ from: 'body', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const guardPremiumTicketsBody = (req, res, next) => {
+    const feature = String(req.body && req.body.feature || '').trim();
+    if (feature !== 'tickets') return next();
+    return premiumGuardBody(req, res, next);
+  };
+
+  const guardPremiumTicketsParam = (req, res, next) => {
+    const feature = String(req.params && req.params.key || '').trim();
+    if (feature !== 'tickets') return next();
+    return premiumGuardBody(req, res, next);
+  };
 
   // GET /api/features?guildId=123
   app.get('/api/features', requireDashboardAuth, canViewConfig, guardGuildQuery, async (req, res) => {
@@ -245,7 +262,7 @@ function registerFeaturesRoutes({
   });
 
   // POST /api/features  { guildId, feature, value }
-  app.post('/api/features', requireDashboardAuth, canEditConfig, guardGuildBody, async (req, res) => {
+  app.post('/api/features', requireDashboardAuth, canEditConfig, guardGuildBody, guardPremiumTicketsBody, async (req, res) => {
     try {
       const guildId = sanitizeId(req.body.guildId || '');
       if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
@@ -289,7 +306,7 @@ function registerFeaturesRoutes({
       await GuildConfig.findOneAndUpdate(
         { guildId },
         update,
-        { new: true, upsert: true }
+        { returnDocument: 'after', upsert: true }
       ).lean();
 
       invalidateGuildConfig(guildId);
@@ -340,7 +357,7 @@ function registerFeaturesRoutes({
   // POST /api/features/:key/test  { guildId }
   // Executa uma amostra da funcionalidade no servidor (envia mensagem de teste,
   // atualiza os canais de estatísticas, etc.).
-  app.post('/api/features/:key/test', requireDashboardAuth, canEditConfig, guardGuildBody, async (req, res) => {
+  app.post('/api/features/:key/test', requireDashboardAuth, canEditConfig, guardGuildBody, guardPremiumTicketsParam, async (req, res) => {
     try {
       const guildId = sanitizeId(req.body.guildId || '');
       const feature = String(req.params.key || '').trim();
@@ -443,7 +460,7 @@ function registerFeaturesRoutes({
             ...(featureKey === 'tickets' ? { ticketThreadChannelId: value.channelId || null } : {})
           }
         },
-        { new: true, upsert: true }
+        { returnDocument: 'after', upsert: true }
       ).lean();
       invalidateGuildConfig(guildId);
 
@@ -462,7 +479,7 @@ function registerFeaturesRoutes({
 
   // POST /api/features/tickets/publish  { guildId }
   // Publica a mensagem painel dos tickets e guarda o messageId.
-  app.post('/api/features/tickets/publish', requireDashboardAuth, canEditConfig, guardGuildBody, async (req, res) => {
+  app.post('/api/features/tickets/publish', requireDashboardAuth, canEditConfig, guardGuildBody, premiumGuardBody, async (req, res) => {
     return publishFeatureMessage(req, res, 'tickets');
   });
 }

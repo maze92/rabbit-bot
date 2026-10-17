@@ -90,7 +90,7 @@ async function publishOrUpdate(message, guild, cfg, count) {
         count
       }
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
   ).catch((err) => {
     console.error('[starboard] Failed to upsert entry:', err);
     return null;

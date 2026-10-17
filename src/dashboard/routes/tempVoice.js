@@ -114,7 +114,7 @@ function registerTempVoiceRoutes({
       await GuildConfig.findOneAndUpdate(
         { guildId },
         { $set: update },
-        { new: true, upsert: true }
+        { returnDocument: 'after', upsert: true }
       ).lean();
 
       // Evita servir config obsoleta (cache de 1 min do guildConfigService).

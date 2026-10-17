@@ -378,7 +378,7 @@ window.OzarkLocales.pt = {
   'tempvoice_title': 'Voz temporária',
   'tickets_empty': 'Sem dados.',
   'tickets_error_generic': 'Ocorreu um erro.',
-  'tickets_extras_hint': 'Configuração do canal de suporte e comportamento básico do sistema de tickets.',
+  'tickets_extras_hint': 'Consulta e gere tickets ativos, respostas da equipa e o histórico do suporte.',
   'tickets_config_summary': 'Configuração',
   'tickets_how_summary': 'Como funciona',
   'tickets_extras_info_body': 'Ao configurar um canal de suporte, o bot publica uma mensagem fixa com o emoji 🎫. Os utilizadores reagem para abrir tickets, que ficam registados e visíveis na tab de moderação.',

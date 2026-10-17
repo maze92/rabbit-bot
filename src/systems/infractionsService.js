@@ -18,7 +18,7 @@ async function allocateCaseId(guildId) {
   const doc = await CaseCounter.findOneAndUpdate(
     { guildId },
     { $inc: { nextCaseId: 1 } },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
+    { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
   ).lean();
 
   // doc.nextCaseId is the value AFTER increment. Our allocated caseId is (nextCaseId - 1).

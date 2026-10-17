@@ -140,7 +140,7 @@ app.post('/api/guilds/:guildId/config', requireDashboardAuth, canEditConfig, gua
       const doc = await GuildConfig.findOneAndUpdate(
         { guildId },
         { $set: payload },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
+        { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
       ).lean();
 
       // Evita servir config obsoleta (cache de 1 min do guildConfigService).

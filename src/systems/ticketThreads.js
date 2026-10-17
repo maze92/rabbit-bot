@@ -56,7 +56,7 @@ async function getNextTicketNumber(guildId) {
   const doc = await TicketCounter.findOneAndUpdate(
     { guildId },
     { $inc: { nextTicketNumber: 1 } },
-    { new: true }
+    { returnDocument: 'after' }
   ).lean();
 
   const next = doc && typeof doc.nextTicketNumber === 'number' ? doc.nextTicketNumber : 2;
