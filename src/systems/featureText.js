@@ -10,6 +10,7 @@ const FEATURE_TEXT_KEYS = {
   tickets: {
     panelTitle: 'tickets.panelTitle',
     panelDescription: 'tickets.panelDescription',
+    panelFooter: 'tickets.panelFooter',
     alreadyOpenMessage: 'tickets.alreadyOpen',
     welcomeTitle: 'tickets.welcomeTitle',
     welcomeMessage: 'tickets.welcomeDescription',

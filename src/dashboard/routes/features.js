@@ -435,11 +435,14 @@ function registerFeaturesRoutes({
           value: current.panelDescription,
           params: { emoji: current.openEmoji }
         });
+        const panelFooter = await getFeatureText({ guildId, feature: 'tickets', field: 'panelFooter' });
         payload = {
           embeds: [
             new EmbedBuilder()
               .setTitle(panelTitle)
               .setDescription(applyTemplate(panelDescription, { emoji: current.openEmoji }))
+              .setFooter({ text: panelFooter })
+              .setTimestamp(new Date())
           ]
         };
       }
