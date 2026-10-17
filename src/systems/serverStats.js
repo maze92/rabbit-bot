@@ -19,12 +19,10 @@ const { getGuildLang } = require('./i18n');
 const REFRESH_MS = 6 * 60 * 1000;
 
 // Permissões negadas ao @everyone: o canal é um mostrador de números, não um
-// canal utilizável. Sem negar `Connect` (e companhia) basta um clique para
-// entrar no canal e ficar ligado a um "canal" que só serve para mostrar texto.
-// Nota: quem tem `Administrator` ignora sempre as permissões de canal — essa é
-// uma regra do Discord que não pode ser contrariada por overwrites.
+// canal utilizável. Os canais continuam visíveis, mas a ligação é negada por
+// permissões normais e reforçada por auto-expulsão em `voiceStateUpdate` para
+// cobrir também utilizadores com `Administrator`.
 const LOCKED_FLAGS = [
-  PermissionsBitField.Flags.ViewChannel,
   PermissionsBitField.Flags.Connect,
   PermissionsBitField.Flags.Speak,
   PermissionsBitField.Flags.Stream,
@@ -48,6 +46,15 @@ function getStatsCategoryName(lang) {
 function getCategoryChildren(guild, categoryId) {
   if (!guild || !categoryId || !guild.channels || !guild.channels.cache) return [];
   return guild.channels.cache.filter((ch) => ch && ch.parentId === categoryId).map((ch) => ch);
+}
+
+function getManagedChannelIds(cfg) {
+  if (!cfg || typeof cfg !== 'object') return new Set();
+  return new Set([
+    cfg.memberChannelId,
+    cfg.joinsChannelId,
+    cfg.leavesChannelId
+  ].filter(Boolean));
 }
 
 async function resolveChannel(guild, channelId) {
@@ -208,6 +215,24 @@ async function refreshGuild(client, guild, opts) {
   return { ok: true, members, joins, leaves };
 }
 
+async function enforceVoiceEntry(oldState, newState) {
+  if (!newState || !newState.guild || !newState.channelId) return;
+  if (oldState && oldState.channelId === newState.channelId) return;
+  if (newState.member && newState.member.user && newState.member.user.bot) return;
+
+  const cfg = await getFeature(newState.guild.id, 'serverStats').catch(() => null);
+  if (!cfg || cfg.enabled !== true) return;
+
+  const managedIds = getManagedChannelIds(cfg);
+  if (!managedIds.has(newState.channelId)) return;
+
+  if (typeof newState.disconnect === 'function') {
+    await newState.disconnect('Server statistics channels are read-only displays.').catch(() => null);
+  } else if (typeof newState.setChannel === 'function') {
+    await newState.setChannel(null, 'Server statistics channels are read-only displays.').catch(() => null);
+  }
+}
+
 /**
  * Remove os canais de estatísticas (usado quando a funcionalidade é desligada)
  * e limpa os IDs guardados na configuração.
@@ -284,4 +309,4 @@ function startServerStats(client) {
   return { client, refreshGuild, refreshAll: run };
 }
 
-module.exports = { startServerStats, refreshGuild, removeGuild };
+module.exports = { startServerStats, refreshGuild, removeGuild, enforceVoiceEntry };
