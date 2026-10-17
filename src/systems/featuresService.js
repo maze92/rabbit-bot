@@ -94,15 +94,51 @@ const DYNAMIC_TEXT_DEFAULTS = {
   }
 };
 
+const LEGACY_DYNAMIC_TEXT_DEFAULTS = {
+  tickets: {
+    panelTitle: ['Support', 'Suporte'],
+    panelDescription: [
+      'React with {emoji} below to open a private support ticket.',
+      'Reage com {emoji} abaixo para abrir um ticket privado de suporte.',
+      [
+        'If you need help with the server, have moderation questions, or want to report an issue, you can open a support ticket.',
+        '',
+        '👉 How to open a ticket:',
+        'React to this message with {emoji};',
+        'A private thread will be created with you and the support team;',
+        'Explain the situation with as much detail as possible to speed up the reply.',
+        '',
+        '⏱️ Requests are handled in arrival order. Thank you for your patience.',
+        'Use this channel only for support-related requests.'
+      ].join('\n'),
+      [
+        'Se precisares de ajuda com o servidor, tiveres dúvidas sobre moderação ou quiseres reportar um problema, podes abrir um ticket de suporte.',
+        '',
+        '👉 Como abrir um ticket:',
+        'Reage a esta mensagem com {emoji};',
+        'Será criada uma thread privada contigo e com a equipa de suporte;',
+        'Explica a situação com o máximo de detalhe possível para acelerar a resposta.',
+        '',
+        '⏱️ Os pedidos são tratados por ordem de chegada. Agradecemos a tua compreensão.',
+        'Utiliza este canal apenas para pedidos relacionados com suporte.'
+      ].join('\n')
+    ]
+  }
+};
+
 function normalizeLegacyDynamicText(name, field, value) {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   if (!trimmed) return null;
 
   const defaults = DYNAMIC_TEXT_DEFAULTS[name] && DYNAMIC_TEXT_DEFAULTS[name][field];
-  if (!Array.isArray(defaults) || !defaults.length) return value;
+  const legacyDefaults = LEGACY_DYNAMIC_TEXT_DEFAULTS[name] && LEGACY_DYNAMIC_TEXT_DEFAULTS[name][field];
+  const acceptedDefaults = []
+    .concat(Array.isArray(defaults) ? defaults : [])
+    .concat(Array.isArray(legacyDefaults) ? legacyDefaults : []);
+  if (!acceptedDefaults.length) return value;
 
-  return defaults.includes(trimmed) ? null : value;
+  return acceptedDefaults.includes(trimmed) ? null : value;
 }
 
 function normalizeFeature(name, raw) {

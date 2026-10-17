@@ -226,9 +226,9 @@ Warnings: **${warnings}/${maxWarnings}**`,
         'A private thread will be created with you and the support team;',
         'Explain the situation with as much detail as possible to speed up the reply.',
         '',
-        '⏱️ Requests are handled in arrival order. Thank you for your patience.',
-        'Use this channel only for support-related requests.'
+        '⏱️ Requests are handled in arrival order. Thank you for your patience.'
       ].join('\n'),
+      panelFooter: 'Use this channel only for support-related requests.',
       alreadyOpen: 'You already have an open ticket: <#{channelId}>',
       welcomeTitle: '🎫 Support ticket',
       welcomeDescription: ({ user, closeEmoji }) => [
@@ -501,9 +501,9 @@ Avisos: **${warnings}/${maxWarnings}**`,
         'Será criada uma thread privada contigo e com a equipa de suporte;',
         'Explica a situação com o máximo de detalhe possível para acelerar a resposta.',
         '',
-        '⏱️ Os pedidos são tratados por ordem de chegada. Agradecemos a tua compreensão.',
-        'Utiliza este canal apenas para pedidos relacionados com suporte.'
+        '⏱️ Os pedidos são tratados por ordem de chegada. Agradecemos a tua compreensão.'
       ].join('\n'),
+      panelFooter: 'Utiliza este canal apenas para pedidos relacionados com suporte.',
       alreadyOpen: 'Já existe um ticket aberto para ti: <#{channelId}>',
       welcomeTitle: '🎫 Ticket de suporte',
       welcomeDescription: ({ user, closeEmoji }) => [

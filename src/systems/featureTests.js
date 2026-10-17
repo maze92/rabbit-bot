@@ -143,9 +143,12 @@ async function runFeatureTest({ client, guild, feature, config }) {
         params: { emoji: c.openEmoji || '🎫' },
         lang
       });
+      const footer = await getFeatureText({ guildId: guild.id, feature: 'tickets', field: 'panelFooter', lang });
       const embed = new EmbedBuilder()
         .setTitle(title)
-        .setDescription(applyTemplate(description, { emoji: c.openEmoji || '🎫' }));
+        .setDescription(applyTemplate(description, { emoji: c.openEmoji || '🎫' }))
+        .setFooter({ text: footer })
+        .setTimestamp(new Date());
       const message = await channel.send({ embeds: [embed] });
       const { toReactable } = require('./reactionRoles');
       const reactable = toReactable(c.openEmoji || '🎫');
