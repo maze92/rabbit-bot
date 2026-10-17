@@ -13,6 +13,7 @@ function registerTicketsRoutes(opts) {
     requireDashboardAuth,
     requirePerm,
     requireGuildAccess,
+    requirePremium,
     rateLimit,
     sanitizeText,
     getActorFromRequest,
@@ -39,6 +40,14 @@ function registerTicketsRoutes(opts) {
     ? requireGuildAccess({ from: 'body', key: 'guildId', optional: true })
     : (req, res, next) => next();
 
+  const premiumGuardQuery = typeof requirePremium === 'function'
+    ? requirePremium({ from: 'query', key: 'guildId' })
+    : (req, res, next) => next();
+
+  const premiumGuardBody = typeof requirePremium === 'function'
+    ? requirePremium({ from: 'body', key: 'guildId' })
+    : (req, res, next) => next();
+
   function hasGuildAccess(req, guildId) {
     try {
       const u = req && req.dashboardUser;
@@ -60,6 +69,7 @@ function registerTicketsRoutes(opts) {
     requireDashboardAuth,
     canManageTickets,
     guardGuildQuery,
+    premiumGuardQuery,
     rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'rl:tickets:list:' }),
     async (req, res) => {
       try {
@@ -144,6 +154,7 @@ function registerTicketsRoutes(opts) {
     requireDashboardAuth,
     canManageTickets,
     guardGuildQueryOptional,
+    premiumGuardQuery,
     rateLimit({ windowMs: 60_000, max: 240, keyPrefix: 'rl:tickets:audit:' }),
     async (req, res) => {
       try {
@@ -224,6 +235,7 @@ function registerTicketsRoutes(opts) {
     requireDashboardAuth,
     canManageTickets,
     guardGuildQueryOptional,
+    premiumGuardQuery,
     rateLimit({ windowMs: 60_000, max: 240, keyPrefix: 'rl:tickets:msgs:' }),
     async (req, res) => {
       try {
@@ -323,6 +335,7 @@ function registerTicketsRoutes(opts) {
     canManageTickets,
     guardGuildBodyOptional,
     guardGuildQueryOptional,
+    premiumGuardBody,
     // Keep UX smooth: allow normal operator usage without tripping 429 on repeated clicks.
     // Still protected by global /api limiter + per-IP keying.
     rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'rl:tickets:close:' }),
@@ -408,6 +421,7 @@ function registerTicketsRoutes(opts) {
     canManageTickets,
     guardGuildBodyOptional,
     guardGuildQueryOptional,
+    premiumGuardBody,
     rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'rl:tickets:reopen:' }),
     async (req, res) => {
       try {
@@ -488,6 +502,7 @@ function registerTicketsRoutes(opts) {
     canManageTickets,
     guardGuildBodyOptional,
     guardGuildQueryOptional,
+    premiumGuardBody,
     rateLimit({ windowMs: 60_000, max: 240, keyPrefix: 'rl:tickets:reply:' }),
     async (req, res) => {
       try {

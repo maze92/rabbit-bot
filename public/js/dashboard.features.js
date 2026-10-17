@@ -95,6 +95,7 @@
     },
     {
       key: 'tickets',
+      premiumModule: 'tickets',
       fields: [
         { type: 'channel', name: 'channelId', label: 'features_channel' },
         { type: 'text', name: 'openEmoji', label: 'features_open_emoji', placeholderKey: 'features_placeholder_ticket_open_emoji', maxLength: 64 },
@@ -337,6 +338,7 @@
   function cardHtml(feature) {
     var v = current[feature.key] || {};
     var enabled = v.enabled === true;
+    var premiumModule = feature.premiumModule ? String(feature.premiumModule) : '';
 
     var fields = (feature.fields || []).map(function (f) {
       return fieldHtml(feature.key, f, v[f.name]);
@@ -379,7 +381,10 @@
       : '';
 
     return '' +
-      '<article class="feature-card' + (enabled ? '' : ' is-off') + '" data-feature="' + esc(feature.key) + '">' +
+      '<article class="feature-card' + (enabled ? '' : ' is-off') + '"' +
+        ' data-feature="' + esc(feature.key) + '"' +
+        (premiumModule ? ' data-premium="true" data-premium-module="' + esc(premiumModule) + '"' : '') +
+      '>' +
         '<div class="feature-card__head">' +
           '<label class="switch" title="' + esc(t('features_enabled')) + '">' +
             '<input type="checkbox" data-role="enabled"' + (enabled ? ' checked' : '') + ' />' +
@@ -389,6 +394,7 @@
           '<button type="button" class="icon-btn feature-card__toggle" data-role="toggle" aria-expanded="false" aria-controls="feature-body-' + esc(feature.key) + '" title="' + esc(t('features_details')) + '">▾</button>' +
         '</div>' +
         '<p class="hint">' + esc(t(descKey)) + '</p>' +
+        (premiumModule ? '<p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">' + esc(t('premium_lock_hint')) + '</p>' : '') +
         '<div class="feature-card__body hidden" id="feature-body-' + esc(feature.key) + '">' +
           presetsHtml +
           (fields ? '<div class="feature-card__fields">' + fields + '</div>' : '') +
@@ -411,6 +417,13 @@
     if (!grid) return;
     grid.innerHTML = FEATURES.map(cardHtml).join('');
     Array.prototype.slice.call(grid.querySelectorAll('.feature-card')).forEach(wireCard);
+    applyPremiumState();
+  }
+
+  function applyPremiumState() {
+    var grid = byId('featuresGrid');
+    if (!grid) return;
+    Array.prototype.slice.call(grid.querySelectorAll('.feature-card')).forEach(applyDisabled);
   }
 
   // -----------------------------
@@ -426,12 +439,17 @@
     if (!card) return;
     var enabledEl = card.querySelector('[data-role="enabled"]');
     var on = !!(enabledEl && enabledEl.checked);
+    var premiumLocked = card.getAttribute('data-premium-locked') === 'true';
     card.classList.toggle('is-off', !on);
+    card.classList.toggle('is-premium-locked', premiumLocked);
     var offHint = card.querySelector('[data-role="off-hint"]');
     if (offHint) offHint.classList.toggle('hidden', on);
+    var premiumHint = card.querySelector('[data-role="premium-hint"]');
+    if (premiumHint) premiumHint.classList.toggle('hidden', !premiumLocked);
     Array.prototype.slice.call(card.querySelectorAll('[data-field], [data-entry], [data-role="save"], [data-role="test"], [data-role="add-entry"], [data-role="entry-remove"], [data-role="publish"]')).forEach(function (el) {
-      el.disabled = !on;
+      el.disabled = !on || premiumLocked;
     });
+    if (enabledEl) enabledEl.disabled = premiumLocked;
   }
 
   function wireCard(card) {
@@ -633,7 +651,7 @@
     } catch (err) {
       console.error('Feature save error', err);
       if (statusEl) statusEl.textContent = '';
-      notify(t('features_save_error'), { type: 'error' });
+      notify(t(err && err.apiMessage === 'PREMIUM_REQUIRED' ? 'premium_lock_hint' : 'features_save_error'), { type: 'error' });
       return false;
     } finally {
       if (saveBtn) saveBtn.disabled = false;
@@ -662,7 +680,7 @@
     } catch (err) {
       console.error('Feature test error', err);
       if (statusEl) statusEl.textContent = '';
-      notify(t('features_test_error'), { type: 'error' });
+      notify(t(err && err.apiMessage === 'PREMIUM_REQUIRED' ? 'premium_lock_hint' : 'features_test_error'), { type: 'error' });
     } finally {
       if (btn) btn.disabled = false;
       applyDisabled(card);
@@ -687,7 +705,7 @@
       notify(t('features_publish_ok'), { type: 'success' });
     } catch (err) {
       console.error('Feature publish error', err);
-      notify(t('features_publish_error'), { type: 'error' });
+      notify(t(err && err.apiMessage === 'PREMIUM_REQUIRED' ? 'premium_lock_hint' : 'features_publish_error'), { type: 'error' });
     } finally {
       if (btn) btn.disabled = false;
       applyDisabled(card);
@@ -747,4 +765,5 @@
   }
 
   NS.loadFeatures = loadFeatures;
+  NS.applyPremiumState = applyPremiumState;
 })();

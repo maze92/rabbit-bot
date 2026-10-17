@@ -1,0 +1,70 @@
+diff --git a/src/slash/history.js b/src/slash/history.js
+index db74962..61112f6 100644
+--- a/src/slash/history.js
++++ b/src/slash/history.js
+@@ -1,7 +1,7 @@
+ // src/slash/history.js
+ 
+ const Infraction = require('../database/models/Infraction');
+-const { t } = require('../systems/i18n');
++const { tContext } = require('../systems/i18n');
+ const { isStaff } = require('./utils');
+ const { replyEphemeral, safeReply } = require('../utils/discord');
+ 
+@@ -12,7 +12,7 @@ module.exports = async (client, interaction) => {
+     const member = interaction.member;
+     const staff = await isStaff(member, 'moderation').catch(() => false);
+     if (!staff) {
+-      return replyEphemeral(interaction, t('common.noPermission'));
++      return replyEphemeral(interaction, await tContext(interaction, 'common.noPermission'));
+     }
+ 
+     const user = interaction.options?.getUser?.('user') || interaction.user;
+@@ -24,16 +24,16 @@ module.exports = async (client, interaction) => {
+       .lean();
+ 
+     if (!items.length) {
+-      return replyEphemeral(interaction, `📚 Sem infrações registadas para ${user}.`);
++      return replyEphemeral(interaction, await tContext(interaction, 'history.empty', { user: `${user}` }));
+     }
+ 
+     const formatEntry = (it, idx) => {
+       const when = it.createdAt ? new Date(it.createdAt).toISOString().slice(0, 10) : '—';
+       const type = it.type || '—';
+       const mod = it.moderatorId ? `<@${it.moderatorId}>` : '—';
+-      const reason = (it.reason || 'Sem motivo').slice(0, 120);
++      const reason = (it.reason || fallbackReason).slice(0, 120);
+       const dur = it.duration ? ` • ${it.duration}ms` : '';
+-      return `${idx + 1}. **${type}**${dur} • ${when} • mod: ${mod}\n   ${reason}`;
++      return `${idx + 1}. **${type}**${dur} • ${when} • ${moderatorLabel}: ${mod}\n   ${reason}`;
+     };
+ 
+     // Discord messages cap at 2000 chars, so stop before overflowing.
+@@ -41,6 +41,8 @@ module.exports = async (client, interaction) => {
+     const lines = [];
+     let length = 0;
+     let omitted = 0;
++    const fallbackReason = await tContext(interaction, 'history.noReason');
++    const moderatorLabel = await tContext(interaction, 'history.moderator');
+     for (let idx = 0; idx < items.length; idx += 1) {
+       const entry = formatEntry(items[idx], idx);
+       if (length + entry.length + 1 > MAX_BODY) {
+@@ -51,15 +53,15 @@ module.exports = async (client, interaction) => {
+       length += entry.length + 1;
+     }
+ 
+-    const suffix = omitted > 0 ? `\n… (+${omitted} não mostrados)` : '';
++    const suffix = omitted > 0 ? `\n${await tContext(interaction, 'history.omitted', { count: omitted })}` : '';
+     return replyEphemeral(
+       interaction,
+-      `📚 Histórico de ${user} (últimas ${items.length}):\n\n${lines.join('\n')}${suffix}`
++      `${await tContext(interaction, 'history.title', { user: `${user}`, count: items.length })}\n\n${lines.join('\n')}${suffix}`
+     );
+   } catch (err) {
+     console.error('[slash/history] Error:', err);
+     try {
+-      await safeReply(interaction, { content: t('common.unexpectedError') }, { ephemeral: true });
++      await safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+     } catch {
+       // ignore
+     }

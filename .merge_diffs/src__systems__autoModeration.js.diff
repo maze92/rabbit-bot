@@ -1,0 +1,122 @@
+diff --git a/src/systems/autoModeration.js b/src/systems/autoModeration.js
+index 148688e..38642a2 100644
+--- a/src/systems/autoModeration.js
++++ b/src/systems/autoModeration.js
+@@ -6,7 +6,7 @@ const config = require('../config/defaultConfig');
+ const logger = require('./logger');
+ const warningsService = require('./warningsService');
+ const infractionsService = require('./infractionsService');
+-const { t } = require('./i18n');
++const { t, tContext } = require('./i18n');
+ const {
+   getTrustConfig,
+   getEffectiveMaxWarnings,
+@@ -55,18 +55,18 @@ function minutesFromMs(ms) {
+   return Math.max(1, Math.round(ms / 60000));
+ }
+ 
+-function buildWarnChannelMessage({ userMention, warnings, maxWarnings, reason }) {
+-  return t('automod.warnPublic', null, { userMention, warnings, maxWarnings, reason });
++async function buildWarnChannelMessage(message, { userMention, warnings, maxWarnings, reason }) {
++  return tContext(message, 'automod.warnPublic', { userMention, warnings, maxWarnings, reason });
+ }
+ 
+-function buildMuteChannelMessage({ userMention, minutes }) {
+-  return t('automod.mutePublic', null, { userMention, minutes });
++async function buildMuteChannelMessage(message, { userMention, minutes }) {
++  return tContext(message, 'automod.mutePublic', { userMention, minutes });
+ }
+ 
+-function yesNo(v) {
++function yesNo(v, lang) {
+   // optional i18n keys; fallback to en
+-  const yes = t?.('common.yes') || 'yes';
+-  const no = t?.('common.no') || 'no';
++  const yes = t?.('common.yes', lang || null) || 'yes';
++  const no = t?.('common.no', lang || null) || 'no';
+   return v ? yes : no;
+ }
+ 
+@@ -82,6 +82,7 @@ module.exports = async function autoModeration(message, client) {
+     const guild = message.guild;
+     const botMember = guild.members.me;
+     if (!botMember) return;
++    const lang = await require('./i18n').getGuildLang(guild.id);
+ 
+     const trustCfg = getTrustConfig();
+ 
+@@ -152,7 +153,7 @@ module.exports = async function autoModeration(message, client) {
+       }
+     }
+ 
+-    const warnReason = t('automod.warnReasonGeneric');
++    const warnReason = await tContext(message, 'automod.warnReasonGeneric');
+ 
+     // Create WARN infraction with Case ID
+     const infWarn = await infractionsService.create({
+@@ -166,7 +167,7 @@ module.exports = async function autoModeration(message, client) {
+     }).catch(() => null);
+ 
+     await message.channel.send({
+-      content: buildWarnChannelMessage({
++      content: await buildWarnChannelMessage(message, {
+         userMention: `${message.author}`,
+         warnings: dbUser.warnings,
+         maxWarnings: maxWarningsForGuild,
+@@ -182,12 +183,12 @@ module.exports = async function autoModeration(message, client) {
+       'Automatic Warn',
+       message.author,
+       client.user,
+-      warnCasePrefix + t('log.actions.automodWarn', null, {
++      warnCasePrefix + await tContext(message, 'log.actions.automodWarn', {
+         word: foundWord,
+         warnings: dbUser.warnings,
+         maxWarnings: maxWarningsForGuild,
+         trust: trustCfg.enabled ? `${currentTrust}/${trustCfg.max}` : 'N/A',
+-        deleted: yesNo(canDelete)
++        deleted: yesNo(canDelete, lang)
+       }),
+       guild
+     );
+@@ -208,7 +209,8 @@ module.exports = async function autoModeration(message, client) {
+       currentTrust
+     );
+ 
+-    await message.member.timeout(effectiveMute, t('automod.muteReason'));
++    const muteReason = await tContext(message, 'automod.muteReason');
++    await message.member.timeout(effectiveMute, muteReason);
+ 
+     // Create MUTE infraction with Case ID
+     const infMute = await infractionsService.create({
+@@ -216,7 +218,7 @@ module.exports = async function autoModeration(message, client) {
+       user: message.author,
+       moderator: client.user,
+       type: 'MUTE',
+-      reason: t('automod.muteReason'),
++      reason: muteReason,
+       duration: effectiveMute,
+       source: 'automod'
+     }).catch(() => null);
+@@ -235,7 +237,7 @@ module.exports = async function autoModeration(message, client) {
+     const mins = minutesFromMs(effectiveMute);
+ 
+     await message.channel.send(
+-      buildMuteChannelMessage({
++      await buildMuteChannelMessage(message, {
+         userMention: `${message.author}`,
+         minutes: mins
+       })
+@@ -249,7 +251,7 @@ module.exports = async function autoModeration(message, client) {
+       'Automatic Mute',
+       message.author,
+       client.user,
+-      muteCasePrefix + t('log.actions.automodMute', null, {
++      muteCasePrefix + await tContext(message, 'log.actions.automodMute', {
+         minutes: mins,
+         trustAfter: trustCfg.enabled ? `${trustAfterMute}/${trustCfg.max}` : 'N/A'
+       }),
+@@ -266,4 +268,3 @@ module.exports = async function autoModeration(message, client) {
+     console.error('[AutoMod] Critical error:', err);
+   }
+ };
+-

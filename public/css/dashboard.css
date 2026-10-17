@@ -2906,6 +2906,11 @@ summary:focus-visible,
   background:var(--white-2);
 }
 .feature-card.is-off{opacity:.75}
+.feature-card[data-premium="true"] .feature-card__name::after{
+  content:" ★";
+  color:var(--accent);
+  font-weight:var(--fw-semibold);
+}
 .feature-card__head{display:flex;align-items:center;gap:var(--sp-3)}
 .feature-card__name{
   flex:1 1 auto;
@@ -3020,6 +3025,13 @@ summary:focus-visible,
 .premium-panel__hint{margin:0;color:var(--text);font-size:var(--fs-sm)}
 .premium-panel__actions{display:flex;gap:var(--sp-2);flex-wrap:wrap}
 .extras-grid.is-premium-locked{opacity:.6}
+.feature-card.is-premium-locked{
+  border-color:var(--accent);
+  background:var(--accent-16);
+}
+.premium-card__hint{
+  margin-top:calc(var(--sp-1) * -1);
+}
 
 /* Pré-visualização do embed de boas-vindas/saída (espelha o Discord). */
 .embed-preview-wrap{display:flex;flex-direction:column;gap:var(--sp-2)}

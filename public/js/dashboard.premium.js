@@ -42,6 +42,17 @@
 
     if (grid) grid.classList.toggle('is-premium-locked', !active);
 
+    Array.prototype.slice.call(document.querySelectorAll('[data-premium="true"]')).forEach(function (card) {
+      card.setAttribute('data-premium-locked', active ? 'false' : 'true');
+      card.classList.toggle('is-premium-locked', !active);
+      Array.prototype.slice.call(card.querySelectorAll('button, input, select, textarea')).forEach(function (el) {
+        el.disabled = !active;
+      });
+      Array.prototype.slice.call(card.querySelectorAll('[data-role="premium-hint"]')).forEach(function (hintEl) {
+        hintEl.classList.toggle('hidden', active);
+      });
+    });
+
     var status = byId('premiumStatus');
     if (status) {
       status.textContent = active ? t('premium_active') : t('premium_inactive');
@@ -80,19 +91,16 @@
       deactivateBtn.disabled = false;
     }
 
-    // Os controlos internos ficam inertes enquanto o premium não estiver ativo.
-    if (grid) {
-      Array.prototype.slice.call(grid.querySelectorAll('button, input, select, textarea')).forEach(function (el) {
-        el.disabled = !active;
-      });
-    }
+    if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(active);
   }
 
   async function loadPremium() {
     var gid = guildId();
     var grid = byId('extrasGrid');
     if (!gid) {
+      premium = { enabled: false, active: false };
       if (grid) grid.classList.add('is-premium-locked');
+      applyLock();
       return;
     }
     if (loading) return;
@@ -131,6 +139,8 @@
   }
 
   NS.loadPremium = loadPremium;
+  NS.isPremiumActive = function () { return !!(premium && premium.active); };
+  NS.isPremiumModuleLocked = function () { return !(premium && premium.active); };
 
   document.addEventListener('DOMContentLoaded', function () {
     var activateBtn = byId('btnPremiumActivate');

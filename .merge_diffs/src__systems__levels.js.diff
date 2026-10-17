@@ -1,0 +1,31 @@
+diff --git a/src/systems/levels.js b/src/systems/levels.js
+index 0a11f3f..c74475c 100644
+--- a/src/systems/levels.js
++++ b/src/systems/levels.js
+@@ -5,7 +5,7 @@
+ 
+ const { EmbedBuilder } = require('discord.js');
+ const { getFeature } = require('./featuresService');
+-const { t } = require('./i18n');
++const { tContext } = require('./i18n');
+ 
+ let Level = null;
+ try {
+@@ -30,7 +30,7 @@ function levelFromXp(xp) {
+ 
+ // Anuncia a subida de nível no canal configurado (ou no próprio canal).
+ async function announceLevelUp(message, level, cfg) {
+-  const content = t('levels.levelUp', null, {
++  const content = await tContext(message, 'levels.levelUp', {
+     user: `<@${message.author.id}>`,
+     level
+   });
+@@ -45,7 +45,7 @@ async function announceLevelUp(message, level, cfg) {
+         ? author.displayAvatarURL({ size: 128 })
+         : undefined
+     })
+-    .setTitle(t('levels.levelUpTitle'))
++    .setTitle(await tContext(message, 'levels.levelUpTitle'))
+     .setDescription(content)
+     .setColor('#7c3aed')
+     .setTimestamp(new Date());

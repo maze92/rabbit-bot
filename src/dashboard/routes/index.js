@@ -324,6 +324,7 @@ function registerDashboardRoutes(ctx) {
     requireDashboardAuth,
     requirePerm,
     requireGuildAccess,
+    requirePremium,
     sanitizeId,
     GuildConfig,
     getClient

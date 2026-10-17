@@ -1,0 +1,23 @@
+diff --git a/src/systems/i18n.js b/src/systems/i18n.js
+index db18e2a..af9793c 100644
+--- a/src/systems/i18n.js
++++ b/src/systems/i18n.js
+@@ -57,4 +57,17 @@ async function tGuild(guildId, path, value, langOverride) {
+   return t(path, lang, value);
+ }
+ 
+-module.exports = { t, tGuild, getLang, getGuildLang };
++function resolveGuildId(target) {
++  if (!target) return null;
++  if (typeof target === 'string') return target;
++  if (typeof target.guildId === 'string') return target.guildId;
++  if (target.guild && typeof target.guild.id === 'string') return target.guild.id;
++  if (typeof target.id === 'string' && target.members && target.channels) return target.id;
++  return null;
++}
++
++async function tContext(target, path, value, langOverride) {
++  return tGuild(resolveGuildId(target), path, value, langOverride);
++}
++
++module.exports = { t, tGuild, tContext, getLang, getGuildLang, resolveGuildId };

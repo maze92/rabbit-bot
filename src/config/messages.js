@@ -217,8 +217,18 @@ Warnings: **${warnings}/${maxWarnings}**`,
     },
 
     tickets: {
-      panelTitle: 'Support',
-      panelDescription: 'React with {emoji} below to open a private support ticket.',
+      panelTitle: '📩 Support & Tickets',
+      panelDescription: [
+        'If you need help with the server, have moderation questions, or want to report an issue, you can open a support ticket.',
+        '',
+        '👉 How to open a ticket:',
+        'React to this message with {emoji};',
+        'A private thread will be created with you and the support team;',
+        'Explain the situation with as much detail as possible to speed up the reply.',
+        '',
+        '⏱️ Requests are handled in arrival order. Thank you for your patience.',
+        'Use this channel only for support-related requests.'
+      ].join('\n'),
       alreadyOpen: 'You already have an open ticket: <#{channelId}>',
       welcomeTitle: '🎫 Support ticket',
       welcomeDescription: ({ user, closeEmoji }) => [
@@ -482,8 +492,18 @@ Avisos: **${warnings}/${maxWarnings}**`,
     },
 
     tickets: {
-      panelTitle: 'Suporte',
-      panelDescription: 'Reage com {emoji} abaixo para abrir um ticket privado de suporte.',
+      panelTitle: '📩 Suporte & Tickets',
+      panelDescription: [
+        'Se precisares de ajuda com o servidor, tiveres dúvidas sobre moderação ou quiseres reportar um problema, podes abrir um ticket de suporte.',
+        '',
+        '👉 Como abrir um ticket:',
+        'Reage a esta mensagem com {emoji};',
+        'Será criada uma thread privada contigo e com a equipa de suporte;',
+        'Explica a situação com o máximo de detalhe possível para acelerar a resposta.',
+        '',
+        '⏱️ Os pedidos são tratados por ordem de chegada. Agradecemos a tua compreensão.',
+        'Utiliza este canal apenas para pedidos relacionados com suporte.'
+      ].join('\n'),
       alreadyOpen: 'Já existe um ticket aberto para ti: <#{channelId}>',
       welcomeTitle: '🎫 Ticket de suporte',
       welcomeDescription: ({ user, closeEmoji }) => [

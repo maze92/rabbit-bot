@@ -377,7 +377,7 @@ window.OzarkLocales.en = {
   'tempvoice_title': 'Temporary voice',
   'tickets_empty': 'No data.',
   'tickets_error_generic': 'An error occurred.',
-  'tickets_extras_hint': 'Configure the support channel and basic ticket system behavior.',
+  'tickets_extras_hint': 'Review active tickets, staff replies, and support history.',
   'tickets_config_summary': 'Configuration',
   'tickets_how_summary': 'How it works',
   'tickets_extras_info_body': 'When you set a support channel, the bot posts a pinned message with the 🎫 emoji. Users react to open tickets, which are logged and visible in the moderation tab.',

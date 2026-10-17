@@ -1,0 +1,45 @@
+diff --git a/src/systems/serverStats.js b/src/systems/serverStats.js
+index e236e6a..5e737f1 100644
+--- a/src/systems/serverStats.js
++++ b/src/systems/serverStats.js
+@@ -11,6 +11,7 @@ const { ChannelType, PermissionsBitField } = require('discord.js');
+ const { getFeature } = require('./featuresService');
+ const { invalidateGuildConfig } = require('./guildConfigService');
+ const { getRecentCounts } = require('./memberStats');
++const { getFeatureText, applyTemplate } = require('./featureText');
+ 
+ // A API do Discord limita renomeações de canais; 6 minutos é seguro e suficiente.
+ const REFRESH_MS = 6 * 60 * 1000;
+@@ -37,10 +38,6 @@ function lockEditPayload() {
+   return payload;
+ }
+ 
+-function applyTemplate(text, count) {
+-  return String(text == null ? '' : text).replace(/\{count\}/gi, String(count));
+-}
+-
+ async function resolveChannel(guild, channelId) {
+   if (!channelId) return null;
+   const cached = guild.channels.cache.get(channelId);
+@@ -112,9 +109,18 @@ async function refreshGuild(client, guild, opts) {
+   const members = guild.memberCount || 0;
+   const { joins, leaves } = await getRecentCounts(guild.id, 7);
+ 
+-  const memberName = applyTemplate(cfg.memberTemplate, members);
+-  const joinsName = applyTemplate(cfg.joinsTemplate, joins);
+-  const leavesName = applyTemplate(cfg.leavesTemplate, leaves);
++  const memberName = applyTemplate(
++    await getFeatureText({ guildId: guild.id, feature: 'serverStats', field: 'memberTemplate', value: cfg.memberTemplate }),
++    { count: members }
++  );
++  const joinsName = applyTemplate(
++    await getFeatureText({ guildId: guild.id, feature: 'serverStats', field: 'joinsTemplate', value: cfg.joinsTemplate }),
++    { count: joins }
++  );
++  const leavesName = applyTemplate(
++    await getFeatureText({ guildId: guild.id, feature: 'serverStats', field: 'leavesTemplate', value: cfg.leavesTemplate }),
++    { count: leaves }
++  );
+ 
+   const chMembers = await ensureChannel(guild, cfg.memberChannelId, memberName, 0);
+   const chJoins = await ensureChannel(guild, cfg.joinsChannelId, joinsName, 1);

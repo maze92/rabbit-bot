@@ -319,12 +319,13 @@
           </div>
 
           <div class="features-grid extras-grid" id="extrasGrid">
-            <article class="feature-card" data-extra="feeds">
+            <article class="feature-card" data-extra="feeds" data-premium="true" data-premium-module="gamenews">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="gamenews_title">GameNews</h3>
                 <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-feeds-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
               </div>
               <p class="hint" data-i18n="gamenews_hint">Estado dos feeds de notícias e últimas publicações.</p>
+              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
               <div class="feature-card__body hidden" id="extras-feeds-panel">
 
     <div class="user-layout gamenews-layout">
@@ -352,12 +353,13 @@
     </div>
               </div>
             </article>
-            <article class="feature-card" data-extra="tempvoice">
+            <article class="feature-card" data-extra="tempvoice" data-premium="true" data-premium-module="tempvoice">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tempvoice_title">Voz temporária</h3>
                 <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-tempvoice-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
               </div>
               <p class="hint" data-i18n="tempvoice_hint">Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.</p>
+              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
               <div class="feature-card__body hidden" id="extras-tempvoice-panel">
 
                   <div class="row gap mb-2">
@@ -442,25 +444,14 @@
                     </div>
               </div>
             </article>
-            <article class="feature-card" data-extra="tickets">
+            <article class="feature-card" data-extra="tickets" data-premium="true" data-premium-module="tickets">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tickets_extras_title">Tickets</h3>
                 <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-tickets-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
               </div>
-              <p class="hint" data-i18n="tickets_extras_hint">Configuração do canal de suporte e comportamento básico do sistema de tickets.</p>
+              <p class="hint" data-i18n="tickets_extras_hint">Consulta e gere tickets ativos, respostas da equipa e o histórico do suporte.</p>
+              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
               <div class="feature-card__body hidden" id="extras-tickets-panel">
-                  <details class="card mt-3">
-                    <summary class="details-summary" data-i18n="tickets_how_summary">Como funciona</summary>
-                    <div class="mt-3">
-                      <p class="hint" data-i18n="tickets_extras_info_body">
-                        Quando configuras um canal de suporte, o sistema permite abrir threads de ticket a partir de uma mensagem fixa com o emoji 🎫. Cada ticket fica registado e pode ser consultado na tab de moderação.
-                      </p>
-                      <p class="hint" data-i18n="tickets_extras_logs_hint">
-                        Esta secção utiliza o sistema de logs de tickets existente. Os registos aparecem em "Análises de Tickets" e em "Registos do Servidor" na tab Hub de moderação.
-                      </p>
-                    </div>
-                  </details>
-
                   <div class="card mt-3">
                     <div class="users-layout">
                       <div class="users-left">
@@ -493,12 +484,13 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card" data-extra="trust">
+            <article class="feature-card" data-extra="trust" data-premium="true" data-premium-module="trust">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="extras_trust_title">Sistema de Trust</h3>
                 <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-trust-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
               </div>
               <p class="hint" data-i18n="extras_trust_hint">Visão geral do sistema de confiança usado para avaliar o risco dos utilizadores com base no seu histórico.</p>
+              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
               <div class="feature-card__body hidden" id="extras-trust-panel">
 
                   <div class="trust-layout">
@@ -602,12 +594,13 @@
 	                  </div>
               </div>
             </article>
-            <article class="feature-card" data-extra="giveaways">
+            <article class="feature-card" data-extra="giveaways" data-premium="true" data-premium-module="giveaways">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="giveaways_title">Giveaways</h3>
                 <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-giveaways-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
               </div>
               <p class="hint" data-i18n="giveaways_hint">Publica automaticamente giveaways do GamerPower no canal escolhido, assim que aparecem.</p>
+              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
               <div class="feature-card__body hidden" id="extras-giveaways-panel">
 	                  <div class="ftk-summary" id="giveawaysSummary" aria-live="polite"></div>
 	                  <div class="ftk-headline" id="giveawaysHeadline"></div>

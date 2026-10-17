@@ -96,7 +96,7 @@ async function awardXp(_client, message) {
     const updated = await Level.findOneAndUpdate(
       { guildId, userId },
       { $set: { xp: newXp, level: newLevel, lastXpAt: now }, $inc: { messages: 1 } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     ).catch((err) => {
       console.error('[levels] Failed to update Level:', err);
       return null;
