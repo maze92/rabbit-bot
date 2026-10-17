@@ -1455,7 +1455,6 @@ function setLang(newLang) {
     var ids = [
       'configLogChannel',
       'configDashboardLogChannel',
-      'configTicketChannel',
       'configStaffRoles',
       'configMaintenanceEnabled',
       'configMaintenanceMessage',
@@ -1512,7 +1511,6 @@ function setLang(newLang) {
 
       const logSelect = document.getElementById('configLogChannel');
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
-      const ticketSelect = document.getElementById('configTicketChannel');
       const staffSelect = document.getElementById('configStaffRoles');
       const maintenanceEnabledSelect = document.getElementById('configMaintenanceEnabled');
       const maintenanceMessageInput = document.getElementById('configMaintenanceMessage');
@@ -1556,22 +1554,6 @@ function setLang(newLang) {
           opt.textContent = '#' + ch.name + ' (' + ch.id + ')';
           if (conf.dashboardLogChannelId && conf.dashboardLogChannelId === ch.id) opt.selected = true;
           dashLogSelect.appendChild(opt);
-        });
-      }
-
-      if (ticketSelect) {
-        ticketSelect.innerHTML = '';
-        const optNone3 = document.createElement('option');
-        optNone3.value = '';
-        optNone3.textContent = t('common_none_option');
-        ticketSelect.appendChild(optNone3);
-
-        channels.forEach(function (ch) {
-          const opt = document.createElement('option');
-          opt.value = ch.id;
-          opt.textContent = '#' + ch.name + ' (' + ch.id + ')';
-          if (conf.ticketThreadChannelId && conf.ticketThreadChannelId === ch.id) opt.selected = true;
-          ticketSelect.appendChild(opt);
         });
       }
 
@@ -1908,7 +1890,6 @@ function setLang(newLang) {
 
       const logSelect = document.getElementById('configLogChannel');
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
-      const ticketSelect = document.getElementById('configTicketChannel');
       const staffSelect = document.getElementById('configStaffRoles');
       const maintenanceEnabledSelect = document.getElementById('configMaintenanceEnabled');
       const maintenanceMessageInput = document.getElementById('configMaintenanceMessage');
@@ -1919,8 +1900,6 @@ function setLang(newLang) {
 
       const logChannelId = logSelect && logSelect.value ? logSelect.value : null;
       const dashLogChannelId = dashLogSelect && dashLogSelect.value ? dashLogSelect.value : null;
-      const ticketThreadChannelId = ticketSelect && ticketSelect.value ? ticketSelect.value : null;
-
       const staffRoleIds = [];
       if (staffSelect) {
         Array.prototype.forEach.call(staffSelect.selectedOptions || [], function (opt) {
@@ -1945,7 +1924,6 @@ function setLang(newLang) {
       // Clear previous field errors
       clearInlineError(logSelect);
       clearInlineError(dashLogSelect);
-      clearInlineError(ticketSelect);
       clearInlineError(staffSelect);
       clearInlineError(maintenanceEnabledSelect);
       clearInlineError(maintenanceMessageInput);
@@ -1962,12 +1940,6 @@ function setLang(newLang) {
         toast(t('config_invalid_channel_id'), { type: 'warn' });
         return;
       }
-      if (ticketThreadChannelId && !isSnowflake(ticketThreadChannelId)) {
-        setInlineError(ticketSelect, t('config_invalid_channel_id'));
-        toast(t('config_invalid_channel_id'), { type: 'warn' });
-        return;
-      }
-
       var allRoleIds = staffRoleIds;
 
       for (var i = 0; i < allRoleIds.length; i++) {
@@ -1994,7 +1966,6 @@ function setLang(newLang) {
         await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', {
           logChannelId: logChannelId,
           dashboardLogChannelId: dashLogChannelId,
-          ticketThreadChannelId: ticketThreadChannelId,
           staffRoleIds: staffRoleIds,
           maintenanceMode: maintenanceMode,
           language: language,
@@ -2008,6 +1979,10 @@ function setLang(newLang) {
           setLang(state.guildLanguage);
         } else {
           setLang(state.lang || 'pt');
+        }
+
+        if (window.OzarkDashboard.loadFeatures) {
+          await window.OzarkDashboard.loadFeatures().catch(function () {});
         }
 
         // mark clean + update UI
@@ -3070,7 +3045,6 @@ async function exportGuildConfigJson() {
       timezone: (typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null,
       logChannelId: conf.logChannelId || null,
       dashboardLogChannelId: conf.dashboardLogChannelId || null,
-      ticketThreadChannelId: conf.ticketThreadChannelId || null,
       staffRoleIds: Array.isArray(conf.staffRoleIds) ? conf.staffRoleIds : []
     };
 
@@ -3125,7 +3099,6 @@ async function importGuildConfigJson() {
   const payload = {
     logChannelId: parsed.logChannelId || null,
     dashboardLogChannelId: parsed.dashboardLogChannelId || null,
-    ticketThreadChannelId: parsed.ticketThreadChannelId || null,
     staffRoleIds: Array.isArray(parsed.staffRoleIds) ? parsed.staffRoleIds.filter(Boolean) : []
   };
 

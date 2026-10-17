@@ -1,7 +1,7 @@
 // src/slash/poll.js
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { t } = require('../systems/i18n');
+const { tContext } = require('../systems/i18n');
 const { getFeature } = require('../systems/featuresService');
 const { safeReply } = require('../utils/discord');
 
@@ -53,12 +53,12 @@ async function pollSlash(_client, interaction) {
   try {
     if (!interaction?.guild) return;
     if (!Poll) {
-      return safeReply(interaction, { content: t('common.unexpectedError') }, { ephemeral: true });
+      return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
     }
 
     const cfg = await getFeature(interaction.guild.id, 'polls');
     if (cfg?.enabled !== true) {
-      return safeReply(interaction, { content: t('poll.disabled') }, { ephemeral: true });
+      return safeReply(interaction, { content: await tContext(interaction, 'poll.disabled') }, { ephemeral: true });
     }
 
     const question = String(interaction.options.getString('question') || '').trim();
@@ -70,7 +70,7 @@ async function pollSlash(_client, interaction) {
       .slice(0, MAX_OPTIONS);
 
     if (!question || options.length < 2) {
-      return safeReply(interaction, { content: t('poll.invalidOptions') }, { ephemeral: true });
+      return safeReply(interaction, { content: await tContext(interaction, 'poll.invalidOptions') }, { ephemeral: true });
     }
 
     const poll = await Poll.create({
@@ -88,10 +88,10 @@ async function pollSlash(_client, interaction) {
       await poll.save().catch(() => null);
     }
 
-    return safeReply(interaction, { content: t('poll.created') }, { ephemeral: true });
+    return safeReply(interaction, { content: await tContext(interaction, 'poll.created') }, { ephemeral: true });
   } catch (err) {
     console.error('[slash/poll] Error:', err);
-    return safeReply(interaction, { content: t('common.unexpectedError') }, { ephemeral: true });
+    return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
   }
 }
 

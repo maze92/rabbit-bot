@@ -172,7 +172,7 @@ const guildConfigSchema = new Schema(
       welcome: {
         enabled: { type: Boolean, default: false },
         channelId: { type: String, default: null },
-        message: { type: String, default: 'Bem-vindo(a) {user} ao {server}! Já somos {memberCount} membros.' },
+        message: { type: String, default: null },
         embed: { type: Boolean, default: true },
         color: { type: String, default: '#7c3aed' },
         bannerUrl: { type: String, default: null }
@@ -182,7 +182,7 @@ const guildConfigSchema = new Schema(
       goodbye: {
         enabled: { type: Boolean, default: false },
         channelId: { type: String, default: null },
-        message: { type: String, default: '{user} saiu do servidor.' },
+        message: { type: String, default: null },
         embed: { type: Boolean, default: true },
         color: { type: String, default: '#ef4444' },
         bannerUrl: { type: String, default: null }
@@ -194,9 +194,9 @@ const guildConfigSchema = new Schema(
         memberChannelId: { type: String, default: null },
         joinsChannelId: { type: String, default: null },
         leavesChannelId: { type: String, default: null },
-        memberTemplate: { type: String, default: '👥 Membros: {count}' },
-        joinsTemplate: { type: String, default: '📥 Entradas (7d): {count}' },
-        leavesTemplate: { type: String, default: '📤 Saídas (7d): {count}' }
+        memberTemplate: { type: String, default: null },
+        joinsTemplate: { type: String, default: null },
+        leavesTemplate: { type: String, default: null }
       }
     }
 

@@ -6,7 +6,7 @@
 
 const { invalidateGuildConfig } = require('../../systems/guildConfigService');
 const { FEATURE_DEFAULTS, normalizeFeature, normalizeFeatures } = require('../../systems/featuresService');
-const { tGuild } = require('../../systems/i18n');
+const { getFeatureText, applyTemplate } = require('../../systems/featureText');
 
 const FEATURE_NAMES = Object.keys(FEATURE_DEFAULTS);
 
@@ -27,6 +27,11 @@ function clampText(v, fallback, max) {
   const s = typeof v === 'string' ? v.trim() : '';
   if (!s) return fallback;
   return s.slice(0, max);
+}
+
+function clampOptionalText(v, max) {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return s ? s.slice(0, max) : null;
 }
 
 // Cor no formato #rrggbb; devolve o fallback se inválida.
@@ -113,9 +118,9 @@ function cleanFeatureValue(name, raw, sanitizeId) {
         channelId: id(src.channelId),
         messageId: id(src.messageId),
         kickAfterMinutes: toInt(src.kickAfterMinutes, 0, 0, 10080),
-        title: clampText(src.title, FEATURE_DEFAULTS.verification.title, 120),
-        description: clampText(src.description, FEATURE_DEFAULTS.verification.description, 500),
-        buttonLabel: clampText(src.buttonLabel, FEATURE_DEFAULTS.verification.buttonLabel, 80)
+        title: clampOptionalText(src.title, 120),
+        description: clampOptionalText(src.description, 500),
+        buttonLabel: clampOptionalText(src.buttonLabel, 80)
       };
 
     case 'tickets':
@@ -125,18 +130,18 @@ function cleanFeatureValue(name, raw, sanitizeId) {
         messageId: id(src.messageId),
         openEmoji: typeof src.openEmoji === 'string' && src.openEmoji.trim() ? src.openEmoji.trim().slice(0, 64) : FEATURE_DEFAULTS.tickets.openEmoji,
         closeEmoji: typeof src.closeEmoji === 'string' && src.closeEmoji.trim() ? src.closeEmoji.trim().slice(0, 64) : FEATURE_DEFAULTS.tickets.closeEmoji,
-        panelTitle: clampText(src.panelTitle, FEATURE_DEFAULTS.tickets.panelTitle, 120),
-        panelDescription: clampText(src.panelDescription, FEATURE_DEFAULTS.tickets.panelDescription, 500),
-        alreadyOpenMessage: clampText(src.alreadyOpenMessage, FEATURE_DEFAULTS.tickets.alreadyOpenMessage, 300),
-        welcomeMessage: clampText(src.welcomeMessage, FEATURE_DEFAULTS.tickets.welcomeMessage, 1200),
-        closeMessage: clampText(src.closeMessage, FEATURE_DEFAULTS.tickets.closeMessage, 300)
+        panelTitle: clampOptionalText(src.panelTitle, 120),
+        panelDescription: clampOptionalText(src.panelDescription, 500),
+        alreadyOpenMessage: clampOptionalText(src.alreadyOpenMessage, 300),
+        welcomeMessage: clampOptionalText(src.welcomeMessage, 1200),
+        closeMessage: clampOptionalText(src.closeMessage, 300)
       };
 
     case 'welcome':
       return {
         enabled: toBool(src.enabled),
         channelId: id(src.channelId),
-        message: clampText(src.message, FEATURE_DEFAULTS.welcome.message, 500),
+        message: clampOptionalText(src.message, 500),
         embed: src.embed === undefined ? true : toBool(src.embed),
         color: normalizeColor(src.color, FEATURE_DEFAULTS.welcome.color),
         bannerUrl: urlOrNull(src.bannerUrl, 512)
@@ -146,7 +151,7 @@ function cleanFeatureValue(name, raw, sanitizeId) {
       return {
         enabled: toBool(src.enabled),
         channelId: id(src.channelId),
-        message: clampText(src.message, FEATURE_DEFAULTS.goodbye.message, 500),
+        message: clampOptionalText(src.message, 500),
         embed: src.embed === undefined ? true : toBool(src.embed),
         color: normalizeColor(src.color, FEATURE_DEFAULTS.goodbye.color),
         bannerUrl: urlOrNull(src.bannerUrl, 512)
@@ -158,9 +163,9 @@ function cleanFeatureValue(name, raw, sanitizeId) {
         memberChannelId: id(src.memberChannelId),
         joinsChannelId: id(src.joinsChannelId),
         leavesChannelId: id(src.leavesChannelId),
-        memberTemplate: clampText(src.memberTemplate, FEATURE_DEFAULTS.serverStats.memberTemplate, 100),
-        joinsTemplate: clampText(src.joinsTemplate, FEATURE_DEFAULTS.serverStats.joinsTemplate, 100),
-        leavesTemplate: clampText(src.leavesTemplate, FEATURE_DEFAULTS.serverStats.leavesTemplate, 100)
+        memberTemplate: clampOptionalText(src.memberTemplate, 100),
+        joinsTemplate: clampOptionalText(src.joinsTemplate, 100),
+        leavesTemplate: clampOptionalText(src.leavesTemplate, 100)
       };
 
     default:
@@ -187,26 +192,6 @@ async function ensureReactions(message, entries) {
       console.warn(`[Dashboard] reactionRoles: não foi possível reagir com "${entry.emoji}":`, err?.message || err);
     }
   }
-}
-
-function applyTemplate(text, vars) {
-  return String(text == null ? '' : text).replace(/\{(\w+)\}/g, (m, key) => {
-    if (Object.prototype.hasOwnProperty.call(vars, key)) return String(vars[key]);
-    return m;
-  });
-}
-
-function verificationText(current, lang, key) {
-  if (key === 'title' && current.title) return current.title;
-  if (key === 'description' && current.description) return current.description;
-  if (key === 'button' && current.buttonLabel) return current.buttonLabel;
-  const path = key === 'button' ? 'verify.button' : (key === 'title' ? 'verify.panelTitle' : 'verify.panelDescription');
-  return tGuild(null, path, undefined, lang);
-}
-
-async function resolveGuildLanguage(GuildConfig, guildId) {
-  const cfg = await GuildConfig.findOne({ guildId }).select('language').lean().catch(() => null);
-  return cfg && typeof cfg.language === 'string' ? cfg.language : null;
 }
 
 function registerFeaturesRoutes({
@@ -411,23 +396,28 @@ function registerFeaturesRoutes({
 
       const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
       const { toReactable } = require('../../systems/reactionRoles');
-      const lang = await resolveGuildLanguage(GuildConfig, guildId);
 
       let payload = null;
       if (featureKey === 'verification') {
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId(`verify:${current.roleId}`)
-            .setLabel(await verificationText(current, lang, 'button'))
+            .setLabel(await getFeatureText({ guildId, feature: 'verification', field: 'buttonLabel', value: current.buttonLabel }))
             .setStyle(ButtonStyle.Success)
         );
         const embed = new EmbedBuilder()
-          .setTitle(await verificationText(current, lang, 'title'))
-          .setDescription(await verificationText(current, lang, 'description'));
+          .setTitle(await getFeatureText({ guildId, feature: 'verification', field: 'title', value: current.title }))
+          .setDescription(await getFeatureText({ guildId, feature: 'verification', field: 'description', value: current.description }));
         payload = { embeds: [embed], components: [row] };
       } else {
-        const panelTitle = current.panelTitle || await tGuild(guildId, 'tickets.panelTitle');
-        const panelDescription = current.panelDescription || await tGuild(guildId, 'tickets.panelDescription', { emoji: current.openEmoji });
+        const panelTitle = await getFeatureText({ guildId, feature: 'tickets', field: 'panelTitle', value: current.panelTitle });
+        const panelDescription = await getFeatureText({
+          guildId,
+          feature: 'tickets',
+          field: 'panelDescription',
+          value: current.panelDescription,
+          params: { emoji: current.openEmoji }
+        });
         payload = {
           embeds: [
             new EmbedBuilder()
