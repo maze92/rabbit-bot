@@ -178,7 +178,8 @@ Warnings: **${warnings}/${maxWarnings}**`,
       disabled: '❌ Verification is not available on this server.',
       panelTitle: 'Verification',
       panelDescription: 'Click the button below to get access to the server.',
-      button: 'Verify'
+      button: 'Verify',
+      testButton: 'Test'
     },
 
     poll: {
@@ -206,6 +207,27 @@ Warnings: **${warnings}/${maxWarnings}**`,
 
     starboard: {
       disabled: '❌ Starboard is disabled on this server.'
+    },
+
+    tickets: {
+      panelTitle: 'Support',
+      panelDescription: 'React with {emoji} below to open a private support ticket.',
+      alreadyOpen: 'You already have an open ticket: <#{channelId}>',
+      welcomeTitle: '🎫 Support ticket',
+      welcomeDescription: ({ user, closeEmoji }) => [
+        `Hello ${user}, thanks for reaching out to the support team.`,
+        '',
+        '📌 **Before you start:**',
+        '• Explain your problem or request clearly;',
+        '• If possible, include screenshots, IDs or examples;',
+        '• Avoid sharing sensitive personal data in text or images.',
+        '',
+        `🔒 **To close this ticket**, react to this message with ${closeEmoji}.`
+      ].join('\n'),
+      ticketNumber: 'Ticket number',
+      openedBy: 'Opened by',
+      cannotClose: '{user}, you do not have permission to close this ticket.',
+      closedBy: '🔒 Ticket closed by {user}. Thank you for contacting us.'
     },
 
     member: {
@@ -391,7 +413,8 @@ Avisos: **${warnings}/${maxWarnings}**`,
       disabled: '❌ A verificação não está disponível neste servidor.',
       panelTitle: 'Verificação',
       panelDescription: 'Clica no botão abaixo para receberes acesso ao servidor.',
-      button: 'Verificar'
+      button: 'Verificar',
+      testButton: 'Teste'
     },
 
     poll: {
@@ -419,6 +442,27 @@ Avisos: **${warnings}/${maxWarnings}**`,
 
     starboard: {
       disabled: '❌ O starboard está desativado neste servidor.'
+    },
+
+    tickets: {
+      panelTitle: 'Suporte',
+      panelDescription: 'Reage com {emoji} abaixo para abrir um ticket privado de suporte.',
+      alreadyOpen: 'Já existe um ticket aberto para ti: <#{channelId}>',
+      welcomeTitle: '🎫 Ticket de suporte',
+      welcomeDescription: ({ user, closeEmoji }) => [
+        `Olá ${user}, obrigado por entrares em contacto com a equipa de suporte.`,
+        '',
+        '📌 **Antes de começares:**',
+        '• Explica de forma clara o teu problema ou pedido;',
+        '• Sempre que possível, inclui prints, IDs ou exemplos;',
+        '• Evita partilhar dados pessoais sensíveis em texto ou imagem.',
+        '',
+        `🔒 **Para encerrar este ticket**, reage a esta mensagem com ${closeEmoji}.`
+      ].join('\n'),
+      ticketNumber: 'Número do ticket',
+      openedBy: 'Aberto por',
+      cannotClose: '{user}, não tens permissão para fechar este ticket.',
+      closedBy: '🔒 Ticket fechado por {user}. Obrigado pelo contacto.'
     },
 
     member: {

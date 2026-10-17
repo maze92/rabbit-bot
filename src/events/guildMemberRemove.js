@@ -6,6 +6,7 @@
 
 const { recordMemberEvent } = require('../systems/memberStats');
 const { buildMemberMessage } = require('../systems/welcomeMessages');
+const { getGuildLang } = require('../systems/i18n');
 
 module.exports = (client) => {
   client.on('guildMemberRemove', async (member) => {
@@ -36,7 +37,8 @@ module.exports = (client) => {
         if (goodbye?.enabled === true && goodbye.channelId) {
           const channel = await member.guild.channels.fetch(goodbye.channelId).catch(() => null);
           if (channel && typeof channel.send === 'function') {
-            const payload = buildMemberMessage({ config: goodbye, guild: member.guild, user: member.user, kind: 'goodbye' });
+            const lang = await getGuildLang(member.guild.id);
+            const payload = buildMemberMessage({ config: goodbye, guild: member.guild, user: member.user, kind: 'goodbye', lang });
             await channel.send(payload).catch((err) => {
               console.warn('[guildMemberRemove] Falha ao enviar mensagem de saída:', err?.message || err);
             });

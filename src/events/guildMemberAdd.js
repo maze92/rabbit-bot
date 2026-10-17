@@ -3,6 +3,7 @@
 const warningsService = require('../systems/warningsService');
 const { recordMemberEvent } = require('../systems/memberStats');
 const { buildMemberMessage } = require('../systems/welcomeMessages');
+const { getGuildLang } = require('../systems/i18n');
 
 module.exports = (client) => {
   client.on('guildMemberAdd', async (member) => {
@@ -30,7 +31,8 @@ module.exports = (client) => {
         if (welcome?.enabled === true && welcome.channelId) {
           const channel = await member.guild.channels.fetch(welcome.channelId).catch(() => null);
           if (channel && typeof channel.send === 'function') {
-            const payload = buildMemberMessage({ config: welcome, guild: member.guild, user: member.user, kind: 'welcome' });
+            const lang = await getGuildLang(member.guild.id);
+            const payload = buildMemberMessage({ config: welcome, guild: member.guild, user: member.user, kind: 'welcome', lang });
             await channel.send(payload).catch((err) => {
               console.warn('[guildMemberAdd] Falha ao enviar boas-vindas:', err?.message || err);
             });
@@ -58,4 +60,3 @@ module.exports = (client) => {
     }
   });
 };
-

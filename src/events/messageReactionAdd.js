@@ -7,13 +7,6 @@ const {
   CLOSE_EMOJI
 } = require('../systems/ticketThreads');
 
-let GuildConfig = null;
-try {
-  GuildConfig = require('../database/models/GuildConfig');
-} catch (err) {
-  console.warn('[messageReactionAdd] GuildConfig model not available:', err);
-}
-
 const { getFeature } = require('../systems/featuresService');
 const { emojiMatches } = require('../systems/reactionRoles');
 
@@ -22,28 +15,6 @@ try {
   starboard = require('../systems/starboard');
 } catch (err) {
   console.warn('[messageReactionAdd] starboard system not available:', err?.message || err);
-}
-
-/**
- * Verifica se a reação foi feita no canal configurado para tickets desta guild.
- * @param {impor'discord.js'.Message} message
- */
-async function isTicketChannel(message) {
-  if (!message || !message.guild) return false;
-  const guildId = message.guild.id;
-  const channelId = message.channelId;
-  if (!guildId || !channelId) return false;
-  if (!GuildConfig) return false;
-
-  try {
-    const doc = await GuildConfig.findOne({ guildId }).lean().catch(() => null);
-    if (doc && doc.ticketThreadChannelId) {
-      return doc.ticketThreadChannelId === channelId;
-    }
-  } catch (err) {
-    console.error('[messageReactionAdd] Failed to load GuildConfig for tickets:', err);
-  }
-  return false;
 }
 
 /**
@@ -108,26 +79,34 @@ module.exports = (client) => {
 
       const emojiName = reaction.emoji.name || reaction.emoji.id;
       if (!emojiName) return;
+      const ticketCfg = reaction.message.guild
+        ? await getFeature(reaction.message.guild.id, 'tickets').catch(() => null)
+        : null;
 
       // Abrir ticket: reação no canal configurado com o emoji de abertura
-      if (emojiName === OPEN_EMOJI) {
-        const ok = await isTicketChannel(reaction.message);
-        if (!ok) return;
-        await handleTicketOpen(reaction, user);
+      if (ticketCfg && ticketCfg.enabled === true && emojiMatches(ticketCfg.openEmoji || OPEN_EMOJI, reaction.emoji)) {
+        const matchesMessage = ticketCfg.messageId && reaction.message.id === ticketCfg.messageId;
+        const matchesLegacyChannel = !ticketCfg.messageId && ticketCfg.channelId && reaction.message.channelId === ticketCfg.channelId;
+        if (matchesMessage || matchesLegacyChannel) {
+          const opened = await handleTicketOpen(reaction, user);
 
-        // Remover a reação do utilizador após criar o ticket,
-        // para que possa abrir um novo ticket com um único clique da próxima vez.
-        try {
-          await reaction.users.remove(user.id);
-        } catch (err) {
-          console.error('[messageReactionAdd] Failed to remove user reaction after creating ticket:', err);
+          // Remover a reação do utilizador após criar o ticket,
+          // para que possa abrir um novo ticket com um único clique da próxima vez.
+          if (opened) {
+            try {
+              await reaction.users.remove(user.id);
+            } catch (err) {
+              console.error('[messageReactionAdd] Failed to remove user reaction after creating ticket:', err);
+            }
+          }
+          return;
         }
-        return;
       }
 
       // Fechar ticket: reação dentro da thread no emoji de fecho
-      if (emojiName === CLOSE_EMOJI) {
-        return handleTicketClose(reaction, user);
+      if ((!ticketCfg && emojiName === CLOSE_EMOJI) || (ticketCfg && emojiMatches(ticketCfg.closeEmoji || CLOSE_EMOJI, reaction.emoji))) {
+        const closed = await handleTicketClose(reaction, user);
+        if (closed) return;
       }
 
       // Cargos por reação (feature opcional "reactionRoles")

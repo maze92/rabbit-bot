@@ -148,7 +148,24 @@ const guildConfigSchema = new Schema(
         roleId: { type: String, default: null },
         channelId: { type: String, default: null },
         messageId: { type: String, default: null },
-        kickAfterMinutes: { type: Number, default: 0 }
+        kickAfterMinutes: { type: Number, default: 0 },
+        title: { type: String, default: null },
+        description: { type: String, default: null },
+        buttonLabel: { type: String, default: null }
+      },
+
+      // Tickets por reação (painel + thread privada)
+      tickets: {
+        enabled: { type: Boolean, default: false },
+        channelId: { type: String, default: null },
+        messageId: { type: String, default: null },
+        openEmoji: { type: String, default: '🎫' },
+        closeEmoji: { type: String, default: '🔒' },
+        panelTitle: { type: String, default: null },
+        panelDescription: { type: String, default: null },
+        alreadyOpenMessage: { type: String, default: null },
+        welcomeMessage: { type: String, default: null },
+        closeMessage: { type: String, default: null }
       },
 
       // Boas-vindas a novos membros

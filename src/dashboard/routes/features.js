@@ -6,7 +6,7 @@
 
 const { invalidateGuildConfig } = require('../../systems/guildConfigService');
 const { FEATURE_DEFAULTS, normalizeFeature, normalizeFeatures } = require('../../systems/featuresService');
-const { t } = require('../../systems/i18n');
+const { tGuild } = require('../../systems/i18n');
 
 const FEATURE_NAMES = Object.keys(FEATURE_DEFAULTS);
 
@@ -112,7 +112,24 @@ function cleanFeatureValue(name, raw, sanitizeId) {
         roleId: id(src.roleId),
         channelId: id(src.channelId),
         messageId: id(src.messageId),
-        kickAfterMinutes: toInt(src.kickAfterMinutes, 0, 0, 10080)
+        kickAfterMinutes: toInt(src.kickAfterMinutes, 0, 0, 10080),
+        title: clampText(src.title, FEATURE_DEFAULTS.verification.title, 120),
+        description: clampText(src.description, FEATURE_DEFAULTS.verification.description, 500),
+        buttonLabel: clampText(src.buttonLabel, FEATURE_DEFAULTS.verification.buttonLabel, 80)
+      };
+
+    case 'tickets':
+      return {
+        enabled: toBool(src.enabled),
+        channelId: id(src.channelId),
+        messageId: id(src.messageId),
+        openEmoji: typeof src.openEmoji === 'string' && src.openEmoji.trim() ? src.openEmoji.trim().slice(0, 64) : FEATURE_DEFAULTS.tickets.openEmoji,
+        closeEmoji: typeof src.closeEmoji === 'string' && src.closeEmoji.trim() ? src.closeEmoji.trim().slice(0, 64) : FEATURE_DEFAULTS.tickets.closeEmoji,
+        panelTitle: clampText(src.panelTitle, FEATURE_DEFAULTS.tickets.panelTitle, 120),
+        panelDescription: clampText(src.panelDescription, FEATURE_DEFAULTS.tickets.panelDescription, 500),
+        alreadyOpenMessage: clampText(src.alreadyOpenMessage, FEATURE_DEFAULTS.tickets.alreadyOpenMessage, 300),
+        welcomeMessage: clampText(src.welcomeMessage, FEATURE_DEFAULTS.tickets.welcomeMessage, 1200),
+        closeMessage: clampText(src.closeMessage, FEATURE_DEFAULTS.tickets.closeMessage, 300)
       };
 
     case 'welcome':
@@ -172,6 +189,26 @@ async function ensureReactions(message, entries) {
   }
 }
 
+function applyTemplate(text, vars) {
+  return String(text == null ? '' : text).replace(/\{(\w+)\}/g, (m, key) => {
+    if (Object.prototype.hasOwnProperty.call(vars, key)) return String(vars[key]);
+    return m;
+  });
+}
+
+function verificationText(current, lang, key) {
+  if (key === 'title' && current.title) return current.title;
+  if (key === 'description' && current.description) return current.description;
+  if (key === 'button' && current.buttonLabel) return current.buttonLabel;
+  const path = key === 'button' ? 'verify.button' : (key === 'title' ? 'verify.panelTitle' : 'verify.panelDescription');
+  return tGuild(null, path, undefined, lang);
+}
+
+async function resolveGuildLanguage(GuildConfig, guildId) {
+  const cfg = await GuildConfig.findOne({ guildId }).select('language').lean().catch(() => null);
+  return cfg && typeof cfg.language === 'string' ? cfg.language : null;
+}
+
 function registerFeaturesRoutes({
   app,
   requireDashboardAuth,
@@ -210,7 +247,12 @@ function registerFeaturesRoutes({
         cfg = cfg.toObject();
       }
 
-      return res.json({ ok: true, features: normalizeFeatures(cfg.features) });
+      const features = normalizeFeatures(cfg.features);
+      if (cfg.ticketThreadChannelId && features.tickets && !features.tickets.channelId) {
+        features.tickets.channelId = cfg.ticketThreadChannelId;
+        features.tickets.enabled = true;
+      }
+      return res.json({ ok: true, features });
     } catch (err) {
       console.error('[Dashboard] /api/features GET error:', err);
       return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
@@ -236,17 +278,32 @@ function registerFeaturesRoutes({
 
       // Cargos por reação: os atalhos ":nome:" são resolvidos para "<:nome:id>"
       // antes de persistir (o Discord só aceita o glifo ou o id do emoji).
-      if (feature === 'reactionRoles' && value.entries.length && client) {
+      if ((feature === 'reactionRoles' || feature === 'tickets') && client) {
         const guild = await client.guilds.fetch(guildId).catch(() => null);
         if (guild) {
           const { resolveShortcodes } = require('../../systems/reactionRoles');
-          value.entries = resolveShortcodes(value.entries, guild);
+          if (feature === 'reactionRoles' && value.entries.length) {
+            value.entries = resolveShortcodes(value.entries, guild);
+          }
+          if (feature === 'tickets') {
+            const resolved = resolveShortcodes([
+              { emoji: value.openEmoji },
+              { emoji: value.closeEmoji }
+            ], guild);
+            value.openEmoji = resolved[0] && resolved[0].emoji ? resolved[0].emoji : value.openEmoji;
+            value.closeEmoji = resolved[1] && resolved[1].emoji ? resolved[1].emoji : value.closeEmoji;
+          }
         }
+      }
+
+      const update = { $set: { [`features.${feature}`]: value } };
+      if (feature === 'tickets') {
+        update.$set.ticketThreadChannelId = value.channelId || null;
       }
 
       await GuildConfig.findOneAndUpdate(
         { guildId },
-        { $set: { [`features.${feature}`]: value } },
+        update,
         { new: true, upsert: true }
       ).lean();
 
@@ -328,23 +385,24 @@ function registerFeaturesRoutes({
     }
   });
 
-  // POST /api/features/verification/publish  { guildId }
-  // Publica (ou reaproveita) a mensagem de verificação com o botão e guarda o messageId.
-  app.post('/api/features/verification/publish', requireDashboardAuth, canEditConfig, guardGuildBody, async (req, res) => {
+  async function publishFeatureMessage(req, res, featureKey) {
     try {
       const guildId = sanitizeId(req.body.guildId || '');
       if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
       if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
 
       const cfg = await GuildConfig.findOne({ guildId }).lean();
-      const current = normalizeFeature('verification', cfg && cfg.features && cfg.features.verification);
-
-      if (!current.roleId || !current.channelId) {
-        return res.status(400).json({ ok: false, error: 'VERIFICATION_ROLE_CHANNEL_REQUIRED' });
-      }
+      const current = normalizeFeature(featureKey, cfg && cfg.features && cfg.features[featureKey]);
 
       const client = typeof getClient === 'function' ? getClient() : null;
       if (!client) return res.status(503).json({ ok: false, error: 'CLIENT_UNAVAILABLE' });
+
+      if (featureKey === 'verification' && (!current.roleId || !current.channelId)) {
+        return res.status(400).json({ ok: false, error: 'VERIFICATION_ROLE_CHANNEL_REQUIRED' });
+      }
+      if (featureKey === 'tickets' && !current.channelId) {
+        return res.status(400).json({ ok: false, error: 'TICKETS_CHANNEL_REQUIRED' });
+      }
 
       const channel = await client.channels.fetch(current.channelId).catch(() => null);
       if (!channel || typeof channel.send !== 'function') {
@@ -352,31 +410,70 @@ function registerFeaturesRoutes({
       }
 
       const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`verify:${current.roleId}`)
-          .setLabel(t('verify.button'))
-          .setStyle(ButtonStyle.Success)
-      );
-      const embed = new EmbedBuilder()
-        .setTitle(t('verify.panelTitle'))
-        .setDescription(t('verify.panelDescription'));
+      const { toReactable } = require('../../systems/reactionRoles');
+      const lang = await resolveGuildLanguage(GuildConfig, guildId);
 
-      const message = await channel.send({ embeds: [embed], components: [row] });
+      let payload = null;
+      if (featureKey === 'verification') {
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`verify:${current.roleId}`)
+            .setLabel(await verificationText(current, lang, 'button'))
+            .setStyle(ButtonStyle.Success)
+        );
+        const embed = new EmbedBuilder()
+          .setTitle(await verificationText(current, lang, 'title'))
+          .setDescription(await verificationText(current, lang, 'description'));
+        payload = { embeds: [embed], components: [row] };
+      } else {
+        const panelTitle = current.panelTitle || await tGuild(guildId, 'tickets.panelTitle');
+        const panelDescription = current.panelDescription || await tGuild(guildId, 'tickets.panelDescription', { emoji: current.openEmoji });
+        payload = {
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(panelTitle)
+              .setDescription(applyTemplate(panelDescription, { emoji: current.openEmoji }))
+          ]
+        };
+      }
+
+      const message = await channel.send(payload);
+
+      if (featureKey === 'tickets') {
+        const reactable = toReactable(current.openEmoji);
+        if (reactable) await message.react(reactable).catch(() => null);
+      }
 
       const value = { ...current, messageId: message.id };
       await GuildConfig.findOneAndUpdate(
         { guildId },
-        { $set: { 'features.verification': value } },
+        {
+          $set: {
+            [`features.${featureKey}`]: value,
+            ...(featureKey === 'tickets' ? { ticketThreadChannelId: value.channelId || null } : {})
+          }
+        },
         { new: true, upsert: true }
       ).lean();
       invalidateGuildConfig(guildId);
 
       return res.json({ ok: true, value });
     } catch (err) {
-      console.error('[Dashboard] /api/features/verification/publish error:', err);
+      console.error(`[Dashboard] /api/features/${featureKey}/publish error:`, err);
       return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
     }
+  }
+
+  // POST /api/features/verification/publish  { guildId }
+  // Publica (ou reaproveita) a mensagem de verificação com o botão e guarda o messageId.
+  app.post('/api/features/verification/publish', requireDashboardAuth, canEditConfig, guardGuildBody, async (req, res) => {
+    return publishFeatureMessage(req, res, 'verification');
+  });
+
+  // POST /api/features/tickets/publish  { guildId }
+  // Publica a mensagem painel dos tickets e guarda o messageId.
+  app.post('/api/features/tickets/publish', requireDashboardAuth, canEditConfig, guardGuildBody, async (req, res) => {
+    return publishFeatureMessage(req, res, 'tickets');
   });
 }
 
