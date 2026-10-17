@@ -7,6 +7,7 @@
 const { invalidateGuildConfig } = require('../../systems/guildConfigService');
 const { FEATURE_DEFAULTS, normalizeFeature, normalizeFeatures } = require('../../systems/featuresService');
 const { getFeatureText, applyTemplate } = require('../../systems/featureText');
+const { getGuildLang } = require('../../systems/i18n');
 
 const FEATURE_NAMES = Object.keys(FEATURE_DEFAULTS);
 
@@ -38,6 +39,18 @@ function clampOptionalText(v, max) {
 function normalizeColor(v, fallback) {
   const s = typeof v === 'string' ? v.trim() : '';
   return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : fallback;
+}
+
+function formatPanelDate(lang, now) {
+  try {
+    return new Intl.DateTimeFormat(lang === 'pt' ? 'pt-PT' : 'en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now || new Date());
+  } catch {
+    return '';
+  }
 }
 
 // URL http(s) opcional (usada no banner das mensagens).
@@ -160,6 +173,7 @@ function cleanFeatureValue(name, raw, sanitizeId) {
     case 'serverStats':
       return {
         enabled: toBool(src.enabled),
+        categoryId: id(src.categoryId),
         memberChannelId: id(src.memberChannelId),
         joinsChannelId: id(src.joinsChannelId),
         leavesChannelId: id(src.leavesChannelId),
@@ -427,6 +441,7 @@ function registerFeaturesRoutes({
           .setDescription(await getFeatureText({ guildId, feature: 'verification', field: 'description', value: current.description }));
         payload = { embeds: [embed], components: [row] };
       } else {
+        const lang = await getGuildLang(guildId).catch(() => 'pt');
         const panelTitle = await getFeatureText({ guildId, feature: 'tickets', field: 'panelTitle', value: current.panelTitle });
         const panelDescription = await getFeatureText({
           guildId,
@@ -436,13 +451,15 @@ function registerFeaturesRoutes({
           params: { emoji: current.openEmoji }
         });
         const panelFooter = await getFeatureText({ guildId, feature: 'tickets', field: 'panelFooter' });
+        const now = new Date();
+        const footerText = [panelFooter, formatPanelDate(lang, now)].filter(Boolean).join(' • ');
         payload = {
           embeds: [
             new EmbedBuilder()
               .setTitle(panelTitle)
               .setDescription(applyTemplate(panelDescription, { emoji: current.openEmoji }))
-              .setFooter({ text: panelFooter })
-              .setTimestamp(new Date())
+              .setFooter({ text: footerText })
+              .setTimestamp(now)
           ]
         };
       }

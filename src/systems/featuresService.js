@@ -53,6 +53,7 @@ const FEATURE_DEFAULTS = {
   },
   serverStats: {
     enabled: false,
+    categoryId: null,
     memberChannelId: null,
     joinsChannelId: null,
     leavesChannelId: null,

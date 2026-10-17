@@ -1,11 +1,12 @@
 // src/systems/serverStats.js
 //
-// Estatísticas do servidor em canais de voz colocados no topo (acima das
-// categorias, porque não têm categoria associada):
+// Estatísticas do servidor em canais de voz agrupados dentro da categoria
+// "estatisticas":
 //   👥 Membros: N | 📥 Entradas (7d): N | 📤 Saídas (7d): N
 //
-// Os canais são criados na primeira utilização e o respetivo ID é persistido
-// em GuildConfig.features.serverStats para ser reaproveitado nas atualizações.
+// A categoria e os canais são criados na primeira utilização e os respetivos
+// IDs são persistidos em GuildConfig.features.serverStats para reaproveitar nas
+// atualizações seguintes.
 
 const { ChannelType, PermissionsBitField } = require('discord.js');
 const { getFeature } = require('./featuresService');
@@ -57,7 +58,30 @@ async function applyLock(channel, guild) {
   await channel.permissionOverwrites.edit(everyone, lockEditPayload()).catch(() => null);
 }
 
-async function ensureChannel(guild, channelId, name, position) {
+async function ensureCategory(guild, categoryId) {
+  const desired = 'estatisticas';
+  let category = await resolveChannel(guild, categoryId);
+
+  if (!category) {
+    category = guild.channels.cache.find((ch) =>
+      ch &&
+      ch.type === ChannelType.GuildCategory &&
+      String(ch.name || '').trim().toLowerCase() === desired
+    ) || null;
+  }
+
+  if (!category) {
+    category = await guild.channels.create({
+      name: desired,
+      type: ChannelType.GuildCategory,
+      position: 0
+    }).catch(() => null);
+  }
+
+  return category;
+}
+
+async function ensureChannel(guild, channelId, name, position, parentId) {
   const desired = String(name || '').slice(0, 100) || '—';
   let channel = await resolveChannel(guild, channelId);
 
@@ -66,6 +90,7 @@ async function ensureChannel(guild, channelId, name, position) {
       name: desired,
       type: ChannelType.GuildVoice,
       position,
+      parent: parentId || null,
       permissionOverwrites: [
         {
           id: guild.roles.everyone.id,
@@ -86,6 +111,9 @@ async function ensureChannel(guild, channelId, name, position) {
 
   if (channel.name !== desired) {
     await channel.setName(desired).catch(() => null);
+  }
+  if ((channel.parentId || null) !== (parentId || null) && typeof channel.setParent === 'function') {
+    await channel.setParent(parentId || null, { lockPermissions: false }).catch(() => null);
   }
   if (typeof channel.setPosition === 'function' && channel.position !== position) {
     await channel.setPosition(position).catch(() => null);
@@ -122,11 +150,15 @@ async function refreshGuild(client, guild, opts) {
     { count: leaves }
   );
 
-  const chMembers = await ensureChannel(guild, cfg.memberChannelId, memberName, 0);
-  const chJoins = await ensureChannel(guild, cfg.joinsChannelId, joinsName, 1);
-  const chLeaves = await ensureChannel(guild, cfg.leavesChannelId, leavesName, 2);
+  const category = await ensureCategory(guild, cfg.categoryId);
+  const categoryId = category ? category.id : null;
+
+  const chMembers = await ensureChannel(guild, cfg.memberChannelId, memberName, 0, categoryId);
+  const chJoins = await ensureChannel(guild, cfg.joinsChannelId, joinsName, 1, categoryId);
+  const chLeaves = await ensureChannel(guild, cfg.leavesChannelId, leavesName, 2, categoryId);
 
   const patch = {};
+  if (categoryId && categoryId !== cfg.categoryId) patch['features.serverStats.categoryId'] = categoryId;
   if (chMembers && chMembers.id !== cfg.memberChannelId) patch['features.serverStats.memberChannelId'] = chMembers.id;
   if (chJoins && chJoins.id !== cfg.joinsChannelId) patch['features.serverStats.joinsChannelId'] = chJoins.id;
   if (chLeaves && chLeaves.id !== cfg.leavesChannelId) patch['features.serverStats.leavesChannelId'] = chLeaves.id;
@@ -166,13 +198,15 @@ async function removeGuild(guild, cfg) {
   const ids = [
     config.memberChannelId || stored.memberChannelId,
     config.joinsChannelId || stored.joinsChannelId,
-    config.leavesChannelId || stored.leavesChannelId
+    config.leavesChannelId || stored.leavesChannelId,
+    config.categoryId || stored.categoryId
   ].filter(Boolean);
   if (!ids.length) return;
 
   for (const id of ids) {
     const channel = await resolveChannel(guild, id);
-    if (channel && typeof channel.delete === 'function') {
+    const hasChildren = channel && channel.type === ChannelType.GuildCategory && channel.children && channel.children.cache && channel.children.cache.size > 0;
+    if (channel && typeof channel.delete === 'function' && !hasChildren) {
       await channel.delete().catch(() => null);
     }
   }
@@ -183,6 +217,7 @@ async function removeGuild(guild, cfg) {
       { guildId: guild.id },
       {
         $set: {
+          'features.serverStats.categoryId': null,
           'features.serverStats.memberChannelId': null,
           'features.serverStats.joinsChannelId': null,
           'features.serverStats.leavesChannelId': null

@@ -191,6 +191,7 @@ const guildConfigSchema = new Schema(
       // Estatísticas do servidor em canais de voz no topo
       serverStats: {
         enabled: { type: Boolean, default: false },
+        categoryId: { type: String, default: null },
         memberChannelId: { type: String, default: null },
         joinsChannelId: { type: String, default: null },
         leavesChannelId: { type: String, default: null },
