@@ -13,15 +13,15 @@ const { getFeature } = require('./featuresService');
 const { invalidateGuildConfig } = require('./guildConfigService');
 const { getRecentCounts } = require('./memberStats');
 const { getFeatureText, applyTemplate } = require('./featureText');
+const { getGuildLang } = require('./i18n');
 
 // A API do Discord limita renomeações de canais; 6 minutos é seguro e suficiente.
 const REFRESH_MS = 6 * 60 * 1000;
 
 // Permissões negadas ao @everyone: o canal é um mostrador de números, não um
-// canal utilizável. Sem negar `Connect` (e companhia) basta um clique para
-// entrar no canal e ficar ligado a um "canal" que só serve para mostrar texto.
-// Nota: quem tem `Administrator` ignora sempre as permissões de canal — essa é
-// uma regra do Discord que não pode ser contrariada por overwrites.
+// canal utilizável. Os canais continuam visíveis, mas a ligação é negada por
+// permissões normais e reforçada por auto-expulsão em `voiceStateUpdate` para
+// cobrir também utilizadores com `Administrator`.
 const LOCKED_FLAGS = [
   PermissionsBitField.Flags.Connect,
   PermissionsBitField.Flags.Speak,
@@ -37,6 +37,24 @@ function lockEditPayload() {
   const payload = {};
   for (const flag of LOCKED_FLAGS) payload[flag] = false;
   return payload;
+}
+
+function getStatsCategoryName(lang) {
+  return lang === 'pt' ? 'estatisticas' : 'statistics';
+}
+
+function getCategoryChildren(guild, categoryId) {
+  if (!guild || !categoryId || !guild.channels || !guild.channels.cache) return [];
+  return guild.channels.cache.filter((ch) => ch && ch.parentId === categoryId).map((ch) => ch);
+}
+
+function getManagedChannelIds(cfg) {
+  if (!cfg || typeof cfg !== 'object') return new Set();
+  return new Set([
+    cfg.memberChannelId,
+    cfg.joinsChannelId,
+    cfg.leavesChannelId
+  ].filter(Boolean));
 }
 
 async function resolveChannel(guild, channelId) {
@@ -58,8 +76,8 @@ async function applyLock(channel, guild) {
   await channel.permissionOverwrites.edit(everyone, lockEditPayload()).catch(() => null);
 }
 
-async function ensureCategory(guild, categoryId) {
-  const desired = 'estatisticas';
+async function ensureCategory(guild, categoryId, lang) {
+  const desired = getStatsCategoryName(lang);
   let category = await resolveChannel(guild, categoryId);
 
   if (!category) {
@@ -76,6 +94,16 @@ async function ensureCategory(guild, categoryId) {
       type: ChannelType.GuildCategory,
       position: 0
     }).catch(() => null);
+  }
+
+  if (!category) return null;
+
+  if (category.name !== desired && typeof category.setName === 'function') {
+    await category.setName(desired).catch(() => null);
+  }
+  await applyLock(category, guild);
+  if (typeof category.setPosition === 'function' && category.position !== 0) {
+    await category.setPosition(0).catch(() => null);
   }
 
   return category;
@@ -113,12 +141,21 @@ async function ensureChannel(guild, channelId, name, position, parentId) {
     await channel.setName(desired).catch(() => null);
   }
   if ((channel.parentId || null) !== (parentId || null) && typeof channel.setParent === 'function') {
-    await channel.setParent(parentId || null, { lockPermissions: false }).catch(() => null);
+    await channel.setParent(parentId || null, { lockPermissions: true }).catch(() => null);
   }
   if (typeof channel.setPosition === 'function' && channel.position !== position) {
     await channel.setPosition(position).catch(() => null);
   }
   return channel;
+}
+
+async function enforceCategoryIsolation(guild, category, managedIds) {
+  if (!guild || !category || !category.id) return;
+  const children = getCategoryChildren(guild, category.id);
+  for (const child of children) {
+    if (!child || managedIds.has(child.id) || typeof child.setParent !== 'function') continue;
+    await child.setParent(null, { lockPermissions: false }).catch(() => null);
+  }
 }
 
 /**
@@ -133,6 +170,7 @@ async function refreshGuild(client, guild, opts) {
   const force = !!(opts && opts.force);
   const cfg = await getFeature(guild.id, 'serverStats');
   if (!force && cfg.enabled !== true) return { ok: true, skipped: true };
+  const lang = await getGuildLang(guild.id).catch(() => 'pt');
 
   const members = guild.memberCount || 0;
   const { joins, leaves } = await getRecentCounts(guild.id, 7);
@@ -150,12 +188,13 @@ async function refreshGuild(client, guild, opts) {
     { count: leaves }
   );
 
-  const category = await ensureCategory(guild, cfg.categoryId);
+  const category = await ensureCategory(guild, cfg.categoryId, lang);
   const categoryId = category ? category.id : null;
 
   const chMembers = await ensureChannel(guild, cfg.memberChannelId, memberName, 0, categoryId);
   const chJoins = await ensureChannel(guild, cfg.joinsChannelId, joinsName, 1, categoryId);
   const chLeaves = await ensureChannel(guild, cfg.leavesChannelId, leavesName, 2, categoryId);
+  await enforceCategoryIsolation(guild, category, new Set([chMembers && chMembers.id, chJoins && chJoins.id, chLeaves && chLeaves.id].filter(Boolean)));
 
   const patch = {};
   if (categoryId && categoryId !== cfg.categoryId) patch['features.serverStats.categoryId'] = categoryId;
@@ -174,6 +213,24 @@ async function refreshGuild(client, guild, opts) {
   }
 
   return { ok: true, members, joins, leaves };
+}
+
+async function enforceVoiceEntry(oldState, newState) {
+  if (!newState || !newState.guild || !newState.channelId) return;
+  if (oldState && oldState.channelId === newState.channelId) return;
+  if (newState.member && newState.member.user && newState.member.user.bot) return;
+
+  const cfg = await getFeature(newState.guild.id, 'serverStats').catch(() => null);
+  if (!cfg || cfg.enabled !== true) return;
+
+  const managedIds = getManagedChannelIds(cfg);
+  if (!managedIds.has(newState.channelId)) return;
+
+  if (typeof newState.disconnect === 'function') {
+    await newState.disconnect('Server statistics channels are read-only displays.').catch(() => null);
+  } else if (typeof newState.setChannel === 'function') {
+    await newState.setChannel(null, 'Server statistics channels are read-only displays.').catch(() => null);
+  }
 }
 
 /**
@@ -205,7 +262,7 @@ async function removeGuild(guild, cfg) {
 
   for (const id of ids) {
     const channel = await resolveChannel(guild, id);
-    const hasChildren = channel && channel.type === ChannelType.GuildCategory && channel.children && channel.children.cache && channel.children.cache.size > 0;
+    const hasChildren = channel && channel.type === ChannelType.GuildCategory && getCategoryChildren(guild, channel.id).length > 0;
     if (channel && typeof channel.delete === 'function' && !hasChildren) {
       await channel.delete().catch(() => null);
     }
@@ -252,4 +309,4 @@ function startServerStats(client) {
   return { client, refreshGuild, refreshAll: run };
 }
 
-module.exports = { startServerStats, refreshGuild, removeGuild };
+module.exports = { startServerStats, refreshGuild, removeGuild, enforceVoiceEntry };

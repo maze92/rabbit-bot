@@ -24,6 +24,7 @@ require('./events/messageReactionRemove')(client);
 require('./events/messageUpdate')(client);
 require('./events/messageDelete')(client);
 require('./events/voiceStateUpdate.tempVoice')(client);
+require('./events/voiceStateUpdate.serverStats')(client);
 
 // Dashboard (Express)
 const dashboard = require('./dashboard');
