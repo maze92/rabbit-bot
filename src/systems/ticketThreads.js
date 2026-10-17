@@ -8,6 +8,9 @@ const TicketCounter = require('../database/models/TicketCounter');
 const TicketOpenLock = require('../database/models/TicketOpenLock');
 const { isStaff } = require('../utils/staff');
 const { fetchMember } = require('../services/discordFetchCache');
+const { getFeature } = require('./featuresService');
+const { emojiMatches, toReactable } = require('./reactionRoles');
+const { tGuild } = require('./i18n');
 
 const recentTicketOpens = new Map();
 const RECENT_OPEN_WINDOW_MS = 5000;
@@ -64,6 +67,24 @@ const OPEN_EMOJI = '🎫';
 // Emoji para fechar tickets dentro da thread
 const CLOSE_EMOJI = '🔒';
 
+function applyTemplate(text, vars) {
+  return String(text == null ? '' : text).replace(/\{(\w+)\}/g, (m, key) => {
+    if (Object.prototype.hasOwnProperty.call(vars, key)) return String(vars[key]);
+    return m;
+  });
+}
+
+async function getTicketSettings(guildId) {
+  const cfg = await getFeature(guildId, 'tickets').catch(() => null);
+  return cfg || {
+    enabled: false,
+    channelId: null,
+    messageId: null,
+    openEmoji: OPEN_EMOJI,
+    closeEmoji: CLOSE_EMOJI
+  };
+}
+
 /**
  * Cria uma nova thread de ticket a partir da mensagem-base
  * quando alguém reage com o emoji de abertura.
@@ -78,13 +99,14 @@ async function handleTicketOpen(reaction, user) {
     const message = reaction.message;
     const guild = message.guild;
     if (!guild) return;
+    const settings = await getTicketSettings(guild.id);
+    if (settings.enabled !== true) return false;
 
-    const emojiName = reaction.emoji.name || reaction.emoji.id;
-    if (!emojiName || emojiName !== OPEN_EMOJI) return;
+    if (!emojiMatches(settings.openEmoji || OPEN_EMOJI, reaction.emoji)) return false;
 
     // Anti-duplicate: the same reaction event can arrive twice.
     const dedupeKey = `${guild.id}:${user.id}:${message.id}`;
-    if (isRecentOpen(dedupeKey)) return;
+    if (isRecentOpen(dedupeKey)) return false;
     markRecentOpen(dedupeKey);
 
     // Cross-process / cross-event lock: prevents duplicate thread creation even if two events overlap.
@@ -95,7 +117,7 @@ async function handleTicketOpen(reaction, user) {
     } catch (e) {
       // Duplicate lock means another open is in progress.
       const isDup = e && (e.code == 11000 || String(e.message || '').includes('E11000'));
-      if (isDup) return;
+      if (isDup) return false;
       throw e;
     }
 
@@ -106,10 +128,15 @@ if (existing && existing.channelId) {
   try {
     const ch = await guild.channels.fetch(existing.channelId).catch(() => null);
     if (ch) {
-      await ch.send({ content: `Já existe um ticket aberto para ti: <#${existing.channelId}>` }).catch(() => {});
+      const fallback = await tGuild(guild.id, 'tickets.alreadyOpen', { channelId: existing.channelId });
+      const vars = { channelId: existing.channelId, user: `<@${user.id}>` };
+      const text = settings.alreadyOpenMessage
+        ? applyTemplate(settings.alreadyOpenMessage, vars)
+        : applyTemplate(fallback, vars);
+      await ch.send({ content: text }).catch(() => {});
     }
   } catch (e) {}
-  return;
+  return false;
 }
 
 // Generate sequential ticket number atomically per guild
@@ -154,7 +181,7 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
         const isDupOpenTicket = msg.includes('guildId_1_userId_1_status_1');
         if (isDupOpenTicket) {
           try { await thread.setArchived(true, 'Duplicate open ticket'); } catch (e) {}
-          return;
+          return false;
         }
 
         // Otherwise assume it's a ticketNumber collision; allocate a new number and rename the thread.
@@ -167,7 +194,7 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
 
     if (!ticketDoc) {
       try { await thread.setArchived(true, 'Failed to create ticket'); } catch (e) {}
-      return;
+      return false;
     }
 
     // Registar log (mantido por compatibilidade, agora com ligações)
@@ -182,28 +209,26 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
     });
 
     // Embed de boas-vindas dentro da thread
+    const welcomeDescription = settings.welcomeMessage
+      ? applyTemplate(settings.welcomeMessage, {
+          user: `${user}`,
+          username: user.username || '',
+          tag: user.tag || user.username || '',
+          server: guild.name,
+          closeEmoji: settings.closeEmoji || CLOSE_EMOJI
+        })
+      : await tGuild(guild.id, 'tickets.welcomeDescription', { user: `${user}`, closeEmoji: settings.closeEmoji || CLOSE_EMOJI });
     const embed = new EmbedBuilder()
-      .setTitle('🎫 Ticket de suporte')
-      .setDescription(
-        [
-          `Olá ${user}, obrigado por entrares em contacto com a equipa de suporte.`,
-          '',
-          '📌 **Antes de começares:**',
-          '• Explica de forma clara o teu problema ou pedido;',
-          '• Sempre que possível, inclui prints, IDs ou exemplos;',
-          '• Evita partilhar dados pessoais sensíveis em texto ou imagem.',
-          '',
-          `🔒 **Para encerrar este ticket**, reage a esta mensagem com o emoji ${CLOSE_EMOJI}.`,
-        ].join('\n')
-      )
+      .setTitle(await tGuild(guild.id, 'tickets.welcomeTitle'))
+      .setDescription(welcomeDescription)
       .addFields(
         {
-          name: 'Número do ticket',
+          name: await tGuild(guild.id, 'tickets.ticketNumber'),
           value: `\`${String(createdTicketNumber).padStart(3, '0')}\``,
           inline: true
         },
         {
-          name: 'Aberto por',
+          name: await tGuild(guild.id, 'tickets.openedBy'),
           value: `${user} (\`${user.tag}\`)`,
           inline: true
         }
@@ -214,7 +239,9 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
     const controlMessage = await thread.send({ embeds: [embed] });
 
     // Adicionar reação de fecho
-    await controlMessage.react(CLOSE_EMOJI).catch(() => {});
+    const closeReactable = toReactable(settings.closeEmoji || CLOSE_EMOJI);
+    if (closeReactable) await controlMessage.react(closeReactable).catch(() => {});
+    return true;
     } finally {
       if (lockAcquired) {
         try { await TicketOpenLock.deleteOne({ guildId: guild.id, userId: user.id }).catch(() => {}); } catch (e) {}
@@ -224,6 +251,7 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
   } catch (err) {
     console.error('[ticketThreads] handleTicketOpen error:', err);
   }
+  return false;
 }
 
 /**
@@ -242,9 +270,9 @@ async function handleTicketClose(reaction, user) {
 
     const guild = channel.guild;
     if (!guild) return;
+    const settings = await getTicketSettings(guild.id);
 
-    const emojiName = reaction.emoji.name || reaction.emoji.id;
-    if (!emojiName || emojiName !== CLOSE_EMOJI) return;
+    if (!emojiMatches(settings.closeEmoji || CLOSE_EMOJI, reaction.emoji)) return false;
 
     // Verificar permissões
     const member = await fetchMember(guild, user.id);
@@ -253,10 +281,9 @@ async function handleTicketClose(reaction, user) {
     const canClose = await isStaff(member, 'tickets').catch(() => false);
 
     if (!canClose) {
-      await channel.send(
-        `${user}, não tens permissão para fechar este ticket.`
-      ).catch(() => {});
-      return;
+      const fallback = await tGuild(guild.id, 'tickets.cannotClose', { user: `${user}` });
+      await channel.send(applyTemplate(fallback, { user: `${user}` })).catch(() => {});
+      return false;
     }
 
     // Extrair número do ticket a partir do nome da thread
@@ -312,14 +339,17 @@ async function handleTicketClose(reaction, user) {
       ).catch(() => {});
     }
 
-    await channel.send(`🔒 Ticket fechado por ${user}. Obrigado pelo contacto.`)
+    const fallback = await tGuild(guild.id, 'tickets.closedBy', { user: `${user}` });
+    await channel.send(settings.closeMessage ? applyTemplate(settings.closeMessage, { user: `${user}` }) : applyTemplate(fallback, { user: `${user}` }))
       .catch(() => {});
 
     await channel.setLocked(true, 'Ticket encerrado').catch(() => {});
     await channel.setArchived(true, 'Ticket arquivado').catch(() => {});
+    return true;
   } catch (err) {
     console.error('[ticketThreads] handleTicketClose error:', err);
   }
+  return false;
 }
 
 module.exports = {

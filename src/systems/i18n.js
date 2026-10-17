@@ -2,10 +2,22 @@
 
 const config = require('../config/defaultConfig');
 const messages = require('../config/messages');
+const { getGuildConfig } = require('./guildConfigService');
 
 function getLang(langOverride) {
   const cfg = String(langOverride || config.language || 'en').toLowerCase();
   return cfg === 'pt' ? 'pt' : 'en';
+}
+
+async function getGuildLang(guildId, langOverride) {
+  const explicit = typeof langOverride === 'string' ? langOverride.trim().toLowerCase() : '';
+  if (explicit && explicit !== 'auto') return getLang(explicit);
+  if (!guildId) return getLang(explicit || null);
+
+  const cfg = await getGuildConfig(guildId).catch(() => null);
+  const guildLang = cfg && typeof cfg.language === 'string' ? cfg.language.trim().toLowerCase() : '';
+  if (guildLang && guildLang !== 'auto') return getLang(guildLang);
+  return getLang(explicit || null);
 }
 
 function getFromPath(root, path) {
@@ -40,4 +52,9 @@ function t(path, langOverride, value) {
   return node;
 }
 
-module.exports = { t };
+async function tGuild(guildId, path, value, langOverride) {
+  const lang = await getGuildLang(guildId, langOverride);
+  return t(path, lang, value);
+}
+
+module.exports = { t, tGuild, getLang, getGuildLang };

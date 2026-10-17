@@ -12,7 +12,28 @@ const FEATURE_DEFAULTS = {
   levels: { enabled: false, xpMin: 15, xpMax: 25, cooldownSeconds: 60, announceChannelId: null },
   starboard: { enabled: false, channelId: null, threshold: 3, emoji: '⭐' },
   polls: { enabled: false },
-  verification: { enabled: false, roleId: null, channelId: null, messageId: null, kickAfterMinutes: 0 },
+  verification: {
+    enabled: false,
+    roleId: null,
+    channelId: null,
+    messageId: null,
+    kickAfterMinutes: 0,
+    title: null,
+    description: null,
+    buttonLabel: null
+  },
+  tickets: {
+    enabled: false,
+    channelId: null,
+    messageId: null,
+    openEmoji: '🎫',
+    closeEmoji: '🔒',
+    panelTitle: null,
+    panelDescription: null,
+    alreadyOpenMessage: null,
+    welcomeMessage: null,
+    closeMessage: null
+  },
   welcome: {
     enabled: false,
     channelId: null,
@@ -68,7 +89,12 @@ async function getFeatures(guildId) {
 async function getFeature(guildId, name) {
   const cfg = await getGuildConfig(guildId);
   const raw = cfg && cfg.features ? cfg.features[name] : null;
-  return normalizeFeature(name, raw);
+  const out = normalizeFeature(name, raw);
+  if (name === 'tickets' && !out.channelId && cfg && cfg.ticketThreadChannelId) {
+    out.channelId = cfg.ticketThreadChannelId;
+    if (!raw) out.enabled = true;
+  }
+  return out;
 }
 
 module.exports = {

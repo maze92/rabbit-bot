@@ -22,8 +22,9 @@ function applyTemplate(text, vars) {
  * @param {import('discord.js').Guild} opts.guild
  * @param {import('discord.js').User|null} opts.user  Null => amostra de teste
  * @param {'welcome'|'goodbye'} [opts.kind]  Ajusta o rodapé da embed
+ * @param {string|null} [opts.lang]  Idioma da guild ("pt"/"en")
  */
-function buildMemberMessage({ config, guild, user, kind }) {
+function buildMemberMessage({ config, guild, user, kind, lang }) {
   const c = config || {};
   const isTest = !user;
 
@@ -60,14 +61,14 @@ function buildMemberMessage({ config, guild, user, kind }) {
     embed.setAuthor(icon ? { name: guild.name, iconURL: icon } : { name: guild.name });
   }
 
-  embed.setTitle(t(kind === 'goodbye' ? 'member.goodbyeTitle' : 'member.welcomeTitle', null, {}));
+  embed.setTitle(t(kind === 'goodbye' ? 'member.goodbyeTitle' : 'member.welcomeTitle', lang || null, {}));
 
   const count = Number((guild && guild.memberCount) || 0);
   if (count > 0) {
     embed.setFooter({
       text: kind === 'goodbye'
-        ? t('member.nowMembers', null, count)
-        : t('member.memberCount', null, count)
+        ? t('member.nowMembers', lang || null, count)
+        : t('member.memberCount', lang || null, count)
     });
   }
 

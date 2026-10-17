@@ -81,6 +81,9 @@
         { type: 'role', name: 'roleId', label: 'features_role' },
         { type: 'channel', name: 'channelId', label: 'features_channel' },
         { type: 'number', name: 'kickAfterMinutes', label: 'features_kick_after', min: 0, max: 10080 },
+        { type: 'text', name: 'title', label: 'features_title', placeholder: 'Verificação' },
+        { type: 'textarea', name: 'description', label: 'features_description', placeholder: 'Clica no botão abaixo para receberes acesso ao servidor.' },
+        { type: 'text', name: 'buttonLabel', label: 'features_button_label', placeholder: 'Verificar' },
         { type: 'publish' }
       ],
       presets: [
@@ -88,6 +91,20 @@
         { id: 'hour', label: 'preset_verify_hour', values: { kickAfterMinutes: 60 } },
         { id: 'day', label: 'preset_verify_day', values: { kickAfterMinutes: 1440 } },
         { id: 'week', label: 'preset_verify_week', values: { kickAfterMinutes: 10080 } }
+      ]
+    },
+    {
+      key: 'tickets',
+      fields: [
+        { type: 'channel', name: 'channelId', label: 'features_channel' },
+        { type: 'text', name: 'openEmoji', label: 'features_open_emoji', placeholder: '🎫' },
+        { type: 'text', name: 'closeEmoji', label: 'features_close_emoji', placeholder: '🔒' },
+        { type: 'text', name: 'panelTitle', label: 'features_title', placeholder: 'Suporte' },
+        { type: 'textarea', name: 'panelDescription', label: 'features_description', placeholder: 'Reage com {emoji} abaixo para abrir um ticket privado de suporte.' },
+        { type: 'textarea', name: 'alreadyOpenMessage', label: 'features_already_open_message', placeholder: 'Já existe um ticket aberto para ti: <#{channelId}>' },
+        { type: 'textarea', name: 'welcomeMessage', label: 'features_welcome_message', placeholder: 'Olá {user}, obrigado por entrares em contacto com a equipa de suporte.' },
+        { type: 'textarea', name: 'closeMessage', label: 'features_close_message', placeholder: '🔒 Ticket fechado por {user}. Obrigado pelo contacto.' },
+        { type: 'publish' }
       ]
     },
     {
@@ -453,7 +470,7 @@
     }
 
     if (publishBtn) {
-      publishBtn.addEventListener('click', function () { publishVerification(); });
+      publishBtn.addEventListener('click', function () { publishFeature(key); });
     }
 
     if (addEntryBtn && entriesBox) {
@@ -579,12 +596,12 @@
     applyDisabled(card);
   }
 
-  function updateMessageIdLabel() {
-    var card = cardFor('verification');
+  function updateMessageIdLabel(key) {
+    var card = cardFor(key);
     if (!card) return;
     var label = card.querySelector('[data-role="message-id"]');
     if (!label) return;
-    var id = current.verification && current.verification.messageId ? String(current.verification.messageId) : '';
+    var id = current[key] && current[key].messageId ? String(current[key].messageId) : '';
     label.textContent = id ? t('features_message_published', { id: id }) : '';
   }
 
@@ -608,7 +625,7 @@
         if (statusEl) statusEl.textContent = t('features_saved');
         notify(t('features_saved'), { type: 'success' });
       }
-      if (key === 'verification') updateMessageIdLabel();
+      if (value && Object.prototype.hasOwnProperty.call(value, 'messageId')) updateMessageIdLabel(key);
       return true;
     } catch (err) {
       console.error('Feature save error', err);
@@ -649,22 +666,24 @@
     }
   }
 
-  async function publishVerification() {
+  async function publishFeature(key) {
     var gid = guildId();
     if (!gid) return;
 
-    var card = cardFor('verification');
+    var card = cardFor(key);
     var btn = card ? card.querySelector('[data-role="publish"]') : null;
     if (btn) btn.disabled = true;
 
     try {
-      var res = await NS.apiPost('/features/verification/publish', { guildId: gid });
+      var saved = await saveFeature(key, true);
+      if (!saved) throw new Error('SAVE_FAILED');
+      var res = await NS.apiPost('/features/' + encodeURIComponent(key) + '/publish', { guildId: gid });
       if (!res || res.ok === false) throw new Error((res && res.error) || 'ERROR');
-      if (res.value) current.verification = res.value;
-      updateMessageIdLabel();
+      if (res.value) current[key] = res.value;
+      updateMessageIdLabel(key);
       notify(t('features_publish_ok'), { type: 'success' });
     } catch (err) {
-      console.error('Verification publish error', err);
+      console.error('Feature publish error', err);
       notify(t('features_publish_error'), { type: 'error' });
     } finally {
       if (btn) btn.disabled = false;

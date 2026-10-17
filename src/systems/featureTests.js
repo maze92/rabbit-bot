@@ -6,6 +6,7 @@
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
 const { buildMemberMessage } = require('./welcomeMessages');
+const { getGuildLang, tGuild } = require('./i18n');
 
 async function fetchSendable(client, channelId) {
   if (!channelId) return null;
@@ -38,7 +39,8 @@ async function runFeatureTest({ client, guild, feature, config }) {
     case 'goodbye': {
       const channel = await fetchSendable(client, c.channelId);
       if (!channel) return { ok: false, error: 'CHANNEL_REQUIRED' };
-      await channel.send(buildMemberMessage({ config: c, guild, user: null, kind: feature }));
+      const lang = await getGuildLang(guild.id);
+      await channel.send(buildMemberMessage({ config: c, guild, user: null, kind: feature, lang }));
       return { ok: true };
     }
 
@@ -112,17 +114,34 @@ async function runFeatureTest({ client, guild, feature, config }) {
     case 'verification': {
       const channel = await fetchSendable(client, c.channelId);
       if (!channel || !c.roleId) return { ok: false, error: 'CHANNEL_ROLE_REQUIRED' };
+      const lang = await getGuildLang(guild.id);
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('verify:test')
-          .setLabel('Teste')
+          .setLabel(c.buttonLabel || await tGuild(guild.id, 'verify.testButton', undefined, lang))
           .setStyle(ButtonStyle.Success)
           .setDisabled(true)
       );
       const embed = new EmbedBuilder()
-        .setTitle('Teste — verificação')
-        .setDescription('Botão de exemplo (inativo durante o teste).');
+        .setTitle(c.title || await tGuild(guild.id, 'verify.panelTitle', undefined, lang))
+        .setDescription(c.description || await tGuild(guild.id, 'verify.panelDescription', undefined, lang));
       await channel.send({ embeds: [embed], components: [row] });
+      return { ok: true };
+    }
+
+    case 'tickets': {
+      const channel = await fetchSendable(client, c.channelId);
+      if (!channel) return { ok: false, error: 'CHANNEL_REQUIRED' };
+      const lang = await getGuildLang(guild.id);
+      const title = c.panelTitle || await tGuild(guild.id, 'tickets.panelTitle', undefined, lang);
+      const description = c.panelDescription || await tGuild(guild.id, 'tickets.panelDescription', { emoji: c.openEmoji || '🎫' }, lang);
+      const embed = new EmbedBuilder()
+        .setTitle(title)
+        .setDescription(String(description).replace(/\{emoji\}/g, c.openEmoji || '🎫'));
+      const message = await channel.send({ embeds: [embed] });
+      const { toReactable } = require('./reactionRoles');
+      const reactable = toReactable(c.openEmoji || '🎫');
+      if (reactable) await message.react(reactable).catch(() => null);
       return { ok: true };
     }
 

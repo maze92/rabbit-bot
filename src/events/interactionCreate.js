@@ -3,7 +3,7 @@
 // Central handler for all slash commands.
 
 const config = require('../config/defaultConfig');
-const { t } = require('../systems/i18n');
+const { t, tGuild } = require('../systems/i18n');
 const logger = require('../systems/logger');
 const { getGuildConfig } = require('../systems/guildConfigService');
 const { isStaff } = require('../utils/staff');
@@ -50,28 +50,28 @@ async function handleVerifyButton(interaction, roleId) {
 
     const cfg = await getFeature(interaction.guild.id, 'verification');
     if (cfg?.enabled !== true) {
-      return safeReply(interaction, { content: t('verify.disabled') }, { ephemeral: true });
+      return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'verify.disabled') }, { ephemeral: true });
     }
 
     const member =
       interaction.member ||
       (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
     if (!member) {
-      return safeReply(interaction, { content: t('common.cannotResolveUser') }, { ephemeral: true });
+      return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'common.cannotResolveUser') }, { ephemeral: true });
     }
 
     const role =
       interaction.guild.roles.cache.get(roleId) ||
       (await interaction.guild.roles.fetch(roleId).catch(() => null));
     if (!role) {
-      return safeReply(interaction, { content: t('verify.disabled') }, { ephemeral: true });
+      return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'verify.disabled') }, { ephemeral: true });
     }
 
     await member.roles.add(role, 'Verificação').catch(() => null);
-    return safeReply(interaction, { content: t('verify.success') }, { ephemeral: true });
+    return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'verify.success') }, { ephemeral: true });
   } catch (err) {
     console.error('[interactionCreate] verify button error:', err);
-    return safeReply(interaction, { content: t('common.unexpectedError') }, { ephemeral: true });
+    return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'common.unexpectedError') }, { ephemeral: true });
   }
 }
 
