@@ -16,6 +16,18 @@ async function fetchSendable(client, channelId) {
   return channel;
 }
 
+function formatPanelDate(lang, now) {
+  try {
+    return new Intl.DateTimeFormat(lang === 'pt' ? 'pt-PT' : 'en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now || new Date());
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Verifica se o bot consegue atribuir um cargo (gestão de cargos + hierarquia).
  * @param {import('discord.js').GuildMember|null} me
@@ -144,11 +156,13 @@ async function runFeatureTest({ client, guild, feature, config }) {
         lang
       });
       const footer = await getFeatureText({ guildId: guild.id, feature: 'tickets', field: 'panelFooter', lang });
+      const now = new Date();
+      const footerText = [footer, formatPanelDate(lang, now)].filter(Boolean).join(' • ');
       const embed = new EmbedBuilder()
         .setTitle(title)
         .setDescription(applyTemplate(description, { emoji: c.openEmoji || '🎫' }))
-        .setFooter({ text: footer })
-        .setTimestamp(new Date());
+        .setFooter({ text: footerText })
+        .setTimestamp(now);
       const message = await channel.send({ embeds: [embed] });
       const { toReactable } = require('./reactionRoles');
       const reactable = toReactable(c.openEmoji || '🎫');
