@@ -10,6 +10,7 @@ module.exports = {
   en: {
     common: {
       noPermission: "❌ You don't have permission to use this command.",
+      guildOnly: '❌ This command can only be used inside a server.',
       missingBotPerm: (permName) => `❌ I do not have permission: **${permName}**.`,
       usage: (usage) => `❌ Usage: \`${usage}\``,
       unexpectedError: '❌ An unexpected error occurred.',
@@ -96,6 +97,7 @@ module.exports = {
     },
 
     automod: {
+      warnReasonGeneric: 'Inappropriate language detected',
       warnReason: ({ word }) => `Inappropriate language (detected: "${word}")`,
       warnPublic: ({ userMention, warnings, maxWarnings, reason }) =>
         `⚠️ ${userMention}, you received a **WARN**.\n📝 Reason: **${reason}**\n📌 Warnings: **${warnings}/${maxWarnings}**`,
@@ -105,6 +107,7 @@ module.exports = {
     },
 
     antispam: {
+      autoReason: 'Spam / Flood detected',
       warnPublic: ({ userMention, warnings, maxWarnings }) =>
         `⚠️ ${userMention}, please stop spamming.
 Warnings: **${warnings}/${maxWarnings}**`,
@@ -191,6 +194,10 @@ Warnings: **${warnings}/${maxWarnings}**`,
 
     rank: {
       title: ({ tag }) => `Rank - ${tag}`,
+      fieldLevel: 'Level',
+      fieldXp: 'XP',
+      fieldMessages: 'Messages',
+      fieldPosition: 'Position',
       notFound: '❌ No rank data found for this user.'
     },
 
@@ -230,11 +237,34 @@ Warnings: **${warnings}/${maxWarnings}**`,
       closedBy: '🔒 Ticket closed by {user}. Thank you for contacting us.'
     },
 
+    history: {
+      title: ({ user, count }) => `📚 History for ${user} (latest ${count}):`,
+      empty: ({ user }) => `📚 No infractions recorded for ${user}.`,
+      unknown: 'Unknown',
+      noReason: 'No reason',
+      moderator: 'mod',
+      omitted: ({ count }) => `… (+${count} omitted)`
+    },
+
     member: {
       welcomeTitle: 'Welcome!',
       goodbyeTitle: 'See you soon!',
       memberCount: (n) => `Member #${n}`,
       nowMembers: (n) => `Now we are ${n} members`
+    },
+
+    featureDefaults: {
+      welcome: {
+        message: 'Welcome {user} to {server}! We are now {memberCount} members.'
+      },
+      goodbye: {
+        message: '{user} left the server.'
+      },
+      serverStats: {
+        memberTemplate: '👥 Members: {count}',
+        joinsTemplate: '📥 Joins (7d): {count}',
+        leavesTemplate: '📤 Leaves (7d): {count}'
+      }
     },
 
     features: {
@@ -245,6 +275,7 @@ Warnings: **${warnings}/${maxWarnings}**`,
   pt: {
     common: {
       noPermission: '❌ Não tens permissão para usar este comando.',
+      guildOnly: '❌ Este comando só pode ser usado dentro de um servidor.',
       missingBotPerm: (permName) => `❌ Não tenho a permissão necessária: **${permName}**.`,
       usage: (usage) => `❌ Uso correto: \`${usage}\``,
       unexpectedError: '❌ Ocorreu um erro inesperado.',
@@ -331,6 +362,7 @@ Warnings: **${warnings}/${maxWarnings}**`,
     },
 
     automod: {
+      warnReasonGeneric: 'Linguagem imprópria detetada',
       warnReason: ({ word }) => `Linguagem imprópria (detetado: "${word}")`,
       warnPublic: ({ userMention, warnings, maxWarnings, reason }) =>
         `⚠️ ${userMention}, recebeste um **WARN**.\n📝 Motivo: **${reason}**\n📌 Avisos: **${warnings}/${maxWarnings}**`,
@@ -340,6 +372,7 @@ Warnings: **${warnings}/${maxWarnings}**`,
     },
 
     antispam: {
+      autoReason: 'Spam / Flood detetado',
       warnPublic: ({ userMention, warnings, maxWarnings }) =>
         `⚠️ ${userMention}, pára de fazer spam.
 Avisos: **${warnings}/${maxWarnings}**`,
@@ -426,6 +459,10 @@ Avisos: **${warnings}/${maxWarnings}**`,
 
     rank: {
       title: ({ tag }) => `Rank - ${tag}`,
+      fieldLevel: 'Nível',
+      fieldXp: 'XP',
+      fieldMessages: 'Mensagens',
+      fieldPosition: 'Posição',
       notFound: '❌ Não há dados de rank para este utilizador.'
     },
 
@@ -465,11 +502,34 @@ Avisos: **${warnings}/${maxWarnings}**`,
       closedBy: '🔒 Ticket fechado por {user}. Obrigado pelo contacto.'
     },
 
+    history: {
+      title: ({ user, count }) => `📚 Histórico de ${user} (últimas ${count}):`,
+      empty: ({ user }) => `📚 Sem infrações registadas para ${user}.`,
+      unknown: 'Desconhecido',
+      noReason: 'Sem motivo',
+      moderator: 'mod',
+      omitted: ({ count }) => `… (+${count} não mostrados)`
+    },
+
     member: {
       welcomeTitle: 'Bem-vindo!',
       goodbyeTitle: 'Até breve!',
       memberCount: (n) => `Membro #${n}`,
       nowMembers: (n) => `Agora somos ${n} membros`
+    },
+
+    featureDefaults: {
+      welcome: {
+        message: 'Bem-vindo(a) {user} ao {server}! Já somos {memberCount} membros.'
+      },
+      goodbye: {
+        message: '{user} saiu do servidor.'
+      },
+      serverStats: {
+        memberTemplate: '👥 Membros: {count}',
+        joinsTemplate: '📥 Entradas (7d): {count}',
+        leavesTemplate: '📤 Saídas (7d): {count}'
+      }
     },
 
     features: {

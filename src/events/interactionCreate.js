@@ -3,7 +3,7 @@
 // Central handler for all slash commands.
 
 const config = require('../config/defaultConfig');
-const { t, tGuild } = require('../systems/i18n');
+const { t, tGuild, tContext } = require('../systems/i18n');
 const logger = require('../systems/logger');
 const { getGuildConfig } = require('../systems/guildConfigService');
 const { isStaff } = require('../utils/staff');
@@ -79,7 +79,7 @@ async function handleVerifyButton(interaction, roleId) {
 async function handlePollButton(interaction, customId) {
   try {
     if (!Poll) {
-      return safeReply(interaction, { content: t('common.unexpectedError') }, { ephemeral: true });
+      return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
     }
 
     const parts = String(customId).split(':');
@@ -89,7 +89,7 @@ async function handlePollButton(interaction, customId) {
 
     const poll = await Poll.findById(pollId).catch(() => null);
     if (!poll || poll.closed) {
-      return safeReply(interaction, { content: t('poll.disabled') }, { ephemeral: true });
+      return safeReply(interaction, { content: await tContext(interaction, 'poll.disabled') }, { ephemeral: true });
     }
 
     const optionCount = Array.isArray(poll.options) ? poll.options.length : 0;
@@ -135,10 +135,10 @@ async function handlePollButton(interaction, customId) {
       console.error('[interactionCreate] Failed to refresh poll message:', err);
     }
 
-    return safeReply(interaction, { content: t('poll.voted') }, { ephemeral: true });
+    return safeReply(interaction, { content: await tContext(interaction, 'poll.voted') }, { ephemeral: true });
   } catch (err) {
     console.error('[interactionCreate] poll button error:', err);
-    return safeReply(interaction, { content: t('common.unexpectedError') }, { ephemeral: true });
+    return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
   }
 }
 
@@ -224,7 +224,7 @@ module.exports = (client) => {
       try {
         await safeReply(
           interaction,
-          { content: t('common.unexpectedError') },
+          { content: await tContext(interaction, 'common.unexpectedError') },
           { ephemeral: true }
         );
       } catch {

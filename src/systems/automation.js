@@ -8,7 +8,7 @@ const infractionsService = require('./infractionsService');
 const warningsService = require('./warningsService');
 const logger = require('./logger');
 const { fetchMember } = require('../services/discordFetchCache');
-const { t } = require('./i18n');
+const { tContext } = require('./i18n');
 
 /**
  * Lida com automação após criação de uma infração (por exemplo, WARN).
@@ -122,7 +122,7 @@ async function handleInfractionAutomation(opts) {
         user,
         moderator || client.user,
         casePrefix +
-          t('log.actions.automodMute', null, {
+          await tContext(guild, 'log.actions.automodMute', {
             minutes: mins,
             trustAfter: 'N/A'
           }),
