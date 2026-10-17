@@ -1,0 +1,58 @@
+diff --git a/src/systems/logger.js b/src/systems/logger.js
+index 5f6c80b..139e848 100644
+--- a/src/systems/logger.js
++++ b/src/systems/logger.js
+@@ -4,7 +4,7 @@ const { EmbedBuilder } = require('discord.js');
+ const config = require('../config/defaultConfig');
+ const dashboardBridge = require('./dashboardBridge');
+ const GuildConfig = require('../database/models/GuildConfig');
+-const { t } = require('./i18n');
++const { t, tGuild, getGuildLang } = require('./i18n');
+ 
+ function normalizeActor(actor) {
+   if (!actor) return null;
+@@ -48,7 +48,7 @@ function decorateTitle(title) {
+  * - Trust: **8/100** → Trust: **8/100** (High risk)
+  * - Trust after mute: **72/100** → ... (Low risk)
+  */
+-function decorateDescriptionWithTrustLabel(description) {
++async function decorateDescriptionWithTrustLabel(guildId, description) {
+   if (!description) return description;
+ 
+   const trustCfg = config.trust || {};
+@@ -83,7 +83,9 @@ function decorateDescriptionWithTrustLabel(description) {
+   if (value <= lowThreshold) riskKey = 'high';
+   else if (value >= highThreshold) riskKey = 'low';
+ 
+-  const riskLabel = t(`log.trustRisk.${riskKey}`);
++  const riskLabel = guildId
++    ? await tGuild(guildId, `log.trustRisk.${riskKey}`)
++    : t(`log.trustRisk.${riskKey}`);
+ 
+   const replacement = `${labelPrefix}: **${value}/${max}** (${riskLabel})`;
+ 
+@@ -164,19 +166,20 @@ async function logger(client, title, user, executor, description, guild) {
+     const nExec = normalizeActor(executor);
+     const finalTitle = decorateTitle(title);
+ 
++    const lang = await getGuildLang(resolvedGuild.id).catch(() => null);
+     const decoratedDescription = description
+-      ? decorateDescriptionWithTrustLabel(description)
++      ? await decorateDescriptionWithTrustLabel(resolvedGuild.id, description)
+       : '';
+ 
+     let desc = '';
+-    if (nUser?.tag) desc += `👤 **${t('log.labels.user')}:** ${nUser.tag}\n`;
+-    if (nExec?.tag) desc += `🛠️ **${t('log.labels.executor')}:** ${nExec.tag}\n`;
++    if (nUser?.tag) desc += `👤 **${t('log.labels.user', lang || null)}:** ${nUser.tag}\n`;
++    if (nExec?.tag) desc += `🛠️ **${t('log.labels.executor', lang || null)}:** ${nExec.tag}\n`;
+     if (decoratedDescription) desc += `${decoratedDescription}`;
+ 
+     const embed = new EmbedBuilder()
+       .setTitle(finalTitle || 'Log')
+       .setColor('Blue')
+-      .setDescription(desc || t('log.noDescription'))
++      .setDescription(desc || t('log.noDescription', lang || null))
+       .setTimestamp(new Date());
+ 
+     if (logChannel) {

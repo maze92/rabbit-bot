@@ -1,0 +1,98 @@
+diff --git a/src/systems/featuresService.js b/src/systems/featuresService.js
+index 1edf960..9bca60e 100644
+--- a/src/systems/featuresService.js
++++ b/src/systems/featuresService.js
+@@ -4,6 +4,7 @@
+ // Um único ponto de verdade para os defaults usados pelo bot e pela dashboard.
+ 
+ const { getGuildConfig } = require('./guildConfigService');
++const messages = require('../config/messages');
+ 
+ const FEATURE_DEFAULTS = {
+   messageLogs: { enabled: false, channelId: null, ignoreBots: true },
+@@ -37,7 +38,7 @@ const FEATURE_DEFAULTS = {
+   welcome: {
+     enabled: false,
+     channelId: null,
+-    message: 'Bem-vindo(a) {user} ao {server}! Já somos {memberCount} membros.',
++    message: null,
+     embed: true,
+     color: '#7c3aed',
+     bannerUrl: null
+@@ -45,7 +46,7 @@ const FEATURE_DEFAULTS = {
+   goodbye: {
+     enabled: false,
+     channelId: null,
+-    message: '{user} saiu do servidor.',
++    message: null,
+     embed: true,
+     color: '#ef4444',
+     bannerUrl: null
+@@ -55,18 +56,63 @@ const FEATURE_DEFAULTS = {
+     memberChannelId: null,
+     joinsChannelId: null,
+     leavesChannelId: null,
+-    memberTemplate: '👥 Membros: {count}',
+-    joinsTemplate: '📥 Entradas (7d): {count}',
+-    leavesTemplate: '📤 Saídas (7d): {count}'
++    memberTemplate: null,
++    joinsTemplate: null,
++    leavesTemplate: null
+   }
+ };
+ 
++const DYNAMIC_TEXT_DEFAULTS = {
++  verification: {
++    title: [messages.en.verify.panelTitle, messages.pt.verify.panelTitle],
++    description: [messages.en.verify.panelDescription, messages.pt.verify.panelDescription],
++    buttonLabel: [messages.en.verify.button, messages.pt.verify.button]
++  },
++  tickets: {
++    panelTitle: [messages.en.tickets.panelTitle, messages.pt.tickets.panelTitle],
++    panelDescription: [messages.en.tickets.panelDescription, messages.pt.tickets.panelDescription],
++    alreadyOpenMessage: [messages.en.tickets.alreadyOpen, messages.pt.tickets.alreadyOpen],
++    welcomeMessage: [
++      messages.en.tickets.welcomeDescription({ user: '{user}', closeEmoji: '{closeEmoji}' }),
++      messages.pt.tickets.welcomeDescription({ user: '{user}', closeEmoji: '{closeEmoji}' })
++    ],
++    closeMessage: [
++      messages.en.tickets.closedBy.replace('{user}', '{user}'),
++      messages.pt.tickets.closedBy.replace('{user}', '{user}')
++    ]
++  },
++  welcome: {
++    message: [messages.en.featureDefaults.welcome.message, messages.pt.featureDefaults.welcome.message]
++  },
++  goodbye: {
++    message: [messages.en.featureDefaults.goodbye.message, messages.pt.featureDefaults.goodbye.message]
++  },
++  serverStats: {
++    memberTemplate: [messages.en.featureDefaults.serverStats.memberTemplate, messages.pt.featureDefaults.serverStats.memberTemplate],
++    joinsTemplate: [messages.en.featureDefaults.serverStats.joinsTemplate, messages.pt.featureDefaults.serverStats.joinsTemplate],
++    leavesTemplate: [messages.en.featureDefaults.serverStats.leavesTemplate, messages.pt.featureDefaults.serverStats.leavesTemplate]
++  }
++};
++
++function normalizeLegacyDynamicText(name, field, value) {
++  if (typeof value !== 'string') return value;
++  const trimmed = value.trim();
++  if (!trimmed) return null;
++
++  const defaults = DYNAMIC_TEXT_DEFAULTS[name] && DYNAMIC_TEXT_DEFAULTS[name][field];
++  if (!Array.isArray(defaults) || !defaults.length) return value;
++
++  return defaults.includes(trimmed) ? null : value;
++}
++
+ function normalizeFeature(name, raw) {
+   const def = FEATURE_DEFAULTS[name] || {};
+   const out = { ...def };
+   if (raw && typeof raw === 'object') {
+     for (const key of Object.keys(def)) {
+-      if (raw[key] !== undefined && raw[key] !== null) out[key] = raw[key];
++      if (raw[key] !== undefined && raw[key] !== null) {
++        out[key] = normalizeLegacyDynamicText(name, key, raw[key]);
++      }
+     }
+   }
+   return out;

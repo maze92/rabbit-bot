@@ -1,0 +1,29 @@
+diff --git a/public/locales/en.js b/public/locales/en.js
+index 92bb0cd..e3f1f4e 100644
+--- a/public/locales/en.js
++++ b/public/locales/en.js
+@@ -619,6 +619,24 @@ window.OzarkLocales.en = {
+   'features_already_open_message': 'Already-open ticket message',
+   'features_welcome_message': 'Initial ticket message',
+   'features_close_message': 'Close message',
++  'features_placeholder_verify_title': 'Verification',
++  'features_placeholder_verify_description': 'Click the button below to get access to the server.',
++  'features_placeholder_verify_button': 'Verify',
++  'features_placeholder_ticket_open_emoji': '🎫',
++  'features_placeholder_ticket_close_emoji': '🔒',
++  'features_placeholder_ticket_title': 'Support',
++  'features_placeholder_ticket_description': 'React with {emoji} below to open a private support ticket.',
++  'features_placeholder_ticket_already_open': 'You already have an open ticket: <#{channelId}>',
++  'features_placeholder_ticket_welcome': 'Hello {user}, thanks for reaching out to the support team.\n\n📌 **Before you start:**\n• Explain your problem or request clearly;\n• If possible, include screenshots, IDs or examples;\n• Avoid sharing sensitive personal data in text or images.\n\n🔒 **To close this ticket**, react to this message with {closeEmoji}.',
++  'features_placeholder_ticket_close': '🔒 Ticket closed by {user}. Thank you for contacting us.',
++  'features_placeholder_welcome_message': 'Welcome {user} to {server}! We are now {memberCount} members.',
++  'features_placeholder_goodbye_message': '{user} left the server.',
++  'features_placeholder_welcome_color': '#7c3aed',
++  'features_placeholder_goodbye_color': '#ef4444',
++  'features_placeholder_banner_url': 'https://…',
++  'features_placeholder_stats_member': '👥 Members: {count}',
++  'features_placeholder_stats_joins': '📥 Joins (7d): {count}',
++  'features_placeholder_stats_leaves': '📤 Leaves (7d): {count}',
+   'features_entries': 'Emoji → role pairs',
+   'features_add_entry': 'Add pair',
+   'features_remove': 'Remove',
