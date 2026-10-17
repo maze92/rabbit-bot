@@ -672,7 +672,7 @@ window.OzarkLocales.pt = {
   'feature_goodbye_name': 'Saída de membros',
   'feature_goodbye_desc': 'Envia uma mensagem quando um membro sai do servidor.',
   'feature_server_stats_name': 'Estatísticas do servidor',
-  'feature_server_stats_desc': 'Mostra os membros, entradas (7d) e saídas (7d) em canais dentro da categoria estatisticas.',
+  'feature_server_stats_desc': 'Mostra os membros, entradas (7d) e saídas (7d) numa categoria dedicada de estatísticas do servidor.',
   'features_message': 'Mensagem',
   'features_embed': 'Mostrar como embed',
   'features_color': 'Cor (hex)',

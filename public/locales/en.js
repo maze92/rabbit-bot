@@ -671,7 +671,7 @@ window.OzarkLocales.en = {
   'feature_goodbye_name': 'Member leaves',
   'feature_goodbye_desc': 'Sends a message when a member leaves the server.',
   'feature_server_stats_name': 'Server statistics',
-  'feature_server_stats_desc': 'Shows members, joins (7d), and leaves (7d) in channels inside the estatisticas category.',
+  'feature_server_stats_desc': 'Shows members, joins (7d), and leaves (7d) in a dedicated server statistics category.',
   'features_message': 'Message',
   'features_embed': 'Show as embed',
   'features_color': 'Color (hex)',
