@@ -302,11 +302,11 @@
             <form class="premium-settings-form hidden" id="premiumSettingsForm">
               <div class="field">
                 <label for="premiumAdminAmount" data-i18n="premium_admin_amount">Preço</label>
-                <input class="input" id="premiumAdminAmount" type="number" min="0.01" step="0.01" required />
+                <input class="input" id="premiumAdminAmount" type="number" value="10.00" readonly aria-readonly="true" />
               </div>
               <div class="field">
                 <label for="premiumAdminCurrency" data-i18n="premium_admin_currency">Moeda</label>
-                <input class="input" id="premiumAdminCurrency" type="text" maxlength="3" required />
+                <input class="input" id="premiumAdminCurrency" type="text" value="EUR" readonly aria-readonly="true" />
               </div>
               <div class="field">
                 <label for="premiumAdminDuration" data-i18n="premium_admin_duration">Duração (dias)</label>
@@ -370,38 +370,10 @@
         <div class="card">
           <div class="section-head">
             <h3 data-i18n="extras_title">Extras</h3>
-            <span class="premium-badge" data-i18n="premium_badge">Premium</span>
           </div>
           <p class="hint" data-i18n="extras_hint">
             Módulos adicionais do bot: feeds de notícias, voz temporária, tickets, trust e giveaways.
           </p>
-
-          <div class="premium-panel" id="extrasPremiumLock" role="status">
-            <h4 class="premium-panel__guild" id="premiumGuildName"></h4>
-            <div class="premium-panel__row">
-              <span class="premium-status" id="premiumStatus">—</span>
-              <span class="premium-panel__meta" id="premiumMeta"></span>
-            </div>
-            <div class="premium-panel__identity" id="premiumGuildIdentity"></div>
-            <p class="premium-panel__hint" id="premiumHint" data-i18n="premium_lock_hint">
-              Estes módulos fazem parte do plano Premium, que é ativado por doação.
-            </p>
-            <div class="premium-panel__included">
-              <strong data-i18n="premium_includes_title">O que inclui</strong>
-              <ul>
-                <li data-i18n="premium_include_gamenews">Feeds automáticos de notícias (GameNews)</li>
-                <li data-i18n="premium_include_tempvoice">Canais de voz temporários</li>
-                <li data-i18n="premium_include_tickets">Sistema de tickets</li>
-                <li data-i18n="premium_include_trust">Sistema Trust e respetivas ferramentas</li>
-                <li data-i18n="premium_include_giveaways">Giveaways automáticos</li>
-              </ul>
-              <small data-i18n="premium_billing_note">Licença por servidor, válida pelo período indicado. Sem renovação automática.</small>
-            </div>
-            <div class="premium-panel__actions">
-              <button type="button" class="btn xs primary hidden" id="btnPremiumCheckout"></button>
-              <a class="btn xs primary hidden" id="premiumReferenceLink" target="_blank" rel="noopener noreferrer" data-i18n="premium_reference_link">Link PayPal</a>
-            </div>
-          </div>
 
           <dialog class="premium-offer-dialog" id="premiumOfferDialog" aria-labelledby="premiumOfferTitle">
             <div class="premium-offer-dialog__head">
@@ -432,14 +404,14 @@
           </dialog>
 
           <div class="features-grid extras-grid" id="extrasGrid">
-            <article class="feature-card" id="extras-panel-feeds" data-premium="true" data-premium-module="gamenews">
+            <article class="feature-card is-premium-locked" id="extras-panel-feeds" data-premium="true" data-premium-locked="true" data-premium-module="gamenews">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="gamenews_title">GameNews</h3>
                 <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
+                <button type="button" class="icon-btn feature-card__toggle hidden" data-role="toggle" aria-expanded="false" aria-controls="extras-feeds-panel" data-i18n-aria-label="features_details" aria-label="Detalhes">▾</button>
               </div>
               <p class="hint" data-i18n="gamenews_hint">Estado dos feeds de notícias e últimas publicações.</p>
-              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
-              <div class="feature-card__body" id="extras-feeds-panel">
+              <div class="feature-card__body hidden" id="extras-feeds-panel" inert>
                 <span class="feature-card__section-label" data-i18n="extras_section_config">Configuração</span>
                 <div class="feature-card__surface">
                   <div class="feature-card__surface-head">
@@ -473,14 +445,14 @@
                 </div>
               </div>
             </article>
-            <article class="feature-card" id="extras-panel-tempvoice" data-premium="true" data-premium-module="tempvoice">
+            <article class="feature-card is-premium-locked" id="extras-panel-tempvoice" data-premium="true" data-premium-locked="true" data-premium-module="tempvoice">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tempvoice_title">Voz temporária</h3>
                 <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
+                <button type="button" class="icon-btn feature-card__toggle hidden" data-role="toggle" aria-expanded="false" aria-controls="extras-tempvoice-panel" data-i18n-aria-label="features_details" aria-label="Detalhes">▾</button>
               </div>
               <p class="hint" data-i18n="tempvoice_hint">Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.</p>
-              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
-              <div class="feature-card__body" id="extras-tempvoice-panel">
+              <div class="feature-card__body hidden" id="extras-tempvoice-panel" inert>
                   <span class="feature-card__section-label" data-i18n="extras_section_config">Configuração</span>
                   <div class="feature-card__surface">
                   <div class="feature-card__surface-head">
@@ -572,14 +544,14 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card" id="extras-panel-tickets" data-premium="true" data-premium-module="tickets">
+            <article class="feature-card is-premium-locked" id="extras-panel-tickets" data-premium="true" data-premium-locked="true" data-premium-module="tickets">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tickets_extras_title">Tickets</h3>
                 <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
+                <button type="button" class="icon-btn feature-card__toggle hidden" data-role="toggle" aria-expanded="false" aria-controls="extras-tickets-panel" data-i18n-aria-label="features_details" aria-label="Detalhes">▾</button>
               </div>
               <p class="hint" data-i18n="tickets_extras_hint">Consulta e gere tickets ativos, respostas da equipa e o histórico do suporte.</p>
-              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
-              <div class="feature-card__body" id="extras-tickets-panel">
+              <div class="feature-card__body hidden" id="extras-tickets-panel" inert>
                   <span class="feature-card__section-label" data-i18n="extras_section_manage">Gestão</span>
                   <div class="feature-card__surface">
                     <div class="feature-card__surface-head">
@@ -619,14 +591,14 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card" id="extras-panel-trust" data-premium="true" data-premium-module="trust">
+            <article class="feature-card is-premium-locked" id="extras-panel-trust" data-premium="true" data-premium-locked="true" data-premium-module="trust">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="extras_trust_title">Sistema de Trust</h3>
                 <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
+                <button type="button" class="icon-btn feature-card__toggle hidden" data-role="toggle" aria-expanded="false" aria-controls="extras-trust-panel" data-i18n-aria-label="features_details" aria-label="Detalhes">▾</button>
               </div>
               <p class="hint" data-i18n="extras_trust_hint">Visão geral do sistema de confiança usado para avaliar o risco dos utilizadores com base no seu histórico.</p>
-              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
-              <div class="feature-card__body" id="extras-trust-panel">
+              <div class="feature-card__body hidden" id="extras-trust-panel" inert>
                   <span class="feature-card__section-label" data-i18n="extras_section_config">Configuração</span>
                   <div class="feature-card__surface">
                   <div class="feature-card__surface-head">
@@ -737,14 +709,14 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card" id="extras-panel-giveaways" data-premium="true" data-premium-module="giveaways">
+            <article class="feature-card is-premium-locked" id="extras-panel-giveaways" data-premium="true" data-premium-locked="true" data-premium-module="giveaways">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="giveaways_title">Giveaways</h3>
                 <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
+                <button type="button" class="icon-btn feature-card__toggle hidden" data-role="toggle" aria-expanded="false" aria-controls="extras-giveaways-panel" data-i18n-aria-label="features_details" aria-label="Detalhes">▾</button>
               </div>
               <p class="hint" data-i18n="giveaways_hint">Publica automaticamente giveaways do GamerPower no canal escolhido, assim que aparecem.</p>
-              <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
-              <div class="feature-card__body" id="extras-giveaways-panel">
+              <div class="feature-card__body hidden" id="extras-giveaways-panel" inert>
                       <span class="feature-card__section-label" data-i18n="extras_section_status">Estado</span>
                       <div class="feature-card__surface">
                       <div class="feature-card__surface-head">
@@ -870,30 +842,6 @@
 	                    </div>
 	                  </div>
 
-	                  <div class="card subcard mt-2" id="giveawaysHistorySection">
-	                    <h4 data-i18n="giveaways_history_title">Histórico</h4>
-	                    <p class="hint" data-i18n="giveaways_history_hint">Giveaways já publicados neste servidor.</p>
-
-	                    <div class="row gap mb-2 audit-toolbar">
-	                      <input id="giveawaysHistorySearch" class="input" data-i18n-placeholder="giveaways_history_search" placeholder="Procurar por título ou plataforma">
-	                      <select id="giveawaysHistoryPlatform" class="select sm" data-i18n-aria-label="giveaways_history_platform">
-	                        <option value="" data-keep="1" data-i18n="giveaways_history_all_platforms">Todas as plataformas</option>
-	                      </select>
-	                      <select id="giveawaysHistoryLimit" class="select xs" data-i18n-aria-label="giveaways_history_limit">
-	                        <option value="25" selected>25</option>
-	                        <option value="50">50</option>
-	                        <option value="100">100</option>
-	                      </select>
-	                      <button type="button" class="btn xs" id="btnReloadGiveawaysHistory" data-i18n="giveaways_history_reload">Recarregar</button>
-	                    </div>
-
-	                    <div class="hint users-results" id="giveawaysHistoryCount" role="status" aria-live="polite"></div>
-
-	                    <div class="list" id="giveawaysHistoryList"></div>
-	                    <div class="row mt-2">
-	                      <button class="btn xs" id="btnGiveawaysHistoryLoadMore" data-i18n="giveaways_history_load_more">Carregar mais</button>
-	                    </div>
-	                  </div>
                       </div>
               </div>
             </article>

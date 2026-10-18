@@ -1275,6 +1275,12 @@ h2 {
   white-space: nowrap;
 }
 
+.badge-bot-owner{
+  border-color:#d5a83f;
+  background:rgba(213,168,63,.16);
+  color:#f2c75c;
+}
+
 /* Logout no topo deve ter o mesmo “peso” visual dos badges, mas diferenciado */
 .badge-logout {
   border: 1px solid var(--white-12);
@@ -3131,14 +3137,11 @@ summary:focus-visible,
   .premium-admin-grant{grid-template-columns:1fr}
   .premium-guild-row__form{grid-template-columns:1fr}
 }
-.extras-grid.is-premium-locked{opacity:.6}
 .feature-card.is-premium-locked{
-  border-color:var(--accent);
-  background:var(--accent-16);
+  border-color:var(--border-soft);
+  background:var(--card-bg);
 }
-.premium-card__hint{
-  margin-top:calc(var(--sp-1) * -1);
-}
+.feature-card[data-premium-locked="true"] .feature-card__body{display:none}
 
 /* Pré-visualização do embed de boas-vindas/saída (espelha o Discord). */
 .embed-preview-wrap{display:flex;flex-direction:column;gap:var(--sp-2)}

@@ -392,10 +392,12 @@
             '<span class="slider"></span>' +
           '</label>' +
           '<h3 class="feature-card__name">' + esc(t(nameKey)) + '</h3>' +
+          (premiumModule
+            ? '<button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">' + esc(t('premium_offer_button')) + '</button>'
+            : '') +
           '<button type="button" class="icon-btn feature-card__toggle" data-role="toggle" aria-expanded="false" aria-controls="feature-body-' + esc(feature.key) + '" title="' + esc(t('features_details')) + '">▾</button>' +
         '</div>' +
         '<p class="hint">' + esc(t(descKey)) + '</p>' +
-        (premiumModule ? '<p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">' + esc(t('premium_lock_hint')) + '</p>' : '') +
         '<div class="feature-card__body hidden" id="feature-body-' + esc(feature.key) + '">' +
           presetsHtml +
           (fields ? '<div class="feature-card__fields">' + fields + '</div>' : '') +
@@ -428,6 +430,10 @@
     Array.prototype.slice.call(grid.querySelectorAll('.feature-card')).forEach(function (card) {
       if (card.getAttribute('data-premium') === 'true') {
         card.setAttribute('data-premium-locked', premiumActive ? 'false' : 'true');
+        var offerButton = card.querySelector('[data-premium-action="offer"]');
+        if (offerButton) offerButton.classList.toggle('hidden', premiumActive);
+        var detailsToggle = card.querySelector('.feature-card__toggle');
+        if (detailsToggle) detailsToggle.classList.toggle('hidden', !premiumActive);
       }
       applyDisabled(card);
     });
@@ -451,8 +457,6 @@
     card.classList.toggle('is-premium-locked', premiumLocked);
     var offHint = card.querySelector('[data-role="off-hint"]');
     if (offHint) offHint.classList.toggle('hidden', on);
-    var premiumHint = card.querySelector('[data-role="premium-hint"]');
-    if (premiumHint) premiumHint.classList.toggle('hidden', !premiumLocked);
     Array.prototype.slice.call(card.querySelectorAll('[data-field], [data-entry], [data-role="save"], [data-role="test"], [data-role="add-entry"], [data-role="entry-remove"], [data-role="publish"]')).forEach(function (el) {
       el.disabled = !on || premiumLocked;
     });

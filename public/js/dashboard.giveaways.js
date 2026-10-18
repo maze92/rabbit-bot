@@ -547,158 +547,6 @@
     toast(t('giveaways_test_sent') || 'Teste enviado.', { type: 'success' });
   }
 
-  // ------------------------------
-  // Histórico de giveaways publicados
-  // ------------------------------
-  let historyPage = 1;
-  let historyLoading = false;
-
-  function historyPlatformLabel(p) {
-    p = String(p || '').toLowerCase();
-    if (p.includes('steam')) return 'Steam';
-    if (p.includes('epic')) return 'Epic Games Store';
-    if (p.includes('ubisoft') || p.includes('uplay')) return 'Ubisoft';
-    return p || '—';
-  }
-
-  function buildHistoryRow(item) {
-    const row = document.createElement('div');
-    row.className = 'list-item giveaway-history-item';
-
-    const title = item && item.title ? String(item.title) : '';
-    const url = item && item.url ? String(item.url) : '';
-    const platform = historyPlatformLabel(item && item.platform);
-    const when = item && item.postedAt ? fmtTs(item.postedAt) : '';
-
-    const titleHtml = url
-      ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(title || url) + '</a>'
-      : escapeHtml(title || '—');
-
-    row.innerHTML =
-      '<div class="title">' + titleHtml + '</div>' +
-      '<div class="subtitle">' + escapeHtml([platform, when].filter(Boolean).join(' • ')) + '</div>';
-
-    return row;
-  }
-
-  function collectHistoryParams(page) {
-    const params = ['page=' + encodeURIComponent(String(page))];
-
-    const limitEl = q('giveawaysHistoryLimit');
-    params.push('limit=' + encodeURIComponent(limitEl && limitEl.value ? limitEl.value : '25'));
-
-    const guildId = getGuildId();
-    if (guildId) params.push('guildId=' + encodeURIComponent(guildId));
-
-    const searchEl = q('giveawaysHistorySearch');
-    const search = searchEl && searchEl.value ? searchEl.value.toString().trim() : '';
-    if (search) params.push('search=' + encodeURIComponent(search));
-
-    const platformEl = q('giveawaysHistoryPlatform');
-    const platform = platformEl && platformEl.value ? platformEl.value : '';
-    if (platform) params.push('platform=' + encodeURIComponent(platform));
-
-    return params;
-  }
-
-  // Reconstrói as opções de plataforma, preservando a escolha atual.
-  function updateHistoryPlatformOptions(platforms) {
-    const sel = q('giveawaysHistoryPlatform');
-    if (!sel) return;
-
-    const current = sel.value;
-
-    Array.prototype.slice.call(sel.querySelectorAll('option')).forEach(function (opt) {
-      if (!opt.hasAttribute('data-keep')) opt.remove();
-    });
-
-    (platforms || []).forEach(function (p) {
-      const opt = document.createElement('option');
-      opt.value = p;
-      opt.textContent = historyPlatformLabel(p);
-      sel.appendChild(opt);
-    });
-
-    const stillThere = Array.prototype.some.call(sel.options, function (o) {
-      return o.value === current;
-    });
-    sel.value = stillThere ? current : '';
-  }
-
-  function setHistoryLoadMore(visible) {
-    const btn = q('btnGiveawaysHistoryLoadMore');
-    if (!btn) return;
-    btn.style.display = visible ? '' : 'none';
-    btn.disabled = !visible;
-  }
-
-  async function loadGiveawaysHistory(opts) {
-    if (historyLoading) return;
-
-    const append = !!(opts && opts.append);
-    const listEl = q('giveawaysHistoryList');
-    if (!listEl) return;
-
-    const page = append ? (historyPage + 1) : 1;
-
-    historyLoading = true;
-    if (!append) listEl.innerHTML = '<div class="empty">' + escapeHtml(t('loading')) + '</div>';
-
-    try {
-      const res = await apiGet('/giveaways/history?' + collectHistoryParams(page).join('&'));
-
-      const items = Array.isArray(res.items) ? res.items : [];
-      const total = typeof res.total === 'number' ? res.total : items.length;
-
-      const limitEl = q('giveawaysHistoryLimit');
-      const limit = limitEl && limitEl.value ? (parseInt(limitEl.value, 10) || 25) : 25;
-
-      if (!append) {
-        listEl.innerHTML = '';
-        updateHistoryPlatformOptions(res.platforms);
-      }
-
-      if (!items.length) {
-        if (!append) {
-          const empty = document.createElement('div');
-          empty.className = 'empty';
-          empty.textContent = t('giveaways_history_empty');
-          listEl.appendChild(empty);
-        }
-      } else {
-        items.forEach(function (it) {
-          listEl.appendChild(buildHistoryRow(it));
-        });
-      }
-
-      historyPage = page;
-
-      const countEl = q('giveawaysHistoryCount');
-      if (countEl) {
-        countEl.textContent = total
-          ? t('giveaways_history_count', {
-              shown: String(listEl.querySelectorAll('.giveaway-history-item').length),
-              total: String(total)
-            })
-          : '';
-      }
-
-      setHistoryLoadMore((page * limit) < total);
-    } catch (err) {
-      console.error('Failed to load giveaways history', err);
-      if (!append) {
-        listEl.innerHTML = '<div class="empty">' + escapeHtml(t('giveaways_history_error')) + '</div>';
-      } else {
-        toast((err && err.apiMessage) || t('giveaways_history_error'), { type: 'error' });
-      }
-      setHistoryLoadMore(false);
-    } finally {
-      historyLoading = false;
-    }
-  }
-
-  D.loadGiveawaysHistory = loadGiveawaysHistory;
-
   function bindEvents() {
     // Prevent duplicate listeners when the user re-opens the subtab.
     if (D.__giveawaysBound) return;
@@ -758,40 +606,14 @@
       toast((t('giveaways_reset_ok') || 'Valores repostos'), { type: 'success' });
     });
 
-    // Histórico: recarregar / carregar mais / filtros
-    const histReloadBtn = q('btnReloadGiveawaysHistory');
-    if (histReloadBtn) histReloadBtn.addEventListener('click', function () { loadGiveawaysHistory().catch(function () {}); });
-
-    const histMoreBtn = q('btnGiveawaysHistoryLoadMore');
-    if (histMoreBtn) histMoreBtn.addEventListener('click', function () { loadGiveawaysHistory({ append: true }).catch(function () {}); });
-
-    const histPlatform = q('giveawaysHistoryPlatform');
-    if (histPlatform) histPlatform.addEventListener('change', function () { loadGiveawaysHistory().catch(function () {}); });
-
-    const histLimit = q('giveawaysHistoryLimit');
-    if (histLimit) histLimit.addEventListener('change', function () { loadGiveawaysHistory().catch(function () {}); });
-
-    const histSearch = q('giveawaysHistorySearch');
-    if (histSearch) {
-      let histTimer = null;
-      histSearch.addEventListener('input', function () {
-        if (histTimer) clearTimeout(histTimer);
-        histTimer = setTimeout(function () {
-          loadGiveawaysHistory().catch(function () {});
-          histTimer = null;
-        }, 300);
-      });
-    }
   }
 
   // Public hook for core tab switcher
   D.loadGiveaways = async function () {
     bindEvents();
-    historyPage = 1;
     await loadChannelsIntoSelect();
     await loadGiveawaysConfig();
     await loadGiveawaysStatus().catch(function () {});
-    await loadGiveawaysHistory().catch(function () {});
     startStatusPolling();
   };
 })();

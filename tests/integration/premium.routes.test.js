@@ -113,7 +113,7 @@ function makeHarness(options) {
       purchase_units: [{
         custom_id: settings.captureUserId || USER_ID,
         reference_id: settings.captureGuildId || GUILD_ID,
-        payments: { captures: [{ id: 'CAPTURE-123', status: 'COMPLETED', amount: { value: settings.captureAmount || '6.50', currency_code: 'EUR' } }] }
+        payments: { captures: [{ id: 'CAPTURE-123', status: 'COMPLETED', amount: { value: settings.captureAmount || '10.00', currency_code: 'EUR' } }] }
       }]
     }),
     verifyWebhook: async () => true
@@ -322,17 +322,19 @@ test('delegated bot admin can manage server licenses but only bot owner can chan
       body: JSON.stringify({ amount: '9.99', currency: 'USD', durationDays: 60, paymentLink: 'https://paypal.me/example' })
     });
     assert.equal(settings.status, 200);
-    assert.equal(harness.getSettings().amount, '9.99');
+    assert.equal(harness.getSettings().amount, '10.00');
+    assert.equal(harness.getSettings().currency, 'EUR');
 
     harness.setUser({ _id: USER_ID, username: 'test-user', role: 'GUILD_ADMIN' });
     const publicStatus = await fetch(app.baseUrl + '/api/premium?guildId=' + GUILD_ID);
     const publicBody = await publicStatus.json();
     assert.equal(publicStatus.status, 200);
-    assert.equal(publicBody.payment.amount, '9.99');
+    assert.equal(publicBody.payment.amount, '10.00');
+    assert.equal(publicBody.payment.currency, 'EUR');
     assert.equal(publicBody.payment.durationDays, 60);
     assert.equal(publicBody.payment.checkoutAvailable, true);
     assert.equal(publicBody.payment.referenceLinkAvailable, true);
-    assert.equal(publicBody.payment.paymentLink, 'https://paypal.me/example');
+    assert.equal(publicBody.payment.paymentLink, 'https://paypal.me/example/10EUR');
 
     const checkout = await fetch(app.baseUrl + '/api/premium/checkout', {
       method: 'POST',
@@ -340,7 +342,7 @@ test('delegated bot admin can manage server licenses but only bot owner can chan
       body: JSON.stringify({ guildId: GUILD_ID })
     });
     assert.equal(checkout.status, 200);
-    assert.equal(harness.payments[harness.payments.length - 1].amount, '9.99');
+    assert.equal(harness.payments[harness.payments.length - 1].amount, '10.00');
     assert.equal(harness.payments[harness.payments.length - 1].durationDays, 60);
   } finally {
     await stopApp(app.server);
@@ -371,7 +373,7 @@ test('a configured PayPal reference link is available when API checkout credenti
     assert.equal(body.payment.available, true);
     assert.equal(body.payment.checkoutAvailable, false);
     assert.equal(body.payment.referenceLinkAvailable, true);
-    assert.equal(body.payment.paymentLink, 'https://paypal.me/example');
+    assert.equal(body.payment.paymentLink, 'https://paypal.me/example/10EUR');
   } finally {
     await stopApp(app.server);
   }
@@ -453,7 +455,7 @@ test('A verified PayPal capture webhook activates Premium without a browser retu
         resource: {
           id: 'CAPTURE-123',
           status: 'COMPLETED',
-          amount: { value: '6.50', currency_code: 'EUR' },
+          amount: { value: '10.00', currency_code: 'EUR' },
           custom_id: USER_ID,
           payer: { payer_id: 'PAYER-123', email_address: 'payer@example.com' },
           supplementary_data: { related_ids: { order_id: 'ORDER-123456' } }

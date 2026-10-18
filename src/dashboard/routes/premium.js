@@ -10,6 +10,9 @@ const { createPayPalService } = require('../paypalService');
 const { formatUserTag } = require('../../services/guildService');
 const { isBotOperator, isBotOwner } = require('../botRoles');
 
+const PREMIUM_FIXED_AMOUNT = '10.00';
+const PREMIUM_FIXED_CURRENCY = 'EUR';
+
 function parseDate(v) {
   const s = typeof v === 'string' ? v.trim() : '';
   if (!s) return null;
@@ -82,15 +85,25 @@ function sameAmount(left, right) {
   return a !== null && b !== null && a === b;
 }
 
-function isPayPalLink(value) {
+function getFixedPayPalMeLink(value) {
   const text = String(value || '').trim();
-  if (!text) return true;
+  if (!text) return null;
   try {
     const url = new URL(text);
-    return url.protocol === 'https:' && (url.hostname === 'paypal.com' || url.hostname.endsWith('.paypal.com') || url.hostname === 'paypal.me');
+    if (url.protocol !== 'https:' || url.hostname !== 'paypal.me') return null;
+    const username = url.pathname.split('/').filter(Boolean)[0];
+    if (!username || !/^[A-Za-z0-9._-]+$/.test(username)) return null;
+    url.pathname = '/' + username + '/10EUR';
+    url.search = '';
+    url.hash = '';
+    return url.toString();
   } catch {
-    return false;
+    return null;
   }
+}
+
+function isPayPalLink(value) {
+  return Boolean(getFixedPayPalMeLink(value));
 }
 
 /**
@@ -178,15 +191,27 @@ function registerPremiumRoutes({
 
   async function getPlan() {
     const envPlan = paypal.getPlan();
-    if (!PremiumSettings) return Object.assign({}, envPlan, { paymentLink: null });
+    if (!PremiumSettings) return Object.assign({}, envPlan, {
+      amount: PREMIUM_FIXED_AMOUNT,
+      currency: PREMIUM_FIXED_CURRENCY,
+      paymentLink: null
+    });
     const settings = await PremiumSettings.findById('global').lean().catch(() => null);
-    if (!settings) return Object.assign({}, envPlan, { paymentLink: null });
+    if (!settings) return Object.assign({}, envPlan, {
+      amount: PREMIUM_FIXED_AMOUNT,
+      currency: PREMIUM_FIXED_CURRENCY,
+      paymentLink: null
+    });
     const plan = paypal.normalizePlan({
-      amount: settings.amount,
-      currency: settings.currency,
+      amount: PREMIUM_FIXED_AMOUNT,
+      currency: PREMIUM_FIXED_CURRENCY,
       durationDays: settings.durationDays
     });
-    return Object.assign({}, plan || envPlan, { paymentLink: settings.paymentLink || null });
+    return Object.assign({}, plan || envPlan, {
+      amount: PREMIUM_FIXED_AMOUNT,
+      currency: PREMIUM_FIXED_CURRENCY,
+      paymentLink: getFixedPayPalMeLink(settings.paymentLink)
+    });
   }
 
   function getCachedGuildDetails(guildId) {
@@ -254,14 +279,23 @@ function registerPremiumRoutes({
     try {
       if (!PremiumSettings) return res.status(503).json({ ok: false, error: 'PREMIUM_SETTINGS_MODEL_MISSING' });
       const body = req.body || {};
-      const plan = paypal.normalizePlan({ amount: body.amount, currency: body.currency, durationDays: body.durationDays });
+      const plan = paypal.normalizePlan({
+        amount: PREMIUM_FIXED_AMOUNT,
+        currency: PREMIUM_FIXED_CURRENCY,
+        durationDays: body.durationDays
+      });
       const paymentLink = String(body.paymentLink || '').trim();
       if (!plan) return res.status(400).json({ ok: false, error: 'PREMIUM_SETTINGS_INVALID' });
-      if (!isPayPalLink(paymentLink)) return res.status(400).json({ ok: false, error: 'PREMIUM_PAYMENT_LINK_INVALID' });
+      if (paymentLink && !getFixedPayPalMeLink(paymentLink)) {
+        return res.status(400).json({ ok: false, error: 'PREMIUM_PAYMENT_LINK_INVALID' });
+      }
 
       const settings = await PremiumSettings.findOneAndUpdate(
         { _id: 'global' },
-        { $set: Object.assign({}, plan, { paymentLink: paymentLink || null, updatedBy: String(req.dashboardUser._id || '') }) },
+        { $set: Object.assign({}, plan, {
+          paymentLink: getFixedPayPalMeLink(paymentLink),
+          updatedBy: String(req.dashboardUser._id || '')
+        }) },
         { upsert: true, returnDocument: 'after' }
       ).lean();
       return res.json({ ok: true, settings });

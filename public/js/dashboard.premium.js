@@ -15,7 +15,6 @@
 
   var premium = null;   // { enabled, active, until, note, activatedAt }
   var paymentPlan = null;
-  var serverDetails = null;
   var premiumGuildId = null;
   var premiumLoadSequence = 0;
   var checkoutLoading = false;
@@ -59,19 +58,17 @@
     return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
   }
 
-  // Data legível (dd/mm/aaaa) para o "válido até".
-  function fmtDate(iso) {
-    try {
-      var d = new Date(iso);
-      if (Number.isNaN(d.getTime())) return '';
-      return d.toLocaleDateString();
-    } catch {
-      return '';
-    }
+  function updateGuildPremiumMarker(active) {
+    var select = byId('guildPicker');
+    if (!select) return;
+    Array.prototype.slice.call(select.options).forEach(function (option) {
+      var name = option.dataset.guildName;
+      if (!name) return;
+      option.textContent = name + (active && option.value === guildId() ? ' ★' : '');
+    });
   }
 
-  // Bloqueia/desbloqueia a interação com os cartões extra e reflete o estado
-  // do premium (ativo/inativo, validade e nota) no painel do topo.
+  // Bloqueia os módulos até confirmar a licença do servidor selecionado.
   function applyLock() {
     var grid = byId('extrasGrid');
     var paidActive = !!(premium && premium.active);
@@ -82,97 +79,36 @@
     Array.prototype.slice.call(document.querySelectorAll('[data-premium="true"]')).forEach(function (card) {
       card.setAttribute('data-premium-locked', active ? 'false' : 'true');
       card.classList.toggle('is-premium-locked', !active);
+      var body = card.querySelector('.feature-card__body');
+      var detailsToggle = card.querySelector('.feature-card__toggle');
+      if (body) {
+        body.inert = !active;
+        if (!active) body.classList.add('hidden');
+      }
+      if (detailsToggle) {
+        detailsToggle.classList.toggle('hidden', !active);
+        if (!active) detailsToggle.setAttribute('aria-expanded', 'false');
+      }
       Array.prototype.slice.call(card.querySelectorAll('button, input, select, textarea')).forEach(function (el) {
         if (el.getAttribute('data-premium-action') !== 'offer') el.disabled = !active;
       });
       var offerButton = card.querySelector('[data-premium-action="offer"]');
       if (offerButton) offerButton.classList.toggle('hidden', active);
-      Array.prototype.slice.call(card.querySelectorAll('[data-role="premium-hint"]')).forEach(function (hintEl) {
-        hintEl.classList.toggle('hidden', active);
-      });
     });
 
-    var status = byId('premiumStatus');
-    if (status) {
-      status.textContent = paidActive
-        ? t('premium_active')
-        : (premium && premium.status === 'EXPIRED' ? t('premium_expired') : t('premium_inactive'));
-      status.classList.toggle('premium-status--on', active);
-    }
-
-    var meta = byId('premiumMeta');
-    if (meta) {
-      var parts = [];
-      if (paidActive) {
-        parts.push(premium && premium.until
-          ? t('premium_until', { date: fmtDate(premium.until) })
-          : t('premium_forever'));
-      }
-      if (premium && premium.note) parts.push(premium.note);
-      meta.textContent = parts.join(' · ');
-    }
-
-    var guildName = byId('premiumGuildName');
-    if (guildName) {
-      guildName.textContent = serverDetails && serverDetails.name || '';
-      guildName.classList.toggle('hidden', !guildName.textContent);
-    }
-    var identity = byId('premiumGuildIdentity');
-    if (identity) {
-      var identityParts = [];
-      if (serverDetails && (serverDetails.ownerName || serverDetails.ownerId)) {
-        identityParts.push(t('premium_server_owner') + ': ' + (serverDetails.ownerName || t('premium_server_unknown')) +
-          (serverDetails.ownerId ? ' (' + serverDetails.ownerId + ')' : ''));
-      }
-      if (serverDetails && (serverDetails.purchaserDiscordUsername || serverDetails.purchaserDiscordUserId)) {
-        identityParts.push(t('premium_server_payer') + ': ' +
-          (serverDetails.purchaserDiscordUsername || t('premium_server_unknown')) +
-          (serverDetails.purchaserDiscordUserId ? ' (' + serverDetails.purchaserDiscordUserId + ')' : ''));
-      }
-      identity.textContent = identityParts.join(' · ');
-      identity.classList.toggle('hidden', identityParts.length === 0);
-    }
-    var hint = byId('premiumHint');
-    if (hint) {
-      // Mantém o `data-i18n` em sincronia para o applyI18n() traduzir corretamente.
-      var hintKey = paidActive
-        ? 'premium_active_hint'
-        : (paymentPlan && paymentPlan.checkoutAvailable
-          ? 'premium_purchase_hint'
-          : paymentPlan && paymentPlan.referenceLinkAvailable
-            ? 'premium_reference_payment_hint'
-            : 'premium_lock_hint');
-      hint.setAttribute('data-i18n', hintKey);
-      hint.textContent = t(hintKey, paymentPlan ? {
-        price: formatMoney(paymentPlan.amount, paymentPlan.currency),
-        days: paymentPlan.durationDays
-      } : {});
-    }
-
-    var checkoutBtn = byId('btnPremiumCheckout');
+    updateGuildPremiumMarker(active);
     var offerCheckoutBtn = byId('btnPremiumOfferCheckout');
-    var referenceLink = byId('premiumReferenceLink');
     var offerReferenceLink = byId('premiumOfferReferenceLink');
     var canRenew = paidActive && premium && premium.until;
     var canPurchase = canStartCheckout() && paymentPlan && paymentPlan.available && (!paidActive || canRenew);
     var canUseCheckout = canPurchase && paymentPlan.checkoutAvailable;
     var canUseReferenceLink = canPurchase && paymentPlan.referenceLinkAvailable && paymentPlan.paymentLink;
-    if (checkoutBtn) {
-      checkoutBtn.classList.toggle('hidden', !canUseCheckout);
-      checkoutBtn.textContent = canUseCheckout
-        ? t('premium_checkout_button', { price: formatMoney(paymentPlan.amount, paymentPlan.currency) })
-        : '';
-      checkoutBtn.disabled = checkoutLoading;
-    }
     if (offerCheckoutBtn) {
       offerCheckoutBtn.classList.toggle('hidden', !canUseCheckout);
-      offerCheckoutBtn.textContent = checkoutBtn ? checkoutBtn.textContent : '';
+      offerCheckoutBtn.textContent = canUseCheckout
+        ? t('premium_checkout_button', { price: formatMoney(paymentPlan.amount, paymentPlan.currency) })
+        : '';
       offerCheckoutBtn.disabled = checkoutLoading;
-    }
-    if (referenceLink) {
-      referenceLink.classList.toggle('hidden', !canUseReferenceLink || canUseCheckout);
-      if (canUseReferenceLink && !canUseCheckout) referenceLink.href = paymentPlan.paymentLink;
-      else referenceLink.removeAttribute('href');
     }
     if (offerReferenceLink) {
       offerReferenceLink.classList.toggle('hidden', !canUseReferenceLink || canUseCheckout);
@@ -234,7 +170,6 @@
       premiumGuildId = null;
       premium = { enabled: false, active: false };
       paymentPlan = null;
-      serverDetails = null;
       if (grid) grid.classList.add('is-premium-locked');
       if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(false);
       applyLock();
@@ -243,6 +178,7 @@
     if (premiumGuildId !== gid) {
       premiumGuildId = gid;
       premium = { enabled: false, active: false };
+      paymentPlan = null;
       if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(false);
       applyLock();
     }
@@ -251,13 +187,11 @@
       if (requestSequence !== premiumLoadSequence || guildId() !== gid) return;
       premium = (res && res.premium) ? res.premium : { enabled: false, active: false };
       paymentPlan = (res && res.payment) ? res.payment : null;
-      serverDetails = (res && res.server) ? res.server : null;
     } catch (err) {
       if (requestSequence !== premiumLoadSequence || guildId() !== gid) return;
       console.error('Premium load error', err);
       premium = { enabled: false, active: false };
       paymentPlan = null;
-      serverDetails = null;
     } finally {
       if (requestSequence === premiumLoadSequence) {
         applyLock();
@@ -446,8 +380,8 @@
       paymentsPage = results[2] && results[2].page || 1;
       paymentsPages = results[2] && results[2].pages || 0;
       if (settings && isBotOwner()) {
-        byId('premiumAdminAmount').value = settings.amount || '';
-        byId('premiumAdminCurrency').value = settings.currency || 'EUR';
+        byId('premiumAdminAmount').value = '10.00';
+        byId('premiumAdminCurrency').value = 'EUR';
         byId('premiumAdminDuration').value = settings.durationDays || '';
         byId('premiumAdminPaymentLink').value = settings.paymentLink || '';
         paymentPlan = Object.assign({}, paymentPlan || {}, settings, { available: paymentPlan && paymentPlan.available });
@@ -469,8 +403,6 @@
     var status = byId('premiumSettingsStatus');
     try {
       var res = await NS.apiPatch('/premium/admin/settings', {
-        amount: byId('premiumAdminAmount').value,
-        currency: byId('premiumAdminCurrency').value,
         durationDays: byId('premiumAdminDuration').value,
         paymentLink: byId('premiumAdminPaymentLink').value
       });
@@ -545,16 +477,27 @@
   NS.isPremiumModuleLocked = function () { return !(NS.isPremiumActive()); };
 
   document.addEventListener('DOMContentLoaded', function () {
-    var checkoutBtn = byId('btnPremiumCheckout');
-    if (checkoutBtn) checkoutBtn.addEventListener('click', function (event) { startCheckout(event); });
     var offerCheckoutBtn = byId('btnPremiumOfferCheckout');
     if (offerCheckoutBtn) offerCheckoutBtn.addEventListener('click', function (event) { startCheckout(event); });
-    var extrasGrid = byId('extrasGrid');
-    if (extrasGrid) extrasGrid.addEventListener('click', function (event) {
-      var offer = event.target.closest('[data-premium-action="offer"]');
-      if (!offer) return;
-      var card = offer.closest('[data-premium="true"]');
-      if (card && card.getAttribute('data-premium-locked') === 'true') openPremiumOffer(card);
+    [byId('extrasGrid'), byId('featuresGrid')].forEach(function (grid) {
+      if (!grid) return;
+      grid.addEventListener('click', function (event) {
+        var detailsToggle = event.target.closest('.feature-card__toggle');
+        if (detailsToggle) {
+          var detailsCard = detailsToggle.closest('[data-premium="true"]');
+          if (!detailsCard || detailsCard.getAttribute('data-premium-locked') === 'true') return;
+          var body = detailsCard.querySelector('.feature-card__body');
+          if (!body) return;
+          var isHidden = body.classList.toggle('hidden');
+          body.inert = isHidden;
+          detailsToggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+          return;
+        }
+        var offer = event.target.closest('[data-premium-action="offer"]');
+        if (!offer) return;
+        var card = offer.closest('[data-premium="true"]');
+        if (card && card.getAttribute('data-premium-locked') === 'true') openPremiumOffer(card);
+      });
     });
     var offerDialog = byId('premiumOfferDialog');
     [byId('btnClosePremiumOffer'), byId('btnCancelPremiumOffer')].forEach(function (button) {

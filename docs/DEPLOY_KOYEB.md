@@ -23,13 +23,11 @@ PayPal Premium:
 - `PAYPAL_CLIENT_ID=...`
 - `PAYPAL_CLIENT_SECRET=...`
 - `PAYPAL_ENV=sandbox` while testing, then `live` for real payments
-- `PAYPAL_PREMIUM_PRICE=...` (positive amount, with up to two decimal places)
-- `PAYPAL_CURRENCY=EUR`
 - `PREMIUM_DURATION_DAYS=30`
 - `PAYPAL_WEBHOOK_ID=...`
 - Register `https://<your-koyeb-domain>/api/premium/paypal/webhook` in PayPal for the `PAYMENT.CAPTURE.COMPLETED` event.
 
-The app captures successful orders server-to-server and also verifies PayPal webhook signatures. Keep the client secret and webhook ID private; use sandbox credentials and a sandbox webhook before switching to live mode.
+Premium checkout is fixed at €10 per server; only the license duration and optional PayPal.Me reference link are configurable in the dashboard. A reference link is prefilled for €10 and requires manual payment verification. The app captures successful orders server-to-server and also verifies PayPal webhook signatures. Keep the client secret and webhook ID private; use sandbox credentials and a sandbox webhook before switching to live mode.
 
 Optional:
 - `DASHBOARD_ALLOW_ANY_ORIGIN=true` (NOT recommended; bypasses CORS hardening)

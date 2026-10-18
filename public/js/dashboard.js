@@ -670,6 +670,7 @@ function setPanelLoading(panelId, isLoading) {
       ? t('profile_bot_owner')
       : (me.role === 'BOT_ADMIN' ? t('profile_bot_admin') : (me.username || 'Discord'));
     elProfile.classList.remove('badge-premium');
+    elProfile.classList.toggle('badge-bot-owner', me.role === 'BOT_OWNER');
     elProfile.classList.remove('hidden');
 
     var perms = (state.perms && typeof state.perms === 'object') ? state.perms : {};
@@ -1155,6 +1156,7 @@ function setLang(newLang) {
       items.forEach(function (g) {
         const opt = document.createElement('option');
         opt.value = g.id;
+        opt.dataset.guildName = g.name;
         opt.textContent = g.name;
         select.appendChild(opt);
       });
