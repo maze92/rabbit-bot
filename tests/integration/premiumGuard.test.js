@@ -74,19 +74,23 @@ test('an expired guild license does not unlock premium features', async () => {
   assert.equal(result.body.error, 'PREMIUM_REQUIRED');
 });
 
-test('bot admin test access bypasses Premium without creating a paid entitlement', async () => {
+test('bot admins still need an active server license to use Premium modules', async () => {
   const guard = makeGuard();
   const result = await runGuard(guard, 'BOT_ADMIN');
-  assert.equal(result.passed, true);
+  assert.equal(result.passed, false);
+  assert.equal(result.statusCode, 402);
+  assert.equal(result.body.error, 'PREMIUM_REQUIRED');
 });
 
-test('bot owner can access Premium test bypass as a bot operator', async () => {
+test('bot owners still need an active server license to use Premium modules', async () => {
   const guard = makeGuard();
   const result = await runGuard(guard, 'BOT_OWNER');
-  assert.equal(result.passed, true);
+  assert.equal(result.passed, false);
+  assert.equal(result.statusCode, 402);
+  assert.equal(result.body.error, 'PREMIUM_REQUIRED');
 });
 
-test('a bot-admin test bypass does not grant Premium to guild members', async () => {
+test('a legacy operator test bypass does not grant Premium to guild members', async () => {
   const guard = makeGuard({
     guildPremium: {
       enabled: true,

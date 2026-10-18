@@ -3089,9 +3089,12 @@ summary:focus-visible,
 .premium-settings-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-3);align-items:end}
 .premium-settings-form .field--wide{grid-column:1/-1}
 .premium-admin-guilds{display:flex;flex-direction:column;gap:var(--sp-2)}
+.premium-admin-payments{display:flex;flex-direction:column;gap:var(--sp-2)}
 .premium-admin-guilds__head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap}
 .premium-admin-guilds__head h4{margin:0}
+.premium-admin-guilds__head h3{margin:0;font-size:var(--fs-md)}
 .premium-admin-guilds__head .input{max-width:320px}
+.premium-payments-pagination{align-items:center;justify-content:flex-end}
 .premium-admin-grant{display:grid;grid-template-columns:minmax(140px,1fr) minmax(180px,1fr) minmax(140px,1fr) auto;gap:var(--sp-2)}
 .premium-guild-row{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
 .premium-guild-row__summary{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);flex-wrap:wrap}

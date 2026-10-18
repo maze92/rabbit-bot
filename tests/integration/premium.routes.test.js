@@ -9,17 +9,30 @@ const USER_ID = '987654321098765432';
 function makeHarness(options) {
   const settings = options || {};
   let currentUser = { _id: USER_ID, username: 'guild-admin', role: 'GUILD_ADMIN' };
-  let guildConfig = { guildId: GUILD_ID, premium: { enabled: false } };
+  let guildConfig = { guildId: GUILD_ID, premium: settings.guildPremium || { enabled: false } };
   let premiumSettings = null;
   const payments = [];
   let sequence = 0;
 
   function chain(value) {
+    let resultValue = value;
     const result = {
       select() { return result; },
-      sort() { return result; },
-      limit() { return result; },
-      lean() { return Promise.resolve(value); }
+      sort() {
+        if (Array.isArray(resultValue)) {
+          resultValue = resultValue.slice().sort((left, right) => new Date(right.createdAt || right.completedAt || 0) - new Date(left.createdAt || left.completedAt || 0));
+        }
+        return result;
+      },
+      skip(count) {
+        if (Array.isArray(resultValue)) resultValue = resultValue.slice(count);
+        return result;
+      },
+      limit(count) {
+        if (Array.isArray(resultValue)) resultValue = resultValue.slice(0, count);
+        return result;
+      },
+      lean() { return Promise.resolve(resultValue); }
     };
     return result;
   }
@@ -64,7 +77,12 @@ function makeHarness(options) {
       const payment = payments.find((item) => item._id === query._id || item.paypalOrderId === query.paypalOrderId);
       if (payment) Object.assign(payment, update.$set);
     },
-    find() { return chain(payments.filter((item) => item.status === 'COMPLETED')); }
+    find(query) {
+      return chain(payments.filter((item) => !query || !query.status || item.status === query.status));
+    },
+    countDocuments(query) {
+      return Promise.resolve(payments.filter((item) => !query || !query.status || item.status === query.status).length);
+    }
   };
 
   const PremiumSettings = {
@@ -173,6 +191,44 @@ test('Premium checkout creates a pending PayPal order and verified capture activ
   }
 });
 
+test('Premium status reads for bot operators never create temporary server licenses', async () => {
+  const harness = makeHarness();
+  const app = await harness.appPromise;
+  harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
+  try {
+    const response = await fetch(app.baseUrl + '/api/premium?guildId=' + GUILD_ID);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.premium.active, false);
+    assert.equal(body.premium.effectiveActive, false);
+    assert.equal(harness.getGuildConfig().premium.enabled, false);
+    assert.equal(harness.getGuildConfig().premium.testBypass, undefined);
+  } finally {
+    await stopApp(app.server);
+  }
+});
+
+test('legacy operator test-bypass records are shown as inactive licenses', async () => {
+  const harness = makeHarness({
+    guildPremium: {
+      enabled: true,
+      until: new Date(Date.now() + 15 * 60 * 1000),
+      testBypass: true
+    }
+  });
+  const app = await harness.appPromise;
+  harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
+  try {
+    const response = await fetch(app.baseUrl + '/api/premium/admin/guilds');
+    assert.equal(response.status, 200);
+    const item = (await response.json()).items.find((entry) => entry.guildId === GUILD_ID);
+    assert.equal(item.enabled, false);
+    assert.equal(item.active, false);
+  } finally {
+    await stopApp(app.server);
+  }
+});
+
 test('Premium payment history is visible only to the bot administrator', async () => {
   const harness = makeHarness();
   const app = await harness.appPromise;
@@ -184,6 +240,38 @@ test('Premium payment history is visible only to the bot administrator', async (
     const allowed = await fetch(app.baseUrl + '/api/premium/payments');
     assert.equal(allowed.status, 200);
     assert.deepEqual((await allowed.json()).items, []);
+  } finally {
+    await stopApp(app.server);
+  }
+});
+
+test('bot operators can page and filter the full Premium payment history', async () => {
+  const harness = makeHarness();
+  const app = await harness.appPromise;
+  const now = new Date();
+  harness.payments.push(
+    { guildId: GUILD_ID, status: 'COMPLETED', purchaserDiscordUsername: 'payer', amount: '6.50', currency: 'EUR', createdAt: now, completedAt: now },
+    { guildId: GUILD_ID, status: 'FAILED', purchaserDiscordUsername: 'failed-payer', amount: '6.50', currency: 'EUR', createdAt: new Date(now.getTime() - 1000) }
+  );
+  harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
+  try {
+    const allPayments = await fetch(app.baseUrl + '/api/premium/payments?page=1&pageSize=1&status=ALL');
+    assert.equal(allPayments.status, 200);
+    const allBody = await allPayments.json();
+    assert.equal(allBody.total, 2);
+    assert.equal(allBody.pages, 2);
+    assert.equal(allBody.items.length, 1);
+    assert.equal(allBody.items[0].status, 'COMPLETED');
+    assert.equal(allBody.items[0].guildName, 'Rabbit Guild');
+
+    const failedPayments = await fetch(app.baseUrl + '/api/premium/payments?status=FAILED');
+    assert.equal(failedPayments.status, 200);
+    const failedBody = await failedPayments.json();
+    assert.equal(failedBody.total, 1);
+    assert.equal(failedBody.items[0].purchaserDiscordUsername, 'failed-payer');
+
+    const invalidStatus = await fetch(app.baseUrl + '/api/premium/payments?status=INVALID');
+    assert.equal(invalidStatus.status, 400);
   } finally {
     await stopApp(app.server);
   }

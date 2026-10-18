@@ -346,9 +346,10 @@ const allowedGuilds = isBotAdmin(me.id) && client && client.guilds && client.gui
       .slice(0, 200);
 
 const allowedGuildIds = allowedGuilds.map((g) => g.id);
+const botRole = getBotRoleForUser(me.id);
 
-// If the user has no guilds, do not create a dashboard session.
-if (allowedGuildIds.length === 0) {
+// Bot operators can use global Premium administration without guild access.
+if (allowedGuildIds.length === 0 && !botRole) {
   clearCookie(res, 'dash_token');
   const redirectUrl = `/?oauthError=NO_GUILDS`;
   oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token: null });
@@ -358,15 +359,15 @@ if (allowedGuildIds.length === 0) {
 
       const safeUsername = sanitizeText(me.username || 'discord', { maxLen: 32, stripHtml: true });
 
-      // Unscoped session: user is authenticated, but must select a guild to gain a scoped profile.
-      const perms = {};
+      // Guild-scoped operations remain protected by the guild access middleware.
+      const perms = botRole ? Object.assign({}, ADMIN_PERMISSIONS || {}, { canManageUsers: true }) : {};
 
       const token = jwt.sign(
         {
           t: 'oauth',
           sub: String(me.id),
           username: safeUsername,
-          role: 'USER',
+          role: botRole || 'USER',
           permissions: perms,
           allowedGuildIds,
           allowedGuilds,

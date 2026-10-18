@@ -85,6 +85,8 @@
 - O owner ou um administrador do servidor pode iniciar a compra na dashboard; a conta que paga não recebe uma licença pessoal nem desbloqueia outros servidores.
 - A dashboard identifica o owner do servidor separadamente da pessoa que pagou.
 - Administradores do bot podem ativar, editar e revogar licenças por servidor na dashboard.
+- Owners e administradores do bot gerem licenças e consultam o histórico paginado na aba **Gestão Premium**, sem precisarem de selecionar um servidor. O owner do bot também pode alterar o plano global.
+- O acesso aos módulos depende sempre de uma licença ativa do servidor, incluindo para owners e administradores do bot; estes podem revogar e reativar a própria licença para testar o bloqueio.
 - Licenças de servidor já ativas antes desta alteração são mantidas até expirarem. Licenças antigas associadas apenas a uma conta não são convertidas automaticamente em licença de servidor.
 
 ### 🌍 Internacionalização (i18n)

@@ -19,6 +19,9 @@
   var loading = false;
   var checkoutLoading = false;
   var adminGuilds = [];
+  var adminPayments = [];
+  var paymentsPage = 1;
+  var paymentsPages = 0;
 
   function isAdmin() {
     var me = NS.state && NS.state.me;
@@ -66,8 +69,7 @@
   function applyLock() {
     var grid = byId('extrasGrid');
     var paidActive = !!(premium && premium.active);
-    var testBypass = isAdmin();
-    var active = paidActive || testBypass;
+    var active = paidActive;
 
     if (grid) grid.classList.toggle('is-premium-locked', !active);
 
@@ -86,9 +88,7 @@
     if (status) {
       status.textContent = paidActive
         ? t('premium_active')
-        : (testBypass
-          ? t('premium_test_mode')
-          : (premium && premium.status === 'EXPIRED' ? t('premium_expired') : t('premium_inactive')));
+        : (premium && premium.status === 'EXPIRED' ? t('premium_expired') : t('premium_inactive'));
       status.classList.toggle('premium-status--on', active);
     }
 
@@ -130,9 +130,7 @@
       // Mantém o `data-i18n` em sincronia para o applyI18n() traduzir corretamente.
       var hintKey = paidActive
         ? 'premium_active_hint'
-        : (testBypass
-          ? 'premium_bot_test_hint'
-          : (paymentPlan && paymentPlan.available ? 'premium_purchase_hint' : 'premium_lock_hint'));
+        : (paymentPlan && paymentPlan.available ? 'premium_purchase_hint' : 'premium_lock_hint');
       hint.setAttribute('data-i18n', hintKey);
       hint.textContent = t(hintKey, paymentPlan ? {
         price: formatMoney(paymentPlan.amount, paymentPlan.currency),
@@ -140,7 +138,6 @@
       } : {});
     }
 
-    var admin = isAdmin();
     var checkoutBtn = byId('btnPremiumCheckout');
     if (checkoutBtn) {
       var canRenew = paidActive && premium && premium.until;
@@ -159,8 +156,6 @@
       if (href) referenceLink.href = href;
     }
 
-    var history = byId('premiumPaymentHistory');
-    if (history) history.classList.toggle('hidden', !admin);
     var settingsForm = byId('premiumSettingsForm');
     if (settingsForm) settingsForm.classList.toggle('hidden', !isBotOwner());
 
@@ -176,7 +171,6 @@
       serverDetails = null;
       if (grid) grid.classList.add('is-premium-locked');
       applyLock();
-      if (isAdmin()) loadAdminData();
       return;
     }
     if (loading) return;
@@ -187,7 +181,6 @@
       premium = (res && res.premium) ? res.premium : { enabled: false, active: false };
       paymentPlan = (res && res.payment) ? res.payment : null;
       serverDetails = (res && res.server) ? res.server : null;
-      if (isAdmin()) loadAdminData();
     } catch (err) {
       console.error('Premium load error', err);
       premium = { enabled: false, active: false };
@@ -314,15 +307,71 @@
     });
   }
 
+  function renderAdminPayments() {
+    var list = byId('premiumPaymentsList');
+    if (!list || !isAdmin()) return;
+    list.innerHTML = '';
+    if (!adminPayments.length) {
+      var empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = t('premium_payments_empty');
+      list.appendChild(empty);
+    } else {
+      adminPayments.forEach(function (item) {
+        var row = document.createElement('article');
+        row.className = 'list-item premium-payment-row';
+        var title = document.createElement('strong');
+        title.textContent = item.guildName || item.guildId || t('premium_server_unknown');
+        row.appendChild(title);
+        var metadata = document.createElement('small');
+        var statusKey = 'premium_payment_status_' + String(item.status || '').toLowerCase();
+        metadata.textContent = [
+          item.status ? t(statusKey) : '',
+          item.guildId ? t('premium_admin_guild_id') + ': ' + item.guildId : '',
+          item.purchaserDiscordUsername || item.purchaserDiscordUserId
+            ? t('premium_server_payer') + ': ' + (item.purchaserDiscordUsername || item.purchaserDiscordUserId)
+            : '',
+          item.paypalPayerEmail || '',
+          item.amount ? formatMoney(item.amount, item.currency) : '',
+          formatPaymentDate(item.completedAt || item.createdAt),
+          item.expiresAt ? t('premium_until', { date: formatPaymentDate(item.expiresAt) }) : '',
+          item.paypalCaptureId || ''
+        ].filter(Boolean).join(' · ');
+        row.appendChild(metadata);
+        list.appendChild(row);
+      });
+    }
+
+    var pageLabel = byId('premiumPaymentsPage');
+    if (pageLabel) pageLabel.textContent = t('premium_payments_page', {
+      page: paymentsPages ? paymentsPage : 0,
+      pages: paymentsPages
+    });
+    var previous = byId('premiumPaymentsPrevious');
+    var next = byId('premiumPaymentsNext');
+    if (previous) previous.disabled = paymentsPage <= 1;
+    if (next) next.disabled = !paymentsPages || paymentsPage >= paymentsPages;
+  }
+
   async function loadAdminData() {
     if (!isAdmin()) return;
     try {
+      var statusFilter = byId('premiumPaymentsStatus');
+      var paymentQuery = new URLSearchParams({
+        page: String(paymentsPage),
+        pageSize: '50',
+        status: statusFilter ? statusFilter.value : 'ALL'
+      });
       var results = await Promise.all([
         isBotOwner() ? NS.apiGet('/premium/admin/settings') : Promise.resolve(null),
-        NS.apiGet('/premium/admin/guilds')
+        NS.apiGet('/premium/admin/guilds'),
+        NS.apiGet('/premium/payments?' + paymentQuery.toString())
       ]);
       var settings = results[0] && results[0].settings;
       adminGuilds = results[1] && Array.isArray(results[1].items) ? results[1].items : [];
+      adminPayments = results[2] && Array.isArray(results[2].items) ? results[2].items : [];
+      paymentsPage = results[2] && results[2].page || 1;
+      paymentsPages = results[2] && results[2].pages || 0;
       if (settings && isBotOwner()) {
         byId('premiumAdminAmount').value = settings.amount || '';
         byId('premiumAdminCurrency').value = settings.currency || 'EUR';
@@ -331,11 +380,14 @@
         paymentPlan = Object.assign({}, paymentPlan || {}, settings, { available: paymentPlan && paymentPlan.available });
       }
       renderAdminGuilds();
+      renderAdminPayments();
       applyLock();
     } catch (err) {
       console.error('Premium admin data error', err);
       var list = byId('premiumGuildsList');
       if (list) list.textContent = t('premium_payments_error');
+      var paymentsList = byId('premiumPaymentsList');
+      if (paymentsList) paymentsList.textContent = t('premium_payments_error');
     }
   }
 
@@ -414,7 +466,8 @@
   }
 
   NS.loadPremium = loadPremium;
-  NS.isPremiumActive = function () { return !!(premium && premium.active) || isAdmin(); };
+  NS.loadPremiumAdmin = loadAdminData;
+  NS.isPremiumActive = function () { return !!(premium && premium.active); };
   NS.isPremiumModuleLocked = function () { return !(NS.isPremiumActive()); };
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -422,7 +475,7 @@
     if (checkoutBtn) checkoutBtn.addEventListener('click', startCheckout);
 
     var settingsForm = byId('premiumSettingsForm');
-    if (settingsForm && isBotOwner()) settingsForm.addEventListener('submit', savePremiumSettings);
+    if (settingsForm) settingsForm.addEventListener('submit', savePremiumSettings);
     var grantForm = byId('premiumAdminGrantForm');
     if (grantForm) grantForm.addEventListener('submit', grantGuild);
     var guildList = byId('premiumGuildsList');
@@ -440,6 +493,25 @@
     });
     var accountSearch = byId('premiumAdminSearch');
     if (accountSearch) accountSearch.addEventListener('input', renderAdminGuilds);
+    var paymentStatus = byId('premiumPaymentsStatus');
+    if (paymentStatus) paymentStatus.addEventListener('change', function () {
+      paymentsPage = 1;
+      loadAdminData();
+    });
+    var previousPage = byId('premiumPaymentsPrevious');
+    if (previousPage) previousPage.addEventListener('click', function () {
+      if (paymentsPage > 1) {
+        paymentsPage -= 1;
+        loadAdminData();
+      }
+    });
+    var nextPage = byId('premiumPaymentsNext');
+    if (nextPage) nextPage.addEventListener('click', function () {
+      if (paymentsPage < paymentsPages) {
+        paymentsPage += 1;
+        loadAdminData();
+      }
+    });
 
     window.addEventListener('dashboard:premium-return', function (event) {
       var status = event && event.detail ? event.detail.status : '';

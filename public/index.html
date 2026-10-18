@@ -24,6 +24,7 @@
       <h1 data-i18n="guild_select_title">Selecionar servidor</h1>
       <p class="login-subtitle" data-i18n="guild_select_subtitle">Escolhe o servidor que queres gerir.</p>
       <div id="guildSelectList" class="guild-select-list"></div>
+      <button type="button" class="btn btn-ghost hidden" id="guildSelectPremiumAdmin" data-i18n="guild_select_premium_admin">Continuar para Gestão Premium</button>
       <div class="login-error" id="guildSelectError"></div>
     </div>
   </div>
@@ -67,6 +68,7 @@
       <button class="tab" id="tabbtn-features" role="tab" aria-selected="false" aria-controls="tab-features" tabindex="-1" data-tab="features" data-i18n="tab_features">Funcionalidades</button>
       <button class="tab" id="tabbtn-user" role="tab" aria-selected="false" aria-controls="tab-user" tabindex="-1" data-tab="user" data-i18n="tab_user">Utilizadores</button>
       <button class="tab" id="tabbtn-config" role="tab" aria-selected="false" aria-controls="tab-config" tabindex="-1" data-tab="config" data-i18n="tab_config">Configuração</button>
+      <button class="tab hidden" id="tabbtn-premium-admin" role="tab" aria-selected="false" aria-controls="tab-premium-admin" tabindex="-1" data-tab="premium-admin" data-i18n="tab_premium_admin">Gestão Premium</button>
     </div>
 
     <!-- Aviso quando não há servidor selecionado -->
@@ -292,6 +294,76 @@
         </div>
       </section>
 
+      <section class="section" id="tab-premium-admin" role="tabpanel" aria-labelledby="tabbtn-premium-admin">
+        <div class="card">
+          <h2 data-i18n="premium_admin_title">Gestão Premium</h2>
+          <p class="hint" data-i18n="premium_admin_description">Gere licenças por servidor e consulta os pagamentos, mesmo sem selecionar um servidor.</p>
+          <div class="premium-panel__history">
+            <form class="premium-settings-form hidden" id="premiumSettingsForm">
+              <div class="field">
+                <label for="premiumAdminAmount" data-i18n="premium_admin_amount">Preço</label>
+                <input class="input" id="premiumAdminAmount" type="number" min="0.01" step="0.01" required />
+              </div>
+              <div class="field">
+                <label for="premiumAdminCurrency" data-i18n="premium_admin_currency">Moeda</label>
+                <input class="input" id="premiumAdminCurrency" type="text" maxlength="3" required />
+              </div>
+              <div class="field">
+                <label for="premiumAdminDuration" data-i18n="premium_admin_duration">Duração (dias)</label>
+                <input class="input" id="premiumAdminDuration" type="number" min="1" max="3660" step="1" required />
+              </div>
+              <div class="field field--wide">
+                <label for="premiumAdminPaymentLink" data-i18n="premium_admin_link">Link PayPal de referência</label>
+                <input class="input" id="premiumAdminPaymentLink" type="url" placeholder="https://paypal.me/..." />
+              </div>
+              <div class="premium-panel__actions">
+                <button class="btn xs primary" id="btnSavePremiumSettings" type="submit" data-i18n="common_save">Guardar</button>
+                <span class="hint" id="premiumSettingsStatus" role="status" aria-live="polite"></span>
+              </div>
+            </form>
+            <div class="premium-admin-guilds">
+              <div class="premium-admin-guilds__head">
+                <h3 data-i18n="premium_admin_guilds">Servidores Premium</h3>
+                <input class="input" id="premiumAdminSearch" type="search" data-i18n-placeholder="premium_admin_search_guilds" placeholder="Pesquisar servidor ou email" />
+              </div>
+              <form class="premium-admin-grant" id="premiumAdminGrantForm">
+                <input class="input" id="premiumAdminGuildId" type="text" inputmode="numeric" pattern="[0-9]{10,32}" required data-i18n-placeholder="premium_admin_guild_id" placeholder="ID do servidor" />
+                <input class="input" id="premiumAdminGuildUntil" type="datetime-local" data-i18n-aria-label="premium_admin_until" aria-label="Válido até" />
+                <input class="input" id="premiumAdminGuildNote" type="text" maxlength="200" data-i18n-placeholder="premium_admin_note" placeholder="Nota administrativa" />
+                <button class="btn xs" type="submit" data-i18n="premium_admin_grant">Ativar no servidor</button>
+              </form>
+              <div class="list" id="premiumGuildsList">
+                <div class="empty" data-i18n="premium_admin_empty">Nenhum servidor Premium encontrado.</div>
+              </div>
+            </div>
+            <div class="premium-admin-payments">
+              <div class="premium-admin-guilds__head">
+                <h3 data-i18n="premium_payments_title">Histórico de pagamentos</h3>
+                <label>
+                  <span data-i18n="premium_payments_filter">Filtrar pagamentos</span>
+                  <select class="input" id="premiumPaymentsStatus">
+                    <option value="ALL" data-i18n="premium_payment_all">Todos</option>
+                    <option value="COMPLETED" data-i18n="premium_payment_status_completed">Concluídos</option>
+                    <option value="PENDING" data-i18n="premium_payment_status_pending">Pendentes</option>
+                    <option value="PROCESSING" data-i18n="premium_payment_status_processing">A processar</option>
+                    <option value="CANCELLED" data-i18n="premium_payment_status_cancelled">Cancelados</option>
+                    <option value="FAILED" data-i18n="premium_payment_status_failed">Falhados</option>
+                  </select>
+                </label>
+              </div>
+              <div class="list" id="premiumPaymentsList">
+                <div class="empty" data-i18n="premium_payments_empty">Ainda não existem pagamentos.</div>
+              </div>
+              <div class="row mt-2 premium-payments-pagination">
+                <button class="btn xs" id="premiumPaymentsPrevious" type="button" data-i18n="premium_payments_previous">Anterior</button>
+                <span class="hint" id="premiumPaymentsPage" aria-live="polite"></span>
+                <button class="btn xs" id="premiumPaymentsNext" type="button" data-i18n="premium_payments_next">Seguinte</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Tickets -->
             <!-- Extras (premium) — vive dentro da aba Funcionalidades -->
       <section class="section extras-section" id="tab-gamenews" role="region" aria-label="Extras">
@@ -328,46 +400,6 @@
             <div class="premium-panel__actions">
               <button type="button" class="btn xs primary hidden" id="btnPremiumCheckout"></button>
               <a class="btn xs hidden" id="premiumReferenceLink" target="_blank" rel="noopener noreferrer" data-i18n="premium_reference_link">PayPal</a>
-            </div>
-            <div class="premium-panel__history hidden" id="premiumPaymentHistory">
-              <h4 data-i18n="premium_admin_title">Gestão Premium</h4>
-              <form class="premium-settings-form" id="premiumSettingsForm">
-                <div class="field">
-                  <label for="premiumAdminAmount" data-i18n="premium_admin_amount">Preço</label>
-                  <input class="input" id="premiumAdminAmount" type="number" min="0.01" step="0.01" required />
-                </div>
-                <div class="field">
-                  <label for="premiumAdminCurrency" data-i18n="premium_admin_currency">Moeda</label>
-                  <input class="input" id="premiumAdminCurrency" type="text" maxlength="3" required />
-                </div>
-                <div class="field">
-                  <label for="premiumAdminDuration" data-i18n="premium_admin_duration">Duração (dias)</label>
-                  <input class="input" id="premiumAdminDuration" type="number" min="1" max="3660" step="1" required />
-                </div>
-                <div class="field field--wide">
-                  <label for="premiumAdminPaymentLink" data-i18n="premium_admin_link">Link PayPal de referência</label>
-                  <input class="input" id="premiumAdminPaymentLink" type="url" placeholder="https://paypal.me/..." />
-                </div>
-                <div class="premium-panel__actions">
-                  <button class="btn xs primary" id="btnSavePremiumSettings" type="submit" data-i18n="common_save">Guardar</button>
-                  <span class="hint" id="premiumSettingsStatus" role="status" aria-live="polite"></span>
-                </div>
-              </form>
-              <div class="premium-admin-guilds">
-                <div class="premium-admin-guilds__head">
-                  <h4 data-i18n="premium_admin_guilds">Servidores Premium</h4>
-                  <input class="input" id="premiumAdminSearch" type="search" data-i18n-placeholder="premium_admin_search_guilds" placeholder="Pesquisar servidor ou email" />
-                </div>
-                <form class="premium-admin-grant" id="premiumAdminGrantForm">
-                  <input class="input" id="premiumAdminGuildId" type="text" inputmode="numeric" pattern="[0-9]{10,32}" required data-i18n-placeholder="premium_admin_guild_id" placeholder="ID do servidor" />
-                  <input class="input" id="premiumAdminGuildUntil" type="datetime-local" data-i18n-aria-label="premium_admin_until" aria-label="Válido até" />
-                  <input class="input" id="premiumAdminGuildNote" type="text" maxlength="200" data-i18n-placeholder="premium_admin_note" placeholder="Nota administrativa" />
-                  <button class="btn xs" type="submit" data-i18n="premium_admin_grant">Ativar no servidor</button>
-                </form>
-                <div class="list" id="premiumGuildsList">
-                  <div class="empty" data-i18n="premium_admin_empty">Nenhum servidor Premium encontrado.</div>
-                </div>
-              </div>
             </div>
           </div>
 

@@ -59,7 +59,7 @@ function registerGuildsRoutes({
           : []);
 
       // OAuth-only: if token has no allow-list, force re-auth (prevents stale/empty tokens from persisting).
-      if (u && u.oauth && allowList.length === 0) {
+      if (u && u.oauth && allowList.length === 0 && !isBotOperator(u)) {
         return res.json({ ok: true, items: [], reason: 'NO_ELIGIBLE_GUILDS' });
       }
 

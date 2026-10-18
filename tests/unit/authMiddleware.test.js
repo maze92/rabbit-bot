@@ -95,6 +95,15 @@ test('decodeDashboardToken assume USER quando o token não define perfil', async
   eq(user.role, 'USER');
 });
 
+test('decodeDashboardToken preserves bot operator role in an unscoped session', async () => {
+  const { decodeDashboardToken } = makeMw({
+    payload: { t: 'oauth', sub: '1', role: 'BOT_OWNER', profile: 'UNSCOPED', selectedGuildId: null }
+  });
+  const user = await decodeDashboardToken('token');
+  eq(user.role, 'BOT_OWNER');
+  eq(user.selectedGuildId, null);
+});
+
 test('requirePerm devolve 403 quando falta a permissão', () => {
   const { requirePerm } = makeMw();
   const req = { dashboardUser: { permissions: {} } };

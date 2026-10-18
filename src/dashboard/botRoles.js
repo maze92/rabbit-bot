@@ -1,6 +1,6 @@
 function parseBotUserIds(value, envName) {
   const ids = new Set();
-  String(value || '').split(',').forEach((part) => {
+  String(value || '').split(/[,\s;]+/).forEach((part) => {
     const id = part.trim();
     if (!id) return;
     if (!/^\d{10,32}$/.test(id)) {

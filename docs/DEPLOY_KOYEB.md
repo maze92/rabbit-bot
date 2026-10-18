@@ -10,11 +10,12 @@ Dashboard auth (Discord OAuth 2.0):
 - `DASHBOARD_JWT_SECRET=...` (strong random)
 - `DISCORD_OAUTH_CLIENT_ID=...`
 - `DISCORD_OAUTH_CLIENT_SECRET=...`
-- `BOT_OWNER_IDS=...` (Discord user IDs separated by commas; these are the bot/application owners and only they can change global Premium pricing/settings)
-- `BOT_ADMIN_IDS=...` (delegated bot operators, Discord user IDs separated by commas; they can manage server Premium licenses and inspect payment history, but cannot change global Premium settings)
+- `BOT_OWNER_IDS=...` (Discord user IDs separated by commas, semicolons, or whitespace; these are the bot/application owners and only they can change global Premium pricing/settings)
+- `BOT_ADMIN_IDS=...` (delegated bot operators; Discord user IDs separated by commas, semicolons, or whitespace; they can manage server Premium licenses and inspect payment history, but cannot change global Premium settings)
 - `BOT_OWNER_IDS` takes precedence if an ID appears in both lists. Configure at least one owner ID before deploying; if unset, global Premium settings are locked.
 - Use the Discord **user ID** of the person authorized to own the bot application in the Developer Portal, not the application/client ID or a Discord server owner ID. For a team-owned application, list only the people explicitly trusted with global control.
 - After changing either ID list, restart the app and sign out/in to refresh dashboard roles; existing sessions can retain their role for up to four hours.
+- Bot owners/admins can open the **Premium management** tab without selecting a Discord server. It lists server licenses and a paginated payment history; Premium modules still require an active license even for bot operators.
 - `DASHBOARD_ORIGIN=https://<your-koyeb-domain>`  (required for the dashboard UI)
 - Register the redirect URI in the Discord Developer Portal: `https://<your-koyeb-domain>/api/auth/discord/callback`
 

@@ -99,8 +99,6 @@ function isPayPalLink(value) {
 function createPremiumGuard({ GuildConfig, sanitizeId }) {
   return function requirePremium({ from = 'body', key = 'guildId' } = {}) {
     return async (req, res, next) => {
-      const user = req.dashboardUser;
-
       let raw = '';
       try {
         if (from === 'query') raw = (req.query && req.query[key]) || '';
@@ -114,29 +112,6 @@ function createPremiumGuard({ GuildConfig, sanitizeId }) {
       if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
 
       try {
-        if (isBotOperator(user)) {
-          if (GuildConfig) {
-            const existing = await GuildConfig.findOne({ guildId }).select('premium').lean();
-            if (!normalizePremium(existing && existing.premium).active) {
-              const now = new Date();
-              await GuildConfig.findOneAndUpdate(
-                { guildId },
-                { $set: { premium: {
-                  enabled: true,
-                  until: new Date(now.getTime() + 15 * 60 * 1000),
-                  note: 'Bot admin test access',
-                  activatedAt: now,
-                  accountUserId: null,
-                  testBypass: true
-                } } },
-                { upsert: true, returnDocument: 'after' }
-              ).lean();
-              invalidateGuildConfig(guildId);
-            }
-          }
-          return next();
-        }
-
         if (GuildConfig) {
           const cfg = await GuildConfig.findOne({ guildId }).select('premium').lean();
           const guildPremium = cfg && cfg.premium;
@@ -312,8 +287,12 @@ function registerPremiumRoutes({
         if (!latestByGuild.has(payment.guildId)) latestByGuild.set(payment.guildId, payment);
       });
       const query = String(req.query.q || '').trim().toLowerCase();
-      const items = guildConfigs.filter((item) => !(item.premium && item.premium.testBypass)).map((item) => {
+      const items = guildConfigs.map((item) => {
         const license = normalizePremium(item.premium);
+        if (item.premium && item.premium.testBypass) {
+          license.enabled = false;
+          license.active = false;
+        }
         const latestPayment = latestByGuild.get(item.guildId) || null;
         const details = getCachedGuildDetails(item.guildId);
         return {
@@ -585,21 +564,43 @@ function registerPremiumRoutes({
   app.get('/api/premium/payments', requireDashboardAuth, requireBotAdmin, async (req, res) => {
     try {
       if (!PremiumPayment) return res.status(503).json({ ok: false, error: 'PREMIUM_PAYMENT_MODEL_MISSING' });
-      const items = await PremiumPayment.find({ status: 'COMPLETED' })
-        .sort({ completedAt: -1 })
-        .limit(100)
-        .lean();
+      const requestedStatus = String(req.query.status || 'ALL').toUpperCase();
+      const validStatuses = ['ALL', 'PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'FAILED'];
+      if (!validStatuses.includes(requestedStatus)) {
+        return res.status(400).json({ ok: false, error: 'PREMIUM_PAYMENT_STATUS_INVALID' });
+      }
+      const pageValue = Number.parseInt(String(req.query.page || '1'), 10);
+      const pageSizeValue = Number.parseInt(String(req.query.pageSize || '50'), 10);
+      const page = Number.isFinite(pageValue) && pageValue > 0 ? pageValue : 1;
+      const pageSize = Number.isFinite(pageSizeValue) ? Math.min(100, Math.max(1, pageSizeValue)) : 50;
+      const query = requestedStatus === 'ALL' ? {} : { status: requestedStatus };
+      const [items, total] = await Promise.all([
+        PremiumPayment.find(query)
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * pageSize)
+          .limit(pageSize)
+          .lean(),
+        PremiumPayment.countDocuments(query)
+      ]);
+      const pages = Math.ceil(total / pageSize);
       return res.json({
         ok: true,
+        page,
+        pageSize,
+        total,
+        pages,
+        status: requestedStatus,
         items: items.map((item) => ({
           guildId: item.guildId,
+          guildName: getCachedGuildDetails(item.guildId).guildName,
+          status: item.status,
           purchaserDiscordUsername: item.purchaserDiscordUsername || item.discordUsername,
           purchaserDiscordUserId: item.purchaserDiscordUserId || item.discordUserId,
           paypalPayerEmail: item.paypalPayerEmail,
-          approvalUrl: item.approvalUrl,
           paypalCaptureId: item.paypalCaptureId,
           amount: item.amount,
           currency: item.currency,
+          createdAt: item.createdAt,
           completedAt: item.completedAt,
           expiresAt: item.expiresAt
         }))
@@ -622,7 +623,6 @@ function registerPremiumRoutes({
       const plan = await getPlan();
       const guildLicense = normalizePremium(guildPremium);
       const paidActive = guildLicense.active && !(guildPremium && guildPremium.testBypass);
-      const testBypass = isBotOperator(req.dashboardUser);
       const guildDetails = await getGuildDetails(guildId);
       const latestPayment = PremiumPayment
         ? await PremiumPayment.findOne({ guildId, status: 'COMPLETED' }).sort({ completedAt: -1 }).lean()
@@ -632,22 +632,6 @@ function registerPremiumRoutes({
         : guildLicense.enabled && guildLicense.until && guildLicense.until.getTime() <= Date.now()
           ? 'EXPIRED'
           : 'INACTIVE';
-      if (GuildConfig && testBypass && !guildLicense.active) {
-        const now = new Date();
-        await GuildConfig.findOneAndUpdate(
-          { guildId },
-          { $set: { premium: {
-            enabled: true,
-            until: new Date(now.getTime() + 15 * 60 * 1000),
-            note: 'Bot admin test access',
-            activatedAt: now,
-            accountUserId: null,
-            testBypass: true
-          } } },
-          { upsert: true, returnDocument: 'after' }
-        ).lean();
-        invalidateGuildConfig(guildId);
-      }
       return res.json({
         ok: true,
         premium: {
@@ -657,8 +641,8 @@ function registerPremiumRoutes({
           note: guildLicense.note,
           activatedAt: guildLicense.activatedAt,
           status: licenseStatus,
-          testBypass,
-          effectiveActive: paidActive || testBypass
+          testBypass: false,
+          effectiveActive: paidActive
         },
         server: {
           id: guildId,

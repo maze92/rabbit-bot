@@ -9,11 +9,12 @@ test('bot owner role takes precedence over delegated admin role', () => {
   eq(getBotRole('345678901234567890', ownerIds, adminIds), null);
 });
 
-test('bot ID configuration accepts comma-separated snowflakes and ignores malformed values', () => {
-  const ids = parseBotUserIds('123456789012345678, invalid,234567890123456789', 'TEST_BOT_IDS');
-  eq(ids.size, 2);
+test('bot ID configuration accepts common separators and ignores malformed values', () => {
+  const ids = parseBotUserIds('123456789012345678, invalid;\n234567890123456789 345678901234567890', 'TEST_BOT_IDS');
+  eq(ids.size, 3);
   eq(ids.has('123456789012345678'), true);
   eq(ids.has('234567890123456789'), true);
+  eq(ids.has('345678901234567890'), true);
 });
 
 test('bot owner is an operator but delegated bot admin is not bot owner', () => {

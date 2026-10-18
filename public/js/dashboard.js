@@ -876,6 +876,10 @@ function setLang(newLang) {
       applyTabButtonState('overview');
       return;
     }
+    if (name === 'premium-admin' && !(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'))) {
+      state.currentTab = 'overview';
+      name = 'overview';
+    }
     state.currentTab = name;
 
     // Avoid "opening on the right" if the previous view caused horizontal scroll.
@@ -1013,6 +1017,14 @@ function setLang(newLang) {
       Promise.resolve(t1).finally(function () {
         setPanelLoading('tab-tickets', false);
       });
+    } else if (name === 'premium-admin') {
+      setPanelLoading('tab-premium-admin', true);
+      var premiumAdminLoad = window.OzarkDashboard && window.OzarkDashboard.loadPremiumAdmin
+        ? window.OzarkDashboard.loadPremiumAdmin()
+        : Promise.resolve();
+      Promise.resolve(premiumAdminLoad).finally(function () {
+        setPanelLoading('tab-premium-admin', false);
+      });
     }
   }
 
@@ -1020,10 +1032,11 @@ function setLang(newLang) {
     const warn = document.getElementById('tabWarning');
     const hasGuild = !!state.guildId;
     const ready = !!state.guildsLoaded;
+    const globalPremiumView = state.currentTab === 'premium-admin';
     if (warn) {
       // Avoid flashing the warning during bootstrap (before guilds are loaded).
-      warn.style.display = (!ready || hasGuild) ? 'none' : 'block';
-      warn.classList.toggle('hidden', (!ready || hasGuild));
+      warn.style.display = (!ready || hasGuild || globalPremiumView) ? 'none' : 'block';
+      warn.classList.toggle('hidden', (!ready || hasGuild || globalPremiumView));
     }
 
     const p = (state && state.perms && typeof state.perms === 'object') ? state.perms : {};
@@ -1041,14 +1054,16 @@ function setLang(newLang) {
       user: requiresPerms && canActOnCases,
       features: requiresPerms && canViewConfig,
       tickets: requiresPerms && canManageTickets,
-      config: requiresPerms && canViewConfig
+      config: requiresPerms && canViewConfig,
+      'premium-admin': !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'))
     };
 
-    const tabs = ['logs', 'features', 'user', 'config', 'tickets'];
+    const tabs = ['logs', 'features', 'user', 'config', 'tickets', 'premium-admin'];
     tabs.forEach(function (name) {
       const btn = document.querySelector('.tabs button[data-tab="' + name + '"]');
       if (!btn) return;
-      btn.disabled = !hasGuild || !tabRules[name];
+      btn.classList.toggle('hidden', name === 'premium-admin' && !tabRules[name]);
+      btn.disabled = name === 'premium-admin' ? !tabRules[name] : (!hasGuild || !tabRules[name]);
     });
 
     // Atalhos do Overview seguem as mesmas regras das abas.
@@ -1060,7 +1075,7 @@ function setLang(newLang) {
     // If current tab becomes inaccessible, fallback to overview.
     if (state.currentTab && state.currentTab !== 'overview') {
       const allowed = tabRules[state.currentTab] === true;
-      if (!hasGuild || !allowed) {
+      if ((!hasGuild && state.currentTab !== 'premium-admin') || !allowed) {
         setTab('overview');
       }
     }
@@ -2902,9 +2917,21 @@ function deleteTempVoiceBaseAt(index) {
     var guildSelectScreen = document.getElementById('guildSelectScreen');
     var guildSelectList = document.getElementById('guildSelectList');
     var guildSelectError = document.getElementById('guildSelectError');
+    var guildSelectPremiumAdmin = document.getElementById('guildSelectPremiumAdmin');
+
+    if (guildSelectPremiumAdmin) {
+      guildSelectPremiumAdmin.addEventListener('click', function () {
+        if (guildSelectScreen) guildSelectScreen.classList.add('hidden');
+        setTab('premium-admin');
+      });
+    }
 
     function showGuildSelect(items) {
       if (!guildSelectScreen || !guildSelectList) return;
+      if (guildSelectPremiumAdmin) {
+        var isBotOperator = state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER');
+        guildSelectPremiumAdmin.classList.toggle('hidden', !isBotOperator);
+      }
       if (!Array.isArray(items) || items.length < 2) {
         guildSelectScreen.classList.add('hidden');
         return;
