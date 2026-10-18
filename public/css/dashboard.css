@@ -1275,6 +1275,11 @@ h2 {
   white-space: nowrap;
 }
 
+#badgeProfile.badge-premium {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
 /* Logout no topo deve ter o mesmo “peso” visual dos badges, mas diferenciado */
 .badge-logout {
   border: 1px solid var(--white-12);

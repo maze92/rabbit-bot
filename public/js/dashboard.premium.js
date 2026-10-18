@@ -3,7 +3,7 @@
 // Estado premium por servidor. Os módulos "extra" (GameNews, voz temporária,
 // tickets, trust e giveaways) só funcionam com premium ativo. Esta camada
 // apenas reflete esse estado na interface: bloqueia os cartões e permite a um
-// admin da dashboard ativar/desativar o premium manualmente.
+// administrador do bot ativar/desativar o premium manualmente.
 
 (function () {
   'use strict';
@@ -20,7 +20,7 @@
 
   function isAdmin() {
     var me = NS.state && NS.state.me;
-    return !!(me && me.role === 'ADMIN');
+    return !!(me && me.role === 'BOT_ADMIN');
   }
 
   // Data legível (dd/mm/aaaa) para o "válido até".
@@ -58,6 +58,9 @@
       status.textContent = active ? t('premium_active') : t('premium_inactive');
       status.classList.toggle('premium-status--on', active);
     }
+
+    var profileBadge = byId('badgeProfile');
+    if (profileBadge) profileBadge.classList.toggle('badge-premium', active);
 
     var meta = byId('premiumMeta');
     if (meta) {

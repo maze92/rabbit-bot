@@ -80,7 +80,7 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
 
       return {
         _id: String(payload.sub),
-        role: payload.role || 'ADMIN',
+        role: payload.role || 'USER',
         username: payload.username || 'discord',
         permissions: (payload.permissions && typeof payload.permissions === 'object') ? payload.permissions : {},
         // Optional metadata (available on the unscoped OAuth token) to support
@@ -134,8 +134,8 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
   // ------------------------------
   // Permission guard (RBAC)
   // ------------------------------
-  // Dashboard permissions can be fine-tuned via the token's `permissions` claim.
-  // ADMIN role always bypasses granular checks.
+  // Only bot administrators bypass granular checks. Guild admins use their
+  // explicit permissions and remain scoped to their eligible guilds.
   function requirePerm({ anyOf = [] } = {}) {
     const needed = Array.isArray(anyOf) ? anyOf.filter(Boolean) : [];
     return (req, res, next) => {
@@ -144,6 +144,7 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
 
       const u = req.dashboardUser;
       if (!u) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+      if (u.role === 'BOT_ADMIN') return next();
       if (!needed.length) return next();
       const perms = (u.permissions && typeof u.permissions === 'object') ? u.permissions : {};
       const allowed = needed.some((k) => perms[k] === true);
@@ -155,8 +156,7 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
   // ------------------------------
   // Guild access guard (optional allow-list)
   // ------------------------------
-  // If the token's allowedGuildIds is non-empty, MOD users are restricted to those guild IDs.
-  // ADMIN users always bypass.
+  // All OAuth profiles, including bot admins, stay within their signed guild allow-list.
   function requireGuildAccess({ from = 'params', key = 'guildId', optional = false } = {}) {
     return (req, res, next) => {
       if (!isAuthEnabled()) return next();

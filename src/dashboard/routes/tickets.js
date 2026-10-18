@@ -51,7 +51,7 @@ function registerTicketsRoutes(opts) {
   function hasGuildAccess(req, guildId) {
     try {
       const u = req && req.dashboardUser;
-      if (!u || u.role === 'ADMIN') return true;
+      if (!u || u.role === 'BOT_ADMIN') return true;
       const list = Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.filter(Boolean).map(String) : [];
       if (!list.length) return true;
       return list.includes(String(guildId));

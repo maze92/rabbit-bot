@@ -668,19 +668,21 @@ function setPanelLoading(panelId, isLoading) {
 
     var profileKey = 'profile_unscoped';
     var profile = (me && me.profile) ? String(me.profile) : '';
-    if (profile === 'ADMIN') profileKey = 'profile_admin';
+    if (profile === 'BOT_ADMIN') profileKey = 'profile_bot_admin';
+    else if (profile === 'GUILD_ADMIN' || profile === 'ADMIN') profileKey = 'profile_guild_admin';
     else if (profile === 'MANAGER') profileKey = 'profile_manager';
     else if (profile === 'VIEWER') profileKey = 'profile_viewer';
     else if (profile === 'UNSCOPED') profileKey = 'profile_unscoped';
-    else if (me.role === 'ADMIN') profileKey = 'profile_admin';
+    else if (me.role === 'BOT_ADMIN') profileKey = 'profile_bot_admin';
+    else if (me.role === 'GUILD_ADMIN') profileKey = 'profile_guild_admin';
 
     var profileLabel = t(profileKey);
-    elProfile.textContent = t('badge_profile', { profile: profileLabel });
+    elProfile.textContent = t('badge_profile', { username: me.username || 'Discord', profile: profileLabel });
     elProfile.classList.remove('hidden');
 
     var perms = (state.perms && typeof state.perms === 'object') ? state.perms : {};
     var scoped = !!(me.selectedGuildId || (me.profile && me.profile !== 'UNSCOPED'));
-    var canManage = !!(me.role === 'ADMIN' || perms.canEditConfig || perms.canActOnCases || perms.canManageTickets || perms.canManageGameNews);
+    var canManage = !!(me.role === 'BOT_ADMIN' || perms.canEditConfig || perms.canActOnCases || perms.canManageTickets || perms.canManageGameNews);
 
     var accessLabel;
     if (!scoped && me.oauth) {
@@ -1204,7 +1206,7 @@ function setLang(newLang) {
 
   function applyPermissionGates() {
     // Trust controls live inside the Config tab (Extras -> Trust).
-    const canEdit = !!(state.me && (state.me.role === 'ADMIN' || state.perms.canEditConfig));
+    const canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.perms.canEditConfig));
     const trustInputs = [
       'trustPresetSelect',
       'btnApplyTrustPreset',
@@ -2129,7 +2131,7 @@ function populateTempVoiceSelects() {
 
       // Permission gate: allow save only if user can manage extras
       var perms = state.perms || {};
-      var canEdit = !!(state.me && state.me.role === 'ADMIN') || !!perms.canEditConfig || !!perms.canManageGameNews;
+      var canEdit = !!(state.me && state.me.role === 'BOT_ADMIN') || !!perms.canEditConfig || !!perms.canManageGameNews;
 
       if (panel) {
         panel.classList.toggle('dirty', !!state.tempVoiceDirty && canEdit);

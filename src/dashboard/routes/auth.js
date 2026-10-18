@@ -2,10 +2,8 @@
 //
 // Discord OAuth2-only authentication.
 // Login is allowed for any user with access to at least one guild.
-// Authorization is enforced when selecting a guild:
-//  - Owner or Administrator permission => ADMIN
-//  - Otherwise, the user must have at least one role configured in GuildConfig.staffRoleIds => STAFF
-// Bot presence is required for selecting a guild (dashboard operations).
+// Guild administrators can manage only their own eligible servers. Bot admins
+// are identified separately by Discord user ID in BOT_ADMIN_IDS.
 
 const { getGuild } = require('../../services/guildService');
 
@@ -14,6 +12,13 @@ function registerAuthRoutes(ctx) {
 
   const crypto = require('crypto');
   const { fetchMember } = require('../../services/discordFetchCache');
+  const botAdminIds = new Set(
+    String(process.env.BOT_ADMIN_IDS || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean)
+  );
+  const isBotAdmin = (userId) => botAdminIds.has(String(userId || ''));
 
   // OAuth robustness: avoid duplicate token exchanges, and gracefully handle Discord global rate limits.
   // Note: in-memory only. If you run multiple replicas, consider a shared store (e.g. Redis) to dedupe across instances.
@@ -311,27 +316,33 @@ if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
         ? Array.from(client.guilds.cache.keys()).map(String)
         : null;
 
-// Allowed guilds: only guilds where the user is Owner or has Administrator.
-// Additionally, if we can reliably detect bot presence from cache, only keep guilds where the bot is installed.
-// Rationale:
-//  - User experience: do not show guilds the user cannot manage.
-//  - Prevent /api/auth/select-guild 409 on guilds without the bot.
-const allowedGuilds = guilds
-  .filter((g) => g && g.id)
-  .filter((g) => (g.owner === true) || hasAdministratorPermission(g))
-  .map((g) => {
-    const botPresent = Array.isArray(botGuildIds) ? botGuildIds.includes(String(g.id)) : null;
-    return {
+// Guild admins see servers they manage; bot admins can select any server
+// where the bot is installed, including servers outside their personal OAuth list.
+const allowedGuilds = isBotAdmin(me.id) && client && client.guilds && client.guilds.cache
+  ? Array.from(client.guilds.cache.values()).map((g) => ({
       id: String(g.id),
       name: typeof g.name === 'string' ? g.name : null,
       icon: typeof g.icon === 'string' ? g.icon : null,
-      owner: g.owner === true,
-      permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
-      botPresent
-    };
-  })
-  .filter((g) => (g.botPresent === null) ? true : (g.botPresent === true))
-  .slice(0, 200);
+      owner: false,
+      permissions: '0',
+      botPresent: true
+    })).slice(0, 200)
+  : guilds
+      .filter((g) => g && g.id)
+      .filter((g) => (g.owner === true) || hasAdministratorPermission(g))
+      .map((g) => {
+        const botPresent = Array.isArray(botGuildIds) ? botGuildIds.includes(String(g.id)) : null;
+        return {
+          id: String(g.id),
+          name: typeof g.name === 'string' ? g.name : null,
+          icon: typeof g.icon === 'string' ? g.icon : null,
+          owner: g.owner === true,
+          permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
+          botPresent
+        };
+      })
+      .filter((g) => (g.botPresent === null) ? true : (g.botPresent === true))
+      .slice(0, 200);
 
 const allowedGuildIds = allowedGuilds.map((g) => g.id);
 
@@ -347,7 +358,7 @@ if (allowedGuildIds.length === 0) {
       const safeUsername = sanitizeText(me.username || 'discord', { maxLen: 32, stripHtml: true });
 
       // Unscoped session: user is authenticated, but must select a guild to gain a scoped profile.
-      const perms = Object.assign({}, (ADMIN_PERMISSIONS || {}), { canManageUsers: false });
+      const perms = {};
 
       const token = jwt.sign(
         {
@@ -409,19 +420,20 @@ if (allowedGuildIds.length === 0) {
     const guild = getGuild(client, gid);
     if (!guild) return null;
 
-    // Determine if the user is owner/admin from the OAuth guild metadata.
+    const botAdmin = isBotAdmin(userId);
+
+    // Guild administrators receive server-scoped permissions; bot admins are
+    // granted the separate global dashboard role.
     const meta = Array.isArray(allowedGuilds) ? allowedGuilds.find((g) => g && String(g.id) === String(gid)) : null;
     const isOwner = meta && meta.owner === true;
     const isAdmin = meta ? hasAdministratorPermission(meta) : false;
 
-    // Dashboard access policy: ONLY owner/admin.
-    // (Staff roles are used for bot features, not for dashboard authentication.)
-    if (!(isOwner || isAdmin)) return null;
+    if (!botAdmin && !(isOwner || isAdmin)) return null;
 
-    const profile = 'ADMIN';
-    const role = 'ADMIN';
+    const profile = botAdmin ? 'BOT_ADMIN' : 'GUILD_ADMIN';
+    const role = profile;
 
-    const perms = Object.assign({}, (ADMIN_PERMISSIONS || {}), { canManageUsers: false });
+    const perms = Object.assign({}, (ADMIN_PERMISSIONS || {}), { canManageUsers: botAdmin });
 
     return jwt.sign(
       {
@@ -497,7 +509,7 @@ if (allowedGuildIds.length === 0) {
       user: {
         id: u._id || null,
         username: u.username || 'discord',
-        role: u.role || 'ADMIN',
+        role: u.role || 'USER',
         permissions: u.permissions || {},
         allowedGuildIds: Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds : [],
         selectedGuildId: u.selectedGuildId || null,

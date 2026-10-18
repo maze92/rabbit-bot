@@ -1,7 +1,7 @@
 // src/dashboard/routes/premium.js
 //
-// Premium por servidor (ativado por doação): leitura do estado, ativação
-// manual por um admin da dashboard e o guard usado pelos módulos premium
+// Premium por servidor: leitura do estado, ativação manual pelo administrador
+// do bot e o guard usado pelos módulos premium
 // (gamenews, voz temporária, tickets, trust, giveaways).
 
 const { normalizePremium, PREMIUM_MODULES } = require('../../systems/premium');
@@ -91,12 +91,12 @@ function registerPremiumRoutes({
   });
 
   // POST /api/premium  { guildId, enabled, until?, note? }
-  // Só um admin da dashboard pode ativar/desativar o premium de um servidor.
+  // Só um administrador do bot pode alterar o estado manualmente.
   app.post('/api/premium', requireDashboardAuth, canEditConfig, guardGuildBody, async (req, res) => {
     try {
       const user = req.dashboardUser;
       // Com autenticação desligada não há utilizador: não bloquear o modo local.
-      if (user && user.role !== 'ADMIN') {
+      if (user && user.role !== 'BOT_ADMIN') {
         return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
       }
 

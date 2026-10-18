@@ -23,7 +23,7 @@ function makeRes() {
 function makeMw(opts) {
   const config = { dashboard: { requireAuth: opts && opts.requireAuth === false ? false : true } };
   return createAuthMiddleware({
-    jwt: { verify: () => ({ t: 'oauth', sub: '1' }) },
+    jwt: { verify: () => (opts && opts.payload) || ({ t: 'oauth', sub: '1' }) },
     JWT_SECRET: 'test-secret',
     sanitizeId,
     config
@@ -61,6 +61,29 @@ test('requirePerm deixa passar quando a permissão existe', () => {
   requirePerm({ anyOf: ['canViewLogs'] })(req, res, () => { passed = true; });
   ok(passed, 'esperava next() quando a permissão existe');
   eq(res.statusCode, null);
+});
+
+test('requirePerm deixa o administrador do bot ignorar permissões granulares', () => {
+  const { requirePerm } = makeMw();
+  const req = { dashboardUser: { role: 'BOT_ADMIN', permissions: {} } };
+  const res = makeRes();
+  let passed = false;
+  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => { passed = true; });
+  ok(passed);
+});
+
+test('requirePerm não trata o perfil legado ADMIN como administrador do bot', () => {
+  const { requirePerm } = makeMw();
+  const req = { dashboardUser: { role: 'ADMIN', permissions: {} } };
+  const res = makeRes();
+  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => { throw new Error('não devia passar'); });
+  eq(res.statusCode, 403);
+});
+
+test('decodeDashboardToken assume USER quando o token não define perfil', async () => {
+  const { decodeDashboardToken } = makeMw({ payload: { t: 'oauth', sub: '1' } });
+  const user = await decodeDashboardToken('token');
+  eq(user.role, 'USER');
 });
 
 test('requirePerm devolve 403 quando falta a permissão', () => {

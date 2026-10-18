@@ -214,7 +214,7 @@ app.get('/api/public/invite', (req, res) => {
   app.get('/api/internal/metrics', metricsGuard, (req, res) => {
     try {
       const u = req.dashboardUser;
-      const isAdmin = Boolean(u && u.role === 'ADMIN');
+      const isAdmin = Boolean(u && u.role === 'BOT_ADMIN');
 
       if (!isAdmin && !hasValidMetricsToken(req)) {
         return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });

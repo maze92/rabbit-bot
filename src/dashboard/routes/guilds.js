@@ -25,8 +25,8 @@ function registerGuildsRoutes({
       // If neither exists, return empty list.
 
       // Allow-list per authenticated dashboard user.
-      // In OAuth-only mode we still restrict "ADMIN" users to their allowed guilds
-      // (owner/admin on Discord + bot present) via allowedGuildIds.
+      // Guild admins are revalidated against Discord permissions; bot admins
+      // use the signed allow-list assembled from servers with the bot installed.
       const u = req.dashboardUser;
 
       // Backwards-compatibility: older sessions may contain an unfiltered allow-list.
@@ -45,9 +45,11 @@ function registerGuildsRoutes({
         ? u.allowedGuilds.filter((g) => g && g.id)
         : [];
 
-      const strictEligibleFromMeta = metaAll
-        .filter((g) => Boolean(g.owner) || hasAdministratorPermission(g.permissions))
-        .map((g) => String(g.id));
+      const strictEligibleFromMeta = u && u.role === 'BOT_ADMIN'
+        ? (Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.map(String) : [])
+        : metaAll
+            .filter((g) => Boolean(g.owner) || hasAdministratorPermission(g.permissions))
+            .map((g) => String(g.id));
 
       const allowList = strictEligibleFromMeta.length
         ? strictEligibleFromMeta

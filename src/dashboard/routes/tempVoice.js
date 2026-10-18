@@ -74,7 +74,7 @@ function registerTempVoiceRoutes({
 
       const u = req.dashboardUser;
       const perms = (u && u.permissions) || {};
-      const isAdmin = u && u.role === 'ADMIN';
+      const isAdmin = u && u.role === 'BOT_ADMIN';
       if (!isAdmin && !perms.canEditConfig) {
         return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
       }
