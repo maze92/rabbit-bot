@@ -40,7 +40,7 @@ function lockEditPayload() {
 }
 
 function getStatsCategoryName(lang) {
-  return lang === 'pt' ? 'estatisticas' : 'statistics';
+  return lang === 'pt' ? '✦ Estatísticas' : '✦ Statistics';
 }
 
 function getCategoryChildren(guild, categoryId) {
