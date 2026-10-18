@@ -178,6 +178,7 @@ window.OzarkLocales.en = {
   'premium_reference_link': 'PayPal link',
   'premium_admin_title': 'Premium management',
   'premium_admin_description': 'Manage server licenses and review payments without selecting a server.',
+  'premium_admin_access_hint': 'Global Premium management is only shown to accounts listed in BOT_OWNER_IDS or BOT_ADMIN_IDS. A Discord server owner is not automatically a bot owner. After configuring the ID, deploy/restart the app and sign out and back in.',
   'premium_admin_amount': 'Price',
   'premium_admin_currency': 'Currency',
   'premium_admin_duration': 'Duration (days)',

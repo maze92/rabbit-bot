@@ -179,6 +179,7 @@ window.OzarkLocales.pt = {
   'premium_reference_link': 'Link PayPal',
   'premium_admin_title': 'Gestão Premium',
   'premium_admin_description': 'Gere licenças por servidor e consulte os pagamentos, mesmo sem selecionar um servidor.',
+  'premium_admin_access_hint': 'A Gestão Premium global só aparece a contas configuradas em BOT_OWNER_IDS ou BOT_ADMIN_IDS. O owner do servidor Discord não é automaticamente owner do bot. Depois de configurar o ID, publica/reinicia a aplicação e termina sessão e volta a entrar.',
   'premium_admin_amount': 'Preço',
   'premium_admin_currency': 'Moeda',
   'premium_admin_duration': 'Duração (dias)',

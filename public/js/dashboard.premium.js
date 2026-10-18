@@ -124,6 +124,8 @@
       identity.textContent = identityParts.join(' · ');
       identity.classList.toggle('hidden', identityParts.length === 0);
     }
+    var adminAccessHint = byId('premiumAdminAccessHint');
+    if (adminAccessHint) adminAccessHint.classList.toggle('hidden', isAdmin());
 
     var hint = byId('premiumHint');
     if (hint) {
