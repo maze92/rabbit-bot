@@ -641,10 +641,10 @@ h2 {
   /* Em ecrãs estreitos os filtros podem quebrar linha em vez de transbordar.
    * Duplicamos o id do contentor para vencer a regra base (mais específica
    * por vir depois no ficheiro e usar !important). */
-  #featuresGrid .feature-card[data-premium-module] #extras-tickets-panel .toolbar > div:last-child {
+  #ticketsManagementPanel .toolbar > div:last-child {
     flex-wrap: wrap !important;
   }
-  #featuresGrid .feature-card[data-premium-module] #extras-tickets-panel #ticketsSearch {
+  #ticketsManagementPanel #ticketsSearch {
     min-width: 0;
   }
 }
@@ -1398,6 +1398,19 @@ h2 {
   margin: 0 0 2px 0;
 }
 
+.tickets-management-panel {
+  margin-top: var(--sp-4);
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--white-2);
+}
+
+.tickets-management-panel h3 {
+  margin: 0 0 2px;
+  font-size: var(--fs-md);
+}
+
 
 .field > label {
   font-size: var(--fs-xs);
@@ -1879,7 +1892,7 @@ h2 {
 /* Empty states inside cards/lists: a bit more breathing room */
 #tab-logs .list .empty,
 #featuresGrid .feature-card[data-premium-module] .list .empty,
-#extras-tickets-panel .empty {
+#ticketsManagementPanel .empty {
   padding: var(--sp-3);
   border-radius: var(--radius-md);
   background: var(--white-2);
@@ -1898,7 +1911,7 @@ h2 {
 }
 
 /* Tickets extras form: align bottom actions with config tab */
-#extras-tickets-panel .config-actions-row {
+#ticketsManagementPanel .config-actions-row {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
@@ -2255,15 +2268,15 @@ html, body {
 }
 
 /* Tickets: add extra breathing room between list and detail */
-#extras-tickets-panel .users-layout {
+#ticketsManagementPanel .users-layout {
   gap: 22px;
 }
 
-#extras-tickets-panel .users-right {
+#ticketsManagementPanel .users-right {
   position: relative;
 }
 
-#extras-tickets-panel .users-right:before {
+#ticketsManagementPanel .users-right:before {
   content: '';
   position: absolute;
   left: -11px;
@@ -2273,12 +2286,12 @@ html, body {
   background: var(--white-6);
 }
 
-#extras-tickets-panel #ticketDetailPanel.mini-panel {
+#ticketsManagementPanel #ticketDetailPanel.mini-panel {
   padding: 16px;
 }
 
 /* Ticket detail: keep the header visible while scrolling */
-#extras-tickets-panel .ticket-detail-header {
+#ticketsManagementPanel .ticket-detail-header {
   position: sticky;
   top: 8px;
   z-index: 5;
@@ -2289,18 +2302,18 @@ html, body {
   border-radius: 12px;
 }
 
-#extras-tickets-panel .ticket-detail-header .ticket-detail-meta {
+#ticketsManagementPanel .ticket-detail-header .ticket-detail-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
 }
 
-#extras-tickets-panel details.ticket-section {
+#ticketsManagementPanel details.ticket-section {
   margin-top: 10px;
 }
 
-#extras-tickets-panel details.ticket-section > summary.details-summary {
+#ticketsManagementPanel details.ticket-section > summary.details-summary {
   padding: 6px 0;
 }
 
@@ -2523,7 +2536,7 @@ details[open] > .details-summary:before {
 .input.md, .select.md { max-width: 240px; }
 
 /* Tickets toolbar: manter procura e filtros na mesma linha sempre que possível */
-#extras-tickets-panel .toolbar > div:last-child {
+#ticketsManagementPanel .toolbar > div:last-child {
   flex-wrap: nowrap !important;
 }
 

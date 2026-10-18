@@ -283,6 +283,38 @@
           </div>
           </div>
 
+          <div class="user-detail mini-panel tickets-management-panel hidden" id="ticketsManagementPanel">
+            <h3 data-i18n="tickets_manage_title">Tickets ativos</h3>
+            <p class="hint" data-i18n="tickets_extras_hint">Consulta e gere tickets ativos, respostas da equipa e o histórico do suporte.</p>
+            <div class="users-layout">
+              <div class="users-left">
+                <div class="toolbar">
+                  <div class="title" data-i18n="tickets_manage_title">Tickets ativos</div>
+                  <div class="toolbar-actions">
+                    <input id="ticketsSearch" class="input md" type="text" placeholder="Pesquisar..." data-i18n-placeholder="tickets_search_placeholder" />
+                    <select id="ticketsStatusFilter" class="select xs">
+                      <option value="open" data-i18n="tickets_filter_open">Abertos</option>
+                      <option value="closed" data-i18n="tickets_filter_closed">Fechados</option>
+                      <option value="all" data-i18n="tickets_filter_all">Todos</option>
+                    </select>
+                    <button id="btnReloadTickets" class="btn xs" type="button" data-i18n="reload">Recarregar</button>
+                  </div>
+                </div>
+                <div class="list" id="ticketsList">
+                  <div class="empty" data-i18n="tickets_select_guild">Selecione um servidor para ver tickets.</div>
+                </div>
+                <div class="row-end mt-2">
+                  <button id="btnTicketsLoadMore" class="btn xs hidden" type="button" data-i18n="tickets_load_more">Carregar mais</button>
+                </div>
+              </div>
+              <div class="users-right">
+                <div id="ticketDetailPanel" class="mini-panel">
+                  <div class="empty" data-i18n="tickets_detail_empty">Selecione um ticket para ver detalhes.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -538,53 +570,6 @@
                           </div>
                         </div>
 
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-              </div>
-            </article>
-            <article class="feature-card is-premium-locked" id="extras-panel-tickets" data-premium="true" data-premium-locked="true" data-premium-module="tickets">
-              <div class="feature-card__head">
-                <h3 class="feature-card__name" data-i18n="tickets_manage_title">Tickets ativos</h3>
-                <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
-                <button type="button" class="icon-btn feature-card__toggle hidden" data-role="toggle" aria-expanded="false" aria-controls="extras-tickets-panel" data-i18n-aria-label="features_details" aria-label="Detalhes">▾</button>
-              </div>
-              <p class="hint" data-i18n="tickets_extras_hint">Consulta e gere tickets ativos, respostas da equipa e o histórico do suporte.</p>
-              <div class="feature-card__body hidden" id="extras-tickets-panel" inert>
-                  <span class="feature-card__section-label" data-i18n="extras_section_manage">Gestão</span>
-                  <div class="feature-card__surface">
-                    <div class="feature-card__surface-head">
-                      <div class="feature-card__surface-copy">
-                        <h4 class="feature-card__surface-title" data-i18n="tickets_manage_title">Tickets ativos</h4>
-                        <p class="feature-card__surface-hint" data-i18n="tickets_extras_hint">Consulta e gere tickets ativos, respostas da equipa e o histórico do suporte.</p>
-                      </div>
-                    </div>
-                    <div class="users-layout">
-                      <div class="users-left">
-                        <div class="toolbar">
-                          <div class="title" data-i18n="tickets_manage_title">Tickets ativos</div>
-                          <div class="toolbar-actions">
-                            <input id="ticketsSearch" class="input md" type="text" placeholder="Pesquisar..." data-i18n-placeholder="tickets_search_placeholder" />
-                            <select id="ticketsStatusFilter" class="select xs">
-                              <option value="open" data-i18n="tickets_filter_open">Abertos</option>
-                              <option value="closed" data-i18n="tickets_filter_closed">Fechados</option>
-                              <option value="all" data-i18n="tickets_filter_all">Todos</option>
-                            </select>
-                            <button id="btnReloadTickets" class="btn xs" type="button" data-i18n="reload">Recarregar</button>
-                          </div>
-                        </div>
-                        <div class="list" id="ticketsList">
-                          <div class="empty" data-i18n="tickets_select_guild">Selecione um servidor para ver tickets.</div>
-                        </div>
-                        <div class="row-end mt-2">
-                          <button id="btnTicketsLoadMore" class="btn xs hidden" type="button" data-i18n="tickets_load_more">Carregar mais</button>
-                        </div>
-                      </div>
-
-                      <div class="users-right">
-                        <div id="ticketDetailPanel" class="mini-panel">
-                          <div class="empty" data-i18n="tickets_detail_empty">Selecione um ticket para ver detalhes.</div>
                         </div>
                       </div>
                     </div>

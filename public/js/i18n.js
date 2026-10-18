@@ -3,19 +3,28 @@
     currentLang: 'pt',
     translations: {},
     fallbackTranslations: {},
+    initSequence: 0,
 
     async init(lang) {
-      this.currentLang = lang === 'en' ? 'en' : 'pt';
+      const requestSequence = ++this.initSequence;
+      const selectedLang = lang === 'en' ? 'en' : 'pt';
 
       // Carregar sempre PT como fallback
       if (!this.fallbackTranslations.pt) {
         await this.loadLocale('pt');
-        this.fallbackTranslations.pt = (window.OzarkLocales && window.OzarkLocales.pt) || {};
+        if (requestSequence === this.initSequence) {
+          this.fallbackTranslations.pt = (window.OzarkLocales && window.OzarkLocales.pt) || {};
+        }
       }
 
-      if (this.currentLang !== 'pt') {
-        await this.loadLocale(this.currentLang);
-        this.translations = (window.OzarkLocales && window.OzarkLocales[this.currentLang]) || {};
+      if (selectedLang !== 'pt') {
+        await this.loadLocale(selectedLang);
+      }
+      if (requestSequence !== this.initSequence) return;
+
+      this.currentLang = selectedLang;
+      if (selectedLang !== 'pt') {
+        this.translations = (window.OzarkLocales && window.OzarkLocales[selectedLang]) || {};
       } else {
         this.translations = this.fallbackTranslations.pt;
       }

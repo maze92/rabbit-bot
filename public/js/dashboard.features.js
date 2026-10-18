@@ -503,11 +503,6 @@
         var isHidden = body.classList.toggle('hidden');
         toggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
         card.classList.toggle('is-expanded', !isHidden);
-        if (!isHidden && feature.premiumModule && typeof NS.loadPremiumModule === 'function') {
-          NS.loadPremiumModule(feature.premiumModule).catch(function (err) {
-            console.error('Failed to load Premium module', feature.premiumModule, err);
-          });
-        }
       });
     }
 
