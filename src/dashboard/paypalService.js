@@ -22,12 +22,25 @@ function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch }
     };
   }
 
-  function isConfigured() {
-    const plan = getPlan();
+  function normalizePlan(source = getPlan()) {
+    const amountText = String(source.amount || '').trim();
+    const currencyCode = String(source.currency || '').trim().toUpperCase();
+    const days = Number(source.durationDays);
+    if (!/^\d+(\.\d{1,2})?$/.test(amountText) || Number(amountText) <= 0) return null;
+    if (!/^[A-Z]{3}$/.test(currencyCode) || !Number.isInteger(days) || days <= 0 || days > 3660) return null;
+    return { amount: Number(amountText).toFixed(2), currency: currencyCode, durationDays: days };
+  }
+
+  function isConfigured(planOverride) {
+    const plan = normalizePlan(planOverride || getPlan());
     return Boolean(
-      clientId && clientSecret && plan.amount && plan.durationDays && /^[A-Z]{3}$/.test(currency) &&
+      clientId && clientSecret && plan &&
       typeof fetchImpl === 'function'
     );
+  }
+
+  function hasCredentials() {
+    return Boolean(clientId && clientSecret && typeof fetchImpl === 'function');
   }
 
   async function parseResponse(response) {
@@ -42,7 +55,7 @@ function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch }
 
   async function getAccessToken() {
     if (cachedToken && tokenExpiresAt > Date.now() + 30_000) return cachedToken;
-    if (!isConfigured()) throw new Error('PAYPAL_NOT_CONFIGURED');
+    if (!hasCredentials()) throw new Error('PAYPAL_NOT_CONFIGURED');
 
     const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     const response = await fetchImpl(`${apiBase}/v1/oauth2/token`, {
@@ -77,9 +90,9 @@ function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch }
     return parseResponse(response);
   }
 
-  async function createOrder({ guildId, discordUserId, returnUrl, cancelUrl }) {
-    const plan = getPlan();
-    if (!isConfigured()) throw new Error('PAYPAL_NOT_CONFIGURED');
+  async function createOrder({ guildId, discordUserId, returnUrl, cancelUrl, plan: planOverride }) {
+    const plan = normalizePlan(planOverride || getPlan());
+    if (!plan || !isConfigured(plan)) throw new Error('PAYPAL_NOT_CONFIGURED');
     if (!guildId || !discordUserId || !returnUrl || !cancelUrl) throw new Error('PAYPAL_ORDER_FIELDS_REQUIRED');
 
     const invoiceId = `RB-${crypto.randomUUID()}`;
@@ -87,7 +100,7 @@ function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch }
       intent: 'CAPTURE',
       purchase_units: [{
         reference_id: String(guildId),
-        custom_id: String(guildId),
+        custom_id: String(discordUserId),
         invoice_id: invoiceId,
         description: `Rabbit Bot Premium (${plan.durationDays} days)`,
         amount: { currency_code: plan.currency, value: plan.amount }
@@ -132,7 +145,7 @@ function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch }
     return result.verification_status === 'SUCCESS';
   }
 
-  return { createOrder, captureOrder, getPlan, isConfigured, verifyWebhook };
+  return { createOrder, captureOrder, getPlan, normalizePlan, isConfigured, verifyWebhook };
 }
 
 module.exports = { createPayPalService };

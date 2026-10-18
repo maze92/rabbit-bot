@@ -2,6 +2,7 @@ const { Schema, model } = require('mongoose');
 
 const premiumPaymentSchema = new Schema({
   paypalOrderId: { type: String, required: true, unique: true },
+  approvalUrl: { type: String, default: null },
   paypalCaptureId: { type: String, default: null },
   guildId: { type: String, required: true, index: true },
   discordUserId: { type: String, required: true },

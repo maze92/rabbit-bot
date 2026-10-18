@@ -8,7 +8,7 @@
 const { getGuild } = require('../../services/guildService');
 
 function registerAuthRoutes(ctx) {
-  const { app, express, requireDashboardAuth, jwt, JWT_SECRET, sanitizeText, rateLimit, ADMIN_PERMISSIONS, getClient, sanitizeId, GuildConfig } = ctx;
+  const { app, express, requireDashboardAuth, jwt, JWT_SECRET, sanitizeText, rateLimit, ADMIN_PERMISSIONS, getClient, sanitizeId, GuildConfig, PremiumEntitlement } = ctx;
 
   const crypto = require('crypto');
   const { fetchMember } = require('../../services/discordFetchCache');
@@ -504,6 +504,27 @@ if (allowedGuildIds.length === 0) {
   app.get('/api/auth/me', requireDashboardAuth, async (req, res) => {
     const u = req.dashboardUser;
     if (!u) return res.status(401).json({ ok: false, error: 'NO_USER' });
+    let premium = {
+      active: false,
+      until: null,
+      testBypass: u.role === 'BOT_ADMIN',
+      effectiveActive: u.role === 'BOT_ADMIN'
+    };
+    if (PremiumEntitlement && u._id && u.role !== 'BOT_ADMIN') {
+      try {
+        const entitlement = await PremiumEntitlement.findOne({ discordUserId: String(u._id) }).select('enabled until').lean();
+        const until = entitlement && entitlement.until ? new Date(entitlement.until) : null;
+        const active = Boolean(entitlement && entitlement.enabled === true && (!until || (!Number.isNaN(until.getTime()) && until > new Date())));
+        premium = {
+          active,
+          until: active ? until : null,
+          testBypass: u.role === 'BOT_ADMIN',
+          effectiveActive: active || u.role === 'BOT_ADMIN'
+        };
+      } catch (err) {
+        console.warn('[Dashboard] Premium login status lookup failed:', err?.message || err);
+      }
+    }
     return res.json({
       ok: true,
       user: {
@@ -514,6 +535,7 @@ if (allowedGuildIds.length === 0) {
         allowedGuildIds: Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds : [],
         selectedGuildId: u.selectedGuildId || null,
         profile: u.profile || null,
+        premium,
         oauth: true
       }
     });

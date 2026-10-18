@@ -666,18 +666,8 @@ function setPanelLoading(panelId, isLoading) {
       return;
     }
 
-    var profileKey = 'profile_unscoped';
-    var profile = (me && me.profile) ? String(me.profile) : '';
-    if (profile === 'BOT_ADMIN') profileKey = 'profile_bot_admin';
-    else if (profile === 'GUILD_ADMIN' || profile === 'ADMIN') profileKey = 'profile_guild_admin';
-    else if (profile === 'MANAGER') profileKey = 'profile_manager';
-    else if (profile === 'VIEWER') profileKey = 'profile_viewer';
-    else if (profile === 'UNSCOPED') profileKey = 'profile_unscoped';
-    else if (me.role === 'BOT_ADMIN') profileKey = 'profile_bot_admin';
-    else if (me.role === 'GUILD_ADMIN') profileKey = 'profile_guild_admin';
-
-    var profileLabel = t(profileKey);
-    elProfile.textContent = t('badge_profile', { username: me.username || 'Discord', profile: profileLabel });
+    elProfile.textContent = me.role === 'BOT_ADMIN' ? t('profile_bot_admin') : (me.username || 'Discord');
+    elProfile.classList.toggle('badge-premium', !!(me.premium && (me.premium.active || me.premium.testBypass)));
     elProfile.classList.remove('hidden');
 
     var perms = (state.perms && typeof state.perms === 'object') ? state.perms : {};
@@ -2549,36 +2539,6 @@ function deleteTempVoiceBaseAt(index) {
       wireTablist('#extrasTabs button[data-extra-tab]');
     }
 
-    // Cartões colapsáveis da tab Extras (substituem as antigas sub-abas).
-    function wireExtraCards() {
-      document.querySelectorAll('#tab-gamenews [data-role="extra-toggle"]').forEach(function (toggle) {
-        toggle.addEventListener('click', function () {
-          var panelId = toggle.getAttribute('aria-controls');
-          var panel = panelId ? document.getElementById(panelId) : null;
-          if (!panel) return;
-
-          var isHidden = panel.classList.toggle('hidden');
-          toggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
-
-          // Carregamento preguiçoso na primeira expansão do cartão.
-          var card = toggle.closest('.feature-card');
-          if (!isHidden && card && card.getAttribute('data-loaded') !== '1') {
-            var kind = card.getAttribute('data-extra');
-            card.setAttribute('data-loaded', '1');
-            try {
-              if (kind === 'tickets' && window.OzarkDashboard && typeof window.OzarkDashboard.loadTickets === 'function') {
-                window.OzarkDashboard.loadTickets(true);
-              } else if (kind === 'giveaways' && window.OzarkDashboard && typeof window.OzarkDashboard.loadGiveaways === 'function') {
-                window.OzarkDashboard.loadGiveaways(true);
-              }
-            } catch (e) {
-              console.error('Failed to lazy-load extras panel', e);
-            }
-          }
-        });
-      });
-    }
-
     function wireExtraTabs() {
       var tabs = Array.prototype.slice.call(document.querySelectorAll('#extrasTabs button[data-extra-tab]'));
       if (!tabs.length) return;
@@ -2595,9 +2555,20 @@ function deleteTempVoiceBaseAt(index) {
         });
 
         var panel = document.querySelector('[data-extra-panel="' + key + '"]');
-        var toggle = panel && panel.querySelector('[data-role="extra-toggle"]');
-        var body = toggle && document.getElementById(toggle.getAttribute('aria-controls'));
-        if (toggle && body && body.classList.contains('hidden') && !toggle.disabled) toggle.click();
+        if (!panel) return;
+        var body = panel.querySelector('.feature-card__body');
+        if (body) body.classList.remove('hidden');
+        if (panel.getAttribute('data-loaded') === '1') return;
+        panel.setAttribute('data-loaded', '1');
+        try {
+          if (key === 'tickets' && window.OzarkDashboard && typeof window.OzarkDashboard.loadTickets === 'function') {
+            window.OzarkDashboard.loadTickets(true);
+          } else if (key === 'giveaways' && window.OzarkDashboard && typeof window.OzarkDashboard.loadGiveaways === 'function') {
+            window.OzarkDashboard.loadGiveaways(true);
+          }
+        } catch (e) {
+          console.error('Failed to lazy-load extras panel', e);
+        }
       }
 
       tabs.forEach(function (tab) {
@@ -2616,7 +2587,6 @@ function deleteTempVoiceBaseAt(index) {
     });
 
     setupTabsKeyboardNavigation();
-    wireExtraCards();
     wireExtraTabs();
 
     // Atalhos do Overview: navegam para a aba correspondente.
@@ -3068,6 +3038,7 @@ function deleteTempVoiceBaseAt(index) {
   window.OzarkDashboard.API_BASE = API_BASE;
   window.OzarkDashboard.apiGet = apiGet;
   window.OzarkDashboard.apiPost = apiPost;
+  window.OzarkDashboard.apiPatch = apiPatch;
   window.OzarkDashboard.toast = toast;
   window.OzarkDashboard.t = t;
   window.OzarkDashboard.escapeHtml = escapeHtml;

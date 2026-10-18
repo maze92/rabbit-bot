@@ -28,8 +28,10 @@ function loadDashboardModels() {
     TicketLog: loadModel('../database/models/TicketLog', 'TicketLog'),
     Ticket: loadModel('../database/models/Ticket', 'Ticket'),
     Infraction: loadModel('../database/models/Infraction', 'Infraction'),
-    TempVoiceChannel: loadModel('../database/models/TempVoiceChannel', 'TempVoiceChannel')
-    ,PremiumPayment: loadModel('../database/models/PremiumPayment', 'PremiumPayment')
+    TempVoiceChannel: loadModel('../database/models/TempVoiceChannel', 'TempVoiceChannel'),
+    PremiumPayment: loadModel('../database/models/PremiumPayment', 'PremiumPayment'),
+    PremiumEntitlement: loadModel('../database/models/PremiumEntitlement', 'PremiumEntitlement'),
+    PremiumSettings: loadModel('../database/models/PremiumSettings', 'PremiumSettings')
   };
 }
 

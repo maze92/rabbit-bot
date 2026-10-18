@@ -52,7 +52,9 @@ const guildConfigSchema = new Schema(
       until: { type: Date, default: null },
       // Referência livre da doação (ex.: id do pagamento) para suporte.
       note: { type: String, default: null },
-      activatedAt: { type: Date, default: null }
+      activatedAt: { type: Date, default: null },
+      accountUserId: { type: String, default: null },
+      testBypass: { type: Boolean, default: false }
     },
 
     // Configuração de voz temporária por guild

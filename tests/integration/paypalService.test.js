@@ -41,7 +41,8 @@ test('PayPal checkout creates an order with the configured plan and approval URL
   assert.deepEqual(result.plan, { amount: '6.50', currency: 'EUR', durationDays: 30 });
   assert.equal(calls[1].url, 'https://api-m.sandbox.paypal.com/v2/checkout/orders');
   const order = JSON.parse(calls[1].options.body);
-  assert.equal(order.purchase_units[0].custom_id, '123456789012345678');
+  assert.equal(order.purchase_units[0].custom_id, '987654321098765432');
+  assert.equal(order.purchase_units[0].reference_id, '123456789012345678');
   assert.deepEqual(order.purchase_units[0].amount, { currency_code: 'EUR', value: '6.50' });
   assert.equal(order.application_context.return_url, 'https://dashboard.example/api/premium/paypal/return');
 });
@@ -60,6 +61,26 @@ test('PayPal checkout stays disabled without valid server credentials and price'
     fetchImpl: async () => response({})
   });
   assert.equal(invalidPrecision.isConfigured(), false);
+});
+
+test('PayPal checkout accepts a valid plan configured outside environment variables', async () => {
+  const fetchImpl = async (url) => url.endsWith('/v1/oauth2/token')
+    ? response({ access_token: 'access-token', expires_in: 3600 })
+    : response({ id: 'ORDER-CUSTOM', links: [{ rel: 'approve', href: 'https://paypal.example/approve' }] });
+  const paypal = createPayPalService({
+    env: credentials({ PAYPAL_PREMIUM_PRICE: '' }),
+    fetchImpl
+  });
+
+  const result = await paypal.createOrder({
+    guildId: '123456789012345678',
+    discordUserId: '987654321098765432',
+    returnUrl: 'https://dashboard.example/return',
+    cancelUrl: 'https://dashboard.example/cancel',
+    plan: { amount: '12.00', currency: 'EUR', durationDays: 60 }
+  });
+  assert.equal(result.plan.amount, '12.00');
+  assert.equal(result.plan.durationDays, 60);
 });
 
 test('PayPal webhook verification requires the expected signature status', async () => {

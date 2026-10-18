@@ -73,6 +73,8 @@ function registerDashboardRoutes(ctx) {
     Infraction,
     TempVoiceChannel,
     PremiumPayment,
+    PremiumEntitlement,
+    PremiumSettings,
     // Schemas Zod (ver dashboard/schemas.js)
     GuildConfigSchema,
     ModWarnSchema,
@@ -99,7 +101,7 @@ function registerDashboardRoutes(ctx) {
   const getLogModels = () => ({ DashboardLog, TicketLog });
 
   // Guard dos módulos premium (gamenews, voz temporária, tickets, trust, giveaways).
-  const requirePremium = createPremiumGuard({ GuildConfig, sanitizeId });
+  const requirePremium = createPremiumGuard({ GuildConfig, PremiumEntitlement, sanitizeId });
 
   registerCoreRoutes({
     app,
@@ -125,6 +127,7 @@ function registerDashboardRoutes(ctx) {
     rateLimit,
     ADMIN_PERMISSIONS,
     GuildConfig,
+    PremiumEntitlement,
     getClient,
     sanitizeId
   });
@@ -339,6 +342,8 @@ function registerDashboardRoutes(ctx) {
     sanitizeId,
     GuildConfig,
     PremiumPayment,
+    PremiumEntitlement,
+    PremiumSettings,
     config,
     rateLimit
   });

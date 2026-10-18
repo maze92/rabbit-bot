@@ -346,7 +346,7 @@
 
     var hasPublish = (feature.fields || []).some(function (f) { return f.type === 'publish'; });
     var publishLabel = (current[feature.key] && current[feature.key].messageId) ? t('features_republish') : t('features_publish');
-    var actionsRight = hasPublish
+    var actionsRight = hasPublish && !(feature.key === 'tickets' && current[feature.key] && current[feature.key].messageId)
       ? '<button class="btn xs" type="button" data-role="publish">' + esc(publishLabel) + '</button>'
       : '';
 
@@ -643,7 +643,7 @@
       if (!res || res.ok === false) throw new Error((res && res.error) || 'ERROR');
       current[key] = (res && res.value) ? res.value : value;
       if (!silent) {
-        if (statusEl) statusEl.textContent = t('features_saved');
+        if (statusEl) statusEl.textContent = '';
         notify(t('features_saved'), { type: 'success' });
       }
       if (value && Object.prototype.hasOwnProperty.call(value, 'messageId')) updateMessageIdLabel(key);
