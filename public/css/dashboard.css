@@ -2892,10 +2892,6 @@ summary:focus-visible,
   gap:var(--sp-3);
   margin-top:var(--sp-4);
 }
-/* Extras: cartões a toda a largura (cada módulo tem layout largo). */
-.extras-grid{
-  grid-template-columns:1fr;
-}
 .feature-card{
   display:flex;
   flex-direction:column;
@@ -3048,9 +3044,6 @@ summary:focus-visible,
   text-transform:uppercase;
 }
 .extras-section{margin-top:var(--sp-4)}
-.extras-tabs{margin:var(--sp-4) 0 var(--sp-3);overflow-x:auto;}
-.extras-tabs .tab{flex:1 1 auto;}
-.extras-grid .feature-card{grid-column:1/-1;}
 .premium-panel{
   margin-top:var(--sp-3);
   padding:var(--sp-3);

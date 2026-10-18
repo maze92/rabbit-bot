@@ -6,18 +6,15 @@
 // owners and delegated admins are identified by separate Discord user ID lists.
 
 const { getGuild } = require('../../services/guildService');
-const { parseBotUserIds, getBotRole } = require('../botRoles');
+const { getBotOwnerIds, parseBotUserIds, getBotRole } = require('../botRoles');
 
 function registerAuthRoutes(ctx) {
   const { app, express, requireDashboardAuth, jwt, JWT_SECRET, sanitizeText, rateLimit, ADMIN_PERMISSIONS, getClient, sanitizeId } = ctx;
 
   const crypto = require('crypto');
   const { fetchMember } = require('../../services/discordFetchCache');
-  const botOwnerIds = parseBotUserIds(process.env.BOT_OWNER_IDS, 'BOT_OWNER_IDS');
+  const botOwnerIds = getBotOwnerIds(process.env.BOT_OWNER_IDS);
   const botAdminIds = parseBotUserIds(process.env.BOT_ADMIN_IDS, 'BOT_ADMIN_IDS');
-  if (!botOwnerIds.size) {
-    console.warn('[Dashboard] BOT_OWNER_IDS is not configured; global Premium settings are locked.');
-  }
   const getBotRoleForUser = (userId) => getBotRole(userId, botOwnerIds, botAdminIds);
   const isBotAdmin = (userId) => Boolean(getBotRoleForUser(userId));
 

@@ -992,7 +992,13 @@ function setLang(newLang) {
       var f5 = (typeof loadTempVoiceActive === 'function' ? loadTempVoiceActive() : Promise.resolve());
       // Garantir que canais/roles de configuração estão disponíveis para Tickets/Extras
       var f6 = (typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve());
-      Promise.allSettled([f1, f2, f3, f4, f5, f6]).finally(function () {
+      var f7 = (window.OzarkDashboard.loadTickets
+        ? window.OzarkDashboard.loadTickets(true)
+        : Promise.resolve());
+      var f8 = (window.OzarkDashboard.loadGiveaways
+        ? window.OzarkDashboard.loadGiveaways()
+        : Promise.resolve());
+      Promise.allSettled([f1, f2, f3, f4, f5, f6, f7, f8]).finally(function () {
         setPanelLoading('tab-features', false);
       });
     } else if (name === 'user') {
@@ -2553,45 +2559,6 @@ function deleteTempVoiceBaseAt(index) {
 
     function setupTabsKeyboardNavigation() {
       wireTablist('.tabs button[data-tab]');
-      wireTablist('#extrasTabs button[data-extra-tab]');
-    }
-
-    function wireExtraTabs() {
-      var tabs = Array.prototype.slice.call(document.querySelectorAll('#extrasTabs button[data-extra-tab]'));
-      if (!tabs.length) return;
-
-      function activate(tab) {
-        var key = tab.getAttribute('data-extra-tab');
-        tabs.forEach(function (item) {
-          var selected = item === tab;
-          item.classList.toggle('active', selected);
-          item.setAttribute('aria-selected', selected ? 'true' : 'false');
-          item.setAttribute('tabindex', selected ? '0' : '-1');
-          var panel = document.getElementById(item.getAttribute('aria-controls'));
-          if (panel) panel.classList.toggle('hidden', !selected);
-        });
-
-        var panel = document.querySelector('[data-extra-panel="' + key + '"]');
-        if (!panel) return;
-        var body = panel.querySelector('.feature-card__body');
-        if (body) body.classList.remove('hidden');
-        if (panel.getAttribute('data-loaded') === '1') return;
-        panel.setAttribute('data-loaded', '1');
-        try {
-          if (key === 'tickets' && window.OzarkDashboard && typeof window.OzarkDashboard.loadTickets === 'function') {
-            window.OzarkDashboard.loadTickets(true);
-          } else if (key === 'giveaways' && window.OzarkDashboard && typeof window.OzarkDashboard.loadGiveaways === 'function') {
-            window.OzarkDashboard.loadGiveaways(true);
-          }
-        } catch (e) {
-          console.error('Failed to lazy-load extras panel', e);
-        }
-      }
-
-      tabs.forEach(function (tab) {
-        tab.addEventListener('click', function () { activate(tab); });
-      });
-      activate(tabs.find(function (tab) { return tab.getAttribute('aria-selected') === 'true'; }) || tabs[0]);
     }
 
     // Tabs
@@ -2604,7 +2571,6 @@ function deleteTempVoiceBaseAt(index) {
     });
 
     setupTabsKeyboardNavigation();
-    wireExtraTabs();
 
     // Atalhos do Overview: navegam para a aba correspondente.
     var overviewShortcuts = document.getElementById('overviewShortcuts');
@@ -2658,14 +2624,8 @@ function deleteTempVoiceBaseAt(index) {
             if (window.OzarkDashboard.loadGameNews) window.OzarkDashboard.loadGameNews().catch(function () {});
             loadTempVoiceConfig().catch(function () {});
             loadTempVoiceActive().catch(function () {});
-
-            // Recarregar a lista de tickets se o cartão correspondente estiver expandido.
-            try {
-              var ticketsPanel = document.getElementById('extras-tickets-panel');
-              if (ticketsPanel && !ticketsPanel.classList.contains('hidden') && window.OzarkDashboard && typeof window.OzarkDashboard.loadTickets === 'function') {
-                window.OzarkDashboard.loadTickets(true);
-              }
-            } catch (e) {}
+            if (window.OzarkDashboard.loadTickets) window.OzarkDashboard.loadTickets(true);
+            if (window.OzarkDashboard.loadGiveaways) window.OzarkDashboard.loadGiveaways();
           } else if (state.currentTab === 'user') {
             window.OzarkDashboard.loadUsers().catch(function () {});
           } else if (state.currentTab === 'config') {

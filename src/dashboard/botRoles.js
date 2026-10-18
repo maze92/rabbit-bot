@@ -1,3 +1,5 @@
+const PRIMARY_BOT_OWNER_ID = '810243963574550558';
+
 function parseBotUserIds(value, envName) {
   const ids = new Set();
   String(value || '').split(/[,\s;]+/).forEach((part) => {
@@ -9,6 +11,12 @@ function parseBotUserIds(value, envName) {
     }
     ids.add(id);
   });
+  return ids;
+}
+
+function getBotOwnerIds(value) {
+  const ids = parseBotUserIds(value, 'BOT_OWNER_IDS');
+  ids.add(PRIMARY_BOT_OWNER_ID);
   return ids;
 }
 
@@ -27,4 +35,4 @@ function isBotOwner(user) {
   return Boolean(user && user.role === 'BOT_OWNER');
 }
 
-module.exports = { parseBotUserIds, getBotRole, isBotOperator, isBotOwner };
+module.exports = { PRIMARY_BOT_OWNER_ID, parseBotUserIds, getBotOwnerIds, getBotRole, isBotOperator, isBotOwner };

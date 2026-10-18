@@ -383,9 +383,6 @@
               <span class="premium-panel__meta" id="premiumMeta"></span>
             </div>
             <div class="premium-panel__identity" id="premiumGuildIdentity"></div>
-            <p class="premium-panel__hint hidden" id="premiumAdminAccessHint" data-i18n="premium_admin_access_hint">
-              A Gestão Premium global só aparece a contas configuradas em BOT_OWNER_IDS ou BOT_ADMIN_IDS. O owner do servidor Discord não é automaticamente owner do bot.
-            </p>
             <p class="premium-panel__hint" id="premiumHint" data-i18n="premium_lock_hint">
               Estes módulos fazem parte do plano Premium, que é ativado por doação.
             </p>
@@ -406,16 +403,8 @@
             </div>
           </div>
 
-          <div class="tabs extras-tabs" id="extrasTabs" role="tablist" data-i18n-aria-label="extras_tabs_aria_label" aria-label="Módulos Premium">
-            <button type="button" class="tab active" id="extras-tab-feeds" role="tab" aria-selected="true" aria-controls="extras-panel-feeds" tabindex="0" data-extra-tab="feeds" data-i18n="extras_feeds_tab">Feeds</button>
-            <button type="button" class="tab" id="extras-tab-tempvoice" role="tab" aria-selected="false" aria-controls="extras-panel-tempvoice" tabindex="-1" data-extra-tab="tempvoice" data-i18n="extras_tempvoice_tab">Voz temporária</button>
-            <button type="button" class="tab" id="extras-tab-tickets" role="tab" aria-selected="false" aria-controls="extras-panel-tickets" tabindex="-1" data-extra-tab="tickets" data-i18n="extras_tickets_tab">Tickets</button>
-            <button type="button" class="tab" id="extras-tab-trust" role="tab" aria-selected="false" aria-controls="extras-panel-trust" tabindex="-1" data-extra-tab="trust" data-i18n="extras_trust_tab">Trust</button>
-            <button type="button" class="tab" id="extras-tab-giveaways" role="tab" aria-selected="false" aria-controls="extras-panel-giveaways" tabindex="-1" data-extra-tab="giveaways" data-i18n="tab_giveaways">Giveaways</button>
-          </div>
-
           <div class="features-grid extras-grid" id="extrasGrid">
-            <article class="feature-card" id="extras-panel-feeds" role="tabpanel" aria-labelledby="extras-tab-feeds" data-extra-panel="feeds" data-extra="feeds" data-premium="true" data-premium-module="gamenews">
+            <article class="feature-card" id="extras-panel-feeds" data-premium="true" data-premium-module="gamenews">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="gamenews_title">GameNews</h3>
               </div>
@@ -455,7 +444,7 @@
                 </div>
               </div>
             </article>
-            <article class="feature-card hidden" id="extras-panel-tempvoice" role="tabpanel" aria-labelledby="extras-tab-tempvoice" data-extra-panel="tempvoice" data-extra="tempvoice" data-premium="true" data-premium-module="tempvoice">
+            <article class="feature-card" id="extras-panel-tempvoice" data-premium="true" data-premium-module="tempvoice">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tempvoice_title">Voz temporária</h3>
               </div>
@@ -553,7 +542,7 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card hidden" id="extras-panel-tickets" role="tabpanel" aria-labelledby="extras-tab-tickets" data-extra-panel="tickets" data-extra="tickets" data-premium="true" data-premium-module="tickets">
+            <article class="feature-card" id="extras-panel-tickets" data-premium="true" data-premium-module="tickets">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tickets_extras_title">Tickets</h3>
               </div>
@@ -599,7 +588,7 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card hidden" id="extras-panel-trust" role="tabpanel" aria-labelledby="extras-tab-trust" data-extra-panel="trust" data-extra="trust" data-premium="true" data-premium-module="trust">
+            <article class="feature-card" id="extras-panel-trust" data-premium="true" data-premium-module="trust">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="extras_trust_title">Sistema de Trust</h3>
               </div>
@@ -716,7 +705,7 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card hidden" id="extras-panel-giveaways" role="tabpanel" aria-labelledby="extras-tab-giveaways" data-extra-panel="giveaways" data-extra="giveaways" data-premium="true" data-premium-module="giveaways">
+            <article class="feature-card" id="extras-panel-giveaways" data-premium="true" data-premium-module="giveaways">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="giveaways_title">Giveaways</h3>
               </div>

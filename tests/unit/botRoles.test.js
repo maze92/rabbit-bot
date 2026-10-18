@@ -1,5 +1,5 @@
 const { test, eq } = require('./_harness');
-const { parseBotUserIds, getBotRole, isBotOperator, isBotOwner } = require('../../src/dashboard/botRoles');
+const { PRIMARY_BOT_OWNER_ID, parseBotUserIds, getBotOwnerIds, getBotRole, isBotOperator, isBotOwner } = require('../../src/dashboard/botRoles');
 
 test('bot owner role takes precedence over delegated admin role', () => {
   const ownerIds = new Set(['123456789012345678']);
@@ -15,6 +15,13 @@ test('bot ID configuration accepts common separators and ignores malformed value
   eq(ids.has('123456789012345678'), true);
   eq(ids.has('234567890123456789'), true);
   eq(ids.has('345678901234567890'), true);
+});
+
+test('primary bot owner is always authorized alongside configured bot owners', () => {
+  const ownerIds = getBotOwnerIds('234567890123456789');
+  eq(ownerIds.has(PRIMARY_BOT_OWNER_ID), true);
+  eq(getBotRole(PRIMARY_BOT_OWNER_ID, ownerIds, new Set()), 'BOT_OWNER');
+  eq(getBotRole('234567890123456789', ownerIds, new Set()), 'BOT_OWNER');
 });
 
 test('bot owner is an operator but delegated bot admin is not bot owner', () => {
