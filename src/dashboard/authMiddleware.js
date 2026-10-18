@@ -144,7 +144,7 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
 
       const u = req.dashboardUser;
       if (!u) return res.status(401).json({ ok: false, error: 'Unauthorized' });
-      if (u.role === 'BOT_ADMIN') return next();
+      if (u.role === 'BOT_ADMIN' || u.role === 'BOT_OWNER') return next();
       if (!needed.length) return next();
       const perms = (u.permissions && typeof u.permissions === 'object') ? u.permissions : {};
       const allowed = needed.some((k) => perms[k] === true);

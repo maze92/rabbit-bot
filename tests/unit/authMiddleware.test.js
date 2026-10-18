@@ -63,6 +63,15 @@ test('requirePerm deixa passar quando a permissão existe', () => {
   eq(res.statusCode, null);
 });
 
+test('requirePerm deixa o owner do bot ignorar permissões granulares', () => {
+  const { requirePerm } = makeMw();
+  const req = { dashboardUser: { role: 'BOT_OWNER', permissions: {} } };
+  const res = makeRes();
+  let passed = false;
+  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => { passed = true; });
+  ok(passed);
+});
+
 test('requirePerm deixa o administrador do bot ignorar permissões granulares', () => {
   const { requirePerm } = makeMw();
   const req = { dashboardUser: { role: 'BOT_ADMIN', permissions: {} } };

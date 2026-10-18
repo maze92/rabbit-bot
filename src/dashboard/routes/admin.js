@@ -2,6 +2,7 @@
 
 const { sendServerError } = require('./_errors');
 const { getGuild, getCachedChannel } = require('../../services/guildService');
+const { isBotOperator } = require('../botRoles');
 
 function registerAdminRoutes({
   app,
@@ -45,7 +46,7 @@ function registerAdminRoutes({
     try {
       const u = req.dashboardUser;
       const perms = (u && u.permissions) || {};
-      const isAdmin = u && u.role === 'BOT_ADMIN';
+      const isAdmin = isBotOperator(u);
 
       if (!isAdmin && !perms.canViewConfig && !perms.canManageUsers) {
         return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });

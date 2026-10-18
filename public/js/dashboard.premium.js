@@ -15,13 +15,19 @@
 
   var premium = null;   // { enabled, active, until, note, activatedAt }
   var paymentPlan = null;
+  var serverDetails = null;
   var loading = false;
   var checkoutLoading = false;
   var adminGuilds = [];
 
   function isAdmin() {
     var me = NS.state && NS.state.me;
-    return !!(me && me.role === 'BOT_ADMIN');
+    return !!(me && (me.role === 'BOT_ADMIN' || me.role === 'BOT_OWNER'));
+  }
+
+  function isBotOwner() {
+    var me = NS.state && NS.state.me;
+    return !!(me && me.role === 'BOT_OWNER');
   }
 
   function isGuildAdmin() {
@@ -78,7 +84,11 @@
 
     var status = byId('premiumStatus');
     if (status) {
-      status.textContent = paidActive ? t('premium_active') : (testBypass ? t('premium_test_mode') : t('premium_inactive'));
+      status.textContent = paidActive
+        ? t('premium_active')
+        : (testBypass
+          ? t('premium_test_mode')
+          : (premium && premium.status === 'EXPIRED' ? t('premium_expired') : t('premium_inactive')));
       status.classList.toggle('premium-status--on', active);
     }
 
@@ -92,6 +102,27 @@
       }
       if (premium && premium.note) parts.push(premium.note);
       meta.textContent = parts.join(' · ');
+    }
+
+    var guildName = byId('premiumGuildName');
+    if (guildName) {
+      guildName.textContent = serverDetails && serverDetails.name || '';
+      guildName.classList.toggle('hidden', !guildName.textContent);
+    }
+    var identity = byId('premiumGuildIdentity');
+    if (identity) {
+      var identityParts = [];
+      if (serverDetails && (serverDetails.ownerName || serverDetails.ownerId)) {
+        identityParts.push(t('premium_server_owner') + ': ' + (serverDetails.ownerName || t('premium_server_unknown')) +
+          (serverDetails.ownerId ? ' (' + serverDetails.ownerId + ')' : ''));
+      }
+      if (serverDetails && (serverDetails.purchaserDiscordUsername || serverDetails.purchaserDiscordUserId)) {
+        identityParts.push(t('premium_server_payer') + ': ' +
+          (serverDetails.purchaserDiscordUsername || t('premium_server_unknown')) +
+          (serverDetails.purchaserDiscordUserId ? ' (' + serverDetails.purchaserDiscordUserId + ')' : ''));
+      }
+      identity.textContent = identityParts.join(' · ');
+      identity.classList.toggle('hidden', identityParts.length === 0);
     }
 
     var hint = byId('premiumHint');
@@ -130,6 +161,8 @@
 
     var history = byId('premiumPaymentHistory');
     if (history) history.classList.toggle('hidden', !admin);
+    var settingsForm = byId('premiumSettingsForm');
+    if (settingsForm) settingsForm.classList.toggle('hidden', !isBotOwner());
 
     if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(active);
   }
@@ -140,6 +173,7 @@
     if (!gid) {
       premium = { enabled: false, active: false };
       paymentPlan = null;
+      serverDetails = null;
       if (grid) grid.classList.add('is-premium-locked');
       applyLock();
       if (isAdmin()) loadAdminData();
@@ -152,11 +186,13 @@
       var res = await NS.apiGet('/premium?guildId=' + encodeURIComponent(gid));
       premium = (res && res.premium) ? res.premium : { enabled: false, active: false };
       paymentPlan = (res && res.payment) ? res.payment : null;
+      serverDetails = (res && res.server) ? res.server : null;
       if (isAdmin()) loadAdminData();
     } catch (err) {
       console.error('Premium load error', err);
       premium = { enabled: false, active: false };
       paymentPlan = null;
+      serverDetails = null;
     } finally {
       loading = false;
       applyLock();
@@ -175,7 +211,7 @@
     if (!list || !isAdmin()) return;
     var query = String((byId('premiumAdminSearch') || {}).value || '').trim().toLowerCase();
     var items = adminGuilds.filter(function (item) {
-      return !query || [item.guildId, item.note, item.latestPayment && item.latestPayment.paypalPayerEmail]
+      return !query || [item.guildId, item.guildName, item.ownerId, item.ownerName, item.purchasedByUserId, item.purchaserName, item.note, item.latestPayment && item.latestPayment.paypalPayerEmail]
         .some(function (value) { return String(value || '').toLowerCase().includes(query); });
     });
     list.innerHTML = '';
@@ -193,15 +229,24 @@
       var summary = document.createElement('div');
       summary.className = 'premium-guild-row__summary';
       var title = document.createElement('strong');
-      title.textContent = t('premium_admin_guild_id') + ': ' + item.guildId;
+      title.textContent = item.guildName || item.guildId;
       var state = document.createElement('span');
       state.className = 'premium-status' + (item.active ? ' premium-status--on' : '');
-      state.textContent = item.active ? t('premium_admin_active') : t('premium_admin_expired');
+      state.textContent = item.active
+        ? t('premium_admin_active')
+        : (item.enabled ? t('premium_admin_expired') : t('premium_admin_disabled'));
       summary.appendChild(title);
       summary.appendChild(state);
       row.appendChild(summary);
       var guildMeta = document.createElement('small');
       guildMeta.textContent = [
+        t('premium_admin_guild_id') + ': ' + item.guildId,
+        item.ownerName || item.ownerId
+          ? t('premium_server_owner') + ': ' + (item.ownerName || t('premium_server_unknown')) + (item.ownerId ? ' (' + item.ownerId + ')' : '')
+          : '',
+        item.purchaserName || item.purchasedByUserId
+          ? t('premium_server_payer') + ': ' + (item.purchaserName || t('premium_server_unknown')) + (item.purchasedByUserId ? ' (' + item.purchasedByUserId + ')' : '')
+          : '',
         item.note || '',
         item.until ? t('premium_until', { date: formatPaymentDate(item.until) }) : t('premium_admin_permanent'),
       ].filter(Boolean).join(' · ');
@@ -256,7 +301,10 @@
       var save = document.createElement('button');
       save.className = 'btn xs';
       save.type = 'submit';
-      save.textContent = t('premium_admin_save_guild');
+      save.textContent = t(enabled.checked ? 'premium_admin_save_guild' : 'premium_admin_activate_guild');
+      enabled.addEventListener('change', function () {
+        save.textContent = t(enabled.checked ? 'premium_admin_save_guild' : 'premium_admin_deactivate_guild');
+      });
       form.appendChild(enabledLabel);
       form.appendChild(untilLabel);
       form.appendChild(note);
@@ -270,12 +318,12 @@
     if (!isAdmin()) return;
     try {
       var results = await Promise.all([
-        NS.apiGet('/premium/admin/settings'),
+        isBotOwner() ? NS.apiGet('/premium/admin/settings') : Promise.resolve(null),
         NS.apiGet('/premium/admin/guilds')
       ]);
       var settings = results[0] && results[0].settings;
       adminGuilds = results[1] && Array.isArray(results[1].items) ? results[1].items : [];
-      if (settings) {
+      if (settings && isBotOwner()) {
         byId('premiumAdminAmount').value = settings.amount || '';
         byId('premiumAdminCurrency').value = settings.currency || 'EUR';
         byId('premiumAdminDuration').value = settings.durationDays || '';
@@ -374,7 +422,7 @@
     if (checkoutBtn) checkoutBtn.addEventListener('click', startCheckout);
 
     var settingsForm = byId('premiumSettingsForm');
-    if (settingsForm) settingsForm.addEventListener('submit', savePremiumSettings);
+    if (settingsForm && isBotOwner()) settingsForm.addEventListener('submit', savePremiumSettings);
     var grantForm = byId('premiumAdminGrantForm');
     if (grantForm) grantForm.addEventListener('submit', grantGuild);
     var guildList = byId('premiumGuildsList');

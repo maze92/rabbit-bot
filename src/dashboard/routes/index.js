@@ -340,6 +340,7 @@ function registerDashboardRoutes(ctx) {
     GuildConfig,
     PremiumPayment,
     PremiumSettings,
+    getClient,
     config,
     rateLimit
   });

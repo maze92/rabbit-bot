@@ -7,6 +7,8 @@
 const { normalizePremium, PREMIUM_MODULES } = require('../../systems/premium');
 const { invalidateGuildConfig } = require('../../systems/guildConfigService');
 const { createPayPalService } = require('../paypalService');
+const { formatUserTag } = require('../../services/guildService');
+const { isBotOperator, isBotOwner } = require('../botRoles');
 
 function parseDate(v) {
   const s = typeof v === 'string' ? v.trim() : '';
@@ -112,7 +114,7 @@ function createPremiumGuard({ GuildConfig, sanitizeId }) {
       if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
 
       try {
-        if (user && user.role === 'BOT_ADMIN') {
+        if (isBotOperator(user)) {
           if (GuildConfig) {
             const existing = await GuildConfig.findOne({ guildId }).select('premium').lean();
             if (!normalizePremium(existing && existing.premium).active) {
@@ -159,6 +161,7 @@ function registerPremiumRoutes({
   GuildConfig,
   PremiumPayment,
   PremiumSettings,
+  getClient,
   config,
   rateLimit,
   paypal = createPayPalService()
@@ -185,8 +188,15 @@ function registerPremiumRoutes({
     : (req, res, next) => next();
 
   function requireBotAdmin(req, res, next) {
-    if (!req.dashboardUser || req.dashboardUser.role !== 'BOT_ADMIN') {
+    if (!isBotOperator(req.dashboardUser)) {
       return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
+    }
+    return next();
+  }
+
+  function requireBotOwner(req, res, next) {
+    if (!isBotOwner(req.dashboardUser)) {
+      return res.status(403).json({ ok: false, error: 'BOT_OWNER_REQUIRED' });
     }
     return next();
   }
@@ -204,7 +214,58 @@ function registerPremiumRoutes({
     return Object.assign({}, plan || envPlan, { paymentLink: settings.paymentLink || null });
   }
 
-  app.get('/api/premium/admin/settings', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  function getCachedGuildDetails(guildId) {
+    const client = typeof getClient === 'function' ? getClient() : null;
+    const guild = client && client.guilds && client.guilds.cache
+      ? client.guilds.cache.get(String(guildId)) || null
+      : null;
+    if (!guild) return { guildName: null, ownerId: null, ownerName: null };
+    const ownerId = String(guild.ownerId || '');
+    const owner = ownerId && guild.members && guild.members.cache
+      ? guild.members.cache.get(ownerId) || null
+      : null;
+    const ownerUser = owner && owner.user || client && client.users && client.users.cache && client.users.cache.get(ownerId);
+    return {
+      guildName: typeof guild.name === 'string' ? guild.name : null,
+      ownerId: ownerId || null,
+      ownerName: ownerUser && (ownerUser.globalName || formatUserTag(ownerUser)) || null
+    };
+  }
+
+  async function getGuildDetails(guildId) {
+    const client = typeof getClient === 'function' ? getClient() : null;
+    let guild = client && client.guilds && client.guilds.cache
+      ? client.guilds.cache.get(String(guildId)) || null
+      : null;
+    if (!guild && client && client.guilds && typeof client.guilds.fetch === 'function') {
+      try {
+        guild = await client.guilds.fetch(String(guildId));
+      } catch (err) {
+        console.warn('[Premium] Could not fetch Discord server details:', guildId, err?.message || err);
+      }
+    }
+    if (!guild) return { guildName: null, ownerId: null, ownerName: null };
+
+    const ownerId = String(guild.ownerId || '');
+    let owner = ownerId && guild.members && guild.members.cache
+      ? guild.members.cache.get(ownerId) || null
+      : null;
+    if (!owner && ownerId && guild.members && typeof guild.members.fetch === 'function') {
+      try {
+        owner = await guild.members.fetch(ownerId);
+      } catch (err) {
+        console.warn('[Premium] Could not fetch Discord server owner:', guildId, ownerId, err?.message || err);
+      }
+    }
+    const ownerUser = owner && owner.user;
+    return {
+      guildName: typeof guild.name === 'string' ? guild.name : null,
+      ownerId: ownerId || null,
+      ownerName: ownerUser && (ownerUser.globalName || formatUserTag(ownerUser)) || null
+    };
+  }
+
+  app.get('/api/premium/admin/settings', requireDashboardAuth, requireBotOwner, async (req, res) => {
     try {
       const settings = await getPlan();
       return res.json({ ok: true, settings });
@@ -214,7 +275,7 @@ function registerPremiumRoutes({
     }
   });
 
-  app.patch('/api/premium/admin/settings', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  app.patch('/api/premium/admin/settings', requireDashboardAuth, requireBotOwner, async (req, res) => {
     try {
       if (!PremiumSettings) return res.status(503).json({ ok: false, error: 'PREMIUM_SETTINGS_MODEL_MISSING' });
       const body = req.body || {};
@@ -238,10 +299,10 @@ function registerPremiumRoutes({
   app.get('/api/premium/admin/guilds', requireDashboardAuth, requireBotAdmin, async (req, res) => {
     try {
       if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
-      const guildConfigs = await GuildConfig.find({
-        'premium.enabled': true,
-        'premium.testBypass': { $ne: true }
-      }).sort({ updatedAt: -1 }).limit(200).lean();
+      const guildConfigs = await GuildConfig.find({})
+        .sort({ updatedAt: -1 })
+        .limit(500)
+        .lean();
       const guildIds = guildConfigs.map((item) => item.guildId);
       const payments = PremiumPayment && guildIds.length
         ? await PremiumPayment.find({ guildId: { $in: guildIds }, status: 'COMPLETED' }).sort({ completedAt: -1 }).lean()
@@ -251,28 +312,35 @@ function registerPremiumRoutes({
         if (!latestByGuild.has(payment.guildId)) latestByGuild.set(payment.guildId, payment);
       });
       const query = String(req.query.q || '').trim().toLowerCase();
-      const items = guildConfigs.map((item) => {
+      const items = guildConfigs.filter((item) => !(item.premium && item.premium.testBypass)).map((item) => {
         const license = normalizePremium(item.premium);
         const latestPayment = latestByGuild.get(item.guildId) || null;
+        const details = getCachedGuildDetails(item.guildId);
         return {
           guildId: item.guildId,
+          guildName: details.guildName,
+          ownerId: details.ownerId,
+          ownerName: details.ownerName,
           enabled: license.enabled,
           active: license.active,
           until: license.until,
           note: license.note,
           activatedAt: license.activatedAt,
-          purchasedByUserId: item.premium && item.premium.purchasedByUserId || null,
+          purchasedByUserId: item.premium && item.premium.purchasedByUserId || latestPayment && (latestPayment.purchaserDiscordUserId || latestPayment.discordUserId) || null,
+          purchaserName: latestPayment && (latestPayment.purchaserDiscordUsername || latestPayment.discordUsername) || null,
           updatedAt: item.updatedAt,
           latestPayment: latestPayment ? {
             amount: latestPayment.amount,
             currency: latestPayment.currency,
             completedAt: latestPayment.completedAt,
+            purchaserDiscordUserId: latestPayment.purchaserDiscordUserId || latestPayment.discordUserId,
+            purchaserDiscordUsername: latestPayment.purchaserDiscordUsername || latestPayment.discordUsername,
             paypalPayerEmail: latestPayment.paypalPayerEmail,
             paypalCaptureId: latestPayment.paypalCaptureId,
             approvalUrl: latestPayment.approvalUrl
           } : null
         };
-      }).filter((item) => !query || [item.guildId, item.note, item.latestPayment && item.latestPayment.paypalPayerEmail]
+      }).filter((item) => !query || [item.guildId, item.guildName, item.ownerId, item.ownerName, item.purchasedByUserId, item.purchaserName, item.note, item.latestPayment && item.latestPayment.paypalPayerEmail]
         .some((value) => String(value || '').toLowerCase().includes(query)));
       return res.json({ ok: true, items });
     } catch (err) {
@@ -291,18 +359,18 @@ function registerPremiumRoutes({
       const until = body.until ? parseDate(body.until) : null;
       if (body.until && !until) return res.status(400).json({ ok: false, error: 'PREMIUM_DATE_INVALID' });
       const note = String(body.note || '').trim().slice(0, 200) || null;
+      const update = {
+        'premium.enabled': body.enabled,
+        'premium.until': until,
+        'premium.note': note,
+        'premium.testBypass': false
+      };
+      if (body.enabled) update['premium.activatedAt'] = new Date();
       const premium = await GuildConfig.findOneAndUpdate(
         { guildId },
         {
-          $set: {
-            'premium.enabled': body.enabled,
-            'premium.until': until,
-            'premium.note': note,
-            'premium.activatedAt': body.enabled ? new Date() : null,
-            'premium.purchasedByUserId': null,
-            'premium.accountUserId': null,
-            'premium.testBypass': false
-          }
+          $set: update,
+          $unset: { 'premium.accountUserId': '' }
         },
         { upsert: true, returnDocument: 'after', projection: { premium: 1 } }
       ).lean();
@@ -554,7 +622,16 @@ function registerPremiumRoutes({
       const plan = await getPlan();
       const guildLicense = normalizePremium(guildPremium);
       const paidActive = guildLicense.active && !(guildPremium && guildPremium.testBypass);
-      const testBypass = Boolean(req.dashboardUser && req.dashboardUser.role === 'BOT_ADMIN');
+      const testBypass = isBotOperator(req.dashboardUser);
+      const guildDetails = await getGuildDetails(guildId);
+      const latestPayment = PremiumPayment
+        ? await PremiumPayment.findOne({ guildId, status: 'COMPLETED' }).sort({ completedAt: -1 }).lean()
+        : null;
+      const licenseStatus = paidActive
+        ? 'ACTIVE'
+        : guildLicense.enabled && guildLicense.until && guildLicense.until.getTime() <= Date.now()
+          ? 'EXPIRED'
+          : 'INACTIVE';
       if (GuildConfig && testBypass && !guildLicense.active) {
         const now = new Date();
         await GuildConfig.findOneAndUpdate(
@@ -579,8 +656,17 @@ function registerPremiumRoutes({
           until: guildLicense.until,
           note: guildLicense.note,
           activatedAt: guildLicense.activatedAt,
+          status: licenseStatus,
           testBypass,
           effectiveActive: paidActive || testBypass
+        },
+        server: {
+          id: guildId,
+          name: guildDetails.guildName,
+          ownerId: guildDetails.ownerId,
+          ownerName: guildDetails.ownerName,
+          purchaserDiscordUserId: guildPremium && guildPremium.purchasedByUserId || latestPayment && (latestPayment.purchaserDiscordUserId || latestPayment.discordUserId) || null,
+          purchaserDiscordUsername: latestPayment && (latestPayment.purchaserDiscordUsername || latestPayment.discordUsername) || null
         },
         modules: PREMIUM_MODULES,
         payment: {

@@ -3,22 +3,23 @@
 // Discord OAuth2-only authentication.
 // Login is allowed for any user with access to at least one guild.
 // Guild administrators can manage only their own eligible servers. Bot admins
-// are identified separately by Discord user ID in BOT_ADMIN_IDS.
+// owners and delegated admins are identified by separate Discord user ID lists.
 
 const { getGuild } = require('../../services/guildService');
+const { parseBotUserIds, getBotRole } = require('../botRoles');
 
 function registerAuthRoutes(ctx) {
   const { app, express, requireDashboardAuth, jwt, JWT_SECRET, sanitizeText, rateLimit, ADMIN_PERMISSIONS, getClient, sanitizeId } = ctx;
 
   const crypto = require('crypto');
   const { fetchMember } = require('../../services/discordFetchCache');
-  const botAdminIds = new Set(
-    String(process.env.BOT_ADMIN_IDS || '')
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean)
-  );
-  const isBotAdmin = (userId) => botAdminIds.has(String(userId || ''));
+  const botOwnerIds = parseBotUserIds(process.env.BOT_OWNER_IDS, 'BOT_OWNER_IDS');
+  const botAdminIds = parseBotUserIds(process.env.BOT_ADMIN_IDS, 'BOT_ADMIN_IDS');
+  if (!botOwnerIds.size) {
+    console.warn('[Dashboard] BOT_OWNER_IDS is not configured; global Premium settings are locked.');
+  }
+  const getBotRoleForUser = (userId) => getBotRole(userId, botOwnerIds, botAdminIds);
+  const isBotAdmin = (userId) => Boolean(getBotRoleForUser(userId));
 
   // OAuth robustness: avoid duplicate token exchanges, and gracefully handle Discord global rate limits.
   // Note: in-memory only. If you run multiple replicas, consider a shared store (e.g. Redis) to dedupe across instances.
@@ -420,7 +421,8 @@ if (allowedGuildIds.length === 0) {
     const guild = getGuild(client, gid);
     if (!guild) return null;
 
-    const botAdmin = isBotAdmin(userId);
+    const botRole = getBotRoleForUser(userId);
+    const botAdmin = Boolean(botRole);
 
     // Guild administrators receive server-scoped permissions; bot admins are
     // granted the separate global dashboard role.
@@ -430,7 +432,7 @@ if (allowedGuildIds.length === 0) {
 
     if (!botAdmin && !(isOwner || isAdmin)) return null;
 
-    const profile = botAdmin ? 'BOT_ADMIN' : 'GUILD_ADMIN';
+    const profile = botRole || 'GUILD_ADMIN';
     const role = profile;
 
     const perms = Object.assign({}, (ADMIN_PERMISSIONS || {}), { canManageUsers: botAdmin });

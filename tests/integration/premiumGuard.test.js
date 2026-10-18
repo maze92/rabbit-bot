@@ -80,6 +80,12 @@ test('bot admin test access bypasses Premium without creating a paid entitlement
   assert.equal(result.passed, true);
 });
 
+test('bot owner can access Premium test bypass as a bot operator', async () => {
+  const guard = makeGuard();
+  const result = await runGuard(guard, 'BOT_OWNER');
+  assert.equal(result.passed, true);
+});
+
 test('a bot-admin test bypass does not grant Premium to guild members', async () => {
   const guard = makeGuard({
     guildPremium: {

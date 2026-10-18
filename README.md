@@ -83,7 +83,8 @@
 
 - A licença Premium pertence a um **servidor Discord** e desbloqueia os módulos extra desse servidor.
 - O owner ou um administrador do servidor pode iniciar a compra na dashboard; a conta que paga não recebe uma licença pessoal nem desbloqueia outros servidores.
-- Administradores do bot podem gerir licenças por servidor na dashboard.
+- A dashboard identifica o owner do servidor separadamente da pessoa que pagou.
+- Administradores do bot podem ativar, editar e revogar licenças por servidor na dashboard.
 - Licenças de servidor já ativas antes desta alteração são mantidas até expirarem. Licenças antigas associadas apenas a uma conta não são convertidas automaticamente em licença de servidor.
 
 ### 🌍 Internacionalização (i18n)

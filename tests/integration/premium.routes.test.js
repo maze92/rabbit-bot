@@ -27,7 +27,8 @@ function makeHarness(options) {
   const GuildConfig = {
     findOne(query) { return chain(query && query.guildId === guildConfig.guildId ? guildConfig : null); },
     find(query) {
-      const includeEnabled = query && query['premium.enabled'] === true;
+      if (!query || Object.keys(query).length === 0) return chain([guildConfig]);
+      const includeEnabled = query['premium.enabled'] === true;
       return chain(includeEnabled && guildConfig.premium.enabled ? [guildConfig] : []);
     },
     findOneAndUpdate(query, update) {
@@ -49,7 +50,7 @@ function makeHarness(options) {
       return payment;
     },
     findOne(query) {
-      return chain(payments.find((item) => item.paypalOrderId === query.paypalOrderId) || null);
+      return chain(payments.find((item) => Object.entries(query).every(([key, value]) => item[key] === value)) || null);
     },
     findById(id) {
       return chain(payments.find((item) => item._id === id) || null);
@@ -99,6 +100,20 @@ function makeHarness(options) {
     }),
     verifyWebhook: async () => true
   };
+  const ownerUser = { id: '111111111111111111', username: 'server-owner', globalName: 'Server Owner' };
+  const guild = {
+    id: GUILD_ID,
+    name: 'Rabbit Guild',
+    ownerId: ownerUser.id,
+    members: {
+      cache: new Map([[ownerUser.id, { user: ownerUser }]]),
+      fetch: async () => ({ user: ownerUser })
+    }
+  };
+  const client = {
+    guilds: { cache: new Map([[GUILD_ID, guild]]) },
+    users: { cache: new Map([[ownerUser.id, ownerUser]]) }
+  };
 
   const appPromise = startApp(registerPremiumRoutes, {
     requireDashboardAuth(req, res, next) { req.dashboardUser = currentUser; next(); },
@@ -108,6 +123,7 @@ function makeHarness(options) {
     GuildConfig,
     PremiumPayment,
     PremiumSettings,
+    getClient: () => client,
     config: { dashboard: { allowedOrigins: ['https://dashboard.example'] } },
     paypal
   });
@@ -144,6 +160,14 @@ test('Premium checkout creates a pending PayPal order and verified capture activ
     assert.equal(harness.getGuildConfig().premium.purchasedByUserId, USER_ID);
     assert.equal(harness.payments[0].status, 'COMPLETED');
     assert.equal(harness.payments[0].paypalPayerEmail, 'payer@example.com');
+
+    const status = await fetch(app.baseUrl + '/api/premium?guildId=' + GUILD_ID);
+    const statusBody = await status.json();
+    assert.equal(statusBody.server.name, 'Rabbit Guild');
+    assert.equal(statusBody.server.ownerId, '111111111111111111');
+    assert.equal(statusBody.server.ownerName, 'Server Owner');
+    assert.equal(statusBody.server.purchaserDiscordUserId, USER_ID);
+    assert.equal(statusBody.server.purchaserDiscordUsername, 'guild-admin');
   } finally {
     await stopApp(app.server);
   }
@@ -165,18 +189,20 @@ test('Premium payment history is visible only to the bot administrator', async (
   }
 });
 
-test('bot admin can configure the plan and grant/revoke a guild license', async () => {
+test('delegated bot admin can manage server licenses but only bot owner can change global plan', async () => {
   const harness = makeHarness();
   const app = await harness.appPromise;
   harness.setUser({ _id: USER_ID, username: 'bot-admin', role: 'BOT_ADMIN' });
   try {
-    const settings = await fetch(app.baseUrl + '/api/premium/admin/settings', {
+    const settingsDenied = await fetch(app.baseUrl + '/api/premium/admin/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: '9.99', currency: 'USD', durationDays: 60, paymentLink: 'https://paypal.me/example' })
     });
-    assert.equal(settings.status, 200);
-    assert.equal(harness.getSettings().amount, '9.99');
+    assert.equal(settingsDenied.status, 403);
+
+    const settingsReadDenied = await fetch(app.baseUrl + '/api/premium/admin/settings');
+    assert.equal(settingsReadDenied.status, 403);
 
     const grant = await fetch(app.baseUrl + '/api/premium/admin/guilds/' + GUILD_ID, {
       method: 'PATCH',
@@ -187,7 +213,9 @@ test('bot admin can configure the plan and grant/revoke a guild license', async 
     assert.equal((await grant.json()).premium.active, true);
     assert.equal(harness.getGuildConfig().premium.note, 'manual test');
     const guilds = await fetch(app.baseUrl + '/api/premium/admin/guilds');
-    assert.deepEqual((await guilds.json()).items.map((item) => item.guildId), [GUILD_ID]);
+    const listedGuild = (await guilds.json()).items.find((item) => item.guildId === GUILD_ID);
+    assert.equal(listedGuild.guildName, 'Rabbit Guild');
+    assert.equal(listedGuild.ownerId, '111111111111111111');
 
     const revoke = await fetch(app.baseUrl + '/api/premium/admin/guilds/' + GUILD_ID, {
       method: 'PATCH',
@@ -196,6 +224,17 @@ test('bot admin can configure the plan and grant/revoke a guild license', async 
     });
     assert.equal(revoke.status, 200);
     assert.equal((await revoke.json()).premium.active, false);
+    const revokedGuilds = await fetch(app.baseUrl + '/api/premium/admin/guilds');
+    assert.equal((await revokedGuilds.json()).items.find((item) => item.guildId === GUILD_ID).enabled, false);
+
+    harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
+    const settings = await fetch(app.baseUrl + '/api/premium/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: '9.99', currency: 'USD', durationDays: 60, paymentLink: 'https://paypal.me/example' })
+    });
+    assert.equal(settings.status, 200);
+    assert.equal(harness.getSettings().amount, '9.99');
 
     harness.setUser({ _id: USER_ID, username: 'test-user', role: 'GUILD_ADMIN' });
     const checkout = await fetch(app.baseUrl + '/api/premium/checkout', {

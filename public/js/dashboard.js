@@ -666,13 +666,15 @@ function setPanelLoading(panelId, isLoading) {
       return;
     }
 
-    elProfile.textContent = me.role === 'BOT_ADMIN' ? t('profile_bot_admin') : (me.username || 'Discord');
+    elProfile.textContent = me.role === 'BOT_OWNER'
+      ? t('profile_bot_owner')
+      : (me.role === 'BOT_ADMIN' ? t('profile_bot_admin') : (me.username || 'Discord'));
     elProfile.classList.remove('badge-premium');
     elProfile.classList.remove('hidden');
 
     var perms = (state.perms && typeof state.perms === 'object') ? state.perms : {};
     var scoped = !!(me.selectedGuildId || (me.profile && me.profile !== 'UNSCOPED'));
-    var canManage = !!(me.role === 'BOT_ADMIN' || perms.canEditConfig || perms.canActOnCases || perms.canManageTickets || perms.canManageGameNews);
+    var canManage = !!(me.role === 'BOT_ADMIN' || me.role === 'BOT_OWNER' || perms.canEditConfig || perms.canActOnCases || perms.canManageTickets || perms.canManageGameNews);
 
     var accessLabel;
     if (!scoped && me.oauth) {
@@ -1214,7 +1216,7 @@ function setLang(newLang) {
 
   function applyPermissionGates() {
     // Trust controls live inside the Config tab (Extras -> Trust).
-    const canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.perms.canEditConfig));
+    const canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER' || state.perms.canEditConfig));
     const trustInputs = [
       'trustPresetSelect',
       'btnApplyTrustPreset',
@@ -2139,7 +2141,7 @@ function populateTempVoiceSelects() {
 
       // Permission gate: allow save only if user can manage extras
       var perms = state.perms || {};
-      var canEdit = !!(state.me && state.me.role === 'BOT_ADMIN') || !!perms.canEditConfig || !!perms.canManageGameNews;
+      var canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER')) || !!perms.canEditConfig || !!perms.canManageGameNews;
 
       if (panel) {
         panel.classList.toggle('dirty', !!state.tempVoiceDirty && canEdit);

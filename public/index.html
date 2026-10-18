@@ -305,13 +305,26 @@
           </p>
 
           <div class="premium-panel" id="extrasPremiumLock" role="status">
+            <h4 class="premium-panel__guild" id="premiumGuildName"></h4>
             <div class="premium-panel__row">
               <span class="premium-status" id="premiumStatus">—</span>
               <span class="premium-panel__meta" id="premiumMeta"></span>
             </div>
+            <div class="premium-panel__identity" id="premiumGuildIdentity"></div>
             <p class="premium-panel__hint" id="premiumHint" data-i18n="premium_lock_hint">
               Estes módulos fazem parte do plano Premium, que é ativado por doação.
             </p>
+            <div class="premium-panel__included">
+              <strong data-i18n="premium_includes_title">O que inclui</strong>
+              <ul>
+                <li data-i18n="premium_include_gamenews">Feeds automáticos de notícias (GameNews)</li>
+                <li data-i18n="premium_include_tempvoice">Canais de voz temporários</li>
+                <li data-i18n="premium_include_tickets">Sistema de tickets</li>
+                <li data-i18n="premium_include_trust">Sistema Trust e respetivas ferramentas</li>
+                <li data-i18n="premium_include_giveaways">Giveaways automáticos</li>
+              </ul>
+              <small data-i18n="premium_billing_note">Licença por servidor, válida pelo período indicado. Sem renovação automática.</small>
+            </div>
             <div class="premium-panel__actions">
               <button type="button" class="btn xs primary hidden" id="btnPremiumCheckout"></button>
               <a class="btn xs hidden" id="premiumReferenceLink" target="_blank" rel="noopener noreferrer" data-i18n="premium_reference_link">PayPal</a>

@@ -3062,6 +3062,11 @@ summary:focus-visible,
   gap:var(--sp-2);
 }
 .premium-panel__row{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.premium-panel__guild{margin:0;font-size:var(--fs-md)}
+.premium-panel__identity{font-size:var(--fs-xs);color:var(--text-muted);overflow-wrap:anywhere}
+.premium-panel__included{display:flex;flex-direction:column;gap:var(--sp-1);font-size:var(--fs-sm)}
+.premium-panel__included ul{margin:0;padding-left:1.25rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--sp-1) var(--sp-3)}
+.premium-panel__included small{color:var(--text-muted)}
 .premium-status{
   border-radius:999px;
   border:1px solid var(--border-soft);

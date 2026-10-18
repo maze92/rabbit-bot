@@ -3,6 +3,7 @@
 const { sendServerError } = require('./_errors');
 const { ChannelType } = require('discord.js');
 const { getGuild, getCachedChannel } = require('../../services/guildService');
+const { isBotOperator } = require('../botRoles');
 
 /**
  * Guild-related routes used by the dashboard UI:
@@ -45,7 +46,7 @@ function registerGuildsRoutes({
         ? u.allowedGuilds.filter((g) => g && g.id)
         : [];
 
-      const strictEligibleFromMeta = u && u.role === 'BOT_ADMIN'
+      const strictEligibleFromMeta = isBotOperator(u)
         ? (Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.map(String) : [])
         : metaAll
             .filter((g) => Boolean(g.owner) || hasAdministratorPermission(g.permissions))
