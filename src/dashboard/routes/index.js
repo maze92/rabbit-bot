@@ -72,6 +72,7 @@ function registerDashboardRoutes(ctx) {
     Ticket,
     Infraction,
     TempVoiceChannel,
+    PremiumPayment,
     // Schemas Zod (ver dashboard/schemas.js)
     GuildConfigSchema,
     ModWarnSchema,
@@ -336,7 +337,10 @@ function registerDashboardRoutes(ctx) {
     requirePerm,
     requireGuildAccess,
     sanitizeId,
-    GuildConfig
+    GuildConfig,
+    PremiumPayment,
+    config,
+    rateLimit
   });
 }
 

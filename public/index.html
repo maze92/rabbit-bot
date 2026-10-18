@@ -313,13 +313,28 @@
               Estes módulos fazem parte do plano Premium, que é ativado por doação.
             </p>
             <div class="premium-panel__actions">
+              <button type="button" class="btn xs primary hidden" id="btnPremiumCheckout"></button>
               <button type="button" class="btn xs primary hidden" id="btnPremiumActivate" data-i18n="premium_activate">Ativar premium</button>
               <button type="button" class="btn xs danger hidden" id="btnPremiumDeactivate" data-i18n="premium_deactivate">Desativar premium</button>
             </div>
+            <div class="premium-panel__history hidden" id="premiumPaymentHistory">
+              <h4 data-i18n="premium_payments_title">Pagamentos</h4>
+              <div class="list" id="premiumPaymentsList">
+                <div class="empty" data-i18n="premium_payments_empty">Ainda não existem pagamentos.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabs extras-tabs" id="extrasTabs" role="tablist" data-i18n-aria-label="extras_tabs_aria_label" aria-label="Módulos Premium">
+            <button type="button" class="tab active" id="extras-tab-feeds" role="tab" aria-selected="true" aria-controls="extras-panel-feeds" tabindex="0" data-extra-tab="feeds" data-i18n="extras_feeds_tab">Feeds</button>
+            <button type="button" class="tab" id="extras-tab-tempvoice" role="tab" aria-selected="false" aria-controls="extras-panel-tempvoice" tabindex="-1" data-extra-tab="tempvoice" data-i18n="extras_tempvoice_tab">Voz temporária</button>
+            <button type="button" class="tab" id="extras-tab-tickets" role="tab" aria-selected="false" aria-controls="extras-panel-tickets" tabindex="-1" data-extra-tab="tickets" data-i18n="extras_tickets_tab">Tickets</button>
+            <button type="button" class="tab" id="extras-tab-trust" role="tab" aria-selected="false" aria-controls="extras-panel-trust" tabindex="-1" data-extra-tab="trust" data-i18n="extras_trust_tab">Trust</button>
+            <button type="button" class="tab" id="extras-tab-giveaways" role="tab" aria-selected="false" aria-controls="extras-panel-giveaways" tabindex="-1" data-extra-tab="giveaways" data-i18n="tab_giveaways">Giveaways</button>
           </div>
 
           <div class="features-grid extras-grid" id="extrasGrid">
-            <article class="feature-card" data-extra="feeds" data-premium="true" data-premium-module="gamenews">
+            <article class="feature-card" id="extras-panel-feeds" role="tabpanel" aria-labelledby="extras-tab-feeds" data-extra-panel="feeds" data-extra="feeds" data-premium="true" data-premium-module="gamenews">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="gamenews_title">GameNews</h3>
                 <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-feeds-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
@@ -360,10 +375,10 @@
                 </div>
               </div>
             </article>
-            <article class="feature-card" data-extra="tempvoice" data-premium="true" data-premium-module="tempvoice">
+            <article class="feature-card hidden" id="extras-panel-tempvoice" role="tabpanel" aria-labelledby="extras-tab-tempvoice" data-extra-panel="tempvoice" data-extra="tempvoice" data-premium="true" data-premium-module="tempvoice">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tempvoice_title">Voz temporária</h3>
-                <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-tempvoice-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
+                  <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-tempvoice-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
               </div>
               <p class="hint" data-i18n="tempvoice_hint">Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.</p>
               <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
@@ -459,7 +474,7 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card" data-extra="tickets" data-premium="true" data-premium-module="tickets">
+            <article class="feature-card hidden" id="extras-panel-tickets" role="tabpanel" aria-labelledby="extras-tab-tickets" data-extra-panel="tickets" data-extra="tickets" data-premium="true" data-premium-module="tickets">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tickets_extras_title">Tickets</h3>
                 <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-tickets-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
@@ -506,7 +521,7 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card" data-extra="trust" data-premium="true" data-premium-module="trust">
+            <article class="feature-card hidden" id="extras-panel-trust" role="tabpanel" aria-labelledby="extras-tab-trust" data-extra-panel="trust" data-extra="trust" data-premium="true" data-premium-module="trust">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="extras_trust_title">Sistema de Trust</h3>
                 <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-trust-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>
@@ -624,7 +639,7 @@
                   </div>
               </div>
             </article>
-            <article class="feature-card" data-extra="giveaways" data-premium="true" data-premium-module="giveaways">
+            <article class="feature-card hidden" id="extras-panel-giveaways" role="tabpanel" aria-labelledby="extras-tab-giveaways" data-extra-panel="giveaways" data-extra="giveaways" data-premium="true" data-premium-module="giveaways">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="giveaways_title">Giveaways</h3>
                 <button type="button" class="icon-btn feature-card__toggle" data-role="extra-toggle" aria-controls="extras-giveaways-panel" aria-expanded="false" data-i18n-aria-label="features_details" title="Mostrar ou ocultar configuração">▾</button>

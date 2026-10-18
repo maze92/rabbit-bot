@@ -29,6 +29,7 @@ function loadDashboardModels() {
     Ticket: loadModel('../database/models/Ticket', 'Ticket'),
     Infraction: loadModel('../database/models/Infraction', 'Infraction'),
     TempVoiceChannel: loadModel('../database/models/TempVoiceChannel', 'TempVoiceChannel')
+    ,PremiumPayment: loadModel('../database/models/PremiumPayment', 'PremiumPayment')
   };
 }
 

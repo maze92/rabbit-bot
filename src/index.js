@@ -74,8 +74,9 @@ async function ensureMongoIndexes() {
     const StarboardEntry = safeRequire('./database/models/StarboardEntry');
     const Poll = safeRequire('./database/models/Poll');
     const MemberStat = safeRequire('./database/models/MemberStat');
+    const PremiumPayment = safeRequire('./database/models/PremiumPayment');
 
-    [Ticket, TicketCounter, TicketLog, Infraction, DashboardLog, DashboardAudit, User, UserActivity, PresenceSession, GameNewsFeed, GameNews, GiveawayPost, Level, StarboardEntry, Poll, MemberStat]
+    [Ticket, TicketCounter, TicketLog, Infraction, DashboardLog, DashboardAudit, User, UserActivity, PresenceSession, GameNewsFeed, GameNews, GiveawayPost, Level, StarboardEntry, Poll, MemberStat, PremiumPayment]
       .filter(Boolean)
       .forEach((m) => models.push(m));
 

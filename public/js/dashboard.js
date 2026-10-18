@@ -1126,6 +1126,14 @@ function setLang(newLang) {
       state.guilds = items;
       select.innerHTML = '';
 
+      var returnParams = new URLSearchParams(window.location.search);
+      var paymentReturnStatus = returnParams.get('premiumPayment');
+      var paymentReturnGuildId = returnParams.get('guildId');
+      if (paymentReturnStatus && paymentReturnGuildId && items.some(function (g) { return g && g.id === paymentReturnGuildId; })) {
+        state.guildId = paymentReturnGuildId;
+        setStoredGuildId(state.guildId);
+      }
+
       const optEmpty = document.createElement('option');
       optEmpty.value = '';
       optEmpty.textContent = t('select_guild');
@@ -1169,6 +1177,16 @@ function setLang(newLang) {
         }
         updateTabAccess();
         try { refreshGlobalBanner(); } catch (e) {}
+        if (paymentReturnStatus) {
+          if (paymentReturnStatus === 'success') setTab('features');
+          window.dispatchEvent(new CustomEvent('dashboard:premium-return', {
+            detail: { status: paymentReturnStatus, guildId: state.guildId }
+          }));
+          returnParams.delete('premiumPayment');
+          returnParams.delete('guildId');
+          var returnQuery = returnParams.toString();
+          window.history.replaceState(null, '', window.location.pathname + (returnQuery ? '?' + returnQuery : '') + window.location.hash);
+        }
       } else {
         // Force selection when multiple guilds are available.
         try { showGuildSelect(items); } catch (e) {}
@@ -2528,6 +2546,7 @@ function deleteTempVoiceBaseAt(index) {
 
     function setupTabsKeyboardNavigation() {
       wireTablist('.tabs button[data-tab]');
+      wireTablist('#extrasTabs button[data-extra-tab]');
     }
 
     // Cartões colapsáveis da tab Extras (substituem as antigas sub-abas).
@@ -2560,6 +2579,33 @@ function deleteTempVoiceBaseAt(index) {
       });
     }
 
+    function wireExtraTabs() {
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('#extrasTabs button[data-extra-tab]'));
+      if (!tabs.length) return;
+
+      function activate(tab) {
+        var key = tab.getAttribute('data-extra-tab');
+        tabs.forEach(function (item) {
+          var selected = item === tab;
+          item.classList.toggle('active', selected);
+          item.setAttribute('aria-selected', selected ? 'true' : 'false');
+          item.setAttribute('tabindex', selected ? '0' : '-1');
+          var panel = document.getElementById(item.getAttribute('aria-controls'));
+          if (panel) panel.classList.toggle('hidden', !selected);
+        });
+
+        var panel = document.querySelector('[data-extra-panel="' + key + '"]');
+        var toggle = panel && panel.querySelector('[data-role="extra-toggle"]');
+        var body = toggle && document.getElementById(toggle.getAttribute('aria-controls'));
+        if (toggle && body && body.classList.contains('hidden') && !toggle.disabled) toggle.click();
+      }
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () { activate(tab); });
+      });
+      activate(tabs.find(function (tab) { return tab.getAttribute('aria-selected') === 'true'; }) || tabs[0]);
+    }
+
     // Tabs
     document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -2571,6 +2617,7 @@ function deleteTempVoiceBaseAt(index) {
 
     setupTabsKeyboardNavigation();
     wireExtraCards();
+    wireExtraTabs();
 
     // Atalhos do Overview: navegam para a aba correspondente.
     var overviewShortcuts = document.getElementById('overviewShortcuts');

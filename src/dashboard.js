@@ -66,7 +66,8 @@ const {
   TicketLog,
   Ticket,
   Infraction,
-  TempVoiceChannel
+  TempVoiceChannel,
+  PremiumPayment
 } = loadDashboardModels();
 
 // Registador de auditoria (ver dashboard/audit.js)
@@ -293,6 +294,7 @@ registerDashboardRoutes({
   Ticket,
   Infraction,
   TempVoiceChannel,
+  PremiumPayment,
   GuildConfigSchema,
   ModWarnSchema,
   ModMuteSchema,
