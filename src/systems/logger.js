@@ -48,7 +48,10 @@ function decorateTitle(title) {
  * - Trust: **8/100** → Trust: **8/100** (High risk)
  * - Trust after mute: **72/100** → ... (Low risk)
  */
-async function decorateDescriptionWithTrustLabel(guildId, description) {
+function decorateDescriptionWithTrustLabel(guildIdOrDescription, maybeDescription) {
+  const hasGuildId = typeof maybeDescription === 'string';
+  const guildId = hasGuildId ? guildIdOrDescription : null;
+  const description = hasGuildId ? maybeDescription : guildIdOrDescription;
   if (!description) return description;
 
   const trustCfg = config.trust || {};
@@ -83,13 +86,16 @@ async function decorateDescriptionWithTrustLabel(guildId, description) {
   if (value <= lowThreshold) riskKey = 'high';
   else if (value >= highThreshold) riskKey = 'low';
 
-  const riskLabel = guildId
-    ? await tGuild(guildId, `log.trustRisk.${riskKey}`)
-    : t(`log.trustRisk.${riskKey}`);
+  const buildResult = (riskLabel) => {
+    const replacement = `${labelPrefix}: **${value}/${max}** (${riskLabel})`;
+    return description.replace(regex, replacement);
+  };
 
-  const replacement = `${labelPrefix}: **${value}/${max}** (${riskLabel})`;
+  if (guildId) {
+    return tGuild(guildId, `log.trustRisk.${riskKey}`).then(buildResult).catch(() => buildResult(t(`log.trustRisk.${riskKey}`)));
+  }
 
-  return description.replace(regex, replacement);
+  return buildResult(t(`log.trustRisk.${riskKey}`));
 }
 
 async function logger(client, title, user, executor, description, guild) {
