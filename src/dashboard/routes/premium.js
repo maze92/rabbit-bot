@@ -657,8 +657,7 @@ function registerPremiumRoutes({
           available: Boolean(GuildConfig && PremiumPayment && paypal.isConfigured(plan) && getDashboardOrigin(req, config)),
           amount: plan.amount,
           currency: plan.currency,
-          durationDays: plan.durationDays,
-          paymentLink: plan.paymentLink || null
+          durationDays: plan.durationDays
         }
       });
     } catch (err) {

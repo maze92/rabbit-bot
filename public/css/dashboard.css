@@ -3087,6 +3087,25 @@ summary:focus-visible,
 .premium-panel__meta{font-size:var(--fs-xs);color:var(--text-muted)}
 .premium-panel__hint{margin:0;color:var(--text);font-size:var(--fs-sm)}
 .premium-panel__actions{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.premium-offer-dialog{
+  width:min(560px,calc(100vw - 32px));
+  max-width:none;
+  max-height:calc(100dvh - 32px);
+  overflow-y:auto;
+  padding:var(--sp-5);
+  border:1px solid var(--accent);
+  border-radius:16px;
+  background:var(--card-bg);
+  color:var(--text);
+  box-shadow:0 24px 80px rgba(0,0,0,.4);
+}
+.premium-offer-dialog::backdrop{background:rgba(5,8,16,.72);backdrop-filter:blur(4px)}
+.premium-offer-dialog__head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3)}
+.premium-offer-dialog__head h2{margin:var(--sp-2) 0 0;font-size:var(--fs-lg)}
+.premium-offer-dialog__plan{margin:var(--sp-3) 0 0;font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+.premium-offer-dialog__status{margin:var(--sp-2) 0;color:var(--text-muted);font-size:var(--fs-sm);line-height:1.55}
+.premium-offer-dialog__actions{display:flex;justify-content:flex-end;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-4)}
+.premium-card__offer{flex:0 0 auto;white-space:nowrap}
 .premium-panel__history{display:flex;flex-direction:column;gap:var(--sp-2);padding-top:var(--sp-2);border-top:1px solid var(--white-8)}
 .premium-panel__history h4{margin:0;font-size:var(--fs-sm)}
 .premium-payment-row{display:flex;flex-direction:column;gap:var(--sp-1);min-width:0}

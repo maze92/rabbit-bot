@@ -33,9 +33,14 @@
     return !!(me && me.role === 'BOT_OWNER');
   }
 
-  function isGuildAdmin() {
+  function canStartCheckout() {
     var me = NS.state && NS.state.me;
-    return !!(me && (me.role === 'GUILD_ADMIN' || me.role === 'ADMIN'));
+    var permissions = me && me.permissions;
+    return !!(me && (
+      me.role === 'BOT_ADMIN' ||
+      me.role === 'BOT_OWNER' ||
+      (permissions && permissions.canEditConfig === true)
+    ));
   }
 
   function formatMoney(amount, currency) {
@@ -77,8 +82,10 @@
       card.setAttribute('data-premium-locked', active ? 'false' : 'true');
       card.classList.toggle('is-premium-locked', !active);
       Array.prototype.slice.call(card.querySelectorAll('button, input, select, textarea')).forEach(function (el) {
-        el.disabled = !active;
+        if (el.getAttribute('data-premium-action') !== 'offer') el.disabled = !active;
       });
+      var offerButton = card.querySelector('[data-premium-action="offer"]');
+      if (offerButton) offerButton.classList.toggle('hidden', active);
       Array.prototype.slice.call(card.querySelectorAll('[data-role="premium-hint"]')).forEach(function (hintEl) {
         hintEl.classList.toggle('hidden', active);
       });
@@ -138,27 +145,64 @@
     }
 
     var checkoutBtn = byId('btnPremiumCheckout');
+    var offerCheckoutBtn = byId('btnPremiumOfferCheckout');
     if (checkoutBtn) {
       var canRenew = paidActive && premium && premium.until;
-      var canPurchase = isGuildAdmin() && paymentPlan && paymentPlan.available && (!paidActive || canRenew);
+      var canPurchase = canStartCheckout() && paymentPlan && paymentPlan.available && (!paidActive || canRenew);
       checkoutBtn.classList.toggle('hidden', !canPurchase);
       checkoutBtn.textContent = canPurchase
         ? t('premium_checkout_button', { price: formatMoney(paymentPlan.amount, paymentPlan.currency) })
         : '';
       checkoutBtn.disabled = checkoutLoading;
-    }
-
-    var referenceLink = byId('premiumReferenceLink');
-    if (referenceLink) {
-      var href = paymentPlan && paymentPlan.paymentLink;
-      referenceLink.classList.toggle('hidden', !href);
-      if (href) referenceLink.href = href;
+      if (offerCheckoutBtn) {
+        offerCheckoutBtn.classList.toggle('hidden', !canPurchase);
+        offerCheckoutBtn.textContent = checkoutBtn.textContent;
+        offerCheckoutBtn.disabled = checkoutLoading;
+      }
     }
 
     var settingsForm = byId('premiumSettingsForm');
     if (settingsForm) settingsForm.classList.toggle('hidden', !isBotOwner());
 
     if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(active);
+  }
+
+  function openPremiumOffer(card) {
+    var dialog = byId('premiumOfferDialog');
+    if (!dialog || typeof dialog.showModal !== 'function') return;
+    var title = byId('premiumOfferTitle');
+    var cardTitle = card && card.querySelector('.feature-card__name');
+    if (title) {
+      title.textContent = t('premium_offer_title', {
+        module: cardTitle ? cardTitle.textContent : ''
+      });
+    }
+
+    var plan = byId('premiumOfferPlan');
+    var hasOffer = paymentPlan && paymentPlan.amount && paymentPlan.currency && paymentPlan.durationDays;
+    if (plan) {
+      plan.textContent = hasOffer
+        ? t('premium_offer_plan', {
+          days: paymentPlan.durationDays,
+          price: formatMoney(paymentPlan.amount, paymentPlan.currency)
+        })
+        : t('premium_offer_plan_unavailable');
+    }
+
+    var status = byId('premiumOfferStatus');
+    if (status) {
+      var message = !guildId()
+        ? 'premium_offer_select_guild'
+        : !paymentPlan || !paymentPlan.available
+          ? 'premium_offer_unavailable'
+          : canStartCheckout()
+            ? 'premium_offer_checkout_ready'
+            : 'premium_offer_admin_required';
+      status.textContent = t(message);
+    }
+
+    applyLock();
+    if (!dialog.open) dialog.showModal();
   }
 
   async function loadPremium() {
@@ -442,10 +486,10 @@
     if (saved) form.reset();
   }
 
-  async function startCheckout() {
+  async function startCheckout(event) {
     var gid = guildId();
-    var button = byId('btnPremiumCheckout');
-    if (!gid || checkoutLoading) return;
+    var button = event && event.currentTarget;
+    if (!gid || !canStartCheckout() || !paymentPlan || !paymentPlan.available || checkoutLoading) return;
     checkoutLoading = true;
     applyLock();
     try {
@@ -461,6 +505,7 @@
     } finally {
       checkoutLoading = false;
       if (button) button.disabled = false;
+      applyLock();
     }
   }
 
@@ -471,7 +516,25 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     var checkoutBtn = byId('btnPremiumCheckout');
-    if (checkoutBtn) checkoutBtn.addEventListener('click', startCheckout);
+    if (checkoutBtn) checkoutBtn.addEventListener('click', function (event) { startCheckout(event); });
+    var offerCheckoutBtn = byId('btnPremiumOfferCheckout');
+    if (offerCheckoutBtn) offerCheckoutBtn.addEventListener('click', function (event) { startCheckout(event); });
+    var extrasGrid = byId('extrasGrid');
+    if (extrasGrid) extrasGrid.addEventListener('click', function (event) {
+      var offer = event.target.closest('[data-premium-action="offer"]');
+      if (!offer) return;
+      var card = offer.closest('[data-premium="true"]');
+      if (card && card.getAttribute('data-premium-locked') === 'true') openPremiumOffer(card);
+    });
+    var offerDialog = byId('premiumOfferDialog');
+    [byId('btnClosePremiumOffer'), byId('btnCancelPremiumOffer')].forEach(function (button) {
+      if (button) button.addEventListener('click', function () {
+        if (offerDialog && offerDialog.open) offerDialog.close();
+      });
+    });
+    if (offerDialog) offerDialog.addEventListener('click', function (event) {
+      if (event.target === offerDialog) offerDialog.close();
+    });
 
     var settingsForm = byId('premiumSettingsForm');
     if (settingsForm) settingsForm.addEventListener('submit', savePremiumSettings);

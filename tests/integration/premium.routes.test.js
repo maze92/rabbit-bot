@@ -325,6 +325,13 @@ test('delegated bot admin can manage server licenses but only bot owner can chan
     assert.equal(harness.getSettings().amount, '9.99');
 
     harness.setUser({ _id: USER_ID, username: 'test-user', role: 'GUILD_ADMIN' });
+    const publicStatus = await fetch(app.baseUrl + '/api/premium?guildId=' + GUILD_ID);
+    const publicBody = await publicStatus.json();
+    assert.equal(publicStatus.status, 200);
+    assert.equal(publicBody.payment.amount, '9.99');
+    assert.equal(publicBody.payment.durationDays, 60);
+    assert.equal(Object.hasOwn(publicBody.payment, 'paymentLink'), false);
+
     const checkout = await fetch(app.baseUrl + '/api/premium/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -399,14 +399,41 @@
             </div>
             <div class="premium-panel__actions">
               <button type="button" class="btn xs primary hidden" id="btnPremiumCheckout"></button>
-              <a class="btn xs hidden" id="premiumReferenceLink" target="_blank" rel="noopener noreferrer" data-i18n="premium_reference_link">PayPal</a>
             </div>
           </div>
+
+          <dialog class="premium-offer-dialog" id="premiumOfferDialog" aria-labelledby="premiumOfferTitle">
+            <div class="premium-offer-dialog__head">
+              <div>
+                <span class="premium-badge" data-i18n="premium_badge">Premium</span>
+                <h2 id="premiumOfferTitle" data-i18n="premium_offer_title">Desbloquear Premium</h2>
+              </div>
+              <button type="button" class="icon-btn" id="btnClosePremiumOffer" data-i18n-aria-label="premium_offer_close" aria-label="Fechar">×</button>
+            </div>
+            <p class="premium-offer-dialog__plan" id="premiumOfferPlan"></p>
+            <p class="premium-offer-dialog__status" id="premiumOfferStatus" role="status" aria-live="polite"></p>
+            <div class="premium-panel__included">
+              <strong data-i18n="premium_includes_title">O que inclui o Premium</strong>
+              <ul>
+                <li data-i18n="premium_include_gamenews">Feeds automáticos de notícias (GameNews)</li>
+                <li data-i18n="premium_include_tempvoice">Canais de voz temporários</li>
+                <li data-i18n="premium_include_tickets">Sistema de tickets</li>
+                <li data-i18n="premium_include_trust">Sistema Trust e respetivas ferramentas</li>
+                <li data-i18n="premium_include_giveaways">Giveaways automáticos</li>
+              </ul>
+              <small data-i18n="premium_billing_note">Licença por servidor, válida pelo período indicado. Sem renovação automática.</small>
+            </div>
+            <div class="premium-offer-dialog__actions">
+              <button type="button" class="btn primary hidden" id="btnPremiumOfferCheckout"></button>
+              <button type="button" class="btn btn-ghost" id="btnCancelPremiumOffer" data-i18n="premium_offer_close">Fechar</button>
+            </div>
+          </dialog>
 
           <div class="features-grid extras-grid" id="extrasGrid">
             <article class="feature-card" id="extras-panel-feeds" data-premium="true" data-premium-module="gamenews">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="gamenews_title">GameNews</h3>
+                <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
               </div>
               <p class="hint" data-i18n="gamenews_hint">Estado dos feeds de notícias e últimas publicações.</p>
               <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
@@ -447,6 +474,7 @@
             <article class="feature-card" id="extras-panel-tempvoice" data-premium="true" data-premium-module="tempvoice">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tempvoice_title">Voz temporária</h3>
+                <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
               </div>
               <p class="hint" data-i18n="tempvoice_hint">Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.</p>
               <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
@@ -545,6 +573,7 @@
             <article class="feature-card" id="extras-panel-tickets" data-premium="true" data-premium-module="tickets">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="tickets_extras_title">Tickets</h3>
+                <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
               </div>
               <p class="hint" data-i18n="tickets_extras_hint">Consulta e gere tickets ativos, respostas da equipa e o histórico do suporte.</p>
               <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
@@ -591,6 +620,7 @@
             <article class="feature-card" id="extras-panel-trust" data-premium="true" data-premium-module="trust">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="extras_trust_title">Sistema de Trust</h3>
+                <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
               </div>
               <p class="hint" data-i18n="extras_trust_hint">Visão geral do sistema de confiança usado para avaliar o risco dos utilizadores com base no seu histórico.</p>
               <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
@@ -708,6 +738,7 @@
             <article class="feature-card" id="extras-panel-giveaways" data-premium="true" data-premium-module="giveaways">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="giveaways_title">Giveaways</h3>
+                <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
               </div>
               <p class="hint" data-i18n="giveaways_hint">Publica automaticamente giveaways do GamerPower no canal escolhido, assim que aparecem.</p>
               <p class="hint premium-card__hint hidden" data-role="premium-hint" data-i18n="premium_lock_hint">Estes módulos fazem parte do plano Premium, que é ativado por doação.</p>
