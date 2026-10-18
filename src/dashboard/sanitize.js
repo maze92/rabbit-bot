@@ -9,9 +9,7 @@
  */
 function sanitizeText(value, { maxLen = 1000, stripHtml = true } = {}) {
   if (value === null || value === undefined) return '';
-  let str = String(value);
-
-  if (str.length > maxLen) str = str.slice(0, maxLen);
+  let str = String(value).trim();
 
   // remove control chars
   str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
@@ -21,6 +19,8 @@ function sanitizeText(value, { maxLen = 1000, stripHtml = true } = {}) {
     str = str.replace(/<[^>]*>/g, '');
   }
 
+  if (str.length > maxLen) str = str.slice(0, maxLen);
+
   return str.trim();
 }
 
@@ -28,7 +28,8 @@ function sanitizeText(value, { maxLen = 1000, stripHtml = true } = {}) {
  * Normaliza um identificador (Snowflake) para apenas dígitos, com limite de 20 chars.
  */
 function sanitizeId(value) {
-  const s = sanitizeText(value, { maxLen: 32, stripHtml: true });
+  // IDs can arrive wrapped in Discord mention syntax; keep the raw digits.
+  const s = sanitizeText(value, { maxLen: 64, stripHtml: false });
   const digitsOnly = s.replace(/\D/g, '');
   return digitsOnly.slice(0, 20);
 }
