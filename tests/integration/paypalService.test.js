@@ -31,7 +31,7 @@ test('PayPal checkout creates an order with the configured plan and approval URL
 
   const result = await paypal.createOrder({
     guildId: '123456789012345678',
-    discordUserId: '987654321098765432',
+    purchaserDiscordUserId: '987654321098765432',
     returnUrl: 'https://dashboard.example/api/premium/paypal/return',
     cancelUrl: 'https://dashboard.example/api/premium/paypal/cancel'
   });
@@ -74,7 +74,7 @@ test('PayPal checkout accepts a valid plan configured outside environment variab
 
   const result = await paypal.createOrder({
     guildId: '123456789012345678',
-    discordUserId: '987654321098765432',
+    purchaserDiscordUserId: '987654321098765432',
     returnUrl: 'https://dashboard.example/return',
     cancelUrl: 'https://dashboard.example/cancel',
     plan: { amount: '12.00', currency: 'EUR', durationDays: 60 }

@@ -45,7 +45,7 @@ function getCaptureDetails(payload) {
       status: resource.status || null,
       amount: resource.amount?.value || null,
       currency: resource.amount?.currency_code || null,
-      userId: resource.custom_id || null,
+      purchaserDiscordUserId: resource.custom_id || null,
       guildId: null,
       payerId: resource.payer?.payer_id || null,
       payerEmail: resource.payer?.email_address || null
@@ -62,7 +62,7 @@ function getCaptureDetails(payload) {
     status: capture && capture.status ? capture.status : (payload && payload.status),
     amount: capture && capture.amount ? capture.amount.value : null,
     currency: capture && capture.amount ? capture.amount.currency_code : null,
-    userId: unit && unit.custom_id ? String(unit.custom_id) : null,
+    purchaserDiscordUserId: unit && unit.custom_id ? String(unit.custom_id) : null,
     guildId: unit && unit.reference_id ? String(unit.reference_id) : null,
     payerId: payload && payload.payer ? payload.payer.payer_id || null : null,
     payerEmail: payload && payload.payer ? payload.payer.email_address || null : null
@@ -91,18 +91,10 @@ function isPayPalLink(value) {
   }
 }
 
-function activeEntitlement(entitlement) {
-  if (!entitlement || entitlement.enabled !== true) return false;
-  if (!entitlement.until) return true;
-  const until = new Date(entitlement.until);
-  return !Number.isNaN(until.getTime()) && until.getTime() > Date.now();
-}
-
 /**
- * Guard reutilizável. O Premium pertence à conta Discord; a licença antiga
- * por guild continua aceite até expirar para evitar retirar acesso existente.
+ * Guard reutilizável para módulos cujo acesso pertence ao servidor.
  */
-function createPremiumGuard({ GuildConfig, PremiumEntitlement, sanitizeId }) {
+function createPremiumGuard({ GuildConfig, sanitizeId }) {
   return function requirePremium({ from = 'body', key = 'guildId' } = {}) {
     return async (req, res, next) => {
       const user = req.dashboardUser;
@@ -143,39 +135,14 @@ function createPremiumGuard({ GuildConfig, PremiumEntitlement, sanitizeId }) {
           return next();
         }
 
-        const userId = user && String(user._id || '');
-        if (userId && PremiumEntitlement) {
-          const entitlement = await PremiumEntitlement.findOne({ discordUserId: userId, enabled: true }).lean();
-          const until = entitlement && entitlement.until ? new Date(entitlement.until) : null;
-          if (entitlement && (!until || (!Number.isNaN(until.getTime()) && until.getTime() > Date.now()))) {
-            if (GuildConfig) {
-              await GuildConfig.findOneAndUpdate(
-                { guildId },
-                { $set: { premium: {
-                  enabled: true,
-                  until: entitlement.until || null,
-                  note: entitlement.note || 'Account Premium',
-                  activatedAt: entitlement.activatedAt || new Date(),
-                  accountUserId: userId,
-                  testBypass: false
-                } } },
-                { upsert: true, returnDocument: 'after' }
-              ).lean();
-              invalidateGuildConfig(guildId);
-            }
-            return next();
-          }
-        }
-
         if (GuildConfig) {
           const cfg = await GuildConfig.findOne({ guildId }).select('premium').lean();
           const guildPremium = cfg && cfg.premium;
-          if (guildPremium && !guildPremium.accountUserId && !guildPremium.testBypass && normalizePremium(guildPremium).active) return next();
-        } else if (!PremiumEntitlement) {
-          return next();
+          if (!(guildPremium && guildPremium.testBypass) && normalizePremium(guildPremium).active) return next();
         }
       } catch (err) {
         console.warn('[Premium] verificação falhou:', err?.message || err);
+        return res.status(500).json({ ok: false, error: 'PREMIUM_CHECK_FAILED' });
       }
 
       return res.status(402).json({ ok: false, error: 'PREMIUM_REQUIRED' });
@@ -191,7 +158,6 @@ function registerPremiumRoutes({
   sanitizeId,
   GuildConfig,
   PremiumPayment,
-  PremiumEntitlement,
   PremiumSettings,
   config,
   rateLimit,
@@ -269,31 +235,33 @@ function registerPremiumRoutes({
     }
   });
 
-  app.get('/api/premium/admin/users', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  app.get('/api/premium/admin/guilds', requireDashboardAuth, requireBotAdmin, async (req, res) => {
     try {
-      if (!PremiumEntitlement) return res.status(503).json({ ok: false, error: 'PREMIUM_ENTITLEMENT_MODEL_MISSING' });
-      const entitlements = await PremiumEntitlement.find({}).sort({ updatedAt: -1 }).limit(200).lean();
-      const userIds = entitlements.map((item) => item.discordUserId);
-      const payments = PremiumPayment && userIds.length
-        ? await PremiumPayment.find({ discordUserId: { $in: userIds } }).sort({ completedAt: -1 }).lean()
+      if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
+      const guildConfigs = await GuildConfig.find({
+        'premium.enabled': true,
+        'premium.testBypass': { $ne: true }
+      }).sort({ updatedAt: -1 }).limit(200).lean();
+      const guildIds = guildConfigs.map((item) => item.guildId);
+      const payments = PremiumPayment && guildIds.length
+        ? await PremiumPayment.find({ guildId: { $in: guildIds }, status: 'COMPLETED' }).sort({ completedAt: -1 }).lean()
         : [];
-      const latestByUser = new Map();
+      const latestByGuild = new Map();
       payments.forEach((payment) => {
-        if (!latestByUser.has(payment.discordUserId)) latestByUser.set(payment.discordUserId, payment);
+        if (!latestByGuild.has(payment.guildId)) latestByGuild.set(payment.guildId, payment);
       });
       const query = String(req.query.q || '').trim().toLowerCase();
-      const items = entitlements.map((item) => {
-        const latestPayment = latestByUser.get(item.discordUserId) || null;
+      const items = guildConfigs.map((item) => {
+        const license = normalizePremium(item.premium);
+        const latestPayment = latestByGuild.get(item.guildId) || null;
         return {
-          discordUserId: item.discordUserId,
-          discordUsername: item.discordUsername,
-          enabled: item.enabled === true,
-          active: activeEntitlement(item),
-          until: item.until,
-          note: item.note,
-          paymentLink: item.paymentLink,
-          source: item.source,
-          updatedBy: item.updatedBy,
+          guildId: item.guildId,
+          enabled: license.enabled,
+          active: license.active,
+          until: license.until,
+          note: license.note,
+          activatedAt: license.activatedAt,
+          purchasedByUserId: item.premium && item.premium.purchasedByUserId || null,
           updatedAt: item.updatedAt,
           latestPayment: latestPayment ? {
             amount: latestPayment.amount,
@@ -304,63 +272,44 @@ function registerPremiumRoutes({
             approvalUrl: latestPayment.approvalUrl
           } : null
         };
-      }).filter((item) => !query || [item.discordUserId, item.discordUsername, item.latestPayment && item.latestPayment.paypalPayerEmail]
+      }).filter((item) => !query || [item.guildId, item.note, item.latestPayment && item.latestPayment.paypalPayerEmail]
         .some((value) => String(value || '').toLowerCase().includes(query)));
       return res.json({ ok: true, items });
     } catch (err) {
-      console.error('[Dashboard] Premium accounts read error:', err?.message || err);
+      console.error('[Dashboard] Premium guilds read error:', err?.message || err);
       return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
     }
   });
 
-  app.patch('/api/premium/admin/users/:userId', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  app.patch('/api/premium/admin/guilds/:guildId', requireDashboardAuth, requireBotAdmin, async (req, res) => {
     try {
-      if (!PremiumEntitlement) return res.status(503).json({ ok: false, error: 'PREMIUM_ENTITLEMENT_MODEL_MISSING' });
-      const discordUserId = String(req.params.userId || '');
-      if (!/^\d{10,32}$/.test(discordUserId)) return res.status(400).json({ ok: false, error: 'DISCORD_USER_ID_INVALID' });
+      if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
+      const guildId = sanitizeId(req.params.guildId || '');
+      if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_INVALID' });
       const body = req.body || {};
       if (typeof body.enabled !== 'boolean') return res.status(400).json({ ok: false, error: 'PREMIUM_ENABLED_REQUIRED' });
       const until = body.until ? parseDate(body.until) : null;
       if (body.until && !until) return res.status(400).json({ ok: false, error: 'PREMIUM_DATE_INVALID' });
-      const paymentLink = String(body.paymentLink || '').trim();
-      if (!isPayPalLink(paymentLink)) return res.status(400).json({ ok: false, error: 'PREMIUM_PAYMENT_LINK_INVALID' });
-      const existing = await PremiumEntitlement.findOne({ discordUserId }).lean();
-      const entitlement = await PremiumEntitlement.findOneAndUpdate(
-        { discordUserId },
+      const note = String(body.note || '').trim().slice(0, 200) || null;
+      const premium = await GuildConfig.findOneAndUpdate(
+        { guildId },
         {
           $set: {
-            discordUserId,
-            discordUsername: String(body.username || (existing && existing.discordUsername) || '').trim().slice(0, 80) || null,
-            enabled: body.enabled,
-            until,
-            note: String(body.note || '').trim().slice(0, 200) || null,
-            paymentLink: paymentLink || null,
-            source: (existing && existing.source) || 'ADMIN',
-            lastPaymentId: (existing && existing.lastPaymentId) || null,
-            activatedAt: body.enabled ? (existing && existing.activatedAt) || new Date() : (existing && existing.activatedAt) || null,
-            updatedBy: String(req.dashboardUser._id || '')
-          }
-        },
-        { upsert: true, returnDocument: 'after' }
-      ).lean();
-      if (GuildConfig) {
-        const projections = await GuildConfig.find({ 'premium.accountUserId': discordUserId })
-          .select('guildId')
-          .lean();
-        await GuildConfig.updateMany(
-          { 'premium.accountUserId': discordUserId },
-          { $set: {
             'premium.enabled': body.enabled,
             'premium.until': until,
-            'premium.note': entitlement.note || (body.enabled ? 'Account Premium' : 'Premium disabled'),
-            'premium.activatedAt': entitlement.activatedAt || new Date()
-          } }
-        );
-        (projections || []).forEach((projection) => invalidateGuildConfig(projection.guildId));
-      }
-      return res.json({ ok: true, entitlement: Object.assign({}, entitlement, { active: activeEntitlement(entitlement) }) });
+            'premium.note': note,
+            'premium.activatedAt': body.enabled ? new Date() : null,
+            'premium.purchasedByUserId': null,
+            'premium.accountUserId': null,
+            'premium.testBypass': false
+          }
+        },
+        { upsert: true, returnDocument: 'after', projection: { premium: 1 } }
+      ).lean();
+      invalidateGuildConfig(guildId);
+      return res.json({ ok: true, guildId, premium: normalizePremium(premium && premium.premium) });
     } catch (err) {
-      console.error('[Dashboard] Premium account update error:', err?.message || err);
+      console.error('[Dashboard] Premium guild update error:', err?.message || err);
       return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
     }
   });
@@ -379,7 +328,7 @@ function registerPremiumRoutes({
     if (
       !capture.orderId || capture.orderId !== payment.paypalOrderId ||
       capture.status !== 'COMPLETED' || !capture.captureId ||
-      capture.userId !== payment.discordUserId ||
+      capture.purchaserDiscordUserId !== (payment.purchaserDiscordUserId || payment.discordUserId) ||
       !sameAmount(capture.amount, payment.amount) ||
       String(capture.currency || '').toUpperCase() !== payment.currency ||
       (capture.guildId && capture.guildId !== payment.guildId)
@@ -402,31 +351,31 @@ function registerPremiumRoutes({
     }
 
     try {
-      if (!PremiumEntitlement) throw new Error('PREMIUM_ENTITLEMENT_MODEL_MISSING');
-      const currentEntitlement = await PremiumEntitlement.findOne({ discordUserId: payment.discordUserId }).lean();
+      if (!GuildConfig) throw new Error('GUILD_CONFIG_MODEL_MISSING');
+      const currentConfig = await GuildConfig.findOne({ guildId: payment.guildId }).select('premium').lean();
+      const currentPremium = normalizePremium(currentConfig && currentConfig.premium);
       const now = new Date();
-      const existingUntil = currentEntitlement && currentEntitlement.until ? new Date(currentEntitlement.until) : null;
-      const startsAt = activeEntitlement(currentEntitlement) && existingUntil && existingUntil > now
-        ? existingUntil
+      const startsAt = currentPremium.active && currentPremium.until && currentPremium.until > now
+        ? currentPremium.until
         : now;
       const expiresAt = new Date(startsAt.getTime() + payment.durationDays * 24 * 60 * 60 * 1000);
 
-      await PremiumEntitlement.findOneAndUpdate(
-        { discordUserId: payment.discordUserId },
+      await GuildConfig.findOneAndUpdate(
+        { guildId: payment.guildId },
         {
           $set: {
-            discordUserId: payment.discordUserId,
-            discordUsername: payment.discordUsername,
-            enabled: true,
-            until: expiresAt,
-            note: 'PayPal',
-            paymentLink: payment.approvalUrl || null,
-            source: 'PAYPAL',
-            lastPaymentId: payment.paypalCaptureId || capture.captureId
+            'premium.enabled': true,
+            'premium.until': expiresAt,
+            'premium.note': 'PayPal',
+            'premium.activatedAt': currentPremium.activatedAt || now,
+            'premium.purchasedByUserId': payment.purchaserDiscordUserId || payment.discordUserId,
+            'premium.accountUserId': null,
+            'premium.testBypass': false
           }
         },
         { returnDocument: 'after', upsert: true }
       ).lean();
+      invalidateGuildConfig(payment.guildId);
 
       await PremiumPayment.updateOne(
         { _id: payment._id, status: 'PROCESSING' },
@@ -465,16 +414,16 @@ function registerPremiumRoutes({
       const user = req.dashboardUser || {};
       const userId = String(user._id || '');
       if (!/^\d{10,32}$/.test(userId)) return res.status(401).json({ ok: false, error: 'UNAUTHORIZED' });
-      const currentEntitlement = PremiumEntitlement
-        ? await PremiumEntitlement.findOne({ discordUserId: userId }).lean()
-        : null;
-      if (activeEntitlement(currentEntitlement) && !currentEntitlement.until) {
+      if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
+      const currentConfig = await GuildConfig.findOne({ guildId }).select('premium').lean();
+      const currentPremium = normalizePremium(currentConfig && currentConfig.premium);
+      if (currentPremium.active && !currentPremium.until) {
         return res.status(409).json({ ok: false, error: 'PREMIUM_ALREADY_PERMANENT' });
       }
 
       const order = await paypal.createOrder({
         guildId,
-        discordUserId: userId,
+        purchaserDiscordUserId: userId,
         returnUrl: `${origin}/api/premium/paypal/return`,
         cancelUrl: `${origin}/api/premium/paypal/cancel`,
         plan
@@ -483,8 +432,8 @@ function registerPremiumRoutes({
         paypalOrderId: order.id,
         approvalUrl: order.approvalUrl,
         guildId,
-        discordUserId: userId,
-        discordUsername: String(user.username || 'Discord').slice(0, 80),
+        purchaserDiscordUserId: userId,
+        purchaserDiscordUsername: String(user.username || 'Discord').slice(0, 80),
         amount: order.plan.amount,
         currency: order.plan.currency,
         durationDays: order.plan.durationDays,
@@ -576,8 +525,8 @@ function registerPremiumRoutes({
         ok: true,
         items: items.map((item) => ({
           guildId: item.guildId,
-          discordUsername: item.discordUsername,
-          discordUserId: item.discordUserId,
+          purchaserDiscordUsername: item.purchaserDiscordUsername || item.discordUsername,
+          purchaserDiscordUserId: item.purchaserDiscordUserId || item.discordUserId,
           paypalPayerEmail: item.paypalPayerEmail,
           approvalUrl: item.approvalUrl,
           paypalCaptureId: item.paypalCaptureId,
@@ -602,33 +551,15 @@ function registerPremiumRoutes({
 
       const cfg = GuildConfig ? await GuildConfig.findOne({ guildId }).select('premium').lean() : null;
       const guildPremium = cfg && cfg.premium;
-      const userId = String(req.dashboardUser && req.dashboardUser._id || '');
-      const entitlement = PremiumEntitlement && userId
-        ? await PremiumEntitlement.findOne({ discordUserId: userId }).lean()
-        : null;
       const plan = await getPlan();
-      const accountOwnsGuildProjection = !guildPremium || !guildPremium.accountUserId || guildPremium.accountUserId === userId;
-      const projectedPremium = accountOwnsGuildProjection && !(guildPremium && guildPremium.testBypass)
-        ? normalizePremium(guildPremium)
-        : normalizePremium(null);
-      const entitlementActive = activeEntitlement(entitlement);
-      const paidActive = entitlementActive || projectedPremium.active;
+      const guildLicense = normalizePremium(guildPremium);
+      const paidActive = guildLicense.active && !(guildPremium && guildPremium.testBypass);
       const testBypass = Boolean(req.dashboardUser && req.dashboardUser.role === 'BOT_ADMIN');
-      const activeOtherAccountProjection = Boolean(
-        guildPremium && guildPremium.accountUserId && guildPremium.accountUserId !== userId && normalizePremium(guildPremium).active
-      );
-      if (GuildConfig && (entitlementActive || (testBypass && !activeOtherAccountProjection)) && !projectedPremium.active) {
+      if (GuildConfig && testBypass && !guildLicense.active) {
         const now = new Date();
         await GuildConfig.findOneAndUpdate(
           { guildId },
-          { $set: { premium: entitlementActive ? {
-            enabled: true,
-            until: entitlement.until || null,
-            note: entitlement.note || 'Account Premium',
-            activatedAt: entitlement.activatedAt || now,
-            accountUserId: userId,
-            testBypass: false
-          } : {
+          { $set: { premium: {
             enabled: true,
             until: new Date(now.getTime() + 15 * 60 * 1000),
             note: 'Bot admin test access',
@@ -645,15 +576,15 @@ function registerPremiumRoutes({
         premium: {
           enabled: paidActive,
           active: paidActive,
-          until: entitlementActive ? entitlement.until : projectedPremium.until,
-          note: entitlementActive ? entitlement.note : projectedPremium.note,
-          activatedAt: entitlement && entitlement.activatedAt ? entitlement.activatedAt : projectedPremium.activatedAt,
+          until: guildLicense.until,
+          note: guildLicense.note,
+          activatedAt: guildLicense.activatedAt,
           testBypass,
           effectiveActive: paidActive || testBypass
         },
         modules: PREMIUM_MODULES,
         payment: {
-          available: Boolean(GuildConfig && PremiumPayment && PremiumEntitlement && paypal.isConfigured(plan) && getDashboardOrigin(req, config)),
+          available: Boolean(GuildConfig && PremiumPayment && paypal.isConfigured(plan) && getDashboardOrigin(req, config)),
           amount: plan.amount,
           currency: plan.currency,
           durationDays: plan.durationDays,

@@ -90,17 +90,17 @@ function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch }
     return parseResponse(response);
   }
 
-  async function createOrder({ guildId, discordUserId, returnUrl, cancelUrl, plan: planOverride }) {
+  async function createOrder({ guildId, purchaserDiscordUserId, returnUrl, cancelUrl, plan: planOverride }) {
     const plan = normalizePlan(planOverride || getPlan());
     if (!plan || !isConfigured(plan)) throw new Error('PAYPAL_NOT_CONFIGURED');
-    if (!guildId || !discordUserId || !returnUrl || !cancelUrl) throw new Error('PAYPAL_ORDER_FIELDS_REQUIRED');
+    if (!guildId || !purchaserDiscordUserId || !returnUrl || !cancelUrl) throw new Error('PAYPAL_ORDER_FIELDS_REQUIRED');
 
     const invoiceId = `RB-${crypto.randomUUID()}`;
     const order = await request('/v2/checkout/orders', {
       intent: 'CAPTURE',
       purchase_units: [{
         reference_id: String(guildId),
-        custom_id: String(discordUserId),
+        custom_id: String(purchaserDiscordUserId),
         invoice_id: invoiceId,
         description: `Rabbit Bot Premium (${plan.durationDays} days)`,
         amount: { currency_code: plan.currency, value: plan.amount }

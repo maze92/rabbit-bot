@@ -5,13 +5,16 @@ const { createPremiumGuard } = require('../../src/dashboard/routes/premium');
 const GUILD_ID = '123456789012345678';
 const USER_ID = '987654321098765432';
 
-function makeGuard({ entitlement, guildPremium } = {}) {
+function makeGuard({ guildPremium, databaseError } = {}) {
   let storedPremium = guildPremium || { enabled: false };
   const GuildConfig = {
     findOne() {
       return {
         select() { return this; },
-        lean: async () => ({ guildId: GUILD_ID, premium: storedPremium })
+        lean: async () => {
+          if (databaseError) throw databaseError;
+          return { guildId: GUILD_ID, premium: storedPremium };
+        }
       };
     },
     findOneAndUpdate(query, update) {
@@ -22,12 +25,8 @@ function makeGuard({ entitlement, guildPremium } = {}) {
     },
     getPremium() { return storedPremium; }
   };
-  const PremiumEntitlement = {
-    findOne() { return { lean: async () => entitlement || null }; }
-  };
   return createPremiumGuard({
     GuildConfig,
-    PremiumEntitlement,
     sanitizeId: (value) => String(value || '').replace(/\D/g, '')
   })();
 }
@@ -48,14 +47,28 @@ async function runGuard(middleware, role, userId = USER_ID) {
   return { passed, statusCode, body };
 }
 
-test('a user entitlement unlocks premium features in another managed guild', async () => {
-  const guard = makeGuard({ entitlement: { enabled: true, until: new Date(Date.now() + 86_400_000) } });
+test('a dashboard account without a guild license cannot access premium features', async () => {
+  const guard = makeGuard();
+  const result = await runGuard(guard, 'GUILD_ADMIN');
+  assert.equal(result.passed, false);
+  assert.equal(result.statusCode, 402);
+  assert.equal(result.body.error, 'PREMIUM_REQUIRED');
+});
+
+test('an active legacy guild license remains valid after migration', async () => {
+  const guard = makeGuard({
+    guildPremium: {
+      enabled: true,
+      until: new Date(Date.now() + 86_400_000),
+      accountUserId: USER_ID
+    }
+  });
   const result = await runGuard(guard, 'GUILD_ADMIN');
   assert.equal(result.passed, true);
 });
 
-test('an expired account entitlement does not unlock premium features', async () => {
-  const guard = makeGuard({ entitlement: { enabled: true, until: new Date(Date.now() - 1000) } });
+test('an expired guild license does not unlock premium features', async () => {
+  const guard = makeGuard({ guildPremium: { enabled: true, until: new Date(Date.now() - 1000) } });
   const result = await runGuard(guard, 'GUILD_ADMIN');
   assert.equal(result.statusCode, 402);
   assert.equal(result.body.error, 'PREMIUM_REQUIRED');
@@ -65,4 +78,23 @@ test('bot admin test access bypasses Premium without creating a paid entitlement
   const guard = makeGuard();
   const result = await runGuard(guard, 'BOT_ADMIN');
   assert.equal(result.passed, true);
+});
+
+test('a bot-admin test bypass does not grant Premium to guild members', async () => {
+  const guard = makeGuard({
+    guildPremium: {
+      enabled: true,
+      until: new Date(Date.now() + 15 * 60 * 1000),
+      testBypass: true
+    }
+  });
+  const result = await runGuard(guard, 'GUILD_ADMIN');
+  assert.equal(result.statusCode, 402);
+});
+
+test('premium guard reports database failures instead of treating them as a missing license', async () => {
+  const guard = makeGuard({ databaseError: new Error('database unavailable') });
+  const result = await runGuard(guard, 'GUILD_ADMIN');
+  assert.equal(result.statusCode, 500);
+  assert.equal(result.body.error, 'PREMIUM_CHECK_FAILED');
 });

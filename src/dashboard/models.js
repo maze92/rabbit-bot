@@ -30,7 +30,6 @@ function loadDashboardModels() {
     Infraction: loadModel('../database/models/Infraction', 'Infraction'),
     TempVoiceChannel: loadModel('../database/models/TempVoiceChannel', 'TempVoiceChannel'),
     PremiumPayment: loadModel('../database/models/PremiumPayment', 'PremiumPayment'),
-    PremiumEntitlement: loadModel('../database/models/PremiumEntitlement', 'PremiumEntitlement'),
     PremiumSettings: loadModel('../database/models/PremiumSettings', 'PremiumSettings')
   };
 }

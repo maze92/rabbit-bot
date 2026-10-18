@@ -1,8 +1,7 @@
 // public/js/dashboard.premium.js
 //
-// Estado premium por conta. Os módulos "extra" (GameNews, voz temporária,
-// tickets, trust e giveaways) só funcionam com premium ativo. Esta camada
-// reflete a licença, o bypass de teste do admin do bot e a gestão de contas.
+// Estado premium por servidor. Os módulos extra e as licenças são sempre
+// associados à guild selecionada.
 
 (function () {
   'use strict';
@@ -18,7 +17,7 @@
   var paymentPlan = null;
   var loading = false;
   var checkoutLoading = false;
-  var adminUsers = [];
+  var adminGuilds = [];
 
   function isAdmin() {
     var me = NS.state && NS.state.me;
@@ -82,9 +81,6 @@
       status.textContent = paidActive ? t('premium_active') : (testBypass ? t('premium_test_mode') : t('premium_inactive'));
       status.classList.toggle('premium-status--on', active);
     }
-
-    var profileBadge = byId('badgeProfile');
-    if (profileBadge) profileBadge.classList.toggle('badge-premium', paidActive);
 
     var meta = byId('premiumMeta');
     if (meta) {
@@ -174,12 +170,12 @@
     return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
   }
 
-  function renderAdminUsers() {
-    var list = byId('premiumAccountsList');
+  function renderAdminGuilds() {
+    var list = byId('premiumGuildsList');
     if (!list || !isAdmin()) return;
     var query = String((byId('premiumAdminSearch') || {}).value || '').trim().toLowerCase();
-    var items = adminUsers.filter(function (item) {
-      return !query || [item.discordUserId, item.discordUsername, item.latestPayment && item.latestPayment.paypalPayerEmail]
+    var items = adminGuilds.filter(function (item) {
+      return !query || [item.guildId, item.note, item.latestPayment && item.latestPayment.paypalPayerEmail]
         .some(function (value) { return String(value || '').toLowerCase().includes(query); });
     });
     list.innerHTML = '';
@@ -193,25 +189,23 @@
 
     items.forEach(function (item) {
       var row = document.createElement('article');
-      row.className = 'list-item premium-account-row';
+      row.className = 'list-item premium-guild-row';
       var summary = document.createElement('div');
-      summary.className = 'premium-account-row__summary';
+      summary.className = 'premium-guild-row__summary';
       var title = document.createElement('strong');
-      title.textContent = (item.discordUsername || 'Discord') + ' · ' + item.discordUserId;
+      title.textContent = t('premium_admin_guild_id') + ': ' + item.guildId;
       var state = document.createElement('span');
       state.className = 'premium-status' + (item.active ? ' premium-status--on' : '');
-      state.textContent = item.active ? t('premium_admin_active') : (item.enabled ? t('premium_admin_expired') : t('premium_admin_disabled'));
+      state.textContent = item.active ? t('premium_admin_active') : t('premium_admin_expired');
       summary.appendChild(title);
       summary.appendChild(state);
       row.appendChild(summary);
-      var accountMeta = document.createElement('small');
-      accountMeta.textContent = [
-        item.source === 'PAYPAL' ? 'PayPal' : 'Admin',
+      var guildMeta = document.createElement('small');
+      guildMeta.textContent = [
         item.note || '',
         item.until ? t('premium_until', { date: formatPaymentDate(item.until) }) : t('premium_admin_permanent'),
-        item.updatedBy ? 'Updated by ' + item.updatedBy : ''
       ].filter(Boolean).join(' · ');
-      row.appendChild(accountMeta);
+      row.appendChild(guildMeta);
 
       if (item.latestPayment) {
         var payment = document.createElement('small');
@@ -233,10 +227,10 @@
       }
 
       var form = document.createElement('form');
-      form.className = 'premium-account-row__form';
-      form.dataset.userId = item.discordUserId;
+      form.className = 'premium-guild-row__form';
+      form.dataset.guildId = item.guildId;
       var enabledLabel = document.createElement('label');
-      enabledLabel.className = 'premium-account-row__switch';
+      enabledLabel.className = 'premium-guild-row__switch';
       var enabled = document.createElement('input');
       enabled.type = 'checkbox';
       enabled.checked = item.enabled;
@@ -259,20 +253,13 @@
       note.value = item.note || '';
       note.placeholder = t('premium_admin_note');
 
-      var link = document.createElement('input');
-      link.className = 'input';
-      link.type = 'url';
-      link.value = item.paymentLink || '';
-      link.placeholder = t('premium_admin_reference');
-
       var save = document.createElement('button');
       save.className = 'btn xs';
       save.type = 'submit';
-      save.textContent = t('premium_admin_save_account');
+      save.textContent = t('premium_admin_save_guild');
       form.appendChild(enabledLabel);
       form.appendChild(untilLabel);
       form.appendChild(note);
-      form.appendChild(link);
       form.appendChild(save);
       row.appendChild(form);
       list.appendChild(row);
@@ -284,10 +271,10 @@
     try {
       var results = await Promise.all([
         NS.apiGet('/premium/admin/settings'),
-        NS.apiGet('/premium/admin/users')
+        NS.apiGet('/premium/admin/guilds')
       ]);
       var settings = results[0] && results[0].settings;
-      adminUsers = results[1] && Array.isArray(results[1].items) ? results[1].items : [];
+      adminGuilds = results[1] && Array.isArray(results[1].items) ? results[1].items : [];
       if (settings) {
         byId('premiumAdminAmount').value = settings.amount || '';
         byId('premiumAdminCurrency').value = settings.currency || 'EUR';
@@ -295,11 +282,11 @@
         byId('premiumAdminPaymentLink').value = settings.paymentLink || '';
         paymentPlan = Object.assign({}, paymentPlan || {}, settings, { available: paymentPlan && paymentPlan.available });
       }
-      renderAdminUsers();
+      renderAdminGuilds();
       applyLock();
     } catch (err) {
       console.error('Premium admin data error', err);
-      var list = byId('premiumAccountsList');
+      var list = byId('premiumGuildsList');
       if (list) list.textContent = t('premium_payments_error');
     }
   }
@@ -323,29 +310,37 @@
     }
   }
 
-  async function saveAccount(userId, values, form) {
+  async function saveGuild(guildId, values, form) {
     var button = form && form.querySelector('button[type="submit"]');
     if (button) button.disabled = true;
     try {
-      var res = await NS.apiPatch('/premium/admin/users/' + encodeURIComponent(userId), values);
+      var res = await NS.apiPatch('/premium/admin/guilds/' + encodeURIComponent(guildId), values);
       if (!res || res.ok === false) throw new Error((res && res.error) || 'ERROR');
       notify(t('premium_admin_saved'), { type: 'success' });
       await loadAdminData();
+      return true;
     } catch (err) {
-      console.error('Premium account update error', err);
+      console.error('Premium guild update error', err);
       notify(t('premium_admin_save_error'), { type: 'error' });
+      return false;
     } finally {
       if (button) button.disabled = false;
     }
   }
 
-  async function addAccount(event) {
+  async function grantGuild(event) {
     event.preventDefault();
     var form = event.currentTarget;
-    var userId = String(byId('premiumAdminUserId').value || '').trim();
-    var username = String(byId('premiumAdminUsername').value || '').trim();
-    await saveAccount(userId, { enabled: true, until: null, username, note: 'Admin grant', paymentLink: '' }, form);
-    form.reset();
+    var guildId = String(byId('premiumAdminGuildId').value || '').trim();
+    var untilValue = byId('premiumAdminGuildUntil').value
+      ? new Date(byId('premiumAdminGuildUntil').value).toISOString()
+      : null;
+    var saved = await saveGuild(guildId, {
+      enabled: true,
+      until: untilValue,
+      note: byId('premiumAdminGuildNote').value
+    }, form);
+    if (saved) form.reset();
   }
 
   async function startCheckout() {
@@ -380,24 +375,23 @@
 
     var settingsForm = byId('premiumSettingsForm');
     if (settingsForm) settingsForm.addEventListener('submit', savePremiumSettings);
-    var addForm = byId('premiumAdminAddForm');
-    if (addForm) addForm.addEventListener('submit', addAccount);
-    var accountList = byId('premiumAccountsList');
-    if (accountList) accountList.addEventListener('submit', function (event) {
-      var form = event.target.closest('form[data-user-id]');
+    var grantForm = byId('premiumAdminGrantForm');
+    if (grantForm) grantForm.addEventListener('submit', grantGuild);
+    var guildList = byId('premiumGuildsList');
+    if (guildList) guildList.addEventListener('submit', function (event) {
+      var form = event.target.closest('form[data-guild-id]');
       if (!form) return;
       event.preventDefault();
       var fields = form.querySelectorAll('input');
       var untilValue = fields[1].value ? new Date(fields[1].value).toISOString() : null;
-      saveAccount(form.dataset.userId, {
+      saveGuild(form.dataset.guildId, {
         enabled: fields[0].checked,
         until: untilValue,
-        note: fields[2].value,
-        paymentLink: fields[3].value
+        note: fields[2].value
       }, form);
     });
     var accountSearch = byId('premiumAdminSearch');
-    if (accountSearch) accountSearch.addEventListener('input', renderAdminUsers);
+    if (accountSearch) accountSearch.addEventListener('input', renderAdminGuilds);
 
     window.addEventListener('dashboard:premium-return', function (event) {
       var status = event && event.detail ? event.detail.status : '';

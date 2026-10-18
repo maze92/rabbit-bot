@@ -5,8 +5,11 @@ const premiumPaymentSchema = new Schema({
   approvalUrl: { type: String, default: null },
   paypalCaptureId: { type: String, default: null },
   guildId: { type: String, required: true, index: true },
-  discordUserId: { type: String, required: true },
+  // Buyer metadata; legacy discordUserId/discordUsername fields remain readable.
+  discordUserId: { type: String, default: null },
   discordUsername: { type: String, default: null },
+  purchaserDiscordUserId: { type: String, default: null, index: true },
+  purchaserDiscordUsername: { type: String, default: null },
   paypalPayerId: { type: String, default: null },
   paypalPayerEmail: { type: String, default: null },
   amount: { type: String, required: true },

@@ -340,18 +340,19 @@
                   <span class="hint" id="premiumSettingsStatus" role="status" aria-live="polite"></span>
                 </div>
               </form>
-              <div class="premium-admin-users">
-                <div class="premium-admin-users__head">
-                  <h4 data-i18n="premium_admin_accounts">Contas com Premium</h4>
-                  <input class="input" id="premiumAdminSearch" type="search" data-i18n-placeholder="premium_admin_search" placeholder="Pesquisar conta ou email" />
+              <div class="premium-admin-guilds">
+                <div class="premium-admin-guilds__head">
+                  <h4 data-i18n="premium_admin_guilds">Servidores Premium</h4>
+                  <input class="input" id="premiumAdminSearch" type="search" data-i18n-placeholder="premium_admin_search_guilds" placeholder="Pesquisar servidor ou email" />
                 </div>
-                <form class="premium-admin-add" id="premiumAdminAddForm">
-                  <input class="input" id="premiumAdminUserId" type="text" inputmode="numeric" pattern="[0-9]{10,32}" required data-i18n-placeholder="premium_admin_user_id" placeholder="ID Discord" />
-                  <input class="input" id="premiumAdminUsername" type="text" maxlength="80" data-i18n-placeholder="premium_admin_username" placeholder="Nick (opcional)" />
-                  <button class="btn xs" type="submit" data-i18n="premium_admin_add">Adicionar conta</button>
+                <form class="premium-admin-grant" id="premiumAdminGrantForm">
+                  <input class="input" id="premiumAdminGuildId" type="text" inputmode="numeric" pattern="[0-9]{10,32}" required data-i18n-placeholder="premium_admin_guild_id" placeholder="ID do servidor" />
+                  <input class="input" id="premiumAdminGuildUntil" type="datetime-local" data-i18n-aria-label="premium_admin_until" aria-label="Válido até" />
+                  <input class="input" id="premiumAdminGuildNote" type="text" maxlength="200" data-i18n-placeholder="premium_admin_note" placeholder="Nota administrativa" />
+                  <button class="btn xs" type="submit" data-i18n="premium_admin_grant">Ativar no servidor</button>
                 </form>
-                <div class="list" id="premiumAccountsList">
-                  <div class="empty" data-i18n="premium_payments_empty">Ainda não existem contas Premium.</div>
+                <div class="list" id="premiumGuildsList">
+                  <div class="empty" data-i18n="premium_admin_empty">Nenhum servidor Premium encontrado.</div>
                 </div>
               </div>
             </div>

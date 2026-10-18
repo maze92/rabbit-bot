@@ -667,7 +667,7 @@ function setPanelLoading(panelId, isLoading) {
     }
 
     elProfile.textContent = me.role === 'BOT_ADMIN' ? t('profile_bot_admin') : (me.username || 'Discord');
-    elProfile.classList.toggle('badge-premium', !!(me.premium && (me.premium.active || me.premium.testBypass)));
+    elProfile.classList.remove('badge-premium');
     elProfile.classList.remove('hidden');
 
     var perms = (state.perms && typeof state.perms === 'object') ? state.perms : {};

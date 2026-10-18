@@ -68,7 +68,6 @@ const {
   Infraction,
   TempVoiceChannel,
   PremiumPayment,
-  PremiumEntitlement,
   PremiumSettings
 } = loadDashboardModels();
 
@@ -297,7 +296,6 @@ registerDashboardRoutes({
   Infraction,
   TempVoiceChannel,
   PremiumPayment,
-  PremiumEntitlement,
   PremiumSettings,
   GuildConfigSchema,
   ModWarnSchema,

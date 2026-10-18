@@ -79,6 +79,13 @@
   - **Configuração**
 - Indicação visual de **bot online/offline** no topo da dashboard.
 
+### ⭐ Premium por servidor
+
+- A licença Premium pertence a um **servidor Discord** e desbloqueia os módulos extra desse servidor.
+- O owner ou um administrador do servidor pode iniciar a compra na dashboard; a conta que paga não recebe uma licença pessoal nem desbloqueia outros servidores.
+- Administradores do bot podem gerir licenças por servidor na dashboard.
+- Licenças de servidor já ativas antes desta alteração são mantidas até expirarem. Licenças antigas associadas apenas a uma conta não são convertidas automaticamente em licença de servidor.
+
 ### 🌍 Internacionalização (i18n)
 
 - Sistema de i18n centralizado no frontend.

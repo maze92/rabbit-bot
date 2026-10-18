@@ -53,6 +53,8 @@ const guildConfigSchema = new Schema(
       // Referência livre da doação (ex.: id do pagamento) para suporte.
       note: { type: String, default: null },
       activatedAt: { type: Date, default: null },
+      purchasedByUserId: { type: String, default: null },
+      // Legacy field for account licenses projected onto a guild before guild-only premium.
       accountUserId: { type: String, default: null },
       testBypass: { type: Boolean, default: false }
     },
