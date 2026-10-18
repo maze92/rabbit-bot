@@ -17,6 +17,10 @@ html, body {
   color: var(--text);
 }
 
+html.i18n-loading body {
+  visibility: hidden;
+}
+
 body {
   display: flex;
   align-items: stretch;
@@ -511,7 +515,7 @@ h2 {
 /* Users layout */
 
 #tab-user .user-layout,
-#tab-gamenews .user-layout {
+#featuresGrid .feature-card[data-premium-module] .user-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
   gap: 12px;
@@ -519,14 +523,14 @@ h2 {
 }
 
 #tab-user .user-layout .list,
-#tab-gamenews .user-layout .list {
+#featuresGrid .feature-card[data-premium-module] .user-layout .list {
   margin-top: 0;
   max-height: 460px;
   overflow: auto;
 }
 
 #tab-user .user-detail,
-#tab-gamenews .user-detail {
+#featuresGrid .feature-card[data-premium-module] .user-detail {
   border-radius: 10px;
   border: 1px solid var(--border-soft);
   background: var(--white-2);
@@ -535,21 +539,21 @@ h2 {
 }
 
 #tab-user .user-detail .title,
-#tab-gamenews .user-detail .title {
+#featuresGrid .feature-card[data-premium-module] .user-detail .title {
   font-size: var(--fs-md);
   font-weight: 600;
   margin-bottom: 4px;
 }
 
 #tab-user .user-detail .subtitle,
-#tab-gamenews .user-detail .subtitle {
+#featuresGrid .feature-card[data-premium-module] .user-detail .subtitle {
   font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 #tab-user .user-detail .history-section,
-#tab-gamenews .user-detail .history-section {
+#featuresGrid .feature-card[data-premium-module] .user-detail .history-section {
   margin-top: 8px;
 }
 
@@ -606,7 +610,7 @@ h2 {
 }
 
 #tab-user .user-detail .empty,
-#tab-gamenews .user-detail .empty {
+#featuresGrid .feature-card[data-premium-module] .user-detail .empty {
   margin-top: 0;
 }
 
@@ -637,10 +641,10 @@ h2 {
   /* Em ecrãs estreitos os filtros podem quebrar linha em vez de transbordar.
    * Duplicamos o id do contentor para vencer a regra base (mais específica
    * por vir depois no ficheiro e usar !important). */
-  #tab-gamenews #extras-tickets-panel .toolbar > div:last-child {
+  #featuresGrid .feature-card[data-premium-module] #extras-tickets-panel .toolbar > div:last-child {
     flex-wrap: wrap !important;
   }
-  #tab-gamenews #extras-tickets-panel #ticketsSearch {
+  #featuresGrid .feature-card[data-premium-module] #extras-tickets-panel #ticketsSearch {
     min-width: 0;
   }
 }
@@ -930,68 +934,68 @@ h2 {
 }
 
 
-#tab-gamenews .gamenews-layout {
+#featuresGrid .feature-card[data-premium-module] .gamenews-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
   gap: 12px;
   margin-top: 10px;
 }
 
-#tab-gamenews .gamenews-layout .list {
+#featuresGrid .feature-card[data-premium-module] .gamenews-layout .list {
   margin-top: 0;
   margin-bottom: 6px;
   max-height: 460px;
   overflow: auto;
 }
 
-#tab-gamenews .gamenews-detail .row {
+#featuresGrid .feature-card[data-premium-module] .gamenews-detail .row {
   margin-top: 4px;
 }
 
 
 /* GameNews detail panel tweaks */
-#tab-gamenews .gamenews-detail .title {
+#featuresGrid .feature-card[data-premium-module] .gamenews-detail .title {
   font-size: var(--fs-base);
   font-weight: 600;
   margin-bottom: 4px;
 }
 
-#tab-gamenews .gamenews-detail .subtitle {
+#featuresGrid .feature-card[data-premium-module] .gamenews-detail .subtitle {
   font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-bottom: 8px;
 }
 
-#tab-gamenews .gamenews-detail .history-section {
+#featuresGrid .feature-card[data-premium-module] .gamenews-detail .history-section {
   margin-top: 10px;
 }
 
 
 #tab-user .user-layout .list,
-#tab-gamenews .gamenews-layout .list {
+#featuresGrid .feature-card[data-premium-module] .gamenews-layout .list {
   overflow-x: hidden;
 }
 
 
 /* GameNews detail parity with Users panel */
-#tab-gamenews .user-detail-inner {
+#featuresGrid .feature-card[data-premium-module] .user-detail-inner {
   background: var(--card-bg);
   border-radius: 8px;
   padding: 12px;
 }
 
-#tab-gamenews .history-section h3 {
+#featuresGrid .feature-card[data-premium-module] .history-section h3 {
   font-size: var(--fs-sm);
 }
 
-#tab-gamenews .history-section p,
-#tab-gamenews .history-section label,
-#tab-gamenews .history-section input {
+#featuresGrid .feature-card[data-premium-module] .history-section p,
+#featuresGrid .feature-card[data-premium-module] .history-section label,
+#featuresGrid .feature-card[data-premium-module] .history-section input {
   font-size: var(--fs-xs);
 }
 
 /* Force GameNews detail panel to match Users history panel */
-#tab-gamenews .gamenews-detail {
+#featuresGrid .feature-card[data-premium-module] .gamenews-detail {
   border-radius: 10px;
   border: 1px solid var(--border-soft);
   background: var(--white-2);
@@ -999,20 +1003,20 @@ h2 {
   min-height: 120px;
 }
 
-#tab-gamenews .gamenews-detail .title {
+#featuresGrid .feature-card[data-premium-module] .gamenews-detail .title {
   font-size: var(--fs-md);
   font-weight: 600;
   margin-bottom: 4px;
 }
 
-#tab-gamenews .gamenews-detail .subtitle {
+#featuresGrid .feature-card[data-premium-module] .gamenews-detail .subtitle {
   font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 /* Ajuste de alinhamento: painel da GameNews alinhado com o primeiro feed */
-#tab-gamenews .user-layout .user-detail {
+#featuresGrid .feature-card[data-premium-module] .user-layout .user-detail {
   margin-top: 28px;
 }
 
@@ -1874,7 +1878,7 @@ h2 {
 
 /* Empty states inside cards/lists: a bit more breathing room */
 #tab-logs .list .empty,
-#tab-gamenews .list .empty,
+#featuresGrid .feature-card[data-premium-module] .list .empty,
 #extras-tickets-panel .empty {
   padding: var(--sp-3);
   border-radius: var(--radius-md);
@@ -1882,14 +1886,14 @@ h2 {
 }
 
 /* Extras subcards (feeds, tickets, trust) look consistent */
-#tab-gamenews .card.subcard {
+#featuresGrid .feature-card[data-premium-module] .card.subcard {
   border-radius: 12px;
   border: 1px solid var(--border-soft);
   padding: 12px 14px;
 }
 
 /* Space between sections inside extras panels */
-#tab-gamenews .card.subcard + .card.subcard {
+#featuresGrid .feature-card[data-premium-module] .card.subcard + .card.subcard {
   margin-top: 12px;
 }
 
@@ -2141,7 +2145,7 @@ html, body {
     grid-template-columns: 1fr !important;
   }
   #tab-user .user-layout .list,
-  #tab-gamenews .gamenews-layout .list,
+  #featuresGrid .feature-card[data-premium-module] .gamenews-layout .list,
   #tab-user .user-detail {
     max-height: none;
   }
@@ -2898,18 +2902,10 @@ summary:focus-visible,
   gap:var(--sp-3);
   margin-top:var(--sp-4);
 }
-/* Each Premium card contains a full configuration view; inner sections define
-   their own responsive columns, while the outer card stays full-width. */
-.extras-grid{
-  grid-template-columns:minmax(0,1fr);
-  gap:var(--sp-3);
-}
-.extras-grid > .feature-card{
-  grid-column:1;
-  min-width:0;
-}
-.extras-grid .feature-card__body,
-.extras-grid .feature-card__surface{min-width:0}
+/* Premium cards share the compact grid; expanded configuration spans its columns. */
+.feature-card.is-expanded{grid-column:1 / -1}
+.feature-card[data-premium-module] .feature-card__body,
+.feature-card[data-premium-module] .feature-card__surface{min-width:0}
 .feature-card{
   display:flex;
   flex-direction:column;

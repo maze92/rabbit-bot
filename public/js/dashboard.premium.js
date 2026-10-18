@@ -22,6 +22,23 @@
   var adminPayments = [];
   var paymentsPage = 1;
   var paymentsPages = 0;
+  var moduleLoadCache = Object.create(null);
+
+  function loadPremiumModule(module) {
+    var gid = guildId();
+    if (!gid || !module || typeof NS.loadPremiumModuleData !== 'function') return Promise.resolve();
+    var key = gid + ':' + module;
+    if (moduleLoadCache[key]) return moduleLoadCache[key];
+    var cache = moduleLoadCache;
+    var request = Promise.resolve().then(function () {
+      return NS.loadPremiumModuleData(module);
+    }).catch(function (err) {
+      if (moduleLoadCache === cache) delete cache[key];
+      throw err;
+    });
+    cache[key] = request;
+    return request;
+  }
 
   function isAdmin() {
     var me = NS.state && NS.state.me;
@@ -70,11 +87,8 @@
 
   // Bloqueia os módulos até confirmar a licença do servidor selecionado.
   function applyLock() {
-    var grid = byId('extrasGrid');
     var paidActive = !!(premium && premium.active);
     var active = paidActive;
-
-    if (grid) grid.classList.toggle('is-premium-locked', !active);
 
     Array.prototype.slice.call(document.querySelectorAll('[data-premium="true"]')).forEach(function (card) {
       card.setAttribute('data-premium-locked', active ? 'false' : 'true');
@@ -83,7 +97,10 @@
       var detailsToggle = card.querySelector('.feature-card__toggle');
       if (body) {
         body.inert = !active;
-        if (!active) body.classList.add('hidden');
+        if (!active) {
+          body.classList.add('hidden');
+          card.classList.remove('is-expanded');
+        }
       }
       if (detailsToggle) {
         detailsToggle.classList.toggle('hidden', !active);
@@ -165,17 +182,17 @@
   async function loadPremium() {
     var requestSequence = ++premiumLoadSequence;
     var gid = guildId();
-    var grid = byId('extrasGrid');
     if (!gid) {
+      moduleLoadCache = Object.create(null);
       premiumGuildId = null;
       premium = { enabled: false, active: false };
       paymentPlan = null;
-      if (grid) grid.classList.add('is-premium-locked');
       if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(false);
       applyLock();
       return;
     }
     if (premiumGuildId !== gid) {
+      moduleLoadCache = Object.create(null);
       premiumGuildId = gid;
       premium = { enabled: false, active: false };
       paymentPlan = null;
@@ -477,6 +494,9 @@
   NS.isPremiumModuleLocked = function () { return !(NS.isPremiumActive()); };
 
   document.addEventListener('DOMContentLoaded', function () {
+    var premiumDialog = byId('premiumOfferDialog');
+    var featuresSection = byId('tab-features');
+    if (premiumDialog && featuresSection) featuresSection.appendChild(premiumDialog);
     var offerCheckoutBtn = byId('btnPremiumOfferCheckout');
     if (offerCheckoutBtn) offerCheckoutBtn.addEventListener('click', function (event) { startCheckout(event); });
     [byId('extrasGrid'), byId('featuresGrid')].forEach(function (grid) {
@@ -486,11 +506,18 @@
         if (detailsToggle) {
           var detailsCard = detailsToggle.closest('[data-premium="true"]');
           if (!detailsCard || detailsCard.getAttribute('data-premium-locked') === 'true') return;
+          if (detailsCard.hasAttribute('data-feature')) return;
           var body = detailsCard.querySelector('.feature-card__body');
           if (!body) return;
           var isHidden = body.classList.toggle('hidden');
           body.inert = isHidden;
+          detailsCard.classList.toggle('is-expanded', !isHidden);
           detailsToggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+          if (!isHidden) {
+            loadPremiumModule(detailsCard.getAttribute('data-premium-module')).catch(function (err) {
+              console.error('Failed to load Premium module details', err);
+            });
+          }
           return;
         }
         var offer = event.target.closest('[data-premium-action="offer"]');

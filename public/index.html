@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="pt">
+<html lang="pt" class="i18n-loading">
 <head>
   <meta charset="UTF-8">
   <title>.rabbit Dashboard</title>
@@ -365,8 +365,8 @@
       </section>
 
       <!-- Tickets -->
-            <!-- Extras (premium) — vive dentro da aba Funcionalidades -->
-      <section class="section extras-section" id="tab-gamenews" role="region" aria-label="Extras">
+            <!-- Template dos cartões Premium, transferidos para a grelha de Funcionalidades. -->
+      <section class="section extras-section" id="tab-gamenews" role="region" aria-label="Extras" hidden>
         <div class="card">
           <div class="section-head">
             <h3 data-i18n="extras_title">Extras</h3>
@@ -403,7 +403,7 @@
             </div>
           </dialog>
 
-          <div class="features-grid extras-grid" id="extrasGrid">
+          <div id="extrasGrid">
             <article class="feature-card is-premium-locked" id="extras-panel-feeds" data-premium="true" data-premium-locked="true" data-premium-module="gamenews">
               <div class="feature-card__head">
                 <h3 class="feature-card__name" data-i18n="gamenews_title">GameNews</h3>
@@ -546,7 +546,7 @@
             </article>
             <article class="feature-card is-premium-locked" id="extras-panel-tickets" data-premium="true" data-premium-locked="true" data-premium-module="tickets">
               <div class="feature-card__head">
-                <h3 class="feature-card__name" data-i18n="tickets_extras_title">Tickets</h3>
+                <h3 class="feature-card__name" data-i18n="tickets_manage_title">Tickets ativos</h3>
                 <button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">Ver Premium</button>
                 <button type="button" class="icon-btn feature-card__toggle hidden" data-role="toggle" aria-expanded="false" aria-controls="extras-tickets-panel" data-i18n-aria-label="features_details" aria-label="Detalhes">▾</button>
               </div>

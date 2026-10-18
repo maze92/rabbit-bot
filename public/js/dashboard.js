@@ -79,18 +79,21 @@
 
 const API_BASE = '/api';
   const GUILD_KEY = 'DASHBOARD_GUILD_ID';
-    const LANG_KEY = 'OZARK_DASH_LANG';
 
-  // Initialize language from localStorage (if available)
-  try {
-    var storedLang = null;
+  function getBrowserLanguage() {
+    var languages = [];
     try {
-      storedLang = localStorage.getItem('OZARK_DASH_LANG');
-    } catch (e) {}
-    if (storedLang === 'pt' || storedLang === 'en') {
-      state.lang = storedLang;
+      languages = Array.isArray(navigator.languages) ? navigator.languages.slice() : [];
+      if (navigator.language) languages.push(navigator.language);
+    } catch {}
+    for (var i = 0; i < languages.length; i++) {
+      var language = String(languages[i] || '').toLowerCase().split('-')[0];
+      if (language === 'en' || language === 'pt') return language;
     }
-  } catch (e) {}
+    return 'pt';
+  }
+
+  state.lang = getBrowserLanguage();
 
 
   // Clean up the "selectGuild" hint left by the OAuth callback.
@@ -746,26 +749,6 @@ function setPanelLoading(panelId, isLoading) {
   }
 
 
-function setLang(newLang) {
-  state.lang = (newLang || 'pt').toLowerCase();
-
-  try {
-    localStorage.setItem(LANG_KEY, state.lang);
-  } catch (e) {}
-
-  if (
-    window.OzarkDashboard &&
-    window.OzarkDashboard.I18n &&
-    typeof window.OzarkDashboard.I18n.init === 'function'
-  ) {
-    window.OzarkDashboard.I18n.init(state.lang).then(function () {
-      applyI18n();
-    });
-  } else {
-    applyI18n();
-  }
-}
-
 // -----------------------------
   // Preferências de interface (tema / densidade)
   // -----------------------------
@@ -951,13 +934,6 @@ function setLang(newLang) {
     const section = document.getElementById('tab-' + name);
     if (section) section.classList.add('active');
 
-    // Os Extras fazem parte da aba Funcionalidades: mostram-se sempre abaixo
-    // da grelha de funcionalidades, como uma secção da mesma página.
-    if (name === 'features') {
-      const extrasSection = document.getElementById('tab-gamenews');
-      if (extrasSection) extrasSection.classList.add('active');
-    }
-
     applyTabButtonState(name);
 
     updateTabAccess();
@@ -983,23 +959,12 @@ function setLang(newLang) {
       });
     } else if (name === 'features') {
       setPanelLoading('tab-features', true);
-      // Aba única: funcionalidades + extras (premium).
+      // A configuração detalhada dos módulos Premium só é carregada ao abrir o cartão.
       var f1 = (window.OzarkDashboard.loadFeatures ? window.OzarkDashboard.loadFeatures() : Promise.resolve());
       var f2 = (window.OzarkDashboard.loadPremium ? window.OzarkDashboard.loadPremium() : Promise.resolve());
-      var f3 = (window.OzarkDashboard.loadGameNews
-        ? window.OzarkDashboard.loadGameNews()
-        : Promise.resolve());
-      var f4 = (typeof loadTempVoiceConfig === 'function' ? loadTempVoiceConfig() : Promise.resolve());
-      var f5 = (typeof loadTempVoiceActive === 'function' ? loadTempVoiceActive() : Promise.resolve());
       // Garantir que canais/roles de configuração estão disponíveis para Tickets/Extras
-      var f6 = (typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve());
-      var f7 = (window.OzarkDashboard.loadTickets
-        ? window.OzarkDashboard.loadTickets(true)
-        : Promise.resolve());
-      var f8 = (window.OzarkDashboard.loadGiveaways
-        ? window.OzarkDashboard.loadGiveaways()
-        : Promise.resolve());
-      Promise.allSettled([f1, f2, f3, f4, f5, f6, f7, f8]).finally(function () {
+      var f3 = (typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve());
+      Promise.allSettled([f1, f2, f3]).finally(function () {
         setPanelLoading('tab-features', false);
       });
     } else if (name === 'user') {
@@ -1827,8 +1792,6 @@ function setLang(newLang) {
       setConfigDirty(false);
       setConfigStatus(t('config_status_loaded'), { autoHideMs: 1200 });
 
-      // Trust distribution (read-only stats, loaded async so it never blocks config).
-      loadTrustSummary();
     } catch (err) {
       console.error('Failed to load guild config', err);
       setConfigStatus(t('config_error_generic'));
@@ -1912,6 +1875,29 @@ function setLang(newLang) {
       renderHint(t('trust_distribution_error'));
     }
   }
+
+  window.OzarkDashboard.loadPremiumModuleData = function (module) {
+    switch (module) {
+      case 'gamenews':
+        return window.OzarkDashboard.loadGameNews
+          ? window.OzarkDashboard.loadGameNews()
+          : Promise.reject(new Error('GAMENEWS_LOADER_UNAVAILABLE'));
+      case 'tempvoice':
+        return Promise.all([loadTempVoiceConfig(), loadTempVoiceActive()]);
+      case 'tickets':
+        return window.OzarkDashboard.loadTickets
+          ? window.OzarkDashboard.loadTickets(true)
+          : Promise.reject(new Error('TICKETS_LOADER_UNAVAILABLE'));
+      case 'trust':
+        return loadTrustSummary();
+      case 'giveaways':
+        return window.OzarkDashboard.loadGiveaways
+          ? window.OzarkDashboard.loadGiveaways()
+          : Promise.reject(new Error('GIVEAWAYS_LOADER_UNAVAILABLE'));
+      default:
+        return Promise.reject(new Error('UNKNOWN_PREMIUM_MODULE: ' + module));
+    }
+  };
 
     async function saveGuildConfig() {
       if (!state.guildId) return;
@@ -2009,12 +1995,6 @@ function setLang(newLang) {
 
         state.guildLanguage = language;
         state.guildTimezone = timezone;
-
-        if (state.guildLanguage && state.guildLanguage !== 'auto') {
-          setLang(state.guildLanguage);
-        } else {
-          setLang(state.lang || 'pt');
-        }
 
         if (window.OzarkDashboard.loadFeatures) {
           await window.OzarkDashboard.loadFeatures().catch(function () {});
@@ -2493,27 +2473,27 @@ function deleteTempVoiceBaseAt(index) {
     updateSessionBadge();
     setInterval(updateSessionBadge, 30000);
 
-      // i18n inicial
-      (function initLang() {
-        var lang = 'pt';
-        try {
-          var stored = localStorage.getItem(LANG_KEY);
-          if (stored) lang = stored;
-        } catch (e) {}
-
-        state.lang = (lang || 'pt').toLowerCase();
-
-        window.OzarkDashboard = window.OzarkDashboard || {};
-        window.OzarkDashboard.I18n = window.OzarkDashboard.I18n || {};
-
-        if (typeof window.OzarkDashboard.I18n.init === 'function') {
-          window.OzarkDashboard.I18n.init(state.lang).then(function () {
+      // i18n inicial: segue o idioma do browser suportado (EN/PT).
+      var languageReady = Promise.resolve();
+      window.OzarkDashboard = window.OzarkDashboard || {};
+      window.OzarkDashboard.I18n = window.OzarkDashboard.I18n || {};
+      if (typeof window.OzarkDashboard.I18n.init === 'function') {
+        languageReady = window.OzarkDashboard.I18n.init(state.lang)
+          .catch(function (err) {
+            console.error('Failed to load dashboard language', state.lang, err);
+            state.lang = 'pt';
+            return window.OzarkDashboard.I18n.init('pt').catch(function (fallbackError) {
+              console.error('Failed to load fallback dashboard language', fallbackError);
+            });
+          })
+          .finally(function () {
             applyI18n();
+            document.documentElement.classList.remove('i18n-loading');
           });
-        } else {
-          applyI18n();
-        }
-      })();
+      } else {
+        applyI18n();
+        document.documentElement.classList.remove('i18n-loading');
+      }
 
 
 
@@ -2623,11 +2603,7 @@ function deleteTempVoiceBaseAt(index) {
           } else if (state.currentTab === 'features') {
             if (window.OzarkDashboard.loadFeatures) window.OzarkDashboard.loadFeatures().catch(function () {});
             if (window.OzarkDashboard.loadPremium) window.OzarkDashboard.loadPremium().catch(function () {});
-            if (window.OzarkDashboard.loadGameNews) window.OzarkDashboard.loadGameNews().catch(function () {});
-            loadTempVoiceConfig().catch(function () {});
-            loadTempVoiceActive().catch(function () {});
-            if (window.OzarkDashboard.loadTickets) window.OzarkDashboard.loadTickets(true);
-            if (window.OzarkDashboard.loadGiveaways) window.OzarkDashboard.loadGiveaways();
+            loadGuildConfig().catch(function () {});
           } else if (state.currentTab === 'user') {
             window.OzarkDashboard.loadUsers().catch(function () {});
           } else if (state.currentTab === 'config') {
@@ -3013,6 +2989,7 @@ function deleteTempVoiceBaseAt(index) {
 
     // Bootstrap auth from the HttpOnly session cookie (/auth/me).
     (async function () {
+      await languageReady;
       await loadMe().catch(function () {});
       if (state.me && state.me.id) {
         hideLogin();
@@ -3133,10 +3110,6 @@ async function importGuildConfigJson() {
     }
     if (Object.prototype.hasOwnProperty.call(payload, 'timezone')) {
       state.guildTimezone = payload.timezone;
-    }
-
-    if (state.guildLanguage && state.guildLanguage !== 'auto') {
-      setLang(state.guildLanguage);
     }
 
     await loadGuildConfig();

@@ -17,6 +17,24 @@
   // camelCase -> snake_case (ex.: messageLogs -> message_logs), para casar as chaves i18n.
   function snake(s) { return String(s).replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase(); }
   var premiumActive = false;
+  var staticPremiumCards = null;
+
+  function getStaticPremiumCards() {
+    if (staticPremiumCards) return staticPremiumCards;
+    var source = byId('extrasGrid');
+    staticPremiumCards = source
+      ? Array.prototype.filter.call(source.children, function (child) {
+        return child.classList && child.classList.contains('feature-card');
+      })
+      : [];
+    return staticPremiumCards;
+  }
+
+  function appendStaticPremiumCards(grid) {
+    getStaticPremiumCards().forEach(function (card) {
+      grid.appendChild(card);
+    });
+  }
 
   var FEATURES = [
     {
@@ -419,6 +437,7 @@
     var grid = byId('featuresGrid');
     if (!grid) return;
     grid.innerHTML = FEATURES.map(cardHtml).join('');
+    appendStaticPremiumCards(grid);
     Array.prototype.slice.call(grid.querySelectorAll('.feature-card')).forEach(wireCard);
     applyPremiumState();
   }
@@ -483,6 +502,12 @@
       toggle.addEventListener('click', function () {
         var isHidden = body.classList.toggle('hidden');
         toggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+        card.classList.toggle('is-expanded', !isHidden);
+        if (!isHidden && feature.premiumModule && typeof NS.loadPremiumModule === 'function') {
+          NS.loadPremiumModule(feature.premiumModule).catch(function (err) {
+            console.error('Failed to load Premium module', feature.premiumModule, err);
+          });
+        }
       });
     }
 
@@ -757,6 +782,7 @@
     var gid = guildId();
     if (!gid) {
       grid.innerHTML = '';
+      appendStaticPremiumCards(grid);
       return;
     }
     if (loading) return;

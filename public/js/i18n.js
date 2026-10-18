@@ -5,7 +5,7 @@
     fallbackTranslations: {},
 
     async init(lang) {
-      this.currentLang = lang || 'pt';
+      this.currentLang = lang === 'en' ? 'en' : 'pt';
 
       // Carregar sempre PT como fallback
       if (!this.fallbackTranslations.pt) {
@@ -13,9 +13,9 @@
         this.fallbackTranslations.pt = (window.OzarkLocales && window.OzarkLocales.pt) || {};
       }
 
-      if (lang && lang !== 'pt') {
-        await this.loadLocale(lang);
-        this.translations = (window.OzarkLocales && window.OzarkLocales[lang]) || {};
+      if (this.currentLang !== 'pt') {
+        await this.loadLocale(this.currentLang);
+        this.translations = (window.OzarkLocales && window.OzarkLocales[this.currentLang]) || {};
       } else {
         this.translations = this.fallbackTranslations.pt;
       }
@@ -39,7 +39,7 @@
         };
         script.onerror = function (err) {
           console.error('Falha ao carregar locale', lang, err);
-          resolve(); // não bloquear init; vamos cair no fallback
+          reject(new Error('LOCALE_LOAD_FAILED: ' + lang));
         };
         document.head.appendChild(script);
       });
