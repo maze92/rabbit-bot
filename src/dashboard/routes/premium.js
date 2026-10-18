@@ -627,6 +627,12 @@ function registerPremiumRoutes({
       const latestPayment = PremiumPayment
         ? await PremiumPayment.findOne({ guildId, status: 'COMPLETED' }).sort({ completedAt: -1 }).lean()
         : null;
+      const checkoutAvailable = Boolean(
+        GuildConfig && PremiumPayment && paypal.isConfigured(plan) && getDashboardOrigin(req, config)
+      );
+      const referenceLinkAvailable = Boolean(
+        GuildConfig && plan.amount && plan.durationDays && plan.paymentLink && isPayPalLink(plan.paymentLink)
+      );
       const licenseStatus = paidActive
         ? 'ACTIVE'
         : guildLicense.enabled && guildLicense.until && guildLicense.until.getTime() <= Date.now()
@@ -654,10 +660,13 @@ function registerPremiumRoutes({
         },
         modules: PREMIUM_MODULES,
         payment: {
-          available: Boolean(GuildConfig && PremiumPayment && paypal.isConfigured(plan) && getDashboardOrigin(req, config)),
+          available: checkoutAvailable || referenceLinkAvailable,
+          checkoutAvailable,
+          referenceLinkAvailable,
           amount: plan.amount,
           currency: plan.currency,
-          durationDays: plan.durationDays
+          durationDays: plan.durationDays,
+          paymentLink: plan.paymentLink && isPayPalLink(plan.paymentLink) ? plan.paymentLink : null
         }
       });
     } catch (err) {

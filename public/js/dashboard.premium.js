@@ -16,7 +16,8 @@
   var premium = null;   // { enabled, active, until, note, activatedAt }
   var paymentPlan = null;
   var serverDetails = null;
-  var loading = false;
+  var premiumGuildId = null;
+  var premiumLoadSequence = 0;
   var checkoutLoading = false;
   var adminGuilds = [];
   var adminPayments = [];
@@ -136,7 +137,11 @@
       // Mantém o `data-i18n` em sincronia para o applyI18n() traduzir corretamente.
       var hintKey = paidActive
         ? 'premium_active_hint'
-        : (paymentPlan && paymentPlan.available ? 'premium_purchase_hint' : 'premium_lock_hint');
+        : (paymentPlan && paymentPlan.checkoutAvailable
+          ? 'premium_purchase_hint'
+          : paymentPlan && paymentPlan.referenceLinkAvailable
+            ? 'premium_reference_payment_hint'
+            : 'premium_lock_hint');
       hint.setAttribute('data-i18n', hintKey);
       hint.textContent = t(hintKey, paymentPlan ? {
         price: formatMoney(paymentPlan.amount, paymentPlan.currency),
@@ -146,19 +151,33 @@
 
     var checkoutBtn = byId('btnPremiumCheckout');
     var offerCheckoutBtn = byId('btnPremiumOfferCheckout');
+    var referenceLink = byId('premiumReferenceLink');
+    var offerReferenceLink = byId('premiumOfferReferenceLink');
+    var canRenew = paidActive && premium && premium.until;
+    var canPurchase = canStartCheckout() && paymentPlan && paymentPlan.available && (!paidActive || canRenew);
+    var canUseCheckout = canPurchase && paymentPlan.checkoutAvailable;
+    var canUseReferenceLink = canPurchase && paymentPlan.referenceLinkAvailable && paymentPlan.paymentLink;
     if (checkoutBtn) {
-      var canRenew = paidActive && premium && premium.until;
-      var canPurchase = canStartCheckout() && paymentPlan && paymentPlan.available && (!paidActive || canRenew);
-      checkoutBtn.classList.toggle('hidden', !canPurchase);
-      checkoutBtn.textContent = canPurchase
+      checkoutBtn.classList.toggle('hidden', !canUseCheckout);
+      checkoutBtn.textContent = canUseCheckout
         ? t('premium_checkout_button', { price: formatMoney(paymentPlan.amount, paymentPlan.currency) })
         : '';
       checkoutBtn.disabled = checkoutLoading;
-      if (offerCheckoutBtn) {
-        offerCheckoutBtn.classList.toggle('hidden', !canPurchase);
-        offerCheckoutBtn.textContent = checkoutBtn.textContent;
-        offerCheckoutBtn.disabled = checkoutLoading;
-      }
+    }
+    if (offerCheckoutBtn) {
+      offerCheckoutBtn.classList.toggle('hidden', !canUseCheckout);
+      offerCheckoutBtn.textContent = checkoutBtn ? checkoutBtn.textContent : '';
+      offerCheckoutBtn.disabled = checkoutLoading;
+    }
+    if (referenceLink) {
+      referenceLink.classList.toggle('hidden', !canUseReferenceLink || canUseCheckout);
+      if (canUseReferenceLink && !canUseCheckout) referenceLink.href = paymentPlan.paymentLink;
+      else referenceLink.removeAttribute('href');
+    }
+    if (offerReferenceLink) {
+      offerReferenceLink.classList.toggle('hidden', !canUseReferenceLink || canUseCheckout);
+      if (canUseReferenceLink && !canUseCheckout) offerReferenceLink.href = paymentPlan.paymentLink;
+      else offerReferenceLink.removeAttribute('href');
     }
 
     var settingsForm = byId('premiumSettingsForm');
@@ -195,8 +214,10 @@
         ? 'premium_offer_select_guild'
         : !paymentPlan || !paymentPlan.available
           ? 'premium_offer_unavailable'
-          : canStartCheckout()
+          : canStartCheckout() && paymentPlan.checkoutAvailable
             ? 'premium_offer_checkout_ready'
+            : canStartCheckout() && paymentPlan.referenceLinkAvailable
+              ? 'premium_offer_reference_payment'
             : 'premium_offer_admin_required';
       status.textContent = t(message);
     }
@@ -206,32 +227,41 @@
   }
 
   async function loadPremium() {
+    var requestSequence = ++premiumLoadSequence;
     var gid = guildId();
     var grid = byId('extrasGrid');
     if (!gid) {
+      premiumGuildId = null;
       premium = { enabled: false, active: false };
       paymentPlan = null;
       serverDetails = null;
       if (grid) grid.classList.add('is-premium-locked');
+      if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(false);
       applyLock();
       return;
     }
-    if (loading) return;
-    loading = true;
-
+    if (premiumGuildId !== gid) {
+      premiumGuildId = gid;
+      premium = { enabled: false, active: false };
+      if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(false);
+      applyLock();
+    }
     try {
       var res = await NS.apiGet('/premium?guildId=' + encodeURIComponent(gid));
+      if (requestSequence !== premiumLoadSequence || guildId() !== gid) return;
       premium = (res && res.premium) ? res.premium : { enabled: false, active: false };
       paymentPlan = (res && res.payment) ? res.payment : null;
       serverDetails = (res && res.server) ? res.server : null;
     } catch (err) {
+      if (requestSequence !== premiumLoadSequence || guildId() !== gid) return;
       console.error('Premium load error', err);
       premium = { enabled: false, active: false };
       paymentPlan = null;
       serverDetails = null;
     } finally {
-      loading = false;
-      applyLock();
+      if (requestSequence === premiumLoadSequence) {
+        applyLock();
+      }
     }
   }
 

@@ -94,7 +94,7 @@ function makeHarness(options) {
   };
 
   const paypal = {
-    isConfigured: () => true,
+    isConfigured: () => settings.paypalConfigured !== false,
     getPlan: () => ({ amount: '6.50', currency: 'EUR', durationDays: 30 }),
     normalizePlan: (plan) => ({
       amount: Number(plan.amount).toFixed(2),
@@ -330,7 +330,9 @@ test('delegated bot admin can manage server licenses but only bot owner can chan
     assert.equal(publicStatus.status, 200);
     assert.equal(publicBody.payment.amount, '9.99');
     assert.equal(publicBody.payment.durationDays, 60);
-    assert.equal(Object.hasOwn(publicBody.payment, 'paymentLink'), false);
+    assert.equal(publicBody.payment.checkoutAvailable, true);
+    assert.equal(publicBody.payment.referenceLinkAvailable, true);
+    assert.equal(publicBody.payment.paymentLink, 'https://paypal.me/example');
 
     const checkout = await fetch(app.baseUrl + '/api/premium/checkout', {
       method: 'POST',
@@ -340,6 +342,36 @@ test('delegated bot admin can manage server licenses but only bot owner can chan
     assert.equal(checkout.status, 200);
     assert.equal(harness.payments[harness.payments.length - 1].amount, '9.99');
     assert.equal(harness.payments[harness.payments.length - 1].durationDays, 60);
+  } finally {
+    await stopApp(app.server);
+  }
+});
+
+test('a configured PayPal reference link is available when API checkout credentials are absent', async () => {
+  const harness = makeHarness({ paypalConfigured: false });
+  const app = await harness.appPromise;
+  harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
+  try {
+    const settings = await fetch(app.baseUrl + '/api/premium/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: '9.99',
+        currency: 'EUR',
+        durationDays: 30,
+        paymentLink: 'https://paypal.me/example'
+      })
+    });
+    assert.equal(settings.status, 200);
+
+    harness.setUser({ _id: USER_ID, username: 'guild-admin', role: 'GUILD_ADMIN' });
+    const response = await fetch(app.baseUrl + '/api/premium?guildId=' + GUILD_ID);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.payment.available, true);
+    assert.equal(body.payment.checkoutAvailable, false);
+    assert.equal(body.payment.referenceLinkAvailable, true);
+    assert.equal(body.payment.paymentLink, 'https://paypal.me/example');
   } finally {
     await stopApp(app.server);
   }

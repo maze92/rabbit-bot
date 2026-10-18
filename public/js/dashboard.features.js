@@ -16,6 +16,7 @@
   function guildId() { return (NS.state && NS.state.guildId) ? NS.state.guildId : null; }
   // camelCase -> snake_case (ex.: messageLogs -> message_logs), para casar as chaves i18n.
   function snake(s) { return String(s).replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase(); }
+  var premiumActive = false;
 
   var FEATURES = [
     {
@@ -420,10 +421,16 @@
     applyPremiumState();
   }
 
-  function applyPremiumState() {
+  function applyPremiumState(active) {
+    if (typeof active === 'boolean') premiumActive = active;
     var grid = byId('featuresGrid');
     if (!grid) return;
-    Array.prototype.slice.call(grid.querySelectorAll('.feature-card')).forEach(applyDisabled);
+    Array.prototype.slice.call(grid.querySelectorAll('.feature-card')).forEach(function (card) {
+      if (card.getAttribute('data-premium') === 'true') {
+        card.setAttribute('data-premium-locked', premiumActive ? 'false' : 'true');
+      }
+      applyDisabled(card);
+    });
   }
 
   // -----------------------------
@@ -439,7 +446,7 @@
     if (!card) return;
     var enabledEl = card.querySelector('[data-role="enabled"]');
     var on = !!(enabledEl && enabledEl.checked);
-    var premiumLocked = card.getAttribute('data-premium-locked') === 'true';
+    var premiumLocked = card.getAttribute('data-premium') === 'true' && !premiumActive;
     card.classList.toggle('is-off', !on);
     card.classList.toggle('is-premium-locked', premiumLocked);
     var offHint = card.querySelector('[data-role="off-hint"]');
