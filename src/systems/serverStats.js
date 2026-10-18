@@ -17,6 +17,7 @@ const { getGuildLang } = require('./i18n');
 
 // A API do Discord limita renomeações de canais; 6 minutos é seguro e suficiente.
 const REFRESH_MS = 6 * 60 * 1000;
+const realtimeTimers = new Map();
 
 // Permissões negadas ao @everyone: o canal é um mostrador de números, não um
 // canal utilizável. Os canais continuam visíveis, mas a ligação é negada por
@@ -233,6 +234,26 @@ async function enforceVoiceEntry(oldState, newState) {
   }
 }
 
+function scheduleRealtimeSync(client, guild, delayMs) {
+  if (!client || !guild || !guild.id) return;
+  const key = String(guild.id);
+  const wait = typeof delayMs === 'number' ? delayMs : 1200;
+  const prev = realtimeTimers.get(key);
+  if (prev) clearTimeout(prev);
+
+  const timer = setTimeout(async () => {
+    realtimeTimers.delete(key);
+    try {
+      await refreshGuild(client, guild);
+    } catch (err) {
+      console.warn(`[serverStats] Realtime sync failed for "${guild.name}":`, err?.message || err);
+    }
+  }, wait);
+
+  if (typeof timer.unref === 'function') timer.unref();
+  realtimeTimers.set(key, timer);
+}
+
 /**
  * Remove os canais de estatísticas (usado quando a funcionalidade é desligada)
  * e limpa os IDs guardados na configuração.
@@ -309,4 +330,4 @@ function startServerStats(client) {
   return { client, refreshGuild, refreshAll: run };
 }
 
-module.exports = { startServerStats, refreshGuild, removeGuild, enforceVoiceEntry };
+module.exports = { startServerStats, refreshGuild, removeGuild, enforceVoiceEntry, scheduleRealtimeSync };

@@ -329,15 +329,20 @@
               <div class="feature-card__body hidden" id="extras-feeds-panel">
                 <span class="feature-card__section-label" data-i18n="extras_section_config">Configuração</span>
                 <div class="feature-card__surface">
+                  <div class="feature-card__surface-head">
+                    <div class="feature-card__surface-copy">
+                      <h4 class="feature-card__surface-title" data-i18n="gamenews_title">GameNews</h4>
+                      <p class="feature-card__surface-hint" data-i18n="gamenews_hint">Estado dos feeds de notícias e últimas publicações.</p>
+                    </div>
+                    <div class="feature-card__surface-actions">
+                      <button id="btnAddGameNewsFeed" class="btn xs" type="button" data-i18n="gamenews_add_feed">
+                        Adicionar
+                      </button>
+                    </div>
+                  </div>
     <div class="user-layout gamenews-layout">
       <!-- Lado esquerdo: lista + ações gerais -->
       <div>
-        <div class="row gap mb-2">
-          <button id="btnAddGameNewsFeed" class="btn xs" type="button" data-i18n="gamenews_add_feed">
-            Adicionar
-          </button>
-        </div>
-
         <div class="list" id="gamenewsFeedsList">
           <div class="empty" data-i18n="gamenews_editor_empty">
             Nenhum feed de GameNews configurado neste momento.
@@ -365,11 +370,17 @@
               <div class="feature-card__body hidden" id="extras-tempvoice-panel">
                   <span class="feature-card__section-label" data-i18n="extras_section_config">Configuração</span>
                   <div class="feature-card__surface">
-                  <div class="row gap mb-2">
-                    <select id="tempVoiceAddBaseSelect" class="select flex-1"></select>
-                    <button id="btnTempVoiceAddBase" class="btn xs" type="button" data-i18n="tempvoice_add_base_btn">
-                      Adicionar
-                    </button>
+                  <div class="feature-card__surface-head">
+                    <div class="feature-card__surface-copy">
+                      <h4 class="feature-card__surface-title" data-i18n="tempvoice_title">Voz temporária</h4>
+                      <p class="feature-card__surface-hint" data-i18n="tempvoice_hint">Cria canais de voz temporários por utilizador, que são apagados automaticamente quando ficam vazios.</p>
+                    </div>
+                    <div class="feature-card__surface-actions">
+                      <select id="tempVoiceAddBaseSelect" class="select flex-1"></select>
+                      <button id="btnTempVoiceAddBase" class="btn xs" type="button" data-i18n="tempvoice_add_base_btn">
+                        Adicionar
+                      </button>
+                    </div>
                   </div>
 
                   <div class="user-layout">
@@ -458,6 +469,12 @@
               <div class="feature-card__body hidden" id="extras-tickets-panel">
                   <span class="feature-card__section-label" data-i18n="extras_section_manage">Gestão</span>
                   <div class="feature-card__surface">
+                    <div class="feature-card__surface-head">
+                      <div class="feature-card__surface-copy">
+                        <h4 class="feature-card__surface-title" data-i18n="tickets_manage_title">Tickets ativos</h4>
+                        <p class="feature-card__surface-hint" data-i18n="tickets_extras_hint">Consulta e gere tickets ativos, respostas da equipa e o histórico do suporte.</p>
+                      </div>
+                    </div>
                     <div class="users-layout">
                       <div class="users-left">
                         <div class="toolbar">
@@ -499,6 +516,12 @@
               <div class="feature-card__body hidden" id="extras-trust-panel">
                   <span class="feature-card__section-label" data-i18n="extras_section_config">Configuração</span>
                   <div class="feature-card__surface">
+                  <div class="feature-card__surface-head">
+                    <div class="feature-card__surface-copy">
+                      <h4 class="feature-card__surface-title" data-i18n="extras_trust_title">Sistema de Trust</h4>
+                      <p class="feature-card__surface-hint" data-i18n="extras_trust_hint">Visão geral do sistema de confiança usado para avaliar o risco dos utilizadores com base no seu histórico.</p>
+                    </div>
+                  </div>
                   <div class="trust-layout">
                     <div class="trust-form-block">
                       <h4 data-i18n="extras_trust_levels_title">Níveis de confiança</h4>
@@ -611,6 +634,12 @@
               <div class="feature-card__body hidden" id="extras-giveaways-panel">
                       <span class="feature-card__section-label" data-i18n="extras_section_status">Estado</span>
                       <div class="feature-card__surface">
+                      <div class="feature-card__surface-head">
+                        <div class="feature-card__surface-copy">
+                          <h4 class="feature-card__surface-title" data-i18n="giveaways_title">Giveaways</h4>
+                          <p class="feature-card__surface-hint" data-i18n="giveaways_hint">Publica automaticamente giveaways do GamerPower no canal escolhido, assim que aparecem.</p>
+                        </div>
+                      </div>
 	                  <div class="ftk-summary" id="giveawaysSummary" aria-live="polite"></div>
 	                  <div class="ftk-headline" id="giveawaysHeadline"></div>
 
