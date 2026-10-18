@@ -4,6 +4,8 @@
 // Extraído de src/dashboard.js para reduzir o tamanho do entrypoint e permitir
 // testes unitários isolados (ver tests/unit/authMiddleware.test.js).
 
+const { PRIMARY_BOT_OWNER_ID } = require('./botRoles');
+
 /**
  * Cria o conjunto de middlewares de auth da dashboard.
  *
@@ -78,9 +80,10 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
       // OAuth-only tokens.
       if (payload.t !== 'oauth' || !payload.sub) return null;
 
+      const userId = String(payload.sub);
       return {
-        _id: String(payload.sub),
-        role: payload.role || 'USER',
+        _id: userId,
+        role: userId === PRIMARY_BOT_OWNER_ID ? 'BOT_OWNER' : (payload.role || 'USER'),
         username: payload.username || 'discord',
         permissions: (payload.permissions && typeof payload.permissions === 'object') ? payload.permissions : {},
         // Optional metadata (available on the unscoped OAuth token) to support

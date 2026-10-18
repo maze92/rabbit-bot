@@ -2892,6 +2892,18 @@ summary:focus-visible,
   gap:var(--sp-3);
   margin-top:var(--sp-4);
 }
+/* Each Premium card contains a full configuration view; inner sections define
+   their own responsive columns, while the outer card stays full-width. */
+.extras-grid{
+  grid-template-columns:minmax(0,1fr);
+  gap:var(--sp-3);
+}
+.extras-grid > .feature-card{
+  grid-column:1;
+  min-width:0;
+}
+.extras-grid .feature-card__body,
+.extras-grid .feature-card__surface{min-width:0}
 .feature-card{
   display:flex;
   flex-direction:column;

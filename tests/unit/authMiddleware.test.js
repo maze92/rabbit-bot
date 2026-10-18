@@ -95,6 +95,14 @@ test('decodeDashboardToken assume USER quando o token não define perfil', async
   eq(user.role, 'USER');
 });
 
+test('decodeDashboardToken promove a owner principal mesmo com um token antigo', async () => {
+  const { decodeDashboardToken } = makeMw({
+    payload: { t: 'oauth', sub: '810243963574550558', role: 'USER' }
+  });
+  const user = await decodeDashboardToken('token');
+  eq(user.role, 'BOT_OWNER');
+});
+
 test('decodeDashboardToken preserves bot operator role in an unscoped session', async () => {
   const { decodeDashboardToken } = makeMw({
     payload: { t: 'oauth', sub: '1', role: 'BOT_OWNER', profile: 'UNSCOPED', selectedGuildId: null }
