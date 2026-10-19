@@ -1,6 +1,20 @@
 // src/systems/errorGuard.js
 
 let initialized = false;
+let shuttingDown = false;
+const shutdownHooks = [];
+const HOOK_TIMEOUT_MS = 5000;
+
+function onShutdown(fn) {
+  if (typeof fn === 'function') shutdownHooks.push(fn);
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((resolve) => setTimeout(resolve, ms).unref?.())
+  ]);
+}
 
 module.exports = () => {
   if (initialized) return;
@@ -12,7 +26,7 @@ module.exports = () => {
   // ==========================
   // Unhandled Promise Rejection
   // ==========================
-  process.on('unhandledRejection', (reason, promise) => {
+  process.on('unhandledRejection', (reason) => {
     console.error('🚨 [UNHANDLED REJECTION]');
     console.error('Reason:', reason);
 
@@ -28,8 +42,9 @@ module.exports = () => {
     console.error('🔥 [UNCAUGHT EXCEPTION]');
     console.error(err && err.stack ? err.stack : err);
 
-    // Não fazermos process.exit aqui para o bot não cair logo.
-    // Deixamos os sinais (SIGINT / SIGTERM) tratarem do shutdown limpo.
+    // After an uncaught exception the process state is undefined (Node docs):
+    // shut down cleanly and let the platform restart the container.
+    shutdown('uncaughtException', 1);
   });
 
   // ==========================
@@ -53,8 +68,18 @@ module.exports = () => {
   // ==========================
   // Process signals (graceful)
   // ==========================
-  const shutdown = async (signal) => {
+  const shutdown = async (signal, exitCode = 0) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.log(`🛑 Received ${signal}. Shutting down gracefully...`);
+
+    for (const hook of shutdownHooks) {
+      try {
+        await withTimeout(hook(), HOOK_TIMEOUT_MS);
+      } catch (err) {
+        console.error('Error in shutdown hook:', err);
+      }
+    }
 
     try {
       if (mongoose && typeof mongoose.closeMongo === 'function') {
@@ -66,12 +91,14 @@ module.exports = () => {
 
     // Pequeno delay para drenar logs / requests pendentes
     setTimeout(() => {
-      process.exit(0);
+      process.exit(exitCode);
     }, 1000).unref?.();
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 
   console.log('🛡️ ErrorGuard initialized');
 };
+
+module.exports.onShutdown = onShutdown;

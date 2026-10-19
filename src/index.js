@@ -280,6 +280,10 @@ dashboard.server.listen(PORT, () => {
   console.log(`🚀 Dashboard running on port ${PORT}`);
 });
 
+const { onShutdown } = require('./systems/errorGuard');
+onShutdown(() => new Promise((resolve) => dashboard.server.close(() => resolve())));
+onShutdown(() => client.destroy());
+
 // -----------------------------
 // Login
 // -----------------------------
