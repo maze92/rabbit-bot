@@ -1007,7 +1007,7 @@
       applyTabButtonState('overview');
       return;
     }
-    if (name === 'premium-admin' && !(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'))) {
+    if (name === 'premium-admin' && !(state.me && state.me.role === 'BOT_OWNER')) {
       state.currentTab = 'overview';
       name = 'overview';
     }
@@ -1176,7 +1176,7 @@
       features: requiresPerms && canViewConfig,
       tickets: requiresPerms && canManageTickets,
       config: requiresPerms && canViewConfig,
-      'premium-admin': !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'))
+      'premium-admin': !!(state.me && state.me.role === 'BOT_OWNER')
     };
 
     const tabs = ['logs', 'features', 'user', 'config', 'tickets', 'premium-admin'];
@@ -1436,8 +1436,8 @@
 
   function applyPermissionGates() {
     // Trust controls live inside the Config tab (Extras -> Trust).
-    // Trust settings are global (all guilds), so only bot operators may edit them.
-    const canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'));
+    // Trust settings are global (all guilds), so only the bot owner may edit them.
+    const canEdit = !!(state.me && state.me.role === 'BOT_OWNER');
     const trustInputs = [
       'trustPresetSelect',
       'btnApplyTrustPreset',
@@ -3177,8 +3177,8 @@
     function showGuildSelect(items) {
       if (!guildSelectScreen || !guildSelectList) return;
       if (guildSelectPremiumAdmin) {
-        var isBotOperator = state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER');
-        guildSelectPremiumAdmin.classList.toggle('hidden', !isBotOperator);
+        var isBotOwner = !!(state.me && state.me.role === 'BOT_OWNER');
+        guildSelectPremiumAdmin.classList.toggle('hidden', !isBotOwner);
       }
       if (!Array.isArray(items) || items.length < 2) {
         guildSelectScreen.classList.add('hidden');

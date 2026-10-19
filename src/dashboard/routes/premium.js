@@ -8,7 +8,7 @@ const { normalizePremium, PREMIUM_MODULES } = require('../../systems/premium');
 const { invalidateGuildConfig } = require('../../systems/guildConfigService');
 const { createPayPalService } = require('../paypalService');
 const { formatUserTag } = require('../../services/guildService');
-const { isBotOperator, isBotOwner } = require('../botRoles');
+const { isBotOwner } = require('../botRoles');
 
 const PREMIUM_FIXED_AMOUNT = '10.00';
 const PREMIUM_FIXED_CURRENCY = 'EUR';
@@ -183,13 +183,7 @@ function registerPremiumRoutes({
       ? rateLimit({ windowMs: 60_000, max: 5, keyPrefix: 'rl:premium:checkout:' })
       : (req, res, next) => next();
 
-  function requireBotAdmin(req, res, next) {
-    if (!isBotOperator(req.dashboardUser)) {
-      return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
-    }
-    return next();
-  }
-
+  // Premium management (plan, licenses, payments) is reserved for the bot owner.
   function requireBotOwner(req, res, next) {
     if (!isBotOwner(req.dashboardUser)) {
       return res.status(403).json({ ok: false, error: 'BOT_OWNER_REQUIRED' });
@@ -314,7 +308,7 @@ function registerPremiumRoutes({
     }
   });
 
-  app.get('/api/premium/admin/guilds', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  app.get('/api/premium/admin/guilds', requireDashboardAuth, requireBotOwner, async (req, res) => {
     try {
       if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
       const guildConfigs = await GuildConfig.find({}).sort({ updatedAt: -1 }).limit(500).lean();
@@ -397,7 +391,7 @@ function registerPremiumRoutes({
     }
   });
 
-  app.patch('/api/premium/admin/guilds/:guildId', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  app.patch('/api/premium/admin/guilds/:guildId', requireDashboardAuth, requireBotOwner, async (req, res) => {
     try {
       if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
       const guildId = sanitizeId(req.params.guildId || '');
@@ -644,7 +638,7 @@ function registerPremiumRoutes({
     }
   });
 
-  app.get('/api/premium/payments', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  app.get('/api/premium/payments', requireDashboardAuth, requireBotOwner, async (req, res) => {
     try {
       if (!PremiumPayment) return res.status(503).json({ ok: false, error: 'PREMIUM_PAYMENT_MODEL_MISSING' });
       const requestedStatus = String(req.query.status || 'ALL').toUpperCase();

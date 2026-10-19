@@ -10,6 +10,7 @@ const status = require('./systems/status');
 const config = require('./config/defaultConfig');
 
 const mongoose = require('./database/connect');
+const { syncTtlIndexes } = require('./database/syncTtlIndexes');
 const client = require('./bot');
 
 // Attach core event handlers
@@ -137,6 +138,11 @@ async function ensureMongoIndexes() {
     } catch {}
 
     for (const m of models) {
+      try {
+        await syncTtlIndexes(m);
+      } catch (e) {
+        console.warn(`[Mongo] Failed to sync TTL indexes for ${m?.modelName || 'unknown'}:`, e?.message || e);
+      }
       try {
         if (typeof m.ensureIndexes === 'function') {
           await m.ensureIndexes();

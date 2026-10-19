@@ -2,7 +2,7 @@
 
 const { sendServerError } = require('./_errors');
 const crypto = require('crypto');
-const { isBotOperator } = require('../botRoles');
+const { isBotOperator, isBotOwner } = require('../botRoles');
 
 function registerCoreRoutes({
   app,
@@ -102,17 +102,17 @@ function registerCoreRoutes({
   const canEditConfig =
     typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canEditConfig'] }) : (req, res, next) => next();
 
-  // The global config affects every guild, so only bot operators may touch it.
+  // The global config affects every guild, so only the bot owner may touch it.
   // Guild admins hold canEditConfig for their own guild settings only.
-  function requireBotOperator(req, res, next) {
+  function requireBotOwner(req, res, next) {
     const u = req.dashboardUser;
     if (!u) return next(); // auth disabled (development only)
-    if (!isBotOperator(u)) return res.status(403).json({ ok: false, error: 'BOT_OPERATOR_REQUIRED' });
+    if (!isBotOwner(u)) return res.status(403).json({ ok: false, error: 'BOT_OWNER_REQUIRED' });
     return next();
   }
 
   // Global config for dashboard settings
-  app.get('/api/config', requireDashboardAuth, canViewConfig, requireBotOperator, (req, res) => {
+  app.get('/api/config', requireDashboardAuth, canViewConfig, requireBotOwner, (req, res) => {
     try {
       return res.json({
         ok: true,
@@ -125,7 +125,7 @@ function registerCoreRoutes({
   });
 
   const rlConfigPatch = rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'rl:config:' });
-  app.patch('/api/config', requireDashboardAuth, canEditConfig, requireBotOperator, rlConfigPatch, async (req, res) => {
+  app.patch('/api/config', requireDashboardAuth, canEditConfig, requireBotOwner, rlConfigPatch, async (req, res) => {
     try {
       await recordAudit({
         req,
