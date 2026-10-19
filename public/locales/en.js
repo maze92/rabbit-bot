@@ -333,6 +333,7 @@ window.OzarkLocales.en = {
   'login_password_label': 'Password',
   'login_submit': 'Sign in',
   'login_subtitle': 'Sign in to access the dashboard.',
+  'login_tagline': 'Smart moderation for Discord',
   'login_title': 'Login',
   'login_username_label': 'Username',
   'login_with_discord': 'Login with Discord',

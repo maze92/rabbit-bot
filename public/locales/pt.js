@@ -334,6 +334,7 @@ window.OzarkLocales.pt = {
   'login_password_label': 'Password',
   'login_submit': 'Entrar',
   'login_subtitle': 'Autentica-te para aceder ao painel.',
+  'login_tagline': 'Moderação inteligente para Discord',
   'login_title': 'Login',
   'login_username_label': 'Utilizador',
   'login_with_discord': 'Entrar com Discord',
