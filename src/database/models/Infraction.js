@@ -28,10 +28,11 @@ const infractionSchema = new Schema({
   executorTag: { type: String, default: null }
 }, { timestamps: true });
 
-// índice TTL: tudo o que tiver createdAt > 90 dias é removido automaticamente pelo Mongo
+// índice TTL: tudo o que tiver createdAt > 180 dias é removido automaticamente pelo Mongo.
+// O valor tem de coincidir com config.maintenance.pruneInfractionsOlderThanDays (180).
 infractionSchema.index(
   { createdAt: 1 },
-  { expireAfterSeconds: 90 * 24 * 60 * 60 } // 90 dias
+  { expireAfterSeconds: 180 * 24 * 60 * 60 } // 180 dias
 );
 
 // Helpful query indexes

@@ -95,6 +95,8 @@ async function ensureMongoIndexes() {
           }
         } catch {}
       }
+    } catch {}
+
     // PresenceSession: migrate open sessions to endAt:null and drop legacy partial index, then ensure indexes.
     try {
       if (PresenceSession) {
@@ -109,8 +111,6 @@ async function ensureMongoIndexes() {
           }
         } catch {}
       }
-    } catch {}
-
     } catch {}
 
     for (const m of models) {
