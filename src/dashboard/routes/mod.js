@@ -20,7 +20,6 @@ function registerModRoutes({
   config,
   dashboardWarn,
   resolveGuildMember,
-  ModError,
   mongoose,
   logger,
   warningsService,
@@ -72,10 +71,6 @@ function registerModRoutes({
 
   function getModels() {
     return typeof _getModels === 'function' ? _getModels() : {};
-  }
-
-  function getLogsCache() {
-    return typeof _getLogsCache === 'function' ? _getLogsCache() : [];
   }
 
   // ==============================
@@ -384,14 +379,14 @@ function registerModRoutes({
         if (hasTimeoutFlag && typeof member.timeout === 'function') {
           await member.timeout(null, baseReason).catch(() => null);
         }
-      } catch (_) {}
+      } catch {}
 
       // Remove infractions history for this user in this guild
       const { Infraction } = getModels();
       if (Infraction) {
         try {
           await Infraction.deleteMany({ guildId: guild.id, userId: member.id }).exec();
-        } catch (_) {}
+        } catch {}
       }
 
       return res.json({ ok: true, dbUser: dbUser ? { warnings: dbUser.warnings, trust: dbUser.trust } : null });
@@ -438,7 +433,7 @@ function registerModRoutes({
         if (typeof infractionId === 'string' && /^[0-9a-fA-F]{24}$/.test(infractionId)) {
           try {
             orFilters.push({ _id: new mongoose.Types.ObjectId(infractionId), guildId, userId });
-          } catch (_) {}
+          } catch {}
         }
 
         orFilters.push({ _id: infractionId, guildId, userId });
@@ -469,13 +464,13 @@ function registerModRoutes({
               return res.status(403).json({ ok: false, error: 'User has higher or equal role' });
             }
           }
-        } catch (_) {}
+        } catch {}
       }
 
       if (typeof warningsService.removeInfractionEffects === 'function') {
         try {
           await warningsService.removeInfractionEffects(guildId, userId, inf.type || '');
-        } catch (_) {}
+        } catch {}
       }
 
       await rawCollection.deleteOne({ _id: inf._id, guildId, userId });
@@ -523,7 +518,7 @@ function registerModRoutes({
         tickets: { total: 0, open: 0, closed: 0 }
       };
 
-      const { DashboardLog, TicketLog, Infraction, User } = getModels();
+      const { TicketLog, Infraction, User } = getModels();
 
       // Moderation counts: use infractions as the single source of truth.
       // (No ban/kick in this bot; unmute is not tracked as an infraction.)
@@ -606,7 +601,7 @@ function registerModRoutes({
           warns,
           mutes
         };
-      } catch (_) {}
+      } catch {}
       cacheSet(cacheKey, result);
       return res.json(result);
     } catch (err) {

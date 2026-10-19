@@ -51,7 +51,7 @@ function registerGiveawaysRoutes(ctx) {
       if (typeof factory !== 'function') return noop;
       const mw = factory(args);
       return (typeof mw === 'function') ? mw : noop;
-    } catch (_) {
+    } catch {
       return noop;
     }
   };
@@ -114,7 +114,7 @@ function registerGiveawaysRoutes(ctx) {
           maxPerCycle: typeof cfg.maxPerCycle === 'number' ? cfg.maxPerCycle : 0
         }
       });
-    } catch (e) {
+    } catch {
       return res.status(500).json({ ok: false, error: 'internal_error' });
     }
   });
@@ -192,7 +192,7 @@ function registerGiveawaysRoutes(ctx) {
           maxPerCycle: typeof cfg.maxPerCycle === 'number' ? cfg.maxPerCycle : 0
         }
       });
-    } catch (e) {
+    } catch {
       return res.status(500).json({ ok: false, error: 'internal_error' });
     }
   });
@@ -238,7 +238,7 @@ function registerGiveawaysRoutes(ctx) {
       }
 
       return res.json({ ok: true, page, limit, total, items, platforms });
-    } catch (e) {
+    } catch {
       return res.status(500).json({ ok: false, error: 'internal_error' });
     }
   });
@@ -310,7 +310,7 @@ function registerGiveawaysRoutes(ctx) {
       }
 
       return res.json({ ok: true, item: g });
-    } catch (e) {
+    } catch {
       return res.status(500).json({ ok: false, error: 'internal_error' });
     }
   });

@@ -1,6 +1,10 @@
 (function () {
   'use strict';
 
+  // Login / guild-select screens are built inside the init flow; expose them here
+  // so the API helpers above that flow can open them (e.g. on 401 / lost guild).
+  var uiScreens = { showLogin: null, showGuildSelect: null };
+
   function clearInlineError(el) {
       if (!el) return;
       el.classList.remove('input-error');
@@ -103,7 +107,7 @@ const API_BASE = '/api';
     const params = new URLSearchParams(window.location.search || '');
     if (params.has('selectGuild')) {
       if (params.get('selectGuild') === '1') {
-        try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
+        try { localStorage.removeItem(GUILD_KEY); } catch {}
       }
       params.delete('selectGuild');
       params.delete('token');
@@ -111,7 +115,7 @@ const API_BASE = '/api';
       const newUrl = window.location.pathname + (qs ? ('?' + qs) : '') + window.location.hash;
       window.history.replaceState({}, document.title, newUrl);
     }
-  } catch (e) {}
+  } catch {}
 
 
   // -----------------------------
@@ -122,7 +126,7 @@ const API_BASE = '/api';
   function getStoredGuildId() {
     try {
       return localStorage.getItem(GUILD_KEY) || '';
-    } catch (e) {
+    } catch {
       return '';
     }
   }
@@ -130,7 +134,7 @@ const API_BASE = '/api';
   function setStoredGuildId(guildId) {
     try {
       if (guildId) localStorage.setItem(GUILD_KEY, guildId);
-    } catch (e) {}
+    } catch {}
   }
 
 
@@ -181,7 +185,7 @@ const API_BASE = '/api';
       await fetch(API_BASE + '/auth/logout', { method: 'POST', credentials: 'same-origin' });
     } catch {}
     try {
-      if (typeof showLogin === 'function') showLogin();
+      if (uiScreens.showLogin) uiScreens.showLogin();
     } catch {}
     try {
       if (opts && opts.redirect) {
@@ -201,7 +205,7 @@ const API_BASE = '/api';
       try {
         // Sessão expirada ou token inválido: mostra o ecrã de login.
         // Evitamos reload em loop (especialmente quando o token está num cookie HttpOnly).
-        if (typeof showLogin === 'function') showLogin();
+        if (uiScreens.showLogin) uiScreens.showLogin();
       } catch (e) {
         console.error('Failed to show login after 401', e);
       }
@@ -221,7 +225,7 @@ const API_BASE = '/api';
   async function readJsonSafe(res) {
     try {
       return await res.json();
-    } catch (e) {
+    } catch {
       return null;
     }
   }
@@ -323,7 +327,7 @@ const API_BASE = '/api';
         if (!isNaN(d.getTime())) {
           metaParts.push(d.toLocaleString());
         }
-      } catch (e) {
+      } catch {
         // se der erro mantemos só os restantes campos
       }
     }
@@ -376,11 +380,11 @@ const API_BASE = '/api';
       item.classList.remove('toast--visible');
       // remove after transition
       setTimeout(function () {
-        try { item.remove(); } catch (e) {}
+        try { item.remove(); } catch {}
         try {
           // keep DOM clean
           if (host && host.children && host.children.length === 0) host.remove();
-        } catch (e2) {}
+        } catch {}
       }, 220);
     }, Math.max(800, duration));
   }
@@ -476,7 +480,7 @@ function setGlobalBanner(opts) {
     btn.className = 'btn btn-ghost';
     btn.textContent = a.label || 'OK';
     btn.addEventListener('click', function () {
-      try { if (typeof a.onClick === 'function') a.onClick(); } catch (e) {}
+      try { if (typeof a.onClick === 'function') a.onClick(); } catch {}
     });
     actionsEl.appendChild(btn);
   });
@@ -611,10 +615,10 @@ function setPanelLoading(panelId, isLoading) {
     if (warn) warn.textContent = t('warn_select_guild');
 
     // Re-render badges because they include translated labels.
-    try { updateAccessBadges(); } catch (e) {}
+    try { updateAccessBadges(); } catch {}
 
     // Os botões de preferências mostram dicas traduzidas.
-    try { updatePrefButtons(); } catch (e) {}
+    try { updatePrefButtons(); } catch {}
   }
 
   var dashboardLanguageSequence = 0;
@@ -760,14 +764,14 @@ function setPanelLoading(panelId, isLoading) {
         return sessionStartedAt;
       }
       sessionStorage.setItem(SESSION_KEY, String(now));
-    } catch (e) {}
+    } catch {}
     sessionStartedAt = now;
     return sessionStartedAt;
   }
 
   function clearSessionStart() {
     sessionStartedAt = 0;
-    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+    try { sessionStorage.removeItem(SESSION_KEY); } catch {}
   }
 
   function formatSessionDuration(ms) {
@@ -808,7 +812,7 @@ function setPanelLoading(panelId, isLoading) {
     try {
       const raw = (localStorage.getItem(key) || '').toLowerCase();
       if (allowed.indexOf(raw) !== -1) return raw;
-    } catch (e) {}
+    } catch {}
     return fallback;
   }
 
@@ -818,7 +822,7 @@ function setPanelLoading(panelId, isLoading) {
     if (state.theme === 'light') root.setAttribute('data-theme', 'light');
     else root.removeAttribute('data-theme');
     if (persist) {
-      try { localStorage.setItem(THEME_KEY, state.theme); } catch (e) {}
+      try { localStorage.setItem(THEME_KEY, state.theme); } catch {}
     }
     updatePrefButtons();
   }
@@ -829,7 +833,7 @@ function setPanelLoading(panelId, isLoading) {
     if (state.density === 'compact') root.setAttribute('data-density', 'compact');
     else root.removeAttribute('data-density');
     if (persist) {
-      try { localStorage.setItem(DENSITY_KEY, state.density); } catch (e) {}
+      try { localStorage.setItem(DENSITY_KEY, state.density); } catch {}
     }
     updatePrefButtons();
   }
@@ -958,7 +962,7 @@ function setPanelLoading(panelId, isLoading) {
       window.scrollTo(0, window.scrollY || 0);
       document.documentElement.scrollLeft = 0;
       document.body.scrollLeft = 0;
-    } catch (e) {}
+    } catch {}
 
     // Reset seleção de utilizadores / GameNews ao entrar nas tabs
     if (name === 'user') {
@@ -1236,8 +1240,8 @@ function setPanelLoading(panelId, isLoading) {
       const res = await apiGet('/guilds');
       if (res && res.reason === 'NO_ELIGIBLE_GUILDS') {
         // User has no eligible guilds (must be owner or Administrator). Force logout and show login message.
-        try { await forceLogout(); } catch (e) {}
-        try { if (typeof showLogin === 'function') showLogin(); } catch (e) {}
+        try { await forceLogout(); } catch {}
+        try { if (uiScreens.showLogin) uiScreens.showLogin(); } catch {}
         return;
       }
       const items = (res && res.items) || [];
@@ -1288,15 +1292,15 @@ function setPanelLoading(panelId, isLoading) {
         if (!scopedOk) {
           // If the stored/selected guild is no longer allowed, clear it and force the selector.
           state.guildId = null;
-          try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
+          try { localStorage.removeItem(GUILD_KEY); } catch {}
           select.value = '';
-          try { showGuildSelect(items); } catch (e) {}
+          try { if (uiScreens.showGuildSelect) uiScreens.showGuildSelect(items); } catch {}
           updateTabAccess();
           return;
         }
         await loadGuildDashboardLanguage(state.guildId);
         updateTabAccess();
-        try { refreshGlobalBanner(); } catch (e) {}
+        try { refreshGlobalBanner(); } catch {}
         if (paymentReturnStatus) {
           if (paymentReturnStatus === 'success') setTab('features');
           window.dispatchEvent(new CustomEvent('dashboard:premium-return', {
@@ -1309,16 +1313,16 @@ function setPanelLoading(panelId, isLoading) {
         }
       } else {
         // Force selection when multiple guilds are available.
-        try { showGuildSelect(items); } catch (e) {}
+        try { if (uiScreens.showGuildSelect) uiScreens.showGuildSelect(items); } catch {}
         updateTabAccess();
-        try { refreshGlobalBanner(); } catch (e) {}
+        try { refreshGlobalBanner(); } catch {}
       }
     } catch (err) {
       console.error('Failed to load guilds', err);
       toast(err && err.apiMessage ? err.apiMessage : t('guilds_error_generic'), { type: 'error' });
       state.guildsLoaded = true;
       updateTabAccess();
-      try { refreshGlobalBanner(); } catch (e) {}
+      try { refreshGlobalBanner(); } catch {}
     }
   }
 
@@ -1331,7 +1335,7 @@ function setPanelLoading(panelId, isLoading) {
       updateTabAccess();
       updateAccessBadges();
       updateSessionBadge();
-    } catch (e) {
+    } catch {
       state.me = null;
       state.perms = {};
       clearSessionStart();
@@ -2059,7 +2063,6 @@ function setPanelLoading(panelId, isLoading) {
       const maintenanceEnabledSelect = document.getElementById('configMaintenanceEnabled');
       const maintenanceMessageInput = document.getElementById('configMaintenanceMessage');
       const maintenanceAllowStaffSelect = document.getElementById('configMaintenanceAllowStaff');
-      const statusEl = document.getElementById('configStatus');
       const langSelect = document.getElementById('configServerLanguage');
       const tzSelect = document.getElementById('configServerTimezone');
 
@@ -2184,7 +2187,7 @@ function setPanelLoading(panelId, isLoading) {
           state._guildMeta.voiceChannels = Array.isArray(meta.voiceChannels) ? meta.voiceChannels : [];
           state._guildMeta.categories = Array.isArray(meta.categories) ? meta.categories : [];
         }
-      } catch (e) {}
+      } catch {}
     }
 
 function populateTempVoiceSelects() {
@@ -2250,7 +2253,7 @@ function populateTempVoiceSelects() {
           var n = parseInt(raw, 10);
           if (Number.isFinite(n) && n >= 1 && n <= 99) maxUsers = n;
         }
-      } catch (e) {}
+      } catch {}
 
       var baseChannelIds = _tvNormalizeBaseIds(state.tempVoiceBase && state.tempVoiceBase.items);
 
@@ -2396,7 +2399,7 @@ function populateTempVoiceSelects() {
 
     async function saveTempVoiceConfig() {
       if (!state.guildId) return;
-      try { updateTempVoiceDirtyFromUI(); } catch (e) {}
+      try { updateTempVoiceDirtyFromUI(); } catch {}
       if (!state.tempVoiceDirty) {
         toast(t('tempvoice_nothing_to_save') || 'Nada para guardar.', { type: 'info' });
         return;
@@ -2425,7 +2428,7 @@ var enabled = enabledSel && enabledSel.value === 'true';
           var n = parseInt(raw, 10);
           if (Number.isFinite(n) && n >= 1 && n <= 99) maxUsers = n;
         }
-      } catch (e) {}
+      } catch {}
 
 
 
@@ -2450,7 +2453,7 @@ var enabled = enabledSel && enabledSel.value === 'true';
         console.error('Failed to save temp voice config', err);
         toast(t('tempvoice_save_error'), { type: 'error' });
       } finally {
-        try { updateTempVoiceDirtyFromUI(); } catch (e) {}
+        try { updateTempVoiceDirtyFromUI(); } catch {}
       }
     }
 
@@ -2573,7 +2576,7 @@ function addTempVoiceBaseChannel() {
 
     renderTempVoiceBaseList();
     selectTempVoiceBaseIndex(state.tempVoiceBase.selectedIndex);
-    try { bindTempVoiceDirtyTrackingOnce(); } catch (e) {}
+    try { bindTempVoiceDirtyTrackingOnce(); } catch {}
     updateTempVoiceDirtyFromUI();
   }
 function deleteTempVoiceBaseAt(index) {
@@ -2591,7 +2594,7 @@ function deleteTempVoiceBaseAt(index) {
       if (baseIdInput2) baseIdInput2.value = state.tempVoiceBase.items[state.tempVoiceBase.selectedIndex] || '';
     }
     renderTempVoiceBaseList();
-    try { bindTempVoiceDirtyTrackingOnce(); } catch (e) {}
+    try { bindTempVoiceDirtyTrackingOnce(); } catch {}
     updateTempVoiceDirtyFromUI();
   }
 
@@ -2676,7 +2679,7 @@ function deleteTempVoiceBaseAt(index) {
           } else if (key === 'Enter' || key === ' ') {
             // activate
             ev.preventDefault();
-            try { btn.click(); } catch (e) {}
+            try { btn.click(); } catch {}
           }
         });
       });
@@ -2715,17 +2718,17 @@ function deleteTempVoiceBaseAt(index) {
         (async function () {
         var v = guildPicker.value || '';
         state.guildId = v || null;
-        try { if (window.OzarkDashboard && typeof window.OzarkDashboard.restoreLogsPrefs === 'function') window.OzarkDashboard.restoreLogsPrefs(state.guildId); } catch (e) {}
-        try { refreshGlobalBanner(); } catch (e) {}
+        try { if (window.OzarkDashboard && typeof window.OzarkDashboard.restoreLogsPrefs === 'function') window.OzarkDashboard.restoreLogsPrefs(state.guildId); } catch {}
+        try { refreshGlobalBanner(); } catch {}
         try {
           if (state.guildId) setStoredGuildId(state.guildId);
           else localStorage.removeItem(GUILD_KEY);
-        } catch (e) {}
+        } catch {}
         // Mint scoped OAuth token (if needed) before enabling tabs.
         var okScoped = await ensureGuildScopedToken(state.guildId);
         if (!okScoped) {
           state.guildId = null;
-          try { guildPicker.value = ''; } catch (e) {}
+          try { guildPicker.value = ''; } catch {}
           updateTabAccess();
           setTab('overview');
           return;
@@ -3049,7 +3052,7 @@ function deleteTempVoiceBaseAt(index) {
           try {
             var guildPicker = document.getElementById('guildPicker');
             if (guildPicker) guildPicker.value = g.id;
-          } catch (e) {}
+          } catch {}
 
           (async function () {
             var okScoped = await ensureGuildScopedToken(state.guildId);
@@ -3073,7 +3076,7 @@ function deleteTempVoiceBaseAt(index) {
     function showLogin() {
       if (loginScreen) loginScreen.classList.remove('hidden');
       if (loginError) loginError.textContent = '';
-      try { if (loginDiscordBtn) loginDiscordBtn.focus(); } catch (e) {}
+      try { if (loginDiscordBtn) loginDiscordBtn.focus(); } catch {}
     }
 
     function hideLogin() {
@@ -3081,11 +3084,14 @@ function deleteTempVoiceBaseAt(index) {
       if (loginError) loginError.textContent = '';
     }
 
+    uiScreens.showLogin = showLogin;
+    uiScreens.showGuildSelect = showGuildSelect;
+
     // Bind login / invite actions (always, regardless of auth state)
     if (loginDiscordBtn && !loginDiscordBtn.dataset.bound) {
       loginDiscordBtn.dataset.bound = '1';
       loginDiscordBtn.addEventListener('click', function () {
-        try { window.location.href = '/api/auth/discord'; } catch (e) {}
+        try { window.location.href = '/api/auth/discord'; } catch {}
       });
     }
 
@@ -3102,7 +3108,7 @@ function deleteTempVoiceBaseAt(index) {
             } else {
               toast(t('add_bot_error'), { type: 'error' });
             }
-          } catch (e) {
+          } catch {
             toast(t('add_bot_error'), { type: 'error' });
           }
         })();
@@ -3121,7 +3127,7 @@ function deleteTempVoiceBaseAt(index) {
             } else {
               toast(t('add_bot_error'), { type: 'error' });
             }
-          } catch (e) {
+          } catch {
             toast(t('add_bot_error'), { type: 'error' });
           }
         })();

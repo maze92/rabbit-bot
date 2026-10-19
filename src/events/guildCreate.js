@@ -34,7 +34,7 @@ module.exports = (client) => {
           try {
             const perms = ch.permissionsFor(guild.members.me);
             return !perms || perms.has('SendMessages');
-          } catch (e) {
+          } catch {
             return true;
           }
         };

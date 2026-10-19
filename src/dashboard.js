@@ -102,7 +102,7 @@ try {
   const trustProxyEnv = (process.env.TRUST_PROXY || '').toString().trim().toLowerCase();
   const shouldTrust = trustProxyEnv ? trustProxyEnv !== 'false' && trustProxyEnv !== '0' : (process.env.NODE_ENV === 'production');
   if (shouldTrust) app.set('trust proxy', 1);
-} catch (_) {}
+} catch {}
 
 // Attach a lightweight request id for diagnostics (ver dashboard/middleware.js).
 app.use(requestIdMiddleware());
@@ -373,7 +373,7 @@ app.use((err, req, res, next) => {
     if (!res.headersSent) {
       return res.status(statusCode).json(out);
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
   return next(err);

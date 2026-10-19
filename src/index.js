@@ -55,7 +55,7 @@ async function ensureMongoIndexes() {
     // Require models lazily to avoid circular deps
     const models = [];
     const safeRequire = (p) => {
-      try { return require(p); } catch (e) { return null; }
+      try { return require(p); } catch { return null; }
     };
 
     const Ticket = safeRequire('./database/models/Ticket');

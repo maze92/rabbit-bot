@@ -233,7 +233,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGu
               channelId: candidate.channelId || null,
               issues: parsedResult.error.issues.map((i) => ({ path: i.path.join('.'), code: i.code, message: i.message })).slice(0, 5)
             });
-          } catch (_) {}
+          } catch {}
         }
         continue;
       }
@@ -309,7 +309,7 @@ app.post('/api/gamenews/feeds', requireDashboardAuth, canManageGameNews, guardGu
           '[Dashboard] /api/gamenews/feeds invalid payload',
           JSON.stringify({ guildId, invalidCount, details: invalidDetails }, null, 2)
         );
-      } catch (_) {}
+      } catch {}
       return res.status(400).json({
         ok: false,
         error: 'All provided feeds are invalid. Check the URL (include http/https) and channel IDs (numeric or <#mention>).',

@@ -26,9 +26,9 @@ let scheduler = null;
 // "(Steam) Key Giveaway", "Steam Key Giveaway" ou "(Beta) Steam Key Giveaway".
 // O embed deve mostrar apenas o nome do jogo, por isso removemos esses sufixos
 // (e prefixos de plataforma) de forma iterativa até o título estabilizar.
-const TITLE_SUFFIX_PAREN_RE = /[\s\-–—:|]*[\[\(]\s*(steam(\s*key)?|epic\s*games?|ubisoft|uplay|dlc|beta|early\s*access|playtest|key|giveaway)\s*[\]\)]\s*$/i;
+const TITLE_SUFFIX_PAREN_RE = /[\s\-–—:|]*[[(]\s*(steam(\s*key)?|epic\s*games?|ubisoft|uplay|dlc|beta|early\s*access|playtest|key|giveaway)\s*[\])]\s*$/i;
 const TITLE_SUFFIX_WORD_RE = /[\s\-–—:|]*\b(steam(\s*key)?|epic\s*games?|ubisoft|uplay|key|giveaway)\s*$/i;
-const TITLE_PREFIX_RE = /^\s*[\[\(]?\s*(steam(\s*key)?|epic\s*games?|ubisoft|uplay)\s*[\]\)]?\s*[:\-–—|]*\s*/i;
+const TITLE_PREFIX_RE = /^\s*[[(]?\s*(steam(\s*key)?|epic\s*games?|ubisoft|uplay)\s*[\])]?\s*[:\-–—|]*\s*/i;
 
 function cleanTitle(title) {
   if (!title) return 'Giveaway';

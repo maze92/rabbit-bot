@@ -146,7 +146,7 @@ async function handleReactionAdd(reaction, user) {
   }
 }
 
-async function handleReactionRemove(reaction, user) {
+async function handleReactionRemove(reaction, _user) {
   try {
     if (!StarboardEntry) return;
 

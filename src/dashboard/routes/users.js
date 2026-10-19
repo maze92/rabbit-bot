@@ -142,7 +142,7 @@ function registerUsersRoutes({
           try {
             const coll = await guild.members.fetch({ query: search, limit: Math.min(limit, 100) });
             items = coll.map((m) => mapMemberSummary(m, guild));
-          } catch (e) {
+          } catch {
             // Fallback to cache search
             items = guild.members.cache
               .filter((m) => {

@@ -1,12 +1,12 @@
 // src/slash/userinfo.js
 
-const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 
 const config = require('../config/defaultConfig');
 const warningsService = require('../systems/warningsService');
 const Infraction = require('../database/models/Infraction');
 const logger = require('../systems/logger');
-const { t, tContext, getGuildLang } = require('../systems/i18n');
+const { tContext, getGuildLang } = require('../systems/i18n');
 const { isStaff } = require('./utils');
 const { getTrustConfig, getTrustLabel } = require('../utils/trust');
 const { replyEphemeral, safeReply } = require('../utils/discord');

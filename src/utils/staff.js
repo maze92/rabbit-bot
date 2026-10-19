@@ -16,7 +16,7 @@ const CACHE_TTL_MS = 30_000;
  * de ser usados como fallback em tempo de execução. Se precisares de
  * definir roles de staff, usa a aba "Acesso e cargos de staff" na dashboard.
  */
-async function getStaffRoleIdsForGuild(guildId, feature) {
+async function getStaffRoleIdsForGuild(guildId, _feature) {
   if (!guildId) return [];
 
   const cacheKey = `${String(guildId)}`;

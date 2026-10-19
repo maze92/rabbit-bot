@@ -64,7 +64,7 @@ function registerTicketsRoutes(opts) {
     rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'rl:tickets:list:' }),
     async (req, res) => {
       try {
-        const { TicketModel, TicketLogModel } = _getModels ? _getModels() : {};
+        const { TicketModel } = _getModels ? _getModels() : {};
         if (!TicketModel) return res.status(503).json({ ok: false, error: 'Ticket model not available' });
 
         const guildId = (req.query.guildId || '').toString().trim();
@@ -189,7 +189,7 @@ function registerTicketsRoutes(opts) {
               closedByUsername = closedByUsername || log.closedByUsername;
               closedById = closedById || log.closedById;
             }
-          } catch (e) {}
+          } catch {}
         }
 
         if (closedAt) {
@@ -228,7 +228,7 @@ function registerTicketsRoutes(opts) {
     rateLimit({ windowMs: 60_000, max: 240, keyPrefix: 'rl:tickets:msgs:' }),
     async (req, res) => {
       try {
-        const { TicketModel, TicketLogModel } = _getModels ? _getModels() : {};
+        const { TicketModel } = _getModels ? _getModels() : {};
         if (!TicketModel) return res.status(503).json({ ok: false, error: 'Ticket model not available' });
 
         const ticketId = (req.params.ticketId || '').toString().trim();
@@ -368,7 +368,7 @@ function registerTicketsRoutes(opts) {
               { $or: [{ ticketId: ticketId }, { channelId: ticket.channelId }] },
               { $set: { closedAt, closedById: actor, closedByUsername: actor } }
             );
-          } catch (e) {}
+          } catch {}
         }
 
         // Try to archive/lock thread
@@ -378,10 +378,10 @@ function registerTicketsRoutes(opts) {
           if (ch && typeof ch.setArchived === 'function') {
             try {
               await ch.setLocked(true, 'Closed via dashboard');
-            } catch (e) {}
+            } catch {}
             try {
               await ch.setArchived(true, 'Closed via dashboard');
-            } catch (e) {}
+            } catch {}
           }
         }
 
@@ -448,7 +448,7 @@ function registerTicketsRoutes(opts) {
               { $or: [{ ticketId: ticketId }, { channelId: ticket.channelId }] },
               { $set: { closedAt: null, closedById: null, closedByUsername: null } }
             );
-          } catch (e) {}
+          } catch {}
         }
 
         const client = _getClient ? _getClient() : null;
@@ -457,10 +457,10 @@ function registerTicketsRoutes(opts) {
           if (ch && typeof ch.setArchived === 'function') {
             try {
               await ch.setArchived(false, 'Reopened via dashboard');
-            } catch (e) {}
+            } catch {}
             try {
               await ch.setLocked(false, 'Reopened via dashboard');
-            } catch (e) {}
+            } catch {}
           }
         }
 

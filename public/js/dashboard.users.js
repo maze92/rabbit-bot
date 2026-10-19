@@ -418,7 +418,7 @@ async function loadUserHistory(user) {
       if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
         window.OzarkDashboard.setPanelLoading('userDetailPanel', true);
       }
-    } catch (e) {}
+    } catch {}
     detailEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
 
 
@@ -847,7 +847,7 @@ async function loadUserHistory(user) {
                   state._removeInfractionInFlight = false;
                   state._removeInfractionCooldownUntil = Date.now() + 800;
                   // Keep the visual state if the item was removed on refresh; otherwise re-enable.
-                  try { li.classList.remove('removing'); } catch (_) {}
+                  try { li.classList.remove('removing'); } catch {}
                 });
             });
           });
@@ -868,7 +868,7 @@ async function loadUserHistory(user) {
         if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
           window.OzarkDashboard.setPanelLoading('userDetailPanel', false);
         }
-      } catch (e) {}
+      } catch {}
     }
   }
 

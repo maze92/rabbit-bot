@@ -12,11 +12,10 @@ const GameNews = require('../database/models/GameNews');
 let GameNewsFeed = null;
 try {
   GameNewsFeed = require('../database/models/GameNewsFeed');
-} catch (e) {
+} catch {
   console.warn('[GameNews] GameNewsFeed model not loaded, falling back to static config.sources');
 }
 
-const logger = require('./logger');
 // Node 20+ (see package.json engines) provides AbortController globally.
 const { AbortController } = globalThis;
 
@@ -33,16 +32,6 @@ function hasSendPerm(channel, client) {
   }
 }
 
-async function fetchWithTimeout(parser, url, timeoutMs) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await parser.parseURL(url, { signal: controller.signal });
-  } finally {
-    clearTimeout(t);
-  }
-}
-
 const dashboardBridge = require('./dashboardBridge');
 
 const parser = new Parser({ timeout: 15000 });
@@ -53,7 +42,6 @@ const FEED_HEADERS = {
 };
 
 let started = false;
-let lastHeartbeatAt = 0;
 
 let isRunning = false;
 
@@ -620,7 +608,7 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
     if (!extraCh) {
       try {
         extraCh = await fetchChannel(client, extraId);
-      } catch (_) {
+      } catch {
         extraCh = null;
       }
     }
@@ -662,11 +650,6 @@ let feedsCacheAt = 0;
 let feedsCacheItems = null;
 const FEEDS_CACHE_MS = 5_000;
 
-function invalidateFeedsCache() {
-  feedsCacheAt = 0;
-  feedsCacheItems = null;
-}
-
 async function getFeedsFromDb() {
   if (feedsCacheItems && (Date.now() - feedsCacheAt) < FEEDS_CACHE_MS) {
     return feedsCacheItems;
@@ -695,7 +678,7 @@ async function getFeedsFromDb() {
           if (Object.keys($set).length) {
             await GameNewsFeed.updateOne({ _id: d._id }, { $set }).exec();
           }
-        } catch (e) {
+        } catch {
           // ignore migration errors; do not block startup
         }
       }
@@ -726,7 +709,7 @@ async function getFeedsFromDb() {
   }
 }
 
-async function getEffectiveFeeds(config) {
+async function getEffectiveFeeds(_config) {
   // Single source of truth: GameNewsFeed collection.
   // Se não existirem feeds na DB, o sistema não envia nada
   // até o utilizador configurar feeds na dashboard.
@@ -917,7 +900,6 @@ async function gameNewsSystem(client, config) {
               .sort((a, b) => a.date - b.date)
               .map((x) => x.it);
 
-            const lastSentAt = record.lastSentAt ? new Date(record.lastSentAt) : null;
             const newItemsFromAll = getNewItemsByHashes(items, record.lastHashes || []);
 
             // Prefer new items by hash; if none, allow a one-time send of the most recent item
@@ -1020,7 +1002,7 @@ async function gameNewsSystem(client, config) {
         isRunning = false;
         try {
           console.log('[GameNews] Cycle completed.');
-        } catch (e) {
+        } catch {
           // ignore logging errors
         }
         emitStatusToDashboard(config).catch(() => null);
@@ -1178,7 +1160,7 @@ async function sendFeedLog(client, feed, message) {
     if (!channel || !channel.isTextBased?.() || !hasSendPerm(channel, client)) return;
 
     await channel.send(String(message).slice(0, 1800));
-  } catch (e) {
+  } catch {
     // silent
   }
 }

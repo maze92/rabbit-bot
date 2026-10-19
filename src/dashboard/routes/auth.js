@@ -12,8 +12,7 @@ function registerAuthRoutes(ctx) {
   const { app, express, requireDashboardAuth, jwt, JWT_SECRET, sanitizeText, rateLimit, ADMIN_PERMISSIONS, getClient, sanitizeId } = ctx;
 
   const crypto = require('crypto');
-  const { fetchMember } = require('../../services/discordFetchCache');
-  const botOwnerIds = getBotOwnerIds(process.env.BOT_OWNER_IDS);
+    const botOwnerIds = getBotOwnerIds(process.env.BOT_OWNER_IDS);
   const botAdminIds = parseBotUserIds(process.env.BOT_ADMIN_IDS, 'BOT_ADMIN_IDS');
   const getBotRoleForUser = (userId) => getBotRole(userId, botOwnerIds, botAdminIds);
   const isBotAdmin = (userId) => Boolean(getBotRoleForUser(userId));

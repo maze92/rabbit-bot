@@ -24,12 +24,6 @@ function toInt(v, fallback, min, max) {
 }
 
 // Texto curto com fallback (usado em mensagens e modelos de canais).
-function clampText(v, fallback, max) {
-  const s = typeof v === 'string' ? v.trim() : '';
-  if (!s) return fallback;
-  return s.slice(0, max);
-}
-
 function clampOptionalText(v, max) {
   const s = typeof v === 'string' ? v.trim() : '';
   return s ? s.slice(0, max) : null;

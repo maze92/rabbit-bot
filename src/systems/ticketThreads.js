@@ -10,7 +10,6 @@ const { isStaff } = require('../utils/staff');
 const { fetchMember } = require('../services/discordFetchCache');
 const { getFeature } = require('./featuresService');
 const { emojiMatches, toReactable } = require('./reactionRoles');
-const { tGuild } = require('./i18n');
 const { getFeatureText, applyTemplate } = require('./featureText');
 
 const recentTicketOpens = new Map();
@@ -110,7 +109,7 @@ async function handleTicketOpen(reaction, user) {
       lockAcquired = true;
     } catch (e) {
       // Duplicate lock means another open is in progress.
-      const isDup = e && (e.code == 11000 || String(e.message || '').includes('E11000'));
+      const isDup = e && (e.code === 11000 || String(e.message || '').includes('E11000'));
       if (isDup) return false;
       throw e;
     }
@@ -135,7 +134,7 @@ if (existing && existing.channelId) {
       );
       await ch.send({ content: text }).catch(() => {});
     }
-  } catch (e) {}
+  } catch {}
   return false;
 }
 
@@ -180,20 +179,20 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
         const msg = String(err.message || '');
         const isDupOpenTicket = msg.includes('guildId_1_userId_1_status_1');
         if (isDupOpenTicket) {
-          try { await thread.setArchived(true, 'Duplicate open ticket'); } catch (e) {}
+          try { await thread.setArchived(true, 'Duplicate open ticket'); } catch {}
           return false;
         }
 
         // Otherwise assume it's a ticketNumber collision; allocate a new number and rename the thread.
         createdTicketNumber = await getNextTicketNumber(guild.id);
         const newName = `ticket-${String(createdTicketNumber).padStart(3, '0')}`;
-        try { await thread.setName(newName).catch(() => {}); } catch (e) {}
+        try { await thread.setName(newName).catch(() => {}); } catch {}
         // Continue loop and retry create.
       }
     }
 
     if (!ticketDoc) {
-      try { await thread.setArchived(true, 'Failed to create ticket'); } catch (e) {}
+      try { await thread.setArchived(true, 'Failed to create ticket'); } catch {}
       return false;
     }
 
@@ -252,7 +251,7 @@ const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
     return true;
     } finally {
       if (lockAcquired) {
-        try { await TicketOpenLock.deleteOne({ guildId: guild.id, userId: user.id }).catch(() => {}); } catch (e) {}
+        try { await TicketOpenLock.deleteOne({ guildId: guild.id, userId: user.id }).catch(() => {}); } catch {}
       }
     }
 

@@ -38,7 +38,7 @@ function registerCoreRoutes({
       if (!provided || provided.length !== expected.length) return false;
 
       return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
-    } catch (err) {
+    } catch {
       return false;
     }
   }

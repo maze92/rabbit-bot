@@ -15,7 +15,7 @@ function requestIdMiddleware() {
       const rid = (crypto.randomUUID && crypto.randomUUID()) || crypto.randomBytes(12).toString('hex');
       req.requestId = rid;
       res.setHeader('x-request-id', rid);
-    } catch (e) {
+    } catch {
       // no-op
     }
     next();
@@ -33,7 +33,7 @@ function createMetricsMiddleware({ metrics }) {
       try {
         const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
         metrics.recordHttpRequest(req, res.statusCode, durationMs);
-      } catch (_) {
+      } catch {
         // métricas nunca devem quebrar um pedido
       }
     });

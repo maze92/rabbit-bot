@@ -9,7 +9,6 @@
   const state = D.state;
   const apiGet = D.apiGet;
   const apiPost = D.apiPost;
-  const apiPatch = D.apiPatch;
   const toast = D.toast;
   const t = D.t;
   const escapeHtml = D.escapeHtml;
@@ -45,10 +44,10 @@
           ? String(obj.feed)
           : ''
     ).trim();
-  } catch (e) {}
+  } catch {}
   try {
     channelId = (obj.channelId != null ? String(obj.channelId) : '').trim();
-  } catch (e) {}
+  } catch {}
   try {
     // Prefer "name", but fall back to "feedName" (used by status payloads).
     name =
@@ -57,7 +56,7 @@
         : obj.feedName != null
           ? String(obj.feedName)
           : '';
-  } catch (e) {}
+  } catch {}
 
   return JSON.stringify({
     feedUrl,
@@ -87,7 +86,7 @@ function formatDateTimeShort(value) {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
     return d.toLocaleString();
-  } catch (e) {
+  } catch {
     return '';
   }
 }
@@ -448,7 +447,7 @@ function setInputError(inputEl, hasError) {
           if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
             window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', true);
           }
-        } catch (e) {}
+        } catch {}
         detailEl.innerHTML = renderGameNewsFeedSkeleton();
       }
 
@@ -477,7 +476,7 @@ function renderGameNewsFeedDetail(feed) {
       if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
         window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', false);
       }
-    } catch (e) {}
+    } catch {}
       return;
     }
 
@@ -494,7 +493,6 @@ function renderGameNewsFeedDetail(feed) {
     const channelOptionsHtml = buildChannelOptions(channels, channelId, false);
     const logChannelOptionsHtml = buildChannelOptions(channels, logChannelId, true);
 
-    const enabled = feed.enabled !== false;
     const intervalMs = typeof feed.intervalMs === 'number' ? feed.intervalMs : null;
     const intervalMinutes = intervalMs ? formatIntervalMinutes(intervalMs) : '';
     const maxPerCycle = (typeof feed.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle)) ? feed.maxPerCycle : null;
@@ -697,7 +695,7 @@ function renderGameNewsFeedDetail(feed) {
       if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
         window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', false);
       }
-    } catch (e) {}
+    } catch {}
 
     // Ligação inputs -> state.gameNewsFeeds[activeIndex]
     const idx = state.activeGameNewsFeedIndex;
@@ -859,7 +857,7 @@ function renderGameNewsFeedDetail(feed) {
               target.intervalMs = typeof snap.intervalMs === 'number' ? snap.intervalMs : null;
               target.maxPerCycle = typeof snap.maxPerCycle === 'number' ? snap.maxPerCycle : null;
               target.excludeKeywords = parseKeywordsInput(snap.excludeKeywords);
-            } catch (e) {
+            } catch {
               // fallback para defaults
               target.name = 'Feed';
               target.feedUrl = '';

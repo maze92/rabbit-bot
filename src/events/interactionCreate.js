@@ -3,7 +3,7 @@
 // Central handler for all slash commands.
 
 const config = require('../config/defaultConfig');
-const { t, tGuild, tContext } = require('../systems/i18n');
+const { tGuild, tContext } = require('../systems/i18n');
 const logger = require('../systems/logger');
 const { getGuildConfig } = require('../systems/guildConfigService');
 const { isStaff } = require('../utils/staff');
@@ -185,7 +185,7 @@ module.exports = (client) => {
             }
           }
         }
-      } catch (mmErr) {
+      } catch {
         // If anything fails, do not block the command.
       }
 

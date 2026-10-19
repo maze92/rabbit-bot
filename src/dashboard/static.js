@@ -80,7 +80,7 @@ function registerSpaFallback({ app, sendIndexHtml }) {
       // If it's a real asset path, let static handle it.
       if (p.includes('.')) return next();
       return sendIndexHtml(res);
-    } catch (e) {
+    } catch {
       return next();
     }
   });

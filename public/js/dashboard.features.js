@@ -758,14 +758,14 @@
     try {
       var ch = await NS.apiGet('/guilds/' + encodeURIComponent(gid) + '/channels');
       channels = (ch && (ch.items || ch.channels)) ? (ch.items || ch.channels) : [];
-    } catch (err) {
+    } catch {
       channels = channels || [];
     }
 
     try {
       var meta = await NS.apiGet('/guilds/' + encodeURIComponent(gid) + '/meta');
       roles = (meta && meta.roles) ? meta.roles : [];
-    } catch (err) {
+    } catch {
       roles = roles || [];
     }
   }

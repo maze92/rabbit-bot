@@ -37,7 +37,7 @@ function registerGuildsRoutes({
           // Discord "Administrator" bit = 0x8
           const perm = BigInt(String(permissions || '0'));
           return (perm & BigInt(0x8)) === BigInt(0x8);
-        } catch (e) {
+        } catch {
           return false;
         }
       }

@@ -49,7 +49,6 @@ function loadLocale(rel) {
   const m = code.match(/=\s*(\{[\s\S]*\});?/);
   if (!m) return null;
   try {
-    // eslint-disable-next-line no-eval
     return eval('(' + m[1] + ')');
   } catch {
     return null;

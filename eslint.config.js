@@ -17,7 +17,7 @@ const sharedRules = {
   'no-useless-escape': 'warn',
   'no-fallthrough': 'warn',
   'no-constant-condition': ['warn', { checkLoops: false }],
-  eqeqeq: 'warn',
+  eqeqeq: ['warn', 'always', { null: 'ignore' }],
   'no-console': 'off',
   'no-var': 'off',
   'prefer-const': 'off'

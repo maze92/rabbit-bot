@@ -7,7 +7,6 @@
   const D = window.OzarkDashboard;
   const state = D.state;
   const apiGet = D.apiGet;
-  const apiPost = D.apiPost;
   const toast = D.toast;
   const t = D.t;
   const escapeHtml = D.escapeHtml;
@@ -46,7 +45,7 @@ function saveLogsPrefs(guildId, prefs) {
   try {
     if (!guildId) return;
     localStorage.setItem(logsPrefsKey(guildId), JSON.stringify(prefs || {}));
-  } catch (e) {}
+  } catch {}
 }
 
 function loadLogsPrefs(guildId) {
@@ -55,7 +54,7 @@ function loadLogsPrefs(guildId) {
     const raw = localStorage.getItem(logsPrefsKey(guildId));
     if (!raw) return null;
     return JSON.parse(raw);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -111,7 +110,6 @@ let modServerRange = '7d';
 let modTicketsRange = '7d';
 let modTopOnlineRange = '7d';
 let modTicketsPage = 1;
-let modTicketsTotal = 0;
 
 function formatSecondsForUi(totalSec) {
   const s = Math.max(0, Number(totalSec) || 0);
@@ -482,7 +480,6 @@ for (let j = 0; j < 5; j++) {
               ticketsList.innerHTML = '';
               const rawItems = (resTickets && resTickets.items) || [];
               const total = (resTickets && typeof resTickets.total === 'number') ? resTickets.total : rawItems.length;
-              modTicketsTotal = total;
 
               // Backend now supports `since` filtering, but keep a defensive fallback.
               const cutoff = Date.parse(sinceIso);

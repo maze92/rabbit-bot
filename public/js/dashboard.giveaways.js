@@ -184,7 +184,7 @@
       const item = data && data.item ? data.item : null;
       if (item) sampleCache[key] = item;
       return item;
-    } catch (_) {
+    } catch {
       return null;
     }
   }
@@ -198,7 +198,6 @@
     }
     const platforms = readChecks('giveawaysPlatforms');
     // Free-To-Keep posts only games; types are fixed to "game".
-    const types = ['game'];
 
     const primaryPlatform = (platforms[0] || 'steam');
     const pLower = String(primaryPlatform).toLowerCase();
@@ -280,14 +279,6 @@
 
     updateSummaryChips();
 
-    function platformLabel(p) {
-      p = String(p || '').toLowerCase();
-      if (p.includes('steam')) return 'Steam';
-      if (p.includes('epic')) return 'Epic Games Store';
-      if (p.includes('ubisoft') || p.includes('uplay')) return 'Ubisoft';
-      return p || 'Platform';
-    }
-
     function platformLogoUrl(p) {
       p = String(p || '').toLowerCase();
       // Keep preview consistent with Discord: use the same public badge route.
@@ -311,7 +302,7 @@
     try {
       // NOTE: dashboard.js already prefixes API_BASE ("/api"), so paths here must be relative.
       data = await apiGet('/guilds/' + encodeURIComponent(guildId) + '/channels');
-    } catch (e) {
+    } catch {
       data = null;
     }
 
@@ -456,7 +447,6 @@
     const channelId = sel && sel.value ? String(sel.value) : null;
 
     const platforms = readChecks('giveawaysPlatforms');
-    const types = ['game'];
 
     const poll = q('giveawaysPoll') ? Number(q('giveawaysPoll').value) : 60;
     const maxPer = q('giveawaysMaxPerCycle') ? Number(q('giveawaysMaxPerCycle').value) : 0;

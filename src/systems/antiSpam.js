@@ -54,7 +54,7 @@ function normalizeTextForSimilarity(text) {
     // remover menções / hashtags
     .replace(/[@#]\S+/g, ' ')
     // remover markdown / caracteres repetidos
-    .replace(/[`_*|~>\-]+/g, ' ')
+    .replace(/[`_*|~>-]+/g, ' ')
     // resto de pontuação
     .replace(/[^\w\s]/g, ' ')
     // espaços múltiplos
@@ -328,7 +328,7 @@ async function antiSpam(message, client) {
             }) ||
             `${message.author} recebeu um aviso automático por spam.`;
           await message.channel.send(warnMsg);
-        } catch (e) {
+        } catch {
           // evitar crash do bot
         }
       }
@@ -405,7 +405,7 @@ async function antiSpam(message, client) {
           }) ||
           `${message.author} foi silenciado automaticamente por spam durante ${mins} minutos.`;
         await message.channel.send(muteMsg);
-      } catch (e) {
+      } catch {
         // swallow
       }
     }

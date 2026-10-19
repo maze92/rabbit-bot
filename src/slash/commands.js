@@ -2,9 +2,7 @@
 
 const { SlashCommandBuilder } = require('discord.js');
 
-module.exports = function buildSlashCommands(prefix) {
-  const p = prefix || '!';
-
+module.exports = function buildSlashCommands(_prefix) {
   const warn = new SlashCommandBuilder()
     .setName('warn')
     .setDescription('Warn a member and register an infraction')

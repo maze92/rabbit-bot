@@ -37,7 +37,7 @@ function throws(fn, msg) {
   let threw = false;
   try {
     fn();
-  } catch (e) {
+  } catch {
     threw = true;
   }
   if (!threw) throw new Error(msg || 'Expected function to throw');

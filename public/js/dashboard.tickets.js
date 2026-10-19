@@ -24,7 +24,7 @@
           const I = D && D.I18n;
           const ok = I && I.translations && Object.keys(I.translations).length > 0;
           if (ok) return resolve(true);
-        } catch (e) {}
+        } catch {}
         if (Date.now() >= deadline) return resolve(false);
         setTimeout(tick, 50);
       })();
@@ -42,7 +42,7 @@
       const d = new Date(v);
       if (Number.isNaN(d.getTime())) return '';
       return d.toLocaleString();
-    } catch (e) {
+    } catch {
       return '';
     }
   }
@@ -121,7 +121,7 @@
       if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
         window.OzarkDashboard.setPanelLoading('ticketDetailPanel', false);
       }
-    } catch (e) {}
+    } catch {}
     panel.innerHTML = `<div class="empty">${escapeHtml(t('tickets_detail_empty'))}</div>`;
   }
 
@@ -139,7 +139,7 @@
         if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
           window.OzarkDashboard.setPanelLoading('ticketDetailPanel', true);
         }
-      } catch (e) {}
+      } catch {}
       panel.innerHTML = renderDetailSkeleton();
     }
 
@@ -157,8 +157,6 @@
     const panel = document.getElementById('ticketDetailPanel');
     if (!panel) return;
 
-    const num = ticket.ticketNumber != null ? String(ticket.ticketNumber) : (String(ticket._id || '').slice(-6));
-    const subject = ticket.subject || t('tickets_subject_default');
     const username = ticket.username || ticket.userId || '';
     const status = ticket.status === 'closed' ? t('tickets_status_closed') : t('tickets_status_open');
     const created = fmtDate(ticket.createdAt);
@@ -214,7 +212,7 @@
       if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
         window.OzarkDashboard.setPanelLoading('ticketDetailPanel', false);
       }
-    } catch (e) {}
+    } catch {}
 
     const guildId = getGuildId();
     const ticketId = ticket._id;
@@ -250,7 +248,7 @@
             </div>
           `;
         }).join('');
-      } catch (e) {
+      } catch {
         box.innerHTML = `<div class="empty">${escapeHtml(t('tickets_messages_error'))}</div>`;
       }
     }
@@ -280,7 +278,7 @@
               : raw;
           return `<div class="ticket-audit-row"><span class="ticket-audit-what">${escapeHtml(what)}</span>${who ? ' • ' + escapeHtml(who) : ''}${when ? ' • ' + escapeHtml(when) : ''}</div>`;
         }).join('');
-      } catch (e) {
+      } catch {
         box.innerHTML = `<div class="empty">${escapeHtml(t('tickets_audit_error'))}</div>`;
       }
     }
