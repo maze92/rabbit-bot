@@ -868,6 +868,47 @@ function setPanelLoading(panelId, isLoading) {
     const densityBtn = document.getElementById('densityToggle');
     if (densityBtn) densityBtn.addEventListener('click', toggleDensity);
     updatePrefButtons();
+
+    // Dropdown menu de preferências
+    const prefsTrigger = document.getElementById('prefsTrigger');
+    const prefsPanel = document.getElementById('prefsPanel');
+    if (prefsTrigger && prefsPanel && !prefsTrigger.dataset.bound) {
+      prefsTrigger.dataset.bound = '1';
+
+      function togglePrefsMenu(open) {
+        const willOpen = typeof open === 'boolean' ? open : prefsPanel.classList.contains('hidden');
+        prefsPanel.classList.toggle('hidden', !willOpen);
+        prefsTrigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      }
+
+      prefsTrigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        togglePrefsMenu();
+      });
+
+      // Fechar ao clicar fora
+      document.addEventListener('click', function (e) {
+        if (prefsPanel.classList.contains('hidden')) return;
+        const menu = document.getElementById('prefsMenu');
+        if (menu && !menu.contains(e.target)) togglePrefsMenu(false);
+      });
+
+      // Fechar com Escape e permitir navegação por teclado
+      prefsPanel.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          togglePrefsMenu(false);
+          prefsTrigger.focus();
+        }
+      });
+
+      // Fechar após clicar num item (exceto se for um toggle que pode querer manter aberto)
+      prefsPanel.querySelectorAll('.prefs-menu__item').forEach(function (item) {
+        item.addEventListener('click', function () {
+          // Pequeno delay para o utilizador ver o estado visual do toggle
+          setTimeout(function () { togglePrefsMenu(false); }, 120);
+        });
+      });
+    }
   }
 
   // Aplicar o mais cedo possível (o script é `defer`, corre antes do
@@ -1107,6 +1148,47 @@ function setPanelLoading(panelId, isLoading) {
   // Overview
   // -----------------------------
 
+  function animateKpiValue(el, value) {
+    const target = Number(value) || 0;
+    if (!el) return;
+    el.textContent = '0';
+    el.classList.add('kpi-value--loading');
+    const duration = 500;
+    const start = performance.now();
+    function frame(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(target * eased);
+      el.textContent = String(current);
+      if (progress < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        el.textContent = String(target);
+        el.classList.remove('kpi-value--loading');
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function renderKpiTrend(trendEl, trend) {
+    if (!trendEl) return;
+    if (!trend || typeof trend !== 'object') {
+      trendEl.classList.add('hidden');
+      return;
+    }
+    const dir = trend.direction; // 'up' | 'down' | 'neutral'
+    const pct = trend.percent;
+    if (!dir || typeof pct !== 'number') {
+      trendEl.classList.add('hidden');
+      return;
+    }
+    const arrow = dir === 'up' ? '↑' : dir === 'down' ? '↓' : '→';
+    trendEl.textContent = arrow + ' ' + Math.abs(Math.round(pct)) + '%';
+    trendEl.classList.remove('hidden', 'kpi__trend--up', 'kpi__trend--down', 'kpi__trend--neutral');
+    trendEl.classList.add('kpi__trend--' + dir);
+  }
+
   async function loadOverview() {
     const guildsEl = document.getElementById('kpiGuilds');
     const usersEl = document.getElementById('kpiUsers');
@@ -1118,9 +1200,16 @@ function setPanelLoading(panelId, isLoading) {
       if (!data || data.ok === false) {
         throw new Error('Bad payload');
       }
-      guildsEl.textContent = String(data.guilds ?? 0);
-      usersEl.textContent = String(data.users ?? 0);
-      actionsEl.textContent = String(data.actions24h ?? 0);
+      animateKpiValue(guildsEl, data.guilds ?? 0);
+      animateKpiValue(usersEl, data.users ?? 0);
+      animateKpiValue(actionsEl, data.actions24h ?? 0);
+
+      // Tendências (opcionais — a API pode incluir trends.guilds/users/actions)
+      if (data.trends) {
+        renderKpiTrend(document.getElementById('kpiGuildsTrend'), data.trends.guilds);
+        renderKpiTrend(document.getElementById('kpiUsersTrend'), data.trends.users);
+        renderKpiTrend(document.getElementById('kpiActionsTrend'), data.trends.actions);
+      }
     } catch (err) {
       console.error('Overview load error', err);
       toast(err && err.apiMessage ? err.apiMessage : t('overview_error_generic'), { type: 'error' });
