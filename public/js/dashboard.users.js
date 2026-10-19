@@ -660,7 +660,7 @@
         const container = detailEl.querySelector('.user-actions');
         if (container) {
           container.querySelectorAll('button[data-action]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', async function () {
               const action = btn.getAttribute('data-action');
               if (!state.guildId || !user || !user.id) return;
 
@@ -670,7 +670,7 @@
               const reason = reasonRaw.trim() || t('common_no_reason_provided');
 
               if (action === 'reset-history') {
-                if (!window.confirm(t('users_actions_reset_history_confirm'))) return;
+                if (!(await D.confirmDialog(t('users_actions_reset_history_confirm')))) return;
                 apiPost('/mod/reset-history', {
                   guildId: state.guildId,
                   userId: user.id,
@@ -729,7 +729,7 @@
                     toast(t('users_history_error_generic'), { type: 'error' });
                   });
               } else if (action === 'reset') {
-                if (!window.confirm(t('users_actions_reset_confirm'))) return;
+                if (!(await D.confirmDialog(t('users_actions_reset_confirm')))) return;
                 // Prevent accidental double-click spam (backend also rate-limits).
                 if (state._resetTrustInFlight) return;
                 state._resetTrustInFlight = true;
@@ -763,11 +763,11 @@
         const infraList = detailEl.querySelector('.infractions-list');
         if (infraList) {
           infraList.querySelectorAll('.infraction-item').forEach(function (li) {
-            li.addEventListener('click', function () {
+            li.addEventListener('click', async function () {
               const id = li.getAttribute('data-infraction-id');
               if (!id || !state.guildId || !user || !user.id) return;
 
-              if (!window.confirm(t('users_history_remove_confirm'))) return;
+              if (!(await D.confirmDialog(t('users_history_remove_confirm')))) return;
 
               // Avoid hammering the API (prevents 429s when user clicks multiple items quickly)
               const now = Date.now();

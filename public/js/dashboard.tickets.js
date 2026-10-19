@@ -330,7 +330,7 @@
     const btnClose = panel.querySelector('#btnTicketClose');
     if (btnClose) {
       btnClose.addEventListener('click', async () => {
-        if (typeof window.confirm === 'function' && !window.confirm(t('tickets_close_confirm'))) return;
+        if (!(await D.confirmDialog(t('tickets_close_confirm')))) return;
         try {
           btnClose.disabled = true;
           const res = await apiPost(`/tickets/${encodeURIComponent(ticketId)}/close`, { guildId });

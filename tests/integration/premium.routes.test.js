@@ -537,3 +537,49 @@ test('A verified PayPal capture webhook activates Premium without a browser retu
     await stopApp(app.server);
   }
 });
+
+test('A PayPal refund webhook revokes the Premium time bought by that payment', async () => {
+  const harness = makeHarness();
+  const app = await harness.appPromise;
+  try {
+    await fetch(app.baseUrl + '/api/premium/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guildId: GUILD_ID })
+    });
+    process.env.PAYPAL_WEBHOOK_ID = 'test-webhook-id';
+    const post = (body) =>
+      fetch(app.baseUrl + '/api/premium/paypal/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    await post({
+      event_type: 'PAYMENT.CAPTURE.COMPLETED',
+      resource: {
+        id: 'CAPTURE-123',
+        status: 'COMPLETED',
+        amount: { value: '10.00', currency_code: 'EUR' },
+        custom_id: USER_ID,
+        payer: { payer_id: 'PAYER-123', email_address: 'payer@example.com' },
+        supplementary_data: { related_ids: { order_id: 'ORDER-123456' } }
+      }
+    });
+    assert.equal(harness.getGuildConfig().premium.enabled, true);
+
+    const refund = await post({
+      event_type: 'PAYMENT.CAPTURE.REFUNDED',
+      resource: {
+        id: 'REFUND-1',
+        status: 'COMPLETED',
+        links: [{ rel: 'up', href: 'https://api.paypal.com/v2/payments/captures/CAPTURE-123' }]
+      }
+    });
+    assert.equal(refund.status, 200);
+    assert.equal((await refund.json()).revoked, true);
+    assert.equal(harness.payments[0].status, 'REFUNDED');
+    assert.equal(harness.getGuildConfig().premium.enabled, false);
+  } finally {
+    await stopApp(app.server);
+  }
+});

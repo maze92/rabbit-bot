@@ -18,6 +18,12 @@ function isPremiumModule(name) {
  * Normaliza o bloco `premium` da GuildConfig para o formato usado na UI/API.
  * @returns {{enabled: boolean, until: Date|null, note: string|null, activatedAt: Date|null, active: boolean}}
  */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const PREMIUM_GRACE_DAYS = (() => {
+  const n = Number(process.env.PREMIUM_GRACE_DAYS);
+  return Number.isFinite(n) && n >= 0 ? Math.min(n, 30) : 3;
+})();
+
 function normalizePremium(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
 
@@ -35,11 +41,17 @@ function normalizePremium(raw) {
 
   const enabled = src.enabled === true;
   // `until` a null significa acesso permanente (doação única).
-  const active = enabled && (!until || until.getTime() > Date.now());
+  // Após expirar, os módulos continuam ativos durante PREMIUM_GRACE_DAYS.
+  const nowMs = Date.now();
+  const graceUntil = until ? new Date(until.getTime() + PREMIUM_GRACE_DAYS * DAY_MS) : null;
+  const active = enabled && (!until || graceUntil.getTime() > nowMs);
+  const inGrace = enabled && !!until && until.getTime() <= nowMs && graceUntil.getTime() > nowMs;
 
   return {
     enabled,
     until,
+    inGrace,
+    graceUntil,
     note: typeof src.note === 'string' && src.note.trim() ? src.note.trim().slice(0, 200) : null,
     activatedAt,
     active
@@ -61,6 +73,7 @@ async function isGuildPremium(guildId) {
 
 module.exports = {
   PREMIUM_MODULES,
+  PREMIUM_GRACE_DAYS,
   isPremiumModule,
   normalizePremium,
   isPremiumActive,
