@@ -681,7 +681,7 @@ window.OzarkLocales.pt = {
   'features_threshold': 'Reações mínimas',
   'features_emoji': 'Emoji',
   'features_kick_after': 'Expulsar após (minutos, 0 = nunca)',
-  'features_title': 'Título',
+  'features_field_title': 'Título',
   'features_description': 'Descrição',
   'features_button_label': 'Texto do botão',
   'features_open_emoji': 'Emoji de abertura',

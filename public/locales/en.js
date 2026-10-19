@@ -680,7 +680,7 @@ window.OzarkLocales.en = {
   'features_threshold': 'Minimum reactions',
   'features_emoji': 'Emoji',
   'features_kick_after': 'Kick after (minutes, 0 = never)',
-  'features_title': 'Title',
+  'features_field_title': 'Title',
   'features_description': 'Description',
   'features_button_label': 'Button label',
   'features_open_emoji': 'Open emoji',

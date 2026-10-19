@@ -72,16 +72,6 @@ function registerGiveawaysRoutes(ctx) {
     maxPerCycle: z.number().int().min(0).max(50).optional()
   });
 
-  function derivePublicBaseUrl(req) {
-    const xfProto = (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim();
-    const xfHost = (req.headers['x-forwarded-host'] || '').toString().split(',')[0].trim();
-    const proto = xfProto || req.protocol || 'https';
-    const host = xfHost || req.get('host') || '';
-    if (!host) return null;
-    const p = (proto === 'http' || proto === 'https') ? proto : 'https';
-    return `${p}://${host}`;
-  }
-
   const ALLOWED_PLATFORMS = new Set(['steam', 'epic-games-store', 'ubisoft']);
 
   // Public, unauthenticated route to serve platform badges with correct headers.
@@ -397,6 +387,16 @@ function makeLinkLine({ browserUrl, clientUrl, platform }) {
   else if (p.includes('epic')) { if (client) links.push(`**[Open in Epic Games ↗](${client})**`); }
   else if (p.includes('ubisoft')) { if (client) links.push(`**[Open in Ubisoft Games ↗](${client})**`); }
   return links.join(SEP);
+}
+
+function derivePublicBaseUrl(req) {
+  const xfProto = (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim();
+  const xfHost = (req.headers['x-forwarded-host'] || '').toString().split(',')[0].trim();
+  const proto = xfProto || req.protocol || 'https';
+  const host = xfHost || req.get('host') || '';
+  if (!host) return null;
+  const p = (proto === 'http' || proto === 'https') ? proto : 'https';
+  return `${p}://${host}`;
 }
 
 async function buildTestMessage({ platform, req }) {

@@ -100,7 +100,7 @@
         { type: 'role', name: 'roleId', label: 'features_role' },
         { type: 'channel', name: 'channelId', label: 'features_channel' },
         { type: 'number', name: 'kickAfterMinutes', label: 'features_kick_after', min: 0, max: 10080 },
-        { type: 'text', name: 'title', label: 'features_title', placeholderKey: 'features_placeholder_verify_title', maxLength: 120 },
+        { type: 'text', name: 'title', label: 'features_field_title', placeholderKey: 'features_placeholder_verify_title', maxLength: 120 },
         { type: 'textarea', name: 'description', label: 'features_description', placeholderKey: 'features_placeholder_verify_description', maxLength: 500 },
         { type: 'text', name: 'buttonLabel', label: 'features_button_label', placeholderKey: 'features_placeholder_verify_button', maxLength: 80 },
         { type: 'publish' }
@@ -119,7 +119,7 @@
         { type: 'channel', name: 'channelId', label: 'features_channel' },
         { type: 'text', name: 'openEmoji', label: 'features_open_emoji', placeholderKey: 'features_placeholder_ticket_open_emoji', maxLength: 64 },
         { type: 'text', name: 'closeEmoji', label: 'features_close_emoji', placeholderKey: 'features_placeholder_ticket_close_emoji', maxLength: 64 },
-        { type: 'text', name: 'panelTitle', label: 'features_title', placeholderKey: 'features_placeholder_ticket_title', maxLength: 120 },
+        { type: 'text', name: 'panelTitle', label: 'features_field_title', placeholderKey: 'features_placeholder_ticket_title', maxLength: 120 },
         { type: 'textarea', name: 'panelDescription', label: 'features_description', placeholderKey: 'features_placeholder_ticket_description', maxLength: 500 },
         { type: 'textarea', name: 'alreadyOpenMessage', label: 'features_already_open_message', placeholderKey: 'features_placeholder_ticket_already_open', maxLength: 300 },
         { type: 'textarea', name: 'welcomeMessage', label: 'features_welcome_message', placeholderKey: 'features_placeholder_ticket_welcome', maxLength: 1200 },

@@ -39,7 +39,7 @@ setInterval(() => {
       messageMap.delete(key);
     }
   }
-}).unref?.();
+}, CLEANUP_INTERVAL_MS).unref?.();
 
 // Normaliza texto para comparação de similaridade
 function normalizeTextForSimilarity(text) {
