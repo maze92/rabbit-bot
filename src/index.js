@@ -46,6 +46,7 @@ const startGiveaways = require('./systems/giveaways');
 const { startServerStats } = require('./systems/serverStats');
 const { startPresenceTracker } = require('./systems/presenceTracker');
 const { startVerificationSweep } = require('./systems/verification');
+const { startPremiumReminders } = require('./systems/premiumReminders');
 
 // Ensure critical MongoDB indexes (autoIndex is disabled in production).
 async function ensureMongoIndexes() {
@@ -210,6 +211,7 @@ async function handleClientReady() {
     // Start verification sweep (expulsa membros não verificados)
     try {
       startVerificationSweep(client);
+      startPremiumReminders(client);
       console.log('🛡️ Verification sweep started.');
     } catch (err) {
       console.error('[Startup] Failed to start verification sweep:', err);

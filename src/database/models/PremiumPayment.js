@@ -18,7 +18,7 @@ const premiumPaymentSchema = new Schema(
     durationDays: { type: Number, required: true },
     status: {
       type: String,
-      enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'FAILED'],
+      enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'FAILED', 'REFUNDED', 'REVERSED'],
       default: 'PENDING',
       index: true
     },

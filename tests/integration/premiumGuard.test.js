@@ -80,7 +80,7 @@ test('an active legacy guild license remains valid after migration', async () =>
 });
 
 test('an expired guild license does not unlock premium features', async () => {
-  const guard = makeGuard({ guildPremium: { enabled: true, until: new Date(Date.now() - 1000) } });
+  const guard = makeGuard({ guildPremium: { enabled: true, until: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) } });
   const result = await runGuard(guard, 'GUILD_ADMIN');
   assert.equal(result.statusCode, 402);
   assert.equal(result.body.error, 'PREMIUM_REQUIRED');
