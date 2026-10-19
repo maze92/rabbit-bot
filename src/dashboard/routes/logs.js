@@ -93,7 +93,7 @@ function registerLogsRoutes(opts) {
         }
 
         if (search) {
-          const s = search.toString();
+          const s = escapeRegex(search.toString());
           qTickets.$or = [
             { username: { $regex: s, $options: 'i' } },
             { userId: { $regex: s, $options: 'i' } }
@@ -249,7 +249,7 @@ function registerLogsRoutes(opts) {
   );
 
   // Export logs to CSV (supports same filters as /api/logs)
-  app.get('/api/logs/export.csv', requireDashboardAuth, async (req, res) => {
+  app.get('/api/logs/export.csv', requireDashboardAuth, canViewLogs, guardGuildQueryOptional, async (req, res) => {
     try {
       const guildId = (req.query.guildId || '').toString().trim();
       const type = (req.query.type || '').toString().trim().toLowerCase();
@@ -287,7 +287,7 @@ function registerLogsRoutes(opts) {
         }
 
         if (search) {
-          const s = search.toString();
+          const s = escapeRegex(search.toString());
           qTickets.$or = [
             { username: { $regex: s, $options: 'i' } },
             { userId: { $regex: s, $options: 'i' } }

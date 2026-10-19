@@ -1344,7 +1344,8 @@ function setPanelLoading(panelId, isLoading) {
 
   function applyPermissionGates() {
     // Trust controls live inside the Config tab (Extras -> Trust).
-    const canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER' || state.perms.canEditConfig));
+    // Trust settings are global (all guilds), so only bot operators may edit them.
+    const canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'));
     const trustInputs = [
       'trustPresetSelect',
       'btnApplyTrustPreset',

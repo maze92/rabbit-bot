@@ -52,8 +52,19 @@ function registerCoreRoutes({
       }
 
       const guildsCache = client.guilds.cache;
-      const guilds = Array.from(guildsCache.values ? guildsCache.values() : guildsCache);
-      const guildsCount = Array.isArray(guilds) ? guilds.length : (guildsCache.size || 0);
+      let guilds = Array.from(guildsCache.values ? guildsCache.values() : guildsCache);
+
+      // Non-operators only see aggregates for the guilds they can access.
+      const u = req.dashboardUser;
+      let visibleGuildIds = null;
+      if (u && !isBotOperator(u)) {
+        visibleGuildIds = u.selectedGuildId
+          ? [String(u.selectedGuildId)]
+          : (Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.map(String) : []);
+        const visible = new Set(visibleGuildIds);
+        guilds = guilds.filter((g) => g && visible.has(String(g.id)));
+      }
+      const guildsCount = guilds.length;
 
       let usersCount = 0;
       for (const g of guilds) {
@@ -65,7 +76,9 @@ function registerCoreRoutes({
       try {
         if (Infraction && typeof Infraction.countDocuments === 'function') {
           const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-          actions24h = await Infraction.countDocuments({ createdAt: { $gte: since } }).exec();
+          const q = { createdAt: { $gte: since } };
+          if (visibleGuildIds) q.guildId = { $in: visibleGuildIds };
+          actions24h = await Infraction.countDocuments(q).exec();
         }
       } catch (errCount) {
         console.error('[Dashboard] Failed to count infractions for overview:', errCount);
@@ -87,8 +100,17 @@ function registerCoreRoutes({
     ? requirePerm({ anyOf: ['canEditConfig'] })
     : (req, res, next) => next();
 
+  // The global config affects every guild, so only bot operators may touch it.
+  // Guild admins hold canEditConfig for their own guild settings only.
+  function requireBotOperator(req, res, next) {
+    const u = req.dashboardUser;
+    if (!u) return next(); // auth disabled (development only)
+    if (!isBotOperator(u)) return res.status(403).json({ ok: false, error: 'BOT_OPERATOR_REQUIRED' });
+    return next();
+  }
+
   // Global config for dashboard settings
-  app.get('/api/config', requireDashboardAuth, canViewConfig, (req, res) => {
+  app.get('/api/config', requireDashboardAuth, canViewConfig, requireBotOperator, (req, res) => {
     try {
       return res.json({
         ok: true,
@@ -101,7 +123,7 @@ function registerCoreRoutes({
   });
 
   const rlConfigPatch = rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'rl:config:' });
-  app.patch('/api/config', requireDashboardAuth, canEditConfig, rlConfigPatch, async (req, res) => {
+  app.patch('/api/config', requireDashboardAuth, canEditConfig, requireBotOperator, rlConfigPatch, async (req, res) => {
     try {
       await recordAudit({
         req,

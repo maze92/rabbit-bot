@@ -125,8 +125,8 @@ async function searchCases({ guildId, q = '', userId = '', type = '', source = '
   const query = { guildId };
 
   if (userId) query.userId = String(userId).trim();
-  if (type) query.type = { $regex: String(type).trim(), $options: 'i' };
-  if (source) query.source = { $regex: String(source).trim(), $options: 'i' };
+  if (type) query.type = { $regex: escapeRegex(String(type).trim()), $options: 'i' };
+  if (source) query.source = { $regex: escapeRegex(String(source).trim()), $options: 'i' };
 
   const text = String(q || '').trim();
   if (text) {
@@ -136,9 +136,9 @@ async function searchCases({ guildId, q = '', userId = '', type = '', source = '
     } else {
       query.$or = [
         { reason: { $regex: escapeRegex(text), $options: 'i' } },
-        { type: { $regex: text, $options: 'i' } },
-        { userId: { $regex: text, $options: 'i' } },
-        { moderatorId: { $regex: text, $options: 'i' } }
+        { type: { $regex: escapeRegex(text), $options: 'i' } },
+        { userId: { $regex: escapeRegex(text), $options: 'i' } },
+        { moderatorId: { $regex: escapeRegex(text), $options: 'i' } }
       ];
     }
   }

@@ -36,10 +36,15 @@ function registerAuthRoutes(ctx) {
     for (const [k, exp] of oauthInflight.entries()) if (!exp || exp <= n) oauthInflight.delete(k);
   }
   function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+  // Rely on Express `trust proxy` (configured in dashboard.js) instead of reading
+  // X-Forwarded-For directly, which any client can spoof.
   function getClientIp(req) {
-    const xf = (req.headers && (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For'])) || '';
-        const ip = String(Array.isArray(xf) ? xf[0] : xf).split(',')[0].trim() || req.ip || '';
-    return ip;
+    return String((req && req.ip) || '');
+  }
+  function safeEqual(a, b) {
+    const ab = Buffer.from(String(a));
+    const bb = Buffer.from(String(b));
+    return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
   }
   function inflightKey(req, state) {
     return `${getClientIp(req)}:${String(state || '').slice(0, 64)}`;
@@ -144,6 +149,17 @@ function registerAuthRoutes(ctx) {
       const code = typeof req.query.code === 'string' ? req.query.code : '';
       const returnedState = typeof req.query.state === 'string' ? req.query.state : '';
       sweepMaps();
+
+      // Validate state before anything else: the code cache below holds session
+      // tokens, so it must only be reachable from the browser that started the flow.
+      // The oauth_state cookie is left to expire (5 min) so a duplicate callback from
+      // the same browser still validates.
+      const expectedState = parseCookies(req).oauth_state || '';
+      if (!code || !returnedState || !expectedState || !safeEqual(returnedState, expectedState)) {
+        clearCookie(res, 'oauth_state');
+        return res.status(400).send('Invalid OAuth state. Please try again.');
+      }
+
       // If the callback is invoked twice with the same single-use code, reuse the cached redirect.
       if (code) {
         const cached = oauthCodeCache.get(code);
@@ -170,13 +186,6 @@ function registerAuthRoutes(ctx) {
       oauthInflight.set(lk, nowMs() + 15000);
 
       try {
-        const cookies = parseCookies(req);
-      const expectedState = cookies.oauth_state || '';
-      clearCookie(res, 'oauth_state');
-
-      if (!code || !returnedState || !expectedState || returnedState !== expectedState) {
-        return res.status(400).send('Invalid OAuth state. Please try again.');
-      }
 
 // Token exchange (tolerant of Discord rate limits).
 // Rationale: Discord may occasionally apply short-lived global 429s per app/IP.
@@ -258,7 +267,7 @@ if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
       '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
       '<h2>Discord rate limit reached</h2>' +
       '<p>O Discord limitou temporariamente pedidos de login (HTTP 429). Aguarda alguns segundos e volta a tentar.</p>' +
-      '<p><a href="/api/auth/login">Voltar a iniciar login</a></p>' +
+      '<p><a href="/api/auth/discord">Voltar a iniciar login</a></p>' +
       '</div>'
     );
   }
@@ -494,7 +503,7 @@ if (allowedGuildIds.length === 0 && !botRole) {
 
       // Persist server-side cookie so the UI continues to work even if storage is blocked.
       setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
-      return res.json({ ok: true, token });
+      return res.json({ ok: true });
     } catch (err) {
       console.error('[OAuth] select-guild error', err);
       return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });

@@ -95,12 +95,12 @@ test('decodeDashboardToken assume USER quando o token não define perfil', async
   eq(user.role, 'USER');
 });
 
-test('decodeDashboardToken promove a owner principal mesmo com um token antigo', async () => {
+test('decodeDashboardToken usa o perfil assinado no token (sem owner hardcoded)', async () => {
   const { decodeDashboardToken } = makeMw({
     payload: { t: 'oauth', sub: '810243963574550558', role: 'USER' }
   });
   const user = await decodeDashboardToken('token');
-  eq(user.role, 'BOT_OWNER');
+  eq(user.role, 'USER');
 });
 
 test('decodeDashboardToken preserves bot operator role in an unscoped session', async () => {
@@ -186,13 +186,41 @@ test('requireGuildAccess aplica a allow-list', () => {
   eq(res.body.error, 'NO_GUILD_ACCESS');
 });
 
-test('requireGuildAccess opcional passa quando não há guildId', () => {
+test('requireGuildAccess opcional fixa a guild selecionada quando não há guildId', () => {
   const { requireGuildAccess } = makeMw();
   const req = { dashboardUser: { selectedGuildId: '111', allowedGuildIds: [] }, query: { guildId: '' } };
   const res = makeRes();
   let passed = false;
   requireGuildAccess({ from: 'query', optional: true })(req, res, () => { passed = true; });
   ok(passed);
+  eq(req.query.guildId, '111');
+});
+
+test('requireGuildAccess opcional bloqueia consulta global de utilizador sem guild', () => {
+  const { requireGuildAccess } = makeMw();
+  const req = { dashboardUser: { role: 'USER', selectedGuildId: null, allowedGuildIds: ['111'] }, query: {} };
+  const res = makeRes();
+  requireGuildAccess({ from: 'query', optional: true })(req, res, () => { throw new Error('não devia passar'); });
+  eq(res.statusCode, 403);
+  eq(res.body.error, 'NO_GUILD_SELECTED');
+});
+
+test('requireGuildAccess opcional permite consulta global a bot operators', () => {
+  const { requireGuildAccess } = makeMw();
+  const req = { dashboardUser: { role: 'BOT_ADMIN', selectedGuildId: null, allowedGuildIds: [] }, query: {} };
+  const res = makeRes();
+  let passed = false;
+  requireGuildAccess({ from: 'query', optional: true })(req, res, () => { passed = true; });
+  ok(passed);
+});
+
+test('requireGuildAccess bloqueia guild arbitrária sem allow-list nem seleção', () => {
+  const { requireGuildAccess } = makeMw();
+  const req = { dashboardUser: { role: 'USER', selectedGuildId: null, allowedGuildIds: [] }, query: { guildId: '222' } };
+  const res = makeRes();
+  requireGuildAccess({ from: 'query', optional: true })(req, res, () => { throw new Error('não devia passar'); });
+  eq(res.statusCode, 403);
+  eq(res.body.error, 'NO_GUILD_ACCESS');
 });
 
 test('requireGuildAccess devolve 400 quando falta guildId e não é opcional', () => {
