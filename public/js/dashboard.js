@@ -1007,7 +1007,7 @@
       applyTabButtonState('overview');
       return;
     }
-    if (name === 'premium-admin' && !(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'))) {
+    if (name === 'premium-admin' && !(state.me && state.me.role === 'BOT_OWNER')) {
       state.currentTab = 'overview';
       name = 'overview';
     }
@@ -1176,7 +1176,7 @@
       features: requiresPerms && canViewConfig,
       tickets: requiresPerms && canManageTickets,
       config: requiresPerms && canViewConfig,
-      'premium-admin': !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'))
+      'premium-admin': !!(state.me && state.me.role === 'BOT_OWNER')
     };
 
     const tabs = ['logs', 'features', 'user', 'config', 'tickets', 'premium-admin'];
@@ -1436,8 +1436,8 @@
 
   function applyPermissionGates() {
     // Trust controls live inside the Config tab (Extras -> Trust).
-    // Trust settings are global (all guilds), so only bot operators may edit them.
-    const canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'));
+    // Trust settings are global (all guilds), so only the bot owner may edit them.
+    const canEdit = !!(state.me && state.me.role === 'BOT_OWNER');
     const trustInputs = [
       'trustPresetSelect',
       'btnApplyTrustPreset',
@@ -1740,6 +1740,8 @@
   }
 
   async function loadGuildConfig() {
+    setupUnsavedGuard();
+    if (window.OzarkDashboard.markConfigSaved) window.OzarkDashboard.markConfigSaved();
     if (!state.guildId) {
       updateTabAccess();
       return;
@@ -2274,6 +2276,7 @@
       if (btnSave) btnSave.disabled = true;
       setConfigStatus('');
       toast(t('config_saved'), { type: 'success' });
+      if (window.OzarkDashboard.markConfigSaved) window.OzarkDashboard.markConfigSaved();
     } catch (err) {
       console.error('Failed to save guild config', err);
       setConfigStatus('');
@@ -2918,10 +2921,10 @@
     // Temp voice config
     var btnDeleteTempVoiceBase = document.getElementById('btnDeleteTempVoiceBase');
     if (btnDeleteTempVoiceBase) {
-      btnDeleteTempVoiceBase.addEventListener('click', function () {
+      btnDeleteTempVoiceBase.addEventListener('click', async function () {
         if (!state.tempVoiceBase) return;
         var idx = state.tempVoiceBase.selectedIndex;
-        if (typeof window.confirm === 'function' && !window.confirm(t('tempvoice_delete_confirm'))) return;
+        if (!(await confirmDialog(t('tempvoice_delete_confirm')))) return;
         if (typeof deleteTempVoiceBaseAt === 'function') {
           deleteTempVoiceBaseAt(idx);
         }
@@ -3177,8 +3180,8 @@
     function showGuildSelect(items) {
       if (!guildSelectScreen || !guildSelectList) return;
       if (guildSelectPremiumAdmin) {
-        var isBotOperator = state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER');
-        guildSelectPremiumAdmin.classList.toggle('hidden', !isBotOperator);
+        var isBotOwner = !!(state.me && state.me.role === 'BOT_OWNER');
+        guildSelectPremiumAdmin.classList.toggle('hidden', !isBotOwner);
       }
       if (!Array.isArray(items) || items.length < 2) {
         guildSelectScreen.classList.add('hidden');
@@ -3329,6 +3332,119 @@
   window.OzarkDashboard.apiPost = apiPost;
   window.OzarkDashboard.apiPatch = apiPatch;
   window.OzarkDashboard.toast = toast;
+  window.OzarkDashboard.confirmDialog = confirmDialog;
+
+  // Accessible confirm modal (replaces window.confirm). Resolves true/false.
+  function confirmDialog(message, opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      var dlg = document.createElement('dialog');
+      if (typeof dlg.showModal !== 'function') {
+        resolve(window.confirm(String(message || '')));
+        return;
+      }
+      dlg.className = 'confirm-dialog';
+      dlg.setAttribute('aria-labelledby', 'confirmDialogMessage');
+      var msg = document.createElement('p');
+      msg.id = 'confirmDialogMessage';
+      msg.className = 'confirm-dialog__message';
+      msg.textContent = String(message || '');
+      var actions = document.createElement('div');
+      actions.className = 'confirm-dialog__actions';
+      var cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'btn';
+      cancel.textContent = t('common_cancel');
+      var ok = document.createElement('button');
+      ok.type = 'button';
+      ok.className = 'btn ' + (opts.danger === false ? 'primary' : 'danger');
+      ok.textContent = opts.confirmLabel || t('common_confirm');
+      actions.appendChild(cancel);
+      actions.appendChild(ok);
+      dlg.appendChild(msg);
+      dlg.appendChild(actions);
+      var done = false;
+      function close(value) {
+        if (done) return;
+        done = true;
+        try {
+          dlg.close();
+        } catch {
+          /* already closed */
+        }
+        dlg.remove();
+        resolve(value);
+      }
+      cancel.addEventListener('click', function () {
+        close(false);
+      });
+      ok.addEventListener('click', function () {
+        close(true);
+      });
+      dlg.addEventListener('cancel', function (ev) {
+        ev.preventDefault();
+        close(false);
+      });
+      document.body.appendChild(dlg);
+      dlg.showModal();
+      cancel.focus();
+    });
+  }
+
+  // Surface API failures that no caller handled, instead of failing silently.
+  var API_ERROR_KEYS = {
+    NO_PERMISSION: 'error_no_permission',
+    BOT_OWNER_REQUIRED: 'error_no_permission',
+    BOT_OPERATOR_REQUIRED: 'error_no_permission',
+    PREMIUM_REQUIRED: 'error_premium_required'
+  };
+  window.addEventListener('unhandledrejection', function (ev) {
+    var err = ev && ev.reason;
+    if (!err || typeof err.status !== 'number' || err.status === 401) return;
+    var key = API_ERROR_KEYS[err.apiMessage] || 'common_request_failed';
+    toast(t(key), { type: 'error' });
+  });
+
+  // Unsaved-changes bar for the guild config form.
+  function setupUnsavedGuard() {
+    var panel = document.getElementById('tab-config');
+    if (!panel || panel.querySelector('.unsaved-bar')) return;
+    var bar = document.createElement('div');
+    bar.className = 'unsaved-bar hidden';
+    bar.setAttribute('role', 'status');
+    var label = document.createElement('span');
+    label.textContent = t('config_unsaved_changes');
+    var save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'btn xs primary';
+    save.textContent = t('config_save');
+    save.addEventListener('click', function () {
+      var btn = document.getElementById('btnSaveGuildConfig');
+      if (btn) btn.click();
+    });
+    bar.appendChild(label);
+    bar.appendChild(save);
+    panel.appendChild(bar);
+    function setDirty(value) {
+      state.configDirty = !!value;
+      bar.classList.toggle('hidden', !state.configDirty);
+    }
+    function onEdit(ev) {
+      var el = ev.target;
+      if (!ev.isTrusted || !el || /^trust/i.test(el.id || '')) return;
+      setDirty(true);
+    }
+    panel.addEventListener('input', onEdit);
+    panel.addEventListener('change', onEdit);
+    window.addEventListener('beforeunload', function (ev) {
+      if (!state.configDirty) return;
+      ev.preventDefault();
+      ev.returnValue = '';
+    });
+    window.OzarkDashboard.markConfigSaved = function () {
+      setDirty(false);
+    };
+  }
   window.OzarkDashboard.t = t;
   window.OzarkDashboard.escapeHtml = escapeHtml;
   window.OzarkDashboard.formatDateTime = formatDateTime;
@@ -3417,7 +3533,7 @@
       payload.timezone = parsed.timezone;
     }
 
-    if (typeof window.confirm === 'function' && !window.confirm(t('config_import_confirm'))) {
+    if (!(await confirmDialog(t('config_import_confirm'), { danger: false }))) {
       return;
     }
 

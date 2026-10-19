@@ -257,7 +257,7 @@ test('legacy operator test-bypass records are shown as inactive licenses', async
   }
 });
 
-test('Premium payment history is visible only to the bot administrator', async () => {
+test('Premium payment history is visible only to the bot owner', async () => {
   const harness = makeHarness();
   const app = await harness.appPromise;
   try {
@@ -265,6 +265,10 @@ test('Premium payment history is visible only to the bot administrator', async (
     assert.equal(denied.status, 403);
 
     harness.setUser({ _id: USER_ID, username: 'bot-admin', role: 'BOT_ADMIN' });
+    const adminDenied = await fetch(app.baseUrl + '/api/premium/payments');
+    assert.equal(adminDenied.status, 403);
+
+    harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
     const allowed = await fetch(app.baseUrl + '/api/premium/payments');
     assert.equal(allowed.status, 200);
     assert.deepEqual((await allowed.json()).items, []);
@@ -320,7 +324,7 @@ test('bot operators can page and filter the full Premium payment history', async
   }
 });
 
-test('delegated bot admin can manage server licenses but only bot owner can change global plan', async () => {
+test('only the bot owner can manage server licenses and the global plan', async () => {
   const harness = makeHarness();
   const app = await harness.appPromise;
   harness.setUser({ _id: USER_ID, username: 'bot-admin', role: 'BOT_ADMIN' });
@@ -340,6 +344,16 @@ test('delegated bot admin can manage server licenses but only bot owner can chan
     const settingsReadDenied = await fetch(app.baseUrl + '/api/premium/admin/settings');
     assert.equal(settingsReadDenied.status, 403);
 
+    const grantDenied = await fetch(app.baseUrl + '/api/premium/admin/guilds/' + GUILD_ID, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: true, until: null, note: 'manual test' })
+    });
+    assert.equal(grantDenied.status, 403);
+    const guildsDenied = await fetch(app.baseUrl + '/api/premium/admin/guilds');
+    assert.equal(guildsDenied.status, 403);
+
+    harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
     const grant = await fetch(app.baseUrl + '/api/premium/admin/guilds/' + GUILD_ID, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -436,7 +450,7 @@ test('a guild license applies to everyone in that guild, not to the payer on ano
   const harness = makeHarness();
   const app = await harness.appPromise;
   try {
-    harness.setUser({ _id: USER_ID, username: 'bot-admin', role: 'BOT_ADMIN' });
+    harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
     const grant = await fetch(app.baseUrl + '/api/premium/admin/guilds/' + GUILD_ID, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -520,6 +534,52 @@ test('A verified PayPal capture webhook activates Premium without a browser retu
     assert.equal(harness.payments[0].status, 'COMPLETED');
   } finally {
     delete process.env.PAYPAL_WEBHOOK_ID;
+    await stopApp(app.server);
+  }
+});
+
+test('A PayPal refund webhook revokes the Premium time bought by that payment', async () => {
+  const harness = makeHarness();
+  const app = await harness.appPromise;
+  try {
+    await fetch(app.baseUrl + '/api/premium/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guildId: GUILD_ID })
+    });
+    process.env.PAYPAL_WEBHOOK_ID = 'test-webhook-id';
+    const post = (body) =>
+      fetch(app.baseUrl + '/api/premium/paypal/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    await post({
+      event_type: 'PAYMENT.CAPTURE.COMPLETED',
+      resource: {
+        id: 'CAPTURE-123',
+        status: 'COMPLETED',
+        amount: { value: '10.00', currency_code: 'EUR' },
+        custom_id: USER_ID,
+        payer: { payer_id: 'PAYER-123', email_address: 'payer@example.com' },
+        supplementary_data: { related_ids: { order_id: 'ORDER-123456' } }
+      }
+    });
+    assert.equal(harness.getGuildConfig().premium.enabled, true);
+
+    const refund = await post({
+      event_type: 'PAYMENT.CAPTURE.REFUNDED',
+      resource: {
+        id: 'REFUND-1',
+        status: 'COMPLETED',
+        links: [{ rel: 'up', href: 'https://api.paypal.com/v2/payments/captures/CAPTURE-123' }]
+      }
+    });
+    assert.equal(refund.status, 200);
+    assert.equal((await refund.json()).revoked, true);
+    assert.equal(harness.payments[0].status, 'REFUNDED');
+    assert.equal(harness.getGuildConfig().premium.enabled, false);
+  } finally {
     await stopApp(app.server);
   }
 });

@@ -50,11 +50,6 @@
     return request;
   }
 
-  function isAdmin() {
-    var me = NS.state && NS.state.me;
-    return !!(me && (me.role === 'BOT_ADMIN' || me.role === 'BOT_OWNER'));
-  }
-
   function isBotOwner() {
     var me = NS.state && NS.state.me;
     return !!(me && me.role === 'BOT_OWNER');
@@ -234,7 +229,7 @@
 
   function renderAdminGuilds() {
     var list = byId('premiumGuildsList');
-    if (!list || !isAdmin()) return;
+    if (!list || !isBotOwner()) return;
     var query = String((byId('premiumAdminSearch') || {}).value || '')
       .trim()
       .toLowerCase();
@@ -371,7 +366,7 @@
 
   function renderAdminPayments() {
     var list = byId('premiumPaymentsList');
-    if (!list || !isAdmin()) return;
+    if (!list || !isBotOwner()) return;
     list.innerHTML = '';
     if (!adminPayments.length) {
       var empty = document.createElement('div');
@@ -419,7 +414,7 @@
   }
 
   async function loadAdminData() {
-    if (!isAdmin()) return;
+    if (!isBotOwner()) return;
     try {
       var statusFilter = byId('premiumPaymentsStatus');
       var paymentQuery = new URLSearchParams({

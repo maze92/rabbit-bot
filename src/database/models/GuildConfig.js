@@ -55,7 +55,8 @@ const guildConfigSchema = new Schema(
       purchasedByUserId: { type: String, default: null },
       // Legacy field for account licenses projected onto a guild before guild-only premium.
       accountUserId: { type: String, default: null },
-      testBypass: { type: Boolean, default: false }
+      testBypass: { type: Boolean, default: false },
+      lastReminder: { type: String, default: null }
     },
 
     // Configuração de voz temporária por guild

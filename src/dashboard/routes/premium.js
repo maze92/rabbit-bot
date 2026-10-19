@@ -8,7 +8,7 @@ const { normalizePremium, PREMIUM_MODULES } = require('../../systems/premium');
 const { invalidateGuildConfig } = require('../../systems/guildConfigService');
 const { createPayPalService } = require('../paypalService');
 const { formatUserTag } = require('../../services/guildService');
-const { isBotOperator, isBotOwner } = require('../botRoles');
+const { isBotOwner } = require('../botRoles');
 
 const PREMIUM_FIXED_AMOUNT = '10.00';
 const PREMIUM_FIXED_CURRENCY = 'EUR';
@@ -46,6 +46,21 @@ function getDashboardOrigin(req, config) {
     } catch {}
   }
   return null;
+}
+
+// PayPal events that undo a completed capture -> PremiumPayment status.
+const REVOKE_EVENTS = {
+  'PAYMENT.CAPTURE.REFUNDED': 'REFUNDED',
+  'PAYMENT.CAPTURE.REVERSED': 'REVERSED'
+};
+
+// REVERSED carries the capture itself; REFUNDED carries a refund linking ("up") to the capture.
+function getRevokedCaptureId(event) {
+  const resource = (event && event.resource) || {};
+  if (event.event_type === 'PAYMENT.CAPTURE.REVERSED') return resource.id || null;
+  const up = (resource.links || []).find((l) => l && l.rel === 'up' && /\/captures\//.test(String(l.href || '')));
+  if (!up) return null;
+  return String(up.href).split('/captures/')[1].split(/[/?#]/)[0] || null;
 }
 
 function getCaptureDetails(payload) {
@@ -183,13 +198,7 @@ function registerPremiumRoutes({
       ? rateLimit({ windowMs: 60_000, max: 5, keyPrefix: 'rl:premium:checkout:' })
       : (req, res, next) => next();
 
-  function requireBotAdmin(req, res, next) {
-    if (!isBotOperator(req.dashboardUser)) {
-      return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
-    }
-    return next();
-  }
-
+  // Premium management (plan, licenses, payments) is reserved for the bot owner.
   function requireBotOwner(req, res, next) {
     if (!isBotOwner(req.dashboardUser)) {
       return res.status(403).json({ ok: false, error: 'BOT_OWNER_REQUIRED' });
@@ -314,7 +323,7 @@ function registerPremiumRoutes({
     }
   });
 
-  app.get('/api/premium/admin/guilds', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  app.get('/api/premium/admin/guilds', requireDashboardAuth, requireBotOwner, async (req, res) => {
     try {
       if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
       const guildConfigs = await GuildConfig.find({}).sort({ updatedAt: -1 }).limit(500).lean();
@@ -397,7 +406,7 @@ function registerPremiumRoutes({
     }
   });
 
-  app.patch('/api/premium/admin/guilds/:guildId', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  app.patch('/api/premium/admin/guilds/:guildId', requireDashboardAuth, requireBotOwner, async (req, res) => {
     try {
       if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
       const guildId = sanitizeId(req.params.guildId || '');
@@ -441,6 +450,28 @@ function registerPremiumRoutes({
     url.searchParams.set('premiumPayment', status);
     if (guildId) url.searchParams.set('guildId', String(guildId));
     return res.redirect(url.toString());
+  }
+
+  async function revokePayment(payment, status) {
+    const revoked = await PremiumPayment.findOneAndUpdate(
+      { _id: payment._id, status: 'COMPLETED' },
+      { $set: { status } },
+      { new: true }
+    ).lean();
+    if (!revoked || !GuildConfig) return Boolean(revoked);
+
+    const cfg = await GuildConfig.findOne({ guildId: payment.guildId }).select('premium').lean();
+    const premium = cfg && cfg.premium;
+    // Only shorten PayPal-time licenses; manual/permanent grants are left to the owner.
+    if (premium && premium.enabled && premium.until && premium.note === 'PayPal') {
+      const days = Number(payment.durationDays) || 0;
+      const newUntil = new Date(new Date(premium.until).getTime() - days * 24 * 60 * 60 * 1000);
+      const $set = { 'premium.until': newUntil, 'premium.note': `PayPal ${status}` };
+      if (newUntil.getTime() <= Date.now()) $set['premium.enabled'] = false;
+      await GuildConfig.findOneAndUpdate({ guildId: payment.guildId }, { $set }, { returnDocument: 'after' }).lean();
+      invalidateGuildConfig(payment.guildId);
+    }
+    return true;
   }
 
   async function completePayment(payment, payload) {
@@ -627,6 +658,13 @@ function registerPremiumRoutes({
       if (!(await paypal.verifyWebhook({ headers: req.headers, webhookId, event }))) {
         return res.status(400).json({ ok: false, error: 'PAYPAL_WEBHOOK_INVALID' });
       }
+      if (event && REVOKE_EVENTS[event.event_type]) {
+        const captureId = getRevokedCaptureId(event);
+        const paid = captureId ? await PremiumPayment.findOne({ paypalCaptureId: captureId }).lean() : null;
+        if (!paid) return res.json({ ok: true, ignored: true });
+        const revoked = await revokePayment(paid, REVOKE_EVENTS[event.event_type]);
+        return res.json({ ok: true, revoked });
+      }
       if (!event || event.event_type !== 'PAYMENT.CAPTURE.COMPLETED') {
         return res.json({ ok: true, ignored: true });
       }
@@ -644,11 +682,20 @@ function registerPremiumRoutes({
     }
   });
 
-  app.get('/api/premium/payments', requireDashboardAuth, requireBotAdmin, async (req, res) => {
+  app.get('/api/premium/payments', requireDashboardAuth, requireBotOwner, async (req, res) => {
     try {
       if (!PremiumPayment) return res.status(503).json({ ok: false, error: 'PREMIUM_PAYMENT_MODEL_MISSING' });
       const requestedStatus = String(req.query.status || 'ALL').toUpperCase();
-      const validStatuses = ['ALL', 'PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'FAILED'];
+      const validStatuses = [
+        'ALL',
+        'PENDING',
+        'PROCESSING',
+        'COMPLETED',
+        'CANCELLED',
+        'FAILED',
+        'REFUNDED',
+        'REVERSED'
+      ];
       if (!validStatuses.includes(requestedStatus)) {
         return res.status(400).json({ ok: false, error: 'PREMIUM_PAYMENT_STATUS_INVALID' });
       }

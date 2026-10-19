@@ -47,7 +47,6 @@ function registerTicketsRoutes(opts) {
       const u = req && req.dashboardUser;
       if (!u || isBotOperator(u)) return true;
       const list = Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.filter(Boolean).map(String) : [];
-      if (!list.length) return true;
       return list.includes(String(guildId));
     } catch {
       return false;

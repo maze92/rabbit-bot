@@ -10,6 +10,7 @@ const status = require('./systems/status');
 const config = require('./config/defaultConfig');
 
 const mongoose = require('./database/connect');
+const { syncTtlIndexes } = require('./database/syncTtlIndexes');
 const client = require('./bot');
 
 // Attach core event handlers
@@ -45,6 +46,7 @@ const startGiveaways = require('./systems/giveaways');
 const { startServerStats } = require('./systems/serverStats');
 const { startPresenceTracker } = require('./systems/presenceTracker');
 const { startVerificationSweep } = require('./systems/verification');
+const { startPremiumReminders } = require('./systems/premiumReminders');
 
 // Ensure critical MongoDB indexes (autoIndex is disabled in production).
 async function ensureMongoIndexes() {
@@ -138,6 +140,11 @@ async function ensureMongoIndexes() {
 
     for (const m of models) {
       try {
+        await syncTtlIndexes(m);
+      } catch (e) {
+        console.warn(`[Mongo] Failed to sync TTL indexes for ${m?.modelName || 'unknown'}:`, e?.message || e);
+      }
+      try {
         if (typeof m.ensureIndexes === 'function') {
           await m.ensureIndexes();
         }
@@ -204,6 +211,7 @@ async function handleClientReady() {
     // Start verification sweep (expulsa membros não verificados)
     try {
       startVerificationSweep(client);
+      startPremiumReminders(client);
       console.log('🛡️ Verification sweep started.');
     } catch (err) {
       console.error('[Startup] Failed to start verification sweep:', err);

@@ -111,7 +111,7 @@ function withUser(user) {
   };
 }
 
-test('GET/PATCH /api/config exigem bot operator (config global)', async () => {
+test('GET/PATCH /api/config exigem o bot owner (config global)', async () => {
   const guildAdmin = { role: 'USER', permissions: { canEditConfig: true }, selectedGuildId: '111111111111111111' };
   const app = await startApp(registerCoreRoutes, buildCtx({ requireDashboardAuth: withUser(guildAdmin) }));
   try {
@@ -127,12 +127,20 @@ test('GET/PATCH /api/config exigem bot operator (config global)', async () => {
     await stopApp(app.server);
   }
 
-  const op = await startApp(registerCoreRoutes, buildCtx({ requireDashboardAuth: withUser({ role: 'BOT_ADMIN' }) }));
+  const admin = await startApp(registerCoreRoutes, buildCtx({ requireDashboardAuth: withUser({ role: 'BOT_ADMIN' }) }));
   try {
-    const res = await fetch(op.baseUrl + '/api/config');
+    const res = await fetch(admin.baseUrl + '/api/config');
+    assert.equal(res.status, 403);
+  } finally {
+    await stopApp(admin.server);
+  }
+
+  const owner = await startApp(registerCoreRoutes, buildCtx({ requireDashboardAuth: withUser({ role: 'BOT_OWNER' }) }));
+  try {
+    const res = await fetch(owner.baseUrl + '/api/config');
     assert.equal(res.status, 200);
   } finally {
-    await stopApp(op.server);
+    await stopApp(owner.server);
   }
 });
 
