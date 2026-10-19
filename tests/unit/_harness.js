@@ -21,7 +21,9 @@ function ok(cond, msg) {
 
 function eq(actual, expected, msg) {
   if (actual !== expected) {
-    throw new Error((msg ? msg + ': ' : '') + 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+    throw new Error(
+      (msg ? msg + ': ' : '') + 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual)
+    );
   }
 }
 

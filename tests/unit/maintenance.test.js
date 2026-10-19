@@ -3,8 +3,7 @@
 // cutoff e filtro de limpeza). Não toca na base de dados.
 
 const { test, ok, eq, deepEq } = require('./_harness');
-const { resolveMaintenanceConfig, computeCutoff, buildPruneFilter } =
-  require('../../src/systems/maintenance');
+const { resolveMaintenanceConfig, computeCutoff, buildPruneFilter } = require('../../src/systems/maintenance');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;

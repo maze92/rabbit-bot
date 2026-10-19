@@ -51,11 +51,7 @@ function getCategoryChildren(guild, categoryId) {
 
 function getManagedChannelIds(cfg) {
   if (!cfg || typeof cfg !== 'object') return new Set();
-  return new Set([
-    cfg.memberChannelId,
-    cfg.joinsChannelId,
-    cfg.leavesChannelId
-  ].filter(Boolean));
+  return new Set([cfg.memberChannelId, cfg.joinsChannelId, cfg.leavesChannelId].filter(Boolean));
 }
 
 async function resolveChannel(guild, channelId) {
@@ -82,19 +78,25 @@ async function ensureCategory(guild, categoryId, lang) {
   let category = await resolveChannel(guild, categoryId);
 
   if (!category) {
-    category = guild.channels.cache.find((ch) =>
-      ch &&
-      ch.type === ChannelType.GuildCategory &&
-      String(ch.name || '').trim().toLowerCase() === desired
-    ) || null;
+    category =
+      guild.channels.cache.find(
+        (ch) =>
+          ch &&
+          ch.type === ChannelType.GuildCategory &&
+          String(ch.name || '')
+            .trim()
+            .toLowerCase() === desired
+      ) || null;
   }
 
   if (!category) {
-    category = await guild.channels.create({
-      name: desired,
-      type: ChannelType.GuildCategory,
-      position: 0
-    }).catch(() => null);
+    category = await guild.channels
+      .create({
+        name: desired,
+        type: ChannelType.GuildCategory,
+        position: 0
+      })
+      .catch(() => null);
   }
 
   if (!category) return null;
@@ -115,26 +117,29 @@ async function ensureChannel(guild, channelId, name, position, parentId) {
   let channel = await resolveChannel(guild, channelId);
 
   if (!channel) {
-    channel = await guild.channels.create({
-      name: desired,
-      type: ChannelType.GuildVoice,
-      position,
-      parent: parentId || null,
-      permissionOverwrites: [
-        {
-          id: guild.roles.everyone.id,
-          deny: LOCKED_FLAGS
-        }
-      ]
-    }).catch(() => null);
+    channel = await guild.channels
+      .create({
+        name: desired,
+        type: ChannelType.GuildVoice,
+        position,
+        parent: parentId || null,
+        permissionOverwrites: [
+          {
+            id: guild.roles.everyone.id,
+            deny: LOCKED_FLAGS
+          }
+        ]
+      })
+      .catch(() => null);
     return channel;
   }
 
   // Só escreve se faltar alguma permissão por negar (evita chamadas à API
   // desnecessárias a cada ciclo de atualização).
-  const overwrite = channel.permissionOverwrites && channel.permissionOverwrites.cache
-    ? channel.permissionOverwrites.cache.get(guild.roles.everyone.id)
-    : null;
+  const overwrite =
+    channel.permissionOverwrites && channel.permissionOverwrites.cache
+      ? channel.permissionOverwrites.cache.get(guild.roles.everyone.id)
+      : null;
   const missing = LOCKED_FLAGS.filter((flag) => !overwrite || !overwrite.deny.has(flag));
   if (missing.length) await applyLock(channel, guild);
 
@@ -177,15 +182,30 @@ async function refreshGuild(client, guild, opts) {
   const { joins, leaves } = await getRecentCounts(guild.id, 7);
 
   const memberName = applyTemplate(
-    await getFeatureText({ guildId: guild.id, feature: 'serverStats', field: 'memberTemplate', value: cfg.memberTemplate }),
+    await getFeatureText({
+      guildId: guild.id,
+      feature: 'serverStats',
+      field: 'memberTemplate',
+      value: cfg.memberTemplate
+    }),
     { count: members }
   );
   const joinsName = applyTemplate(
-    await getFeatureText({ guildId: guild.id, feature: 'serverStats', field: 'joinsTemplate', value: cfg.joinsTemplate }),
+    await getFeatureText({
+      guildId: guild.id,
+      feature: 'serverStats',
+      field: 'joinsTemplate',
+      value: cfg.joinsTemplate
+    }),
     { count: joins }
   );
   const leavesName = applyTemplate(
-    await getFeatureText({ guildId: guild.id, feature: 'serverStats', field: 'leavesTemplate', value: cfg.leavesTemplate }),
+    await getFeatureText({
+      guildId: guild.id,
+      feature: 'serverStats',
+      field: 'leavesTemplate',
+      value: cfg.leavesTemplate
+    }),
     { count: leaves }
   );
 
@@ -195,7 +215,11 @@ async function refreshGuild(client, guild, opts) {
   const chMembers = await ensureChannel(guild, cfg.memberChannelId, memberName, 0, categoryId);
   const chJoins = await ensureChannel(guild, cfg.joinsChannelId, joinsName, 1, categoryId);
   const chLeaves = await ensureChannel(guild, cfg.leavesChannelId, leavesName, 2, categoryId);
-  await enforceCategoryIsolation(guild, category, new Set([chMembers && chMembers.id, chJoins && chJoins.id, chLeaves && chLeaves.id].filter(Boolean)));
+  await enforceCategoryIsolation(
+    guild,
+    category,
+    new Set([chMembers && chMembers.id, chJoins && chJoins.id, chLeaves && chLeaves.id].filter(Boolean))
+  );
 
   const patch = {};
   if (categoryId && categoryId !== cfg.categoryId) patch['features.serverStats.categoryId'] = categoryId;
@@ -283,7 +307,8 @@ async function removeGuild(guild, cfg) {
 
   for (const id of ids) {
     const channel = await resolveChannel(guild, id);
-    const hasChildren = channel && channel.type === ChannelType.GuildCategory && getCategoryChildren(guild, channel.id).length > 0;
+    const hasChildren =
+      channel && channel.type === ChannelType.GuildCategory && getCategoryChildren(guild, channel.id).length > 0;
     if (channel && typeof channel.delete === 'function' && !hasChildren) {
       await channel.delete().catch(() => null);
     }

@@ -210,10 +210,7 @@ test('GET /api/gamenews-status expõe lastError e sentHistory', async () => {
     }
   ]);
 
-  const app = await startApp(
-    registerGameNewsRoutes,
-    buildCtx({ GameNewsFeed, GameNewsModel })
-  );
+  const app = await startApp(registerGameNewsRoutes, buildCtx({ GameNewsFeed, GameNewsModel }));
   try {
     const res = await fetch(app.baseUrl + '/api/gamenews-status?guildId=' + GUILD);
     assert.equal(res.status, 200);

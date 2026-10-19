@@ -16,27 +16,29 @@ function registerTempVoiceRoutes({
   getClient,
   requirePremium
 }) {
-  const guardGuildQuery = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildQuery =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'query', key: 'guildId' })
+      : (req, res, next) => next();
 
-  const guardGuildBody = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'body', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildBody =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'body', key: 'guildId' })
+      : (req, res, next) => next();
 
   // Módulo premium: sem premium ativo a configuração é recusada.
-  const premiumGuard = typeof requirePremium === 'function'
-    ? requirePremium({ from: 'body', key: 'guildId' })
-    : (req, res, next) => next();
+  const premiumGuard =
+    typeof requirePremium === 'function'
+      ? requirePremium({ from: 'body', key: 'guildId' })
+      : (req, res, next) => next();
 
-  const canViewConfig = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
-    : (req, res, next) => next();
+  const canViewConfig =
+    typeof requirePerm === 'function'
+      ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
+      : (req, res, next) => next();
 
-  const canEditConfig = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canEditConfig'] })
-    : (req, res, next) => next();
-
+  const canEditConfig =
+    typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canEditConfig'] }) : (req, res, next) => next();
 
   app.get('/api/temp-voice/config', requireDashboardAuth, canViewConfig, guardGuildQuery, async (req, res) => {
     try {
@@ -58,7 +60,7 @@ function registerTempVoiceRoutes({
           baseChannelIds: Array.isArray(tv.baseChannelIds) ? tv.baseChannelIds : [],
           categoryId: tv.categoryId || null,
           deleteDelaySeconds: typeof tv.deleteDelaySeconds === 'number' ? tv.deleteDelaySeconds : 10,
-          maxUsersPerRoom: (typeof tv.maxUsersPerRoom === 'number' && tv.maxUsersPerRoom > 0) ? tv.maxUsersPerRoom : null
+          maxUsersPerRoom: typeof tv.maxUsersPerRoom === 'number' && tv.maxUsersPerRoom > 0 ? tv.maxUsersPerRoom : null
         }
       });
     } catch (err) {
@@ -67,66 +69,73 @@ function registerTempVoiceRoutes({
     }
   });
 
-  app.post('/api/temp-voice/config', requireDashboardAuth, canEditConfig, guardGuildBody, premiumGuard, async (req, res) => {
-    try {
-      const guildId = sanitizeId(req.body.guildId || '');
-      if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
-      if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
+  app.post(
+    '/api/temp-voice/config',
+    requireDashboardAuth,
+    canEditConfig,
+    guardGuildBody,
+    premiumGuard,
+    async (req, res) => {
+      try {
+        const guildId = sanitizeId(req.body.guildId || '');
+        if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
+        if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
 
-      const u = req.dashboardUser;
-      const perms = (u && u.permissions) || {};
-      const isAdmin = isBotOperator(u);
-      if (!isAdmin && !perms.canEditConfig) {
-        return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
-      }
-
-      const enabled = req.body.enabled === true || req.body.enabled === 'true';
-      let baseChannelIds = req.body.baseChannelIds || [];
-      if (typeof baseChannelIds === 'string') {
-        baseChannelIds = baseChannelIds
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
-      }
-      if (!Array.isArray(baseChannelIds)) baseChannelIds = [];
-
-      const categoryId = sanitizeText(req.body.categoryId || '', { maxLen: 32, stripHtml: true }) || null;
-      let deleteDelaySeconds = parseInt(req.body.deleteDelaySeconds, 10);
-      if (!Number.isFinite(deleteDelaySeconds) || deleteDelaySeconds < 2) deleteDelaySeconds = 10;
-
-      let maxUsersPerRoom = req.body.maxUsersPerRoom;
-      if (maxUsersPerRoom === '' || maxUsersPerRoom === null || maxUsersPerRoom === undefined) {
-        maxUsersPerRoom = null;
-      } else {
-        maxUsersPerRoom = parseInt(String(maxUsersPerRoom), 10);
-        if (!Number.isFinite(maxUsersPerRoom) || maxUsersPerRoom < 1) maxUsersPerRoom = null;
-      }
-
-      const update = {
-        tempVoice: {
-          enabled,
-          baseChannelIds,
-          categoryId,
-          deleteDelaySeconds,
-          maxUsersPerRoom
+        const u = req.dashboardUser;
+        const perms = (u && u.permissions) || {};
+        const isAdmin = isBotOperator(u);
+        if (!isAdmin && !perms.canEditConfig) {
+          return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
         }
-      };
 
-      await GuildConfig.findOneAndUpdate(
-        { guildId },
-        { $set: update },
-        { returnDocument: 'after', upsert: true }
-      ).lean();
+        const enabled = req.body.enabled === true || req.body.enabled === 'true';
+        let baseChannelIds = req.body.baseChannelIds || [];
+        if (typeof baseChannelIds === 'string') {
+          baseChannelIds = baseChannelIds
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+        if (!Array.isArray(baseChannelIds)) baseChannelIds = [];
 
-      // Evita servir config obsoleta (cache de 1 min do guildConfigService).
-      invalidateGuildConfig(guildId);
+        const categoryId = sanitizeText(req.body.categoryId || '', { maxLen: 32, stripHtml: true }) || null;
+        let deleteDelaySeconds = parseInt(req.body.deleteDelaySeconds, 10);
+        if (!Number.isFinite(deleteDelaySeconds) || deleteDelaySeconds < 2) deleteDelaySeconds = 10;
 
-      return res.json({ ok: true, config: update.tempVoice });
-    } catch (err) {
-      console.error('[Dashboard] /api/temp-voice/config POST error:', err);
-      return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
+        let maxUsersPerRoom = req.body.maxUsersPerRoom;
+        if (maxUsersPerRoom === '' || maxUsersPerRoom === null || maxUsersPerRoom === undefined) {
+          maxUsersPerRoom = null;
+        } else {
+          maxUsersPerRoom = parseInt(String(maxUsersPerRoom), 10);
+          if (!Number.isFinite(maxUsersPerRoom) || maxUsersPerRoom < 1) maxUsersPerRoom = null;
+        }
+
+        const update = {
+          tempVoice: {
+            enabled,
+            baseChannelIds,
+            categoryId,
+            deleteDelaySeconds,
+            maxUsersPerRoom
+          }
+        };
+
+        await GuildConfig.findOneAndUpdate(
+          { guildId },
+          { $set: update },
+          { returnDocument: 'after', upsert: true }
+        ).lean();
+
+        // Evita servir config obsoleta (cache de 1 min do guildConfigService).
+        invalidateGuildConfig(guildId);
+
+        return res.json({ ok: true, config: update.tempVoice });
+      } catch (err) {
+        console.error('[Dashboard] /api/temp-voice/config POST error:', err);
+        return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
+      }
     }
-  });
+  );
 
   app.get('/api/temp-voice/active', requireDashboardAuth, canViewConfig, guardGuildQuery, async (req, res) => {
     try {

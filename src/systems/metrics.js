@@ -165,21 +165,31 @@ function formatPrometheus(extra = {}) {
   lines.push('# HELP rabbit_http_requests_total Pedidos HTTP processados por rota.');
   lines.push('# TYPE rabbit_http_requests_total counter');
   for (const route of snapshot.routes) {
-    lines.push(`rabbit_http_requests_total${prometheusLabels({ method: route.method, route: route.route })} ${route.count}`);
+    lines.push(
+      `rabbit_http_requests_total${prometheusLabels({ method: route.method, route: route.route })} ${route.count}`
+    );
   }
 
   lines.push('# HELP rabbit_http_errors_total Respostas 5xx por rota.');
   lines.push('# TYPE rabbit_http_errors_total counter');
   for (const route of snapshot.routes) {
-    lines.push(`rabbit_http_errors_total${prometheusLabels({ method: route.method, route: route.route })} ${route.errors}`);
+    lines.push(
+      `rabbit_http_errors_total${prometheusLabels({ method: route.method, route: route.route })} ${route.errors}`
+    );
   }
 
   lines.push('# HELP rabbit_http_request_duration_ms Latência por rota em milissegundos.');
   lines.push('# TYPE rabbit_http_request_duration_ms gauge');
   for (const route of snapshot.routes) {
-    lines.push(`rabbit_http_request_duration_ms${prometheusLabels({ method: route.method, route: route.route, quantile: 'avg' })} ${route.avgMs}`);
-    lines.push(`rabbit_http_request_duration_ms${prometheusLabels({ method: route.method, route: route.route, quantile: 'p95' })} ${route.p95Ms}`);
-    lines.push(`rabbit_http_request_duration_ms${prometheusLabels({ method: route.method, route: route.route, quantile: 'max' })} ${route.maxMs}`);
+    lines.push(
+      `rabbit_http_request_duration_ms${prometheusLabels({ method: route.method, route: route.route, quantile: 'avg' })} ${route.avgMs}`
+    );
+    lines.push(
+      `rabbit_http_request_duration_ms${prometheusLabels({ method: route.method, route: route.route, quantile: 'p95' })} ${route.p95Ms}`
+    );
+    lines.push(
+      `rabbit_http_request_duration_ms${prometheusLabels({ method: route.method, route: route.route, quantile: 'max' })} ${route.maxMs}`
+    );
   }
 
   const counters = (extra && extra.counters) || {};

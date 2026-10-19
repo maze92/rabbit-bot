@@ -12,11 +12,7 @@ const logger = require('./logger');
 const warningsService = require('./warningsService');
 const { tContext } = require('./i18n');
 const { fetchMember } = require('../services/discordFetchCache');
-const {
-  getTrustConfig,
-  getEffectiveMaxMessages,
-  getEffectiveMuteDuration
-} = require('../utils/trust');
+const { getTrustConfig, getEffectiveMaxMessages, getEffectiveMuteDuration } = require('../utils/trust');
 const { incrementAntiSpamActions } = require('./status');
 
 // In-memory tracking: guildId+userId -> state
@@ -89,11 +85,7 @@ function levenshtein(a, b) {
     for (let j = 1; j <= n; j++) {
       const cb = b.charCodeAt(j - 1);
       const cost = ca === cb ? 0 : 1;
-      curr[j] = Math.min(
-        prev[j] + 1,
-        curr[j - 1] + 1,
-        prev[j - 1] + cost
-      );
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
     }
     for (let j = 0; j <= n; j++) {
       prev[j] = curr[j];
@@ -286,10 +278,7 @@ async function antiSpam(message, client) {
 
     const me = guild.members.me;
     const channelPerms = message.channel?.permissionsFor?.(me);
-    const canTimeout =
-      !!me &&
-      !!channelPerms &&
-      channelPerms.has(PermissionsBitField.Flags.ModerateMembers);
+    const canTimeout = !!me && !!channelPerms && channelPerms.has(PermissionsBitField.Flags.ModerateMembers);
 
     const publicNotify = baseCfg.sendMessage !== false;
 
@@ -321,12 +310,11 @@ async function antiSpam(message, client) {
       if (publicNotify) {
         try {
           const warnMsg =
-            await tContext(message, 'antispam.warnPublic', {
+            (await tContext(message, 'antispam.warnPublic', {
               userMention: `${message.author}`,
               warnings: dbUser?.warnings ?? 'N/A',
               maxWarnings: effectiveMaxMsgs
-            }) ||
-            `${message.author} recebeu um aviso automático por spam.`;
+            })) || `${message.author} recebeu um aviso automático por spam.`;
           await message.channel.send(warnMsg);
         } catch {
           // evitar crash do bot
@@ -339,12 +327,12 @@ async function antiSpam(message, client) {
           'Anti-spam Warn',
           message.author,
           client.user,
-          await tContext(message, 'log.actions.antispamWarn', {
+          (await tContext(message, 'log.actions.antispamWarn', {
             threshold: effectiveMaxMsgs,
             intervalMs,
             similarityPct: Math.round(similarityThreshold * 100),
             trustAfter: trustCfg.enabled ? `${trustValue}/${trustCfg.max}` : 'N/A'
-          }) ||
+          })) ||
             `User exceeded spam threshold (${similarCount}/${effectiveMaxMsgs}) in #${message.channel?.name || 'unknown'}.`,
           guild
         );
@@ -366,10 +354,7 @@ async function antiSpam(message, client) {
     }
 
     try {
-      await member.timeout(
-        muteMs,
-        `${baseReason} (timeout: ${Math.round(muteMs / 1000)}s)`
-      );
+      await member.timeout(muteMs, `${baseReason} (timeout: ${Math.round(muteMs / 1000)}s)`);
     } catch (e) {
       console.error('[antiSpam] Failed to apply timeout:', e);
     }
@@ -399,11 +384,10 @@ async function antiSpam(message, client) {
       try {
         const mins = Math.max(1, Math.round(muteMs / 60000));
         const muteMsg =
-          await tContext(message, 'antispam.mutePublic', {
+          (await tContext(message, 'antispam.mutePublic', {
             userMention: `${message.author}`,
             minutes: mins
-          }) ||
-          `${message.author} foi silenciado automaticamente por spam durante ${mins} minutos.`;
+          })) || `${message.author} foi silenciado automaticamente por spam durante ${mins} minutos.`;
         await message.channel.send(muteMsg);
       } catch {
         // swallow
@@ -416,21 +400,18 @@ async function antiSpam(message, client) {
         'Anti-spam Mute',
         message.author,
         client.user,
-        await tContext(message, 'log.actions.antispamMute', {
+        (await tContext(message, 'log.actions.antispamMute', {
           durationMinutes: Math.max(1, Math.round(muteMs / 60000)),
           threshold: effectiveMaxMsgs,
           intervalMs,
           similarityPct: Math.round(similarityThreshold * 100),
-          trustAfter: dbUserAfterMute && trustCfg.enabled
-            ? `${dbUserAfterMute.trust}/${trustCfg.max}`
-            : trustCfg.enabled
-            ? `${trustValue}/${trustCfg.max}`
-            : 'N/A'
-        }) ||
-          `User muted automatically for spam for ${Math.max(
-            1,
-            Math.round(muteMs / 60000)
-          )} minutes.`,
+          trustAfter:
+            dbUserAfterMute && trustCfg.enabled
+              ? `${dbUserAfterMute.trust}/${trustCfg.max}`
+              : trustCfg.enabled
+                ? `${trustValue}/${trustCfg.max}`
+                : 'N/A'
+        })) || `User muted automatically for spam for ${Math.max(1, Math.round(muteMs / 60000))} minutes.`,
         guild
       );
     } catch (e) {

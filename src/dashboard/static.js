@@ -40,32 +40,34 @@ function registerStaticRoutes({ app, express, publicDir, indexPath, assetVersion
   // Some platforms/frontends may hit /index.html directly
   app.get('/index.html', (req, res) => sendIndexHtml(res));
 
-  app.use(express.static(publicDir, {
-    etag: true,
-    // IMPORTANT: During active development / rapid deploys, aggressive maxAge caching breaks updates
-    // (browsers keep stale JS and you end up with phantom syntax errors).
-    maxAge: 0,
-    setHeaders(res, filePath) {
-      if (!filePath) return;
+  app.use(
+    express.static(publicDir, {
+      etag: true,
+      // IMPORTANT: During active development / rapid deploys, aggressive maxAge caching breaks updates
+      // (browsers keep stale JS and you end up with phantom syntax errors).
+      maxAge: 0,
+      setHeaders(res, filePath) {
+        if (!filePath) return;
 
-      // Never cache the HTML shell
-      if (filePath.endsWith('index.html')) {
-        res.setHeader('Cache-Control', 'no-store');
-        return;
+        // Never cache the HTML shell
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-store');
+          return;
+        }
+
+        // Never cache dashboard JS/CSS to avoid stale client bugs after deploy
+        // Normalize Windows path separators just in case.
+        const fp = String(filePath).replace(/\\/g, '/');
+        if (/\/js\/.*\.js$/.test(fp) || /\/css\/.*\.css$/.test(fp)) {
+          res.setHeader('Cache-Control', 'no-store');
+          return;
+        }
+
+        // Default: allow revalidation
+        res.setHeader('Cache-Control', 'no-cache');
       }
-
-      // Never cache dashboard JS/CSS to avoid stale client bugs after deploy
-      // Normalize Windows path separators just in case.
-      const fp = String(filePath).replace(/\\/g, '/');
-      if (/\/js\/.*\.js$/.test(fp) || /\/css\/.*\.css$/.test(fp)) {
-        res.setHeader('Cache-Control', 'no-store');
-        return;
-      }
-
-      // Default: allow revalidation
-      res.setHeader('Cache-Control', 'no-cache');
-    }
-  }));
+    })
+  );
 
   return { sendIndexHtml };
 }

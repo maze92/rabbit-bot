@@ -61,8 +61,7 @@ module.exports = {
 
     clear: {
       noPerm: '❌ I do not have permission to manage messages in this channel.',
-      tooOldOrNoPerm:
-        '⚠️ I could not delete messages. They may be too old (14+ days) or I lack permissions.',
+      tooOldOrNoPerm: '⚠️ I could not delete messages. They may be too old (14+ days) or I lack permissions.',
       success: ({ count }) => `🧹 Cleared **${count}** messages.`
     },
 
@@ -153,8 +152,7 @@ Warnings: **${warnings}/${maxWarnings}**`,
           `Reason: **${reason}**\nWarnings: **${warnings}/${maxWarnings}**\nTrust: **${trust}**`,
         manualMute: ({ duration, reason, trust }) =>
           `Duration: **${duration}**\nReason: **${reason}**\nTrust: **${trust}**`,
-        manualUnmute: ({ warnings, trust }) =>
-          `User unmuted manually.\nWarnings: **${warnings}**\nTrust: **${trust}**`,
+        manualUnmute: ({ warnings, trust }) => `User unmuted manually.\nWarnings: **${warnings}**\nTrust: **${trust}**`,
         clear: ({ count, channelId }) =>
           `Cleared **${count}** messages in <#${channelId}> (channelId: \`${channelId}\`)`,
         automodWarn: ({ word, warnings, maxWarnings, trust, deleted }) =>
@@ -231,16 +229,17 @@ Warnings: **${warnings}/${maxWarnings}**`,
       panelFooter: 'Use this channel only for support-related requests.',
       alreadyOpen: 'You already have an open ticket: <#{channelId}>',
       welcomeTitle: '🎫 Support ticket',
-      welcomeDescription: ({ user, closeEmoji }) => [
-        `Hello ${user}, thanks for reaching out to the support team.`,
-        '',
-        '📌 **Before you start:**',
-        '• Explain your problem or request clearly;',
-        '• If possible, include screenshots, IDs or examples;',
-        '• Avoid sharing sensitive personal data in text or images.',
-        '',
-        `🔒 **To close this ticket**, react to this message with ${closeEmoji}.`
-      ].join('\n'),
+      welcomeDescription: ({ user, closeEmoji }) =>
+        [
+          `Hello ${user}, thanks for reaching out to the support team.`,
+          '',
+          '📌 **Before you start:**',
+          '• Explain your problem or request clearly;',
+          '• If possible, include screenshots, IDs or examples;',
+          '• Avoid sharing sensitive personal data in text or images.',
+          '',
+          `🔒 **To close this ticket**, react to this message with ${closeEmoji}.`
+        ].join('\n'),
       ticketNumber: 'Ticket number',
       openedBy: 'Opened by',
       cannotClose: '{user}, you do not have permission to close this ticket.',
@@ -299,7 +298,8 @@ Warnings: **${warnings}/${maxWarnings}**`,
     warn: {
       cannotWarnSelf: '❌ Não te podes avisar a ti próprio.',
       cannotWarnBot: '❌ Não podes avisar o bot.',
-      roleHierarchyBot: '❌ Não consigo avisar este utilizador por hierarquia de cargos (o meu cargo não é suficientemente alto).',
+      roleHierarchyBot:
+        '❌ Não consigo avisar este utilizador por hierarquia de cargos (o meu cargo não é suficientemente alto).',
       roleHierarchyUser: '❌ Não podes avisar um utilizador com cargo igual ou superior ao teu.',
       cannotWarnAdmin: '❌ Não podes avisar um Administrador.',
       channelConfirm: ({ userMention, warnings, maxWarnings, reason }) =>
@@ -336,8 +336,7 @@ Warnings: **${warnings}/${maxWarnings}**`,
 
     clear: {
       noPerm: '❌ Não tenho permissão para gerir mensagens neste canal.',
-      tooOldOrNoPerm:
-        '⚠️ Não consegui apagar as mensagens. Podem ser antigas (14+ dias) ou posso não ter permissões.',
+      tooOldOrNoPerm: '⚠️ Não consegui apagar as mensagens. Podem ser antigas (14+ dias) ou posso não ter permissões.',
       success: ({ count }) => `🧹 Limpei **${count}** mensagens.`
     },
 
@@ -506,16 +505,17 @@ Avisos: **${warnings}/${maxWarnings}**`,
       panelFooter: 'Utiliza este canal apenas para pedidos relacionados com suporte.',
       alreadyOpen: 'Já existe um ticket aberto para ti: <#{channelId}>',
       welcomeTitle: '🎫 Ticket de suporte',
-      welcomeDescription: ({ user, closeEmoji }) => [
-        `Olá ${user}, obrigado por entrares em contacto com a equipa de suporte.`,
-        '',
-        '📌 **Antes de começares:**',
-        '• Explica de forma clara o teu problema ou pedido;',
-        '• Sempre que possível, inclui prints, IDs ou exemplos;',
-        '• Evita partilhar dados pessoais sensíveis em texto ou imagem.',
-        '',
-        `🔒 **Para encerrar este ticket**, reage a esta mensagem com ${closeEmoji}.`
-      ].join('\n'),
+      welcomeDescription: ({ user, closeEmoji }) =>
+        [
+          `Olá ${user}, obrigado por entrares em contacto com a equipa de suporte.`,
+          '',
+          '📌 **Antes de começares:**',
+          '• Explica de forma clara o teu problema ou pedido;',
+          '• Sempre que possível, inclui prints, IDs ou exemplos;',
+          '• Evita partilhar dados pessoais sensíveis em texto ou imagem.',
+          '',
+          `🔒 **Para encerrar este ticket**, reage a esta mensagem com ${closeEmoji}.`
+        ].join('\n'),
       ticketNumber: 'Número do ticket',
       openedBy: 'Aberto por',
       cannotClose: '{user}, não tens permissão para fechar este ticket.',

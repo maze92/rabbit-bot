@@ -113,7 +113,7 @@
     const listEl = q('auditList');
     if (!listEl) return;
 
-    const page = append ? (auditPage + 1) : 1;
+    const page = append ? auditPage + 1 : 1;
 
     auditLoading = true;
     if (!append) listEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
@@ -126,7 +126,7 @@
       const total = typeof res.total === 'number' ? res.total : items.length;
 
       const limitEl = q('auditLimit');
-      const limit = limitEl && limitEl.value ? (parseInt(limitEl.value, 10) || 25) : 25;
+      const limit = limitEl && limitEl.value ? parseInt(limitEl.value, 10) || 25 : 25;
 
       if (!append) {
         listEl.innerHTML = '';
@@ -158,7 +158,7 @@
           : '';
       }
 
-      setLoadMore((page * limit) < total);
+      setLoadMore(page * limit < total);
     } catch (err) {
       console.error('Failed to load audit', err);
       if (!append) {

@@ -95,7 +95,7 @@ module.exports = async function autoModeration(message, client) {
     }
 
     const baseMaxWarnings = config.maxWarnings ?? 3;
-    const baseMuteDuration = config.muteDuration ?? (10 * 60 * 1000);
+    const baseMuteDuration = config.muteDuration ?? 10 * 60 * 1000;
 
     const cleanContent = message.content
       .normalize('NFD')
@@ -126,15 +126,9 @@ module.exports = async function autoModeration(message, client) {
 
     const dbUser = await warningsService.addWarning(guild.id, message.author.id, 1);
 
-    const currentTrust = Number.isFinite(dbUser.trust)
-      ? dbUser.trust
-      : trustCfg.base;
+    const currentTrust = Number.isFinite(dbUser.trust) ? dbUser.trust : trustCfg.base;
 
-    const effectiveMaxWarnings = getEffectiveMaxWarnings(
-      baseMaxWarnings,
-      trustCfg,
-      currentTrust
-    );
+    const effectiveMaxWarnings = getEffectiveMaxWarnings(baseMaxWarnings, trustCfg, currentTrust);
 
     // Camada adaptativa (opt-in): ajusta a tolerância ao estado geral do
     // servidor, medido pelo Trust médio. Sem amostra suficiente, mantém-se o
@@ -143,11 +137,7 @@ module.exports = async function autoModeration(message, client) {
     if (trustCfg.adaptive?.enabled === true) {
       try {
         const stats = await warningsService.getGuildAverageTrust(guild.id);
-        maxWarningsForGuild = getAdaptiveMaxWarnings(
-          effectiveMaxWarnings,
-          trustCfg,
-          stats
-        ).maxWarnings;
+        maxWarningsForGuild = getAdaptiveMaxWarnings(effectiveMaxWarnings, trustCfg, stats).maxWarnings;
       } catch {
         // Falha do ajuste adaptativo nunca deve impedir a ação base.
       }
@@ -156,24 +146,28 @@ module.exports = async function autoModeration(message, client) {
     const warnReason = await tContext(message, 'automod.warnReasonGeneric');
 
     // Create WARN infraction with Case ID
-    const infWarn = await infractionsService.create({
-      guild,
-      user: message.author,
-      moderator: client.user,
-      type: 'WARN',
-      reason: warnReason,
-      duration: null,
-      source: 'automod'
-    }).catch(() => null);
-
-    await message.channel.send({
-      content: await buildWarnChannelMessage(message, {
-        userMention: `${message.author}`,
-        warnings: dbUser.warnings,
-        maxWarnings: maxWarningsForGuild,
-        reason: warnReason
+    const infWarn = await infractionsService
+      .create({
+        guild,
+        user: message.author,
+        moderator: client.user,
+        type: 'WARN',
+        reason: warnReason,
+        duration: null,
+        source: 'automod'
       })
-    }).catch(() => null);
+      .catch(() => null);
+
+    await message.channel
+      .send({
+        content: await buildWarnChannelMessage(message, {
+          userMention: `${message.author}`,
+          warnings: dbUser.warnings,
+          maxWarnings: maxWarningsForGuild,
+          reason: warnReason
+        })
+      })
+      .catch(() => null);
 
     // DM-on-warn removido a pedido do owner
 
@@ -183,19 +177,22 @@ module.exports = async function autoModeration(message, client) {
       'Automatic Warn',
       message.author,
       client.user,
-      warnCasePrefix + await tContext(message, 'log.actions.automodWarn', {
-        word: foundWord,
-        warnings: dbUser.warnings,
-        maxWarnings: maxWarningsForGuild,
-        trust: trustCfg.enabled ? `${currentTrust}/${trustCfg.max}` : 'N/A',
-        deleted: yesNo(canDelete, lang)
-      }),
+      warnCasePrefix +
+        (await tContext(message, 'log.actions.automodWarn', {
+          word: foundWord,
+          warnings: dbUser.warnings,
+          maxWarnings: maxWarningsForGuild,
+          trust: trustCfg.enabled ? `${currentTrust}/${trustCfg.max}` : 'N/A',
+          deleted: yesNo(canDelete, lang)
+        })),
       guild
     );
 
     // Marcar que o AutoMod já aplicou uma ação punitiva
     message._autoModActionTaken = true;
-    try { incrementAutoModActions(); } catch {}
+    try {
+      incrementAutoModActions();
+    } catch {}
 
     if (dbUser.warnings < maxWarningsForGuild) {
       return;
@@ -203,25 +200,23 @@ module.exports = async function autoModeration(message, client) {
 
     if (!canTimeout || !message.member.moderatable) return;
 
-    const effectiveMute = getEffectiveMuteDuration(
-      baseMuteDuration,
-      trustCfg,
-      currentTrust
-    );
+    const effectiveMute = getEffectiveMuteDuration(baseMuteDuration, trustCfg, currentTrust);
 
     const muteReason = await tContext(message, 'automod.muteReason');
     await message.member.timeout(effectiveMute, muteReason);
 
     // Create MUTE infraction with Case ID
-    const infMute = await infractionsService.create({
-      guild,
-      user: message.author,
-      moderator: client.user,
-      type: 'MUTE',
-      reason: muteReason,
-      duration: effectiveMute,
-      source: 'automod'
-    }).catch(() => null);
+    const infMute = await infractionsService
+      .create({
+        guild,
+        user: message.author,
+        moderator: client.user,
+        type: 'MUTE',
+        reason: muteReason,
+        duration: effectiveMute,
+        source: 'automod'
+      })
+      .catch(() => null);
 
     let afterMuteUser = dbUser;
     try {
@@ -230,18 +225,18 @@ module.exports = async function autoModeration(message, client) {
       // ignore
     }
 
-    const trustAfterMute = Number.isFinite(afterMuteUser.trust)
-      ? afterMuteUser.trust
-      : currentTrust;
+    const trustAfterMute = Number.isFinite(afterMuteUser.trust) ? afterMuteUser.trust : currentTrust;
 
     const mins = minutesFromMs(effectiveMute);
 
-    await message.channel.send(
-      await buildMuteChannelMessage(message, {
-        userMention: `${message.author}`,
-        minutes: mins
-      })
-    ).catch(() => null);
+    await message.channel
+      .send(
+        await buildMuteChannelMessage(message, {
+          userMention: `${message.author}`,
+          minutes: mins
+        })
+      )
+      .catch(() => null);
 
     // DM-on-mute removido a pedido do owner
 
@@ -251,19 +246,21 @@ module.exports = async function autoModeration(message, client) {
       'Automatic Mute',
       message.author,
       client.user,
-      muteCasePrefix + await tContext(message, 'log.actions.automodMute', {
-        minutes: mins,
-        trustAfter: trustCfg.enabled ? `${trustAfterMute}/${trustCfg.max}` : 'N/A'
-      }),
+      muteCasePrefix +
+        (await tContext(message, 'log.actions.automodMute', {
+          minutes: mins,
+          trustAfter: trustCfg.enabled ? `${trustAfterMute}/${trustCfg.max}` : 'N/A'
+        })),
       guild
     );
 
     // Marcar que o AutoMod aplicou MUTE nesta mensagem
     message._autoModActionTaken = true;
-    try { incrementAutoModActions(); } catch {}
+    try {
+      incrementAutoModActions();
+    } catch {}
 
     await warningsService.resetWarnings(guild.id, message.author.id).catch(() => null);
-
   } catch (err) {
     console.error('[AutoMod] Critical error:', err);
   }

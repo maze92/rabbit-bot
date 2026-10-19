@@ -131,13 +131,23 @@ async function runFeatureTest({ client, guild, feature, config }) {
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('verify:test')
-          .setLabel(c.buttonLabel || await tGuild(guild.id, 'verify.testButton', undefined, lang))
+          .setLabel(c.buttonLabel || (await tGuild(guild.id, 'verify.testButton', undefined, lang)))
           .setStyle(ButtonStyle.Success)
           .setDisabled(true)
       );
       const embed = new EmbedBuilder()
-        .setTitle(await getFeatureText({ guildId: guild.id, feature: 'verification', field: 'title', value: c.title, lang }))
-        .setDescription(await getFeatureText({ guildId: guild.id, feature: 'verification', field: 'description', value: c.description, lang }));
+        .setTitle(
+          await getFeatureText({ guildId: guild.id, feature: 'verification', field: 'title', value: c.title, lang })
+        )
+        .setDescription(
+          await getFeatureText({
+            guildId: guild.id,
+            feature: 'verification',
+            field: 'description',
+            value: c.description,
+            lang
+          })
+        );
       await channel.send({ embeds: [embed], components: [row] });
       return { ok: true };
     }
@@ -146,7 +156,13 @@ async function runFeatureTest({ client, guild, feature, config }) {
       const channel = await fetchSendable(client, c.channelId);
       if (!channel) return { ok: false, error: 'CHANNEL_REQUIRED' };
       const lang = await getGuildLang(guild.id);
-      const title = await getFeatureText({ guildId: guild.id, feature: 'tickets', field: 'panelTitle', value: c.panelTitle, lang });
+      const title = await getFeatureText({
+        guildId: guild.id,
+        feature: 'tickets',
+        field: 'panelTitle',
+        value: c.panelTitle,
+        lang
+      });
       const description = await getFeatureText({
         guildId: guild.id,
         feature: 'tickets',

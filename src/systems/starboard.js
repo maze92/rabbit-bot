@@ -50,9 +50,7 @@ async function loadContext(reaction) {
 
 function buildEmbed(message, guild, count) {
   const author = message.author;
-  const jumpUrl =
-    message.url ||
-    `https://discord.com/channels/${guild.id}/${message.channelId}/${message.id}`;
+  const jumpUrl = message.url || `https://discord.com/channels/${guild.id}/${message.channelId}/${message.id}`;
 
   const desc = String(message.content || '').slice(0, 1000) || '*(sem conteúdo de texto)*';
 
@@ -75,7 +73,7 @@ function buildEmbed(message, guild, count) {
 
 async function resolveStarChannel(guild, channelId) {
   if (!channelId) return null;
-  const ch = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
+  const ch = guild.channels.cache.get(channelId) || (await guild.channels.fetch(channelId).catch(() => null));
   if (ch && typeof ch.send === 'function') return ch;
   return null;
 }
@@ -160,7 +158,9 @@ async function handleReactionRemove(reaction, _user) {
     if (message.channelId === cfg.channelId) return;
     if (!matchEmoji(reaction, cfg.emoji)) return;
 
-    const entry = await StarboardEntry.findOne({ guildId: guild.id, sourceMessageId: message.id }).lean().catch(() => null);
+    const entry = await StarboardEntry.findOne({ guildId: guild.id, sourceMessageId: message.id })
+      .lean()
+      .catch(() => null);
     if (!entry) return;
 
     const count = Math.max(0, Number(reaction.count) || 0);
@@ -185,7 +185,10 @@ async function handleReactionRemove(reaction, _user) {
       const existing = await starChannel.messages.fetch(entry.starboardMessageId).catch(() => null);
       if (existing) {
         await existing
-          .edit({ content: `${cfg.emoji} **${count}** <#${message.channelId}>`, embeds: [buildEmbed(message, guild, count)] })
+          .edit({
+            content: `${cfg.emoji} **${count}** <#${message.channelId}>`,
+            embeds: [buildEmbed(message, guild, count)]
+          })
           .catch(() => null);
       }
     }

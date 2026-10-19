@@ -48,10 +48,7 @@ async function ensureWarnPermissions({ client, interaction, executor, target, bo
   }
 
   // Cannot warn admins unless executor is admin
-  if (
-    !executorIsAdmin &&
-    target.permissions.has(PermissionsBitField.Flags.Administrator)
-  ) {
+  if (!executorIsAdmin && target.permissions.has(PermissionsBitField.Flags.Administrator)) {
     await replyEphemeral(interaction, await tContext(interaction, 'warn.cannotWarnAdmin'));
     return false;
   }
@@ -95,10 +92,7 @@ async function ensureMutePermissions({ client, interaction, executor, target, bo
 
   // Already muted?
   if (typeof target.isCommunicationDisabled === 'function' && target.isCommunicationDisabled()) {
-    await replyEphemeral(
-      interaction,
-      await tContext(interaction, 'mute.alreadyMuted', { tag: target.user.tag })
-    );
+    await replyEphemeral(interaction, await tContext(interaction, 'mute.alreadyMuted', { tag: target.user.tag }));
     return false;
   }
 
@@ -117,10 +111,7 @@ async function ensureMutePermissions({ client, interaction, executor, target, bo
   }
 
   // Cannot mute admins unless executor is admin
-  if (
-    !executorIsAdmin &&
-    target.permissions.has(PermissionsBitField.Flags.Administrator)
-  ) {
+  if (!executorIsAdmin && target.permissions.has(PermissionsBitField.Flags.Administrator)) {
     await replyEphemeral(interaction, await tContext(interaction, 'mute.cannotMuteAdmin'));
     return false;
   }
@@ -173,5 +164,5 @@ async function ensureUnmutePermissions({ client, interaction, executor, target, 
 module.exports = {
   ensureWarnPermissions,
   ensureMutePermissions,
-  ensureUnmutePermissions,
+  ensureUnmutePermissions
 };

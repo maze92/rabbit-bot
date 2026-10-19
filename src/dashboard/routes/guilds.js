@@ -11,13 +11,7 @@ const { isBotOperator } = require('../botRoles');
  * - guild meta (channels + roles)
  * - text channels
  */
-function registerGuildsRoutes({
-  app,
-  requireDashboardAuth,
-  requireGuildAccess,
-  getClient,
-  sanitizeId
-}) {
+function registerGuildsRoutes({ app, requireDashboardAuth, requireGuildAccess, getClient, sanitizeId }) {
   // List guilds
   app.get('/api/guilds', requireDashboardAuth, async (req, res) => {
     try {
@@ -42,21 +36,19 @@ function registerGuildsRoutes({
         }
       }
 
-      const metaAll = (u && Array.isArray(u.allowedGuilds))
-        ? u.allowedGuilds.filter((g) => g && g.id)
-        : [];
+      const metaAll = u && Array.isArray(u.allowedGuilds) ? u.allowedGuilds.filter((g) => g && g.id) : [];
 
       const strictEligibleFromMeta = isBotOperator(u)
-        ? (Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.map(String) : [])
-        : metaAll
-            .filter((g) => Boolean(g.owner) || hasAdministratorPermission(g.permissions))
-            .map((g) => String(g.id));
+        ? Array.isArray(u.allowedGuildIds)
+          ? u.allowedGuildIds.map(String)
+          : []
+        : metaAll.filter((g) => Boolean(g.owner) || hasAdministratorPermission(g.permissions)).map((g) => String(g.id));
 
       const allowList = strictEligibleFromMeta.length
         ? strictEligibleFromMeta
-        : (u && Array.isArray(u.allowedGuildIds)
+        : u && Array.isArray(u.allowedGuildIds)
           ? u.allowedGuildIds.filter(Boolean).map(String)
-          : []);
+          : [];
 
       // OAuth-only: if token has no allow-list, force re-auth (prevents stale/empty tokens from persisting).
       if (u && u.oauth && allowList.length === 0 && !isBotOperator(u)) {
@@ -66,16 +58,14 @@ function registerGuildsRoutes({
       // Prefer token metadata (from /users/@me/guilds) for stable listing even if client cache is not ready.
       const allowedMeta = metaAll.filter((g) => allowList.includes(String(g.id)));
 
-      const clientGuilds = _client && _client.guilds && _client.guilds.cache
-        ? _client.guilds.cache
-        : null;
+      const clientGuilds = _client && _client.guilds && _client.guilds.cache ? _client.guilds.cache : null;
 
-      const items = (allowedMeta.length ? allowedMeta : allowList.map((id) => ({ id, name: null, icon: null })))
-        .map((g) => {
+      const items = (allowedMeta.length ? allowedMeta : allowList.map((id) => ({ id, name: null, icon: null }))).map(
+        (g) => {
           const cg = clientGuilds ? clientGuilds.get(String(g.id)) : null;
           return {
             id: String(g.id),
-            name: (cg && cg.name) ? cg.name : (typeof g.name === 'string' ? g.name : String(g.id)),
+            name: cg && cg.name ? cg.name : typeof g.name === 'string' ? g.name : String(g.id),
             icon: typeof g.icon === 'string' ? g.icon : null,
             botPresent: !!cg,
             memberCount:
@@ -85,7 +75,8 @@ function registerGuildsRoutes({
                   ? cg.approximateMemberCount
                   : null
           };
-        });
+        }
+      );
       items.sort((a, b) => a.name.localeCompare(b.name));
       return res.json({ ok: true, items });
     } catch (err) {
@@ -94,9 +85,10 @@ function registerGuildsRoutes({
   });
 
   // Guild metadata for dashboard UI (channels + roles)
-  const guardGuildParam = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'params', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildParam =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'params', key: 'guildId' })
+      : (req, res, next) => next();
 
   app.get('/api/guilds/:guildId/meta', requireDashboardAuth, guardGuildParam, async (req, res) => {
     try {
@@ -109,14 +101,9 @@ function registerGuildsRoutes({
 
       const channels =
         guild.channels?.cache
-          ?.filter(
-            (c) =>
-              c &&
-              (c.type === ChannelType.GuildText || c.type === ChannelType.GuildAnnouncement)
-          )
+          ?.filter((c) => c && (c.type === ChannelType.GuildText || c.type === ChannelType.GuildAnnouncement))
           .map((c) => ({ id: c.id, name: c.name, type: c.type }))
           .sort((a, b) => a.name.localeCompare(b.name)) || [];
-
 
       const voiceChannels =
         guild.channels?.cache
@@ -167,15 +154,15 @@ function registerGuildsRoutes({
           const rawType = ch.type;
           const isThread = !!ch.isThread?.();
           // GuildAnnouncement is 5 in discord.js v14 (ChannelType.GuildAnnouncement)
-          const isAnnouncement = (rawType === 5) || (String(rawType).toLowerCase().includes('announcement'));
-          const kind = isThread ? 'thread' : (isAnnouncement ? 'announcement' : 'text');
+          const isAnnouncement = rawType === 5 || String(rawType).toLowerCase().includes('announcement');
+          const kind = isThread ? 'thread' : isAnnouncement ? 'announcement' : 'text';
 
           return {
             id: ch.id,
             name: ch.name,
             parentId,
             parentName,
-            kind,
+            kind
           };
         })
         .sort((a, b) => {

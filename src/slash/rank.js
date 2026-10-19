@@ -36,6 +36,10 @@ module.exports = async function rankSlash(_client, interaction) {
     return interaction.reply({ embeds: [embed] }).catch(() => null);
   } catch (err) {
     console.error('[slash/rank] Error:', err);
-    return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+    return safeReply(
+      interaction,
+      { content: await tContext(interaction, 'common.unexpectedError') },
+      { ephemeral: true }
+    );
   }
 };

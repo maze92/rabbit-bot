@@ -24,14 +24,18 @@
     row.dataset.username = u.username || u.tag || u.id || '';
 
     const name = u.username || u.tag || u.id;
-    const roles = (u.roles || []).map(function (r) { return r.name; }).join(', ');
+    const roles = (u.roles || [])
+      .map(function (r) {
+        return r.name;
+      })
+      .join(', ');
     const isBot = !!u.bot;
 
     row.innerHTML = `
       <div class="user-row-header">
         <div class="title">${escapeHtml(name)}</div>
         <div class="user-type-badge ${isBot ? 'bot' : 'human'}">
-          ${escapeHtml(isBot ? (t('users_row_bot')) : (t('users_row_user')))}
+          ${escapeHtml(isBot ? t('users_row_bot') : t('users_row_user'))}
         </div>
       </div>
       <div class="subtitle">
@@ -60,335 +64,338 @@
     });
   }
 
-
   async function loadUsers() {
-  const listEl = document.getElementById('usersList');
-  const searchEl = document.getElementById('usersSearch');
-  const limitEl = document.getElementById('usersLimit');
-  const sortEl = document.getElementById('usersSort');
-  const btnLoadMore = document.getElementById('btnUsersLoadMore');
-  const botsEl = document.getElementById('usersIncludeBots');
-  const countEl = document.getElementById('usersResultCount');
+    const listEl = document.getElementById('usersList');
+    const searchEl = document.getElementById('usersSearch');
+    const limitEl = document.getElementById('usersLimit');
+    const sortEl = document.getElementById('usersSort');
+    const btnLoadMore = document.getElementById('btnUsersLoadMore');
+    const botsEl = document.getElementById('usersIncludeBots');
+    const countEl = document.getElementById('usersResultCount');
 
-  if (!listEl) return;
+    if (!listEl) return;
 
-  function updateResultCount(shown, total) {
-    if (!countEl) return;
-    if (!total) {
-      countEl.textContent = '';
-      return;
-    }
-    countEl.textContent = t('users_results_count', { shown: String(shown), total: String(total) });
-  }
-
-  // Atualizar contador de membros (se soubermos)
-  const membersLabel = document.getElementById('usersMemberCount');
-  if (membersLabel) {
-    const guildInfo = Array.isArray(state.guilds)
-      ? state.guilds.find(function (g) { return g && g.id === state.guildId; })
-      : null;
-    if (guildInfo && typeof guildInfo.memberCount === 'number') {
-      membersLabel.textContent = state.lang === 'pt'
-        ? (guildInfo.memberCount + ' membros')
-        : (guildInfo.memberCount + ' members');
-    } else {
-      membersLabel.textContent = '';
-    }
-  }
-
-  if (!state.guildId) {
-    listEl.innerHTML = '';
-    const empty = document.createElement('div');
-    empty.className = 'empty';
-    empty.textContent = t('users_select_guild');
-    listEl.appendChild(empty);
-    if (btnLoadMore) btnLoadMore.style.display = 'none';
-    updateResultCount(0, 0);
-    return;
-  }
-
-  const guildId = state.guildId;
-  const search = (searchEl && searchEl.value ? searchEl.value.toString().trim() : '');
-  const includeBots = !!(botsEl && botsEl.checked);
-  let limit = 50;
-  if (limitEl && limitEl.value) {
-    const n = Number(limitEl.value);
-    if (Number.isFinite(n) && n > 0) limit = n;
-  }
-
-  const sortRaw = sortEl && sortEl.value ? String(sortEl.value) : 'name';
-  const usersSort = ['name', 'joined', 'id'].indexOf(sortRaw) !== -1 ? sortRaw : 'name';
-
-  state.usersPage = 1;
-  state.usersSearch = search;
-  state.usersLimit = limit;
-  state.usersIncludeBots = includeBots;
-  state.usersSort = usersSort;
-
-  function setLoadMoreVisible(visible) {
-    if (!btnLoadMore) return;
-    btnLoadMore.style.display = visible ? '' : 'none';
-    btnLoadMore.disabled = !visible;
-  }
-
-  function renderUsers(items, append) {
-    if (!append) listEl.innerHTML = '';
-
-    if (!Array.isArray(items) || !items.length) {
-      if (!append) {
-        const empty = document.createElement('div');
-        empty.className = 'empty';
-        empty.textContent = search ? t('users_empty_search') : t('users_empty_generic');
-        listEl.appendChild(empty);
+    function updateResultCount(shown, total) {
+      if (!countEl) return;
+      if (!total) {
+        countEl.textContent = '';
+        return;
       }
-      return;
+      countEl.textContent = t('users_results_count', { shown: String(shown), total: String(total) });
     }
 
-    appendUserRows(listEl, items);
-  }
-
-  async function fetchPage(page, opts) {
-    const append = !!(opts && opts.append);
-    const sync = !!(opts && opts.sync);
-
-    const params = [];
-    params.push('page=' + encodeURIComponent(String(page)));
-    params.push('limit=' + encodeURIComponent(String(limit)));
-    if (search) params.push('search=' + encodeURIComponent(search));
-    if (includeBots) params.push('includeBots=1');
-    if (usersSort && usersSort !== 'name') params.push('sort=' + encodeURIComponent(usersSort));
-    if (sync) params.push('sync=1');
-
-    const url = '/guilds/' + encodeURIComponent(guildId) + '/users?' + params.join('&');
-    const res = await apiGet(url);
-
-    const items = Array.isArray(res.items) ? res.items : [];
-    const total = typeof res.total === 'number' ? res.total : items.length;
-
-    // Render
-    renderUsers(items, append);
-    updateResultCount(listEl.querySelectorAll('.list-item').length, total);
-
-    // Load more
-    const hasMore = (page * limit) < total;
-    setLoadMoreVisible(hasMore);
-
-    state.usersPage = page;
-    state.usersTotal = total;
-
-    // Auto-select user previously selected (only on first page render)
-    if (!append && state.userSelectionPinned && state.selectedUserId) {
-      const row = listEl.querySelector('.list-item[data-user-id="' + CSS.escape(state.selectedUserId) + '"]');
-      if (row) row.classList.add('active');
+    // Atualizar contador de membros (se soubermos)
+    const membersLabel = document.getElementById('usersMemberCount');
+    if (membersLabel) {
+      const guildInfo = Array.isArray(state.guilds)
+        ? state.guilds.find(function (g) {
+            return g && g.id === state.guildId;
+          })
+        : null;
+      if (guildInfo && typeof guildInfo.memberCount === 'number') {
+        membersLabel.textContent =
+          state.lang === 'pt' ? guildInfo.memberCount + ' membros' : guildInfo.memberCount + ' members';
+      } else {
+        membersLabel.textContent = '';
+      }
     }
 
-    return { items, total, hasMore };
-  }
-
-  return window.OzarkDashboard.withLoading(function () {
-    listEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
-    setLoadMoreVisible(false);
-    return fetchPage(1, { append: false });
-  }, {
-    onError: function () {
+    if (!state.guildId) {
       listEl.innerHTML = '';
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = t('users_error_generic');
+      empty.textContent = t('users_select_guild');
       listEl.appendChild(empty);
-      setLoadMoreVisible(false);
+      if (btnLoadMore) btnLoadMore.style.display = 'none';
       updateResultCount(0, 0);
+      return;
     }
-  });
-}
 
-// Bind controls once
-document.addEventListener('DOMContentLoaded', function () {
-  const btnReload = document.getElementById('btnReloadUsers');
-  const btnLoadMore = document.getElementById('btnUsersLoadMore');
-  const btnSync = document.getElementById('btnSyncUsers');
-  const searchEl = document.getElementById('usersSearch');
-  const limitEl = document.getElementById('usersLimit');
-  const sortEl = document.getElementById('usersSort');
-  const botsEl = document.getElementById('usersIncludeBots');
-
-  let searchTimer = null;
-
-  function reload() {
-    window.OzarkDashboard.loadUsers().catch(function () {});
-  }
-
-  // Export CSV/JSON dos utilizadores, com os filtros ativos na toolbar.
-  async function exportUsers(format) {
-    if (!state.guildId) return;
-
-    const params = [];
-    const searchValue = searchEl && searchEl.value ? searchEl.value.toString().trim() : '';
-    if (searchValue) params.push('search=' + encodeURIComponent(searchValue));
-    if (botsEl && botsEl.checked) params.push('includeBots=1');
-    if (state.usersSort && state.usersSort !== 'name') {
-      params.push('sort=' + encodeURIComponent(state.usersSort));
+    const guildId = state.guildId;
+    const search = searchEl && searchEl.value ? searchEl.value.toString().trim() : '';
+    const includeBots = !!(botsEl && botsEl.checked);
+    let limit = 50;
+    if (limitEl && limitEl.value) {
+      const n = Number(limitEl.value);
+      if (Number.isFinite(n) && n > 0) limit = n;
     }
-    params.push('format=' + format);
 
-    const url =
-      '/api/guilds/' + encodeURIComponent(state.guildId) + '/users/export?' + params.join('&');
+    const sortRaw = sortEl && sortEl.value ? String(sortEl.value) : 'name';
+    const usersSort = ['name', 'joined', 'id'].indexOf(sortRaw) !== -1 ? sortRaw : 'name';
 
-    try {
-      const res = await fetch(url, { credentials: 'same-origin' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+    state.usersPage = 1;
+    state.usersSearch = search;
+    state.usersLimit = limit;
+    state.usersIncludeBots = includeBots;
+    state.usersSort = usersSort;
 
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = 'users-' + state.guildId + '.' + format;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(objectUrl);
-
-      toast(t('users_export_ok'), { type: 'success' });
-    } catch (err) {
-      console.error('Failed to export users', err);
-      toast(t('users_export_error'), { type: 'error' });
+    function setLoadMoreVisible(visible) {
+      if (!btnLoadMore) return;
+      btnLoadMore.style.display = visible ? '' : 'none';
+      btnLoadMore.disabled = !visible;
     }
-  }
 
-  const btnExportCsv = document.getElementById('btnExportUsersCsv');
-  if (btnExportCsv) {
-    btnExportCsv.addEventListener('click', function () {
-      btnExportCsv.disabled = true;
-      exportUsers('csv').finally(function () {
-        btnExportCsv.disabled = false;
-      });
-    });
-  }
+    function renderUsers(items, append) {
+      if (!append) listEl.innerHTML = '';
 
-  const btnExportJson = document.getElementById('btnExportUsersJson');
-  if (btnExportJson) {
-    btnExportJson.addEventListener('click', function () {
-      btnExportJson.disabled = true;
-      exportUsers('json').finally(function () {
-        btnExportJson.disabled = false;
-      });
-    });
-  }
+      if (!Array.isArray(items) || !items.length) {
+        if (!append) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = search ? t('users_empty_search') : t('users_empty_generic');
+          listEl.appendChild(empty);
+        }
+        return;
+      }
 
-  if (btnReload) btnReload.addEventListener('click', reload);
+      appendUserRows(listEl, items);
+    }
 
-  if (limitEl) {
-    limitEl.addEventListener('change', reload);
-  }
-
-  if (sortEl) {
-    sortEl.addEventListener('change', reload);
-  }
-
-  if (botsEl) {
-    botsEl.addEventListener('change', reload);
-  }
-
-  if (searchEl) {
-    searchEl.addEventListener('input', function () {
-      if (searchTimer) clearTimeout(searchTimer);
-      searchTimer = setTimeout(function () {
-        reload();
-        searchTimer = null;
-      }, 300);
-    });
-  }
-
-  if (btnLoadMore) {
-    btnLoadMore.addEventListener('click', function () {
-      if (!state.guildId) return;
-
-      const guildId = state.guildId;
-      const page = (typeof state.usersPage === 'number' ? state.usersPage : 1) + 1;
-      const limit = typeof state.usersLimit === 'number' ? state.usersLimit : 50;
-      const search = state.usersSearch || '';
-      const includeBots = !!state.usersIncludeBots;
+    async function fetchPage(page, opts) {
+      const append = !!(opts && opts.append);
+      const sync = !!(opts && opts.sync);
 
       const params = [];
       params.push('page=' + encodeURIComponent(String(page)));
       params.push('limit=' + encodeURIComponent(String(limit)));
       if (search) params.push('search=' + encodeURIComponent(search));
       if (includeBots) params.push('includeBots=1');
-      if (state.usersSort && state.usersSort !== 'name') params.push('sort=' + encodeURIComponent(state.usersSort));
+      if (usersSort && usersSort !== 'name') params.push('sort=' + encodeURIComponent(usersSort));
+      if (sync) params.push('sync=1');
 
       const url = '/guilds/' + encodeURIComponent(guildId) + '/users?' + params.join('&');
+      const res = await apiGet(url);
 
-      btnLoadMore.disabled = true;
+      const items = Array.isArray(res.items) ? res.items : [];
+      const total = typeof res.total === 'number' ? res.total : items.length;
 
-      apiGet(url)
-        .then(function (res) {
-          const listEl = document.getElementById('usersList');
-          if (!listEl) return;
+      // Render
+      renderUsers(items, append);
+      updateResultCount(listEl.querySelectorAll('.list-item').length, total);
 
-          const items = Array.isArray(res.items) ? res.items : [];
-          const total = typeof res.total === 'number' ? res.total : items.length;
+      // Load more
+      const hasMore = page * limit < total;
+      setLoadMoreVisible(hasMore);
 
-          appendUserRows(listEl, items);
+      state.usersPage = page;
+      state.usersTotal = total;
 
-          state.usersPage = page;
-          state.usersTotal = total;
+      // Auto-select user previously selected (only on first page render)
+      if (!append && state.userSelectionPinned && state.selectedUserId) {
+        const row = listEl.querySelector('.list-item[data-user-id="' + CSS.escape(state.selectedUserId) + '"]');
+        if (row) row.classList.add('active');
+      }
 
-          const countEl = document.getElementById('usersResultCount');
-          if (countEl && total) {
-            countEl.textContent = t('users_results_count', {
-              shown: String(listEl.querySelectorAll('.list-item').length),
-              total: String(total)
-            });
-          }
+      return { items, total, hasMore };
+    }
 
-          const hasMore = (page * limit) < total;
-          btnLoadMore.style.display = hasMore ? '' : 'none';
-        })
-        .catch(function (err) {
-          toast((err && err.apiMessage) || t('users_error_generic'), { type: 'error' });
-        })
-        .finally(function () {
-          btnLoadMore.disabled = false;
-        });
-    });
+    return window.OzarkDashboard.withLoading(
+      function () {
+        listEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
+        setLoadMoreVisible(false);
+        return fetchPage(1, { append: false });
+      },
+      {
+        onError: function () {
+          listEl.innerHTML = '';
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = t('users_error_generic');
+          listEl.appendChild(empty);
+          setLoadMoreVisible(false);
+          updateResultCount(0, 0);
+        }
+      }
+    );
   }
 
-  if (btnSync) {
-    btnSync.addEventListener('click', function () {
+  // Bind controls once
+  document.addEventListener('DOMContentLoaded', function () {
+    const btnReload = document.getElementById('btnReloadUsers');
+    const btnLoadMore = document.getElementById('btnUsersLoadMore');
+    const btnSync = document.getElementById('btnSyncUsers');
+    const searchEl = document.getElementById('usersSearch');
+    const limitEl = document.getElementById('usersLimit');
+    const sortEl = document.getElementById('usersSort');
+    const botsEl = document.getElementById('usersIncludeBots');
+
+    let searchTimer = null;
+
+    function reload() {
+      window.OzarkDashboard.loadUsers().catch(function () {});
+    }
+
+    // Export CSV/JSON dos utilizadores, com os filtros ativos na toolbar.
+    async function exportUsers(format) {
       if (!state.guildId) return;
 
-      const guildId = state.guildId;
-      const limit = typeof state.usersLimit === 'number' ? state.usersLimit : 50;
-      const search = (document.getElementById('usersSearch') && document.getElementById('usersSearch').value)
-        ? document.getElementById('usersSearch').value.toString().trim()
-        : '';
-
-      const includeBots = !!(botsEl && botsEl.checked);
-
       const params = [];
-      params.push('page=1');
-      params.push('limit=' + encodeURIComponent(String(limit)));
-      if (search) params.push('search=' + encodeURIComponent(search));
-      if (includeBots) params.push('includeBots=1');
-      params.push('sync=1');
+      const searchValue = searchEl && searchEl.value ? searchEl.value.toString().trim() : '';
+      if (searchValue) params.push('search=' + encodeURIComponent(searchValue));
+      if (botsEl && botsEl.checked) params.push('includeBots=1');
+      if (state.usersSort && state.usersSort !== 'name') {
+        params.push('sort=' + encodeURIComponent(state.usersSort));
+      }
+      params.push('format=' + format);
 
-      btnSync.disabled = true;
+      const url = '/api/guilds/' + encodeURIComponent(state.guildId) + '/users/export?' + params.join('&');
 
-      apiGet('/guilds/' + encodeURIComponent(guildId) + '/users?' + params.join('&'))
-        .then(function () {
-          reload();
-        })
-        .catch(function (err) {
-          toast((err && err.apiMessage) || t('users_error_generic'), { type: 'error' });
-        })
-        .finally(function () {
-          btnSync.disabled = false;
+      try {
+        const res = await fetch(url, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = 'users-' + state.guildId + '.' + format;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+
+        toast(t('users_export_ok'), { type: 'success' });
+      } catch (err) {
+        console.error('Failed to export users', err);
+        toast(t('users_export_error'), { type: 'error' });
+      }
+    }
+
+    const btnExportCsv = document.getElementById('btnExportUsersCsv');
+    if (btnExportCsv) {
+      btnExportCsv.addEventListener('click', function () {
+        btnExportCsv.disabled = true;
+        exportUsers('csv').finally(function () {
+          btnExportCsv.disabled = false;
         });
-    });
-  }
-});
+      });
+    }
 
-async function loadUserHistory(user) {
+    const btnExportJson = document.getElementById('btnExportUsersJson');
+    if (btnExportJson) {
+      btnExportJson.addEventListener('click', function () {
+        btnExportJson.disabled = true;
+        exportUsers('json').finally(function () {
+          btnExportJson.disabled = false;
+        });
+      });
+    }
+
+    if (btnReload) btnReload.addEventListener('click', reload);
+
+    if (limitEl) {
+      limitEl.addEventListener('change', reload);
+    }
+
+    if (sortEl) {
+      sortEl.addEventListener('change', reload);
+    }
+
+    if (botsEl) {
+      botsEl.addEventListener('change', reload);
+    }
+
+    if (searchEl) {
+      searchEl.addEventListener('input', function () {
+        if (searchTimer) clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () {
+          reload();
+          searchTimer = null;
+        }, 300);
+      });
+    }
+
+    if (btnLoadMore) {
+      btnLoadMore.addEventListener('click', function () {
+        if (!state.guildId) return;
+
+        const guildId = state.guildId;
+        const page = (typeof state.usersPage === 'number' ? state.usersPage : 1) + 1;
+        const limit = typeof state.usersLimit === 'number' ? state.usersLimit : 50;
+        const search = state.usersSearch || '';
+        const includeBots = !!state.usersIncludeBots;
+
+        const params = [];
+        params.push('page=' + encodeURIComponent(String(page)));
+        params.push('limit=' + encodeURIComponent(String(limit)));
+        if (search) params.push('search=' + encodeURIComponent(search));
+        if (includeBots) params.push('includeBots=1');
+        if (state.usersSort && state.usersSort !== 'name') params.push('sort=' + encodeURIComponent(state.usersSort));
+
+        const url = '/guilds/' + encodeURIComponent(guildId) + '/users?' + params.join('&');
+
+        btnLoadMore.disabled = true;
+
+        apiGet(url)
+          .then(function (res) {
+            const listEl = document.getElementById('usersList');
+            if (!listEl) return;
+
+            const items = Array.isArray(res.items) ? res.items : [];
+            const total = typeof res.total === 'number' ? res.total : items.length;
+
+            appendUserRows(listEl, items);
+
+            state.usersPage = page;
+            state.usersTotal = total;
+
+            const countEl = document.getElementById('usersResultCount');
+            if (countEl && total) {
+              countEl.textContent = t('users_results_count', {
+                shown: String(listEl.querySelectorAll('.list-item').length),
+                total: String(total)
+              });
+            }
+
+            const hasMore = page * limit < total;
+            btnLoadMore.style.display = hasMore ? '' : 'none';
+          })
+          .catch(function (err) {
+            toast((err && err.apiMessage) || t('users_error_generic'), { type: 'error' });
+          })
+          .finally(function () {
+            btnLoadMore.disabled = false;
+          });
+      });
+    }
+
+    if (btnSync) {
+      btnSync.addEventListener('click', function () {
+        if (!state.guildId) return;
+
+        const guildId = state.guildId;
+        const limit = typeof state.usersLimit === 'number' ? state.usersLimit : 50;
+        const search =
+          document.getElementById('usersSearch') && document.getElementById('usersSearch').value
+            ? document.getElementById('usersSearch').value.toString().trim()
+            : '';
+
+        const includeBots = !!(botsEl && botsEl.checked);
+
+        const params = [];
+        params.push('page=1');
+        params.push('limit=' + encodeURIComponent(String(limit)));
+        if (search) params.push('search=' + encodeURIComponent(search));
+        if (includeBots) params.push('includeBots=1');
+        params.push('sync=1');
+
+        btnSync.disabled = true;
+
+        apiGet('/guilds/' + encodeURIComponent(guildId) + '/users?' + params.join('&'))
+          .then(function () {
+            reload();
+          })
+          .catch(function (err) {
+            toast((err && err.apiMessage) || t('users_error_generic'), { type: 'error' });
+          })
+          .finally(function () {
+            btnSync.disabled = false;
+          });
+      });
+    }
+  });
+
+  async function loadUserHistory(user) {
     const detailEl = document.getElementById('userDetailPanel');
     if (!detailEl) return;
 
@@ -421,24 +428,14 @@ async function loadUserHistory(user) {
     } catch {}
     detailEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
 
-
     try {
       const [historyRes, userRes] = await Promise.all([
-        apiGet(
-          '/guilds/' +
-            encodeURIComponent(state.guildId) +
-            '/users/' +
-            encodeURIComponent(user.id) +
-            '/history',
-          { signal: signal }
-        ),
-        apiGet(
-          '/user?guildId=' +
-            encodeURIComponent(state.guildId) +
-            '&userId=' +
-            encodeURIComponent(user.id),
-          { signal: signal }
-        )
+        apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/users/' + encodeURIComponent(user.id) + '/history', {
+          signal: signal
+        }),
+        apiGet('/user?guildId=' + encodeURIComponent(state.guildId) + '&userId=' + encodeURIComponent(user.id), {
+          signal: signal
+        })
       ]);
 
       if (!historyRes || historyRes.ok === false) {
@@ -485,11 +482,7 @@ async function loadUserHistory(user) {
 
         html += '<div class="user-trust-header">';
         html +=
-          '<div class="user-trust-score">' +
-          escapeHtml(t('users_trust_score')) +
-          ': ' +
-          String(trustVal) +
-          '</div>';
+          '<div class="user-trust-score">' + escapeHtml(t('users_trust_score')) + ': ' + String(trustVal) + '</div>';
 
         if (trustLabel) {
           html +=
@@ -506,18 +499,12 @@ async function loadUserHistory(user) {
 
         if (dbInfo.nextPenalty && dbInfo.nextPenalty.automationEnabled) {
           var np = dbInfo.nextPenalty;
-          var remaining =
-            typeof np.remaining === 'number' ? np.remaining : null;
-          var mins =
-            typeof np.estimatedMuteMinutes === 'number'
-              ? np.estimatedMuteMinutes
-              : null;
+          var remaining = typeof np.remaining === 'number' ? np.remaining : null;
+          var mins = typeof np.estimatedMuteMinutes === 'number' ? np.estimatedMuteMinutes : null;
 
           // Número atual de WARNs (para mostrar no texto de limiar)
           var currentWarns =
-            dbInfo && typeof dbInfo.warnings === 'number'
-              ? dbInfo.warnings
-              : (counts && counts.WARN) || 0;
+            dbInfo && typeof dbInfo.warnings === 'number' ? dbInfo.warnings : (counts && counts.WARN) || 0;
 
           html += '<div class="user-trust-next">';
           if (mins !== null) {
@@ -534,9 +521,7 @@ async function loadUserHistory(user) {
           html += '</div>';
         } else {
           html +=
-            '<div class="user-trust-next-disabled">' +
-            escapeHtml(t('users_trust_automation_disabled')) +
-            '</div>';
+            '<div class="user-trust-next-disabled">' + escapeHtml(t('users_trust_automation_disabled')) + '</div>';
         }
 
         html += '</div>'; // user-trust-main
@@ -570,9 +555,7 @@ async function loadUserHistory(user) {
 
               html += '<div class="trust-hist-row">';
               html += `<span class="trust-hist-date">${escapeHtml(dateText)}</span>`;
-              html += `<span class="trust-hist-delta ${deltaClass}">${escapeHtml(
-                sign + String(delta)
-              )}</span>`;
+              html += `<span class="trust-hist-delta ${deltaClass}">${escapeHtml(sign + String(delta))}</span>`;
               html += `<span class="trust-hist-trust">${escapeHtml(
                 typeof ev.trust === 'number' ? String(ev.trust) : '-'
               )}</span>`;
@@ -592,10 +575,7 @@ async function loadUserHistory(user) {
       // Badges de resumo
       html += '<div class="badge-row">';
 
-      const warnCount =
-        dbInfo && typeof dbInfo.warnings === 'number'
-          ? dbInfo.warnings
-          : (counts.WARN || 0);
+      const warnCount = dbInfo && typeof dbInfo.warnings === 'number' ? dbInfo.warnings : counts.WARN || 0;
       const muteCount = counts.MUTE || 0;
 
       if (warnCount || muteCount) {
@@ -637,10 +617,7 @@ async function loadUserHistory(user) {
       // Infrações recentes
       html += '<div class="history-section">';
       html += `<h3>${escapeHtml(t('users_history_infractions'))}</h3>`;
-      html +=
-        '<div class="history-hint">' +
-        escapeHtml(t('users_history_click_to_remove')) +
-        '</div>';
+      html += '<div class="history-hint">' + escapeHtml(t('users_history_click_to_remove')) + '</div>';
 
       if (!infractions.length) {
         html += `<div class="empty mt-1">${escapeHtml(t('users_history_none'))}</div>`;
@@ -648,16 +625,9 @@ async function loadUserHistory(user) {
         html += '<ul class="infractions-list">';
         infractions.forEach(function (inf) {
           const id = (inf._id || inf.id || '').toString();
-          const when = inf.createdAt
-            ? new Date(inf.createdAt).toLocaleString()
-            : '';
+          const when = inf.createdAt ? new Date(inf.createdAt).toLocaleString() : '';
           const reason = inf.reason || '';
-          const line =
-            '[' +
-            (inf.type || 'UNK') +
-            '] ' +
-            (reason ? reason : '') +
-            (when ? ' • ' + when : '');
+          const line = '[' + (inf.type || 'UNK') + '] ' + (reason ? reason : '') + (when ? ' • ' + when : '');
           html += `<li class="infraction-item" data-infraction-id="${escapeHtml(id)}">${escapeHtml(line)}</li>`;
         });
         html += '</ul>';
@@ -673,18 +643,10 @@ async function loadUserHistory(user) {
       } else {
         html += '<ul>';
         tickets.forEach(function (tkt) {
-          const opened = tkt.createdAt
-            ? new Date(tkt.createdAt).toLocaleString()
-            : '';
-          const status = tkt.closedAt
-            ? (t('users_ticket_closed'))
-            : (t('users_ticket_open'));
+          const opened = tkt.createdAt ? new Date(tkt.createdAt).toLocaleString() : '';
+          const status = tkt.closedAt ? t('users_ticket_closed') : t('users_ticket_open');
           const line =
-            '#' +
-            String(tkt.ticketNumber).padStart(3, '0') +
-            ' • ' +
-            status +
-            (opened ? ' • ' + opened : '');
+            '#' + String(tkt.ticketNumber).padStart(3, '0') + ' • ' + status + (opened ? ' • ' + opened : '');
           html += `<li>${escapeHtml(line)}</li>`;
         });
         html += '</ul>';
@@ -702,8 +664,7 @@ async function loadUserHistory(user) {
               const action = btn.getAttribute('data-action');
               if (!state.guildId || !user || !user.id) return;
 
-              const reasonInput =
-                container.querySelector('.user-actions-reason') || null;
+              const reasonInput = container.querySelector('.user-actions-reason') || null;
 
               const reasonRaw = reasonInput && reasonInput.value ? reasonInput.value : '';
               const reason = reasonRaw.trim() || t('common_no_reason_provided');
@@ -813,7 +774,10 @@ async function loadUserHistory(user) {
               if (state._removeInfractionInFlight) return;
               if (state._removeInfractionCooldownUntil && now < state._removeInfractionCooldownUntil) {
                 const waitMs = state._removeInfractionCooldownUntil - now;
-                toast((t('common_rate_limit_wait') || 'Aguarda um momento...') + ` (${Math.ceil(waitMs / 100) / 10}s)`, { type: 'warn' });
+                toast(
+                  (t('common_rate_limit_wait') || 'Aguarda um momento...') + ` (${Math.ceil(waitMs / 100) / 10}s)`,
+                  { type: 'warn' }
+                );
                 return;
               }
               state._removeInfractionInFlight = true;
@@ -836,9 +800,16 @@ async function loadUserHistory(user) {
                 .catch(function (err) {
                   console.error('Remove infraction error', err);
                   // If backend provides retryAfterMs, show a helpful message.
-                  const ra = err && err.payload && typeof err.payload.retryAfterMs === 'number' ? err.payload.retryAfterMs : null;
+                  const ra =
+                    err && err.payload && typeof err.payload.retryAfterMs === 'number'
+                      ? err.payload.retryAfterMs
+                      : null;
                   if (err && err.status === 429 && ra) {
-                    toast((t('common_rate_limit_wait') || 'Muitas ações seguidas. Aguarda') + ` ${Math.ceil(ra / 100) / 10}s`, { type: 'warn' });
+                    toast(
+                      (t('common_rate_limit_wait') || 'Muitas ações seguidas. Aguarda') +
+                        ` ${Math.ceil(ra / 100) / 10}s`,
+                      { type: 'warn' }
+                    );
                   } else {
                     toast((err && err.apiMessage) || t('users_error_generic'), { type: 'error' });
                   }
@@ -847,7 +818,9 @@ async function loadUserHistory(user) {
                   state._removeInfractionInFlight = false;
                   state._removeInfractionCooldownUntil = Date.now() + 800;
                   // Keep the visual state if the item was removed on refresh; otherwise re-enable.
-                  try { li.classList.remove('removing'); } catch {}
+                  try {
+                    li.classList.remove('removing');
+                  } catch {}
                 });
             });
           });
@@ -861,8 +834,7 @@ async function loadUserHistory(user) {
         return;
       }
       console.error('Failed to load user history', err);
-      detailEl.innerHTML =
-        `<div class="empty">${escapeHtml(t('users_history_error_generic'))}</div>`;
+      detailEl.innerHTML = `<div class="empty">${escapeHtml(t('users_history_error_generic'))}</div>`;
     } finally {
       try {
         if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {

@@ -40,7 +40,10 @@
         const script = document.createElement('script');
         // Cache-bust locale bundles aggressively. Some hosts/proxies cache /locales/*.js
         // and browsers keep stale versions around.
-        var build = (window && (window.OZARK_BUILD || window.OZARK_VERSION)) ? (window.OZARK_BUILD || window.OZARK_VERSION) : String(Date.now());
+        var build =
+          window && (window.OZARK_BUILD || window.OZARK_VERSION)
+            ? window.OZARK_BUILD || window.OZARK_VERSION
+            : String(Date.now());
         script.src = '/locales/' + lang + '.js?v=' + encodeURIComponent(build);
         script.async = true;
         script.onload = function () {
@@ -56,9 +59,7 @@
 
     t(key, params) {
       params = params || {};
-      const value =
-        this.lookup(this.translations, key) ||
-        this.lookup(this.fallbackTranslations.pt || {}, key);
+      const value = this.lookup(this.translations, key) || this.lookup(this.fallbackTranslations.pt || {}, key);
 
       if (!value) return key;
       return this.interpolate(value, params);
@@ -78,9 +79,7 @@
 
     interpolate(str, params) {
       return str.replace(/\{(\w+)\}/g, function (_, v) {
-        return Object.prototype.hasOwnProperty.call(params, v)
-          ? String(params[v])
-          : '{' + v + '}';
+        return Object.prototype.hasOwnProperty.call(params, v) ? String(params[v]) : '{' + v + '}';
       });
     }
   };

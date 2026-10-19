@@ -1,5 +1,11 @@
 const { test, eq } = require('./_harness');
-const { parseBotUserIds, getBotOwnerIds, getBotRole, isBotOperator, isBotOwner } = require('../../src/dashboard/botRoles');
+const {
+  parseBotUserIds,
+  getBotOwnerIds,
+  getBotRole,
+  isBotOperator,
+  isBotOwner
+} = require('../../src/dashboard/botRoles');
 
 test('bot owner role takes precedence over delegated admin role', () => {
   const ownerIds = new Set(['123456789012345678']);

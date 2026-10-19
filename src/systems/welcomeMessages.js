@@ -23,8 +23,8 @@ function buildMemberMessage({ config, guild, user, kind, lang }) {
 
   const vars = {
     user: isTest ? 'Membro de Teste' : `<@${user.id}>`,
-    username: isTest ? 'Membro de Teste' : (user.username || ''),
-    tag: isTest ? 'Membro de Teste' : (user.tag || user.username || ''),
+    username: isTest ? 'Membro de Teste' : user.username || '',
+    tag: isTest ? 'Membro de Teste' : user.tag || user.username || '',
     server: guild ? guild.name : 'Servidor',
     memberCount: String((guild && guild.memberCount) || 0)
   };
@@ -44,10 +44,8 @@ function buildMemberMessage({ config, guild, user, kind, lang }) {
   }
   if (c.bannerUrl) embed.setImage(c.bannerUrl);
 
-  const icon = (guild && typeof guild.iconURL === 'function') ? guild.iconURL({ size: 128 }) : null;
-  const thumb = (user && typeof user.displayAvatarURL === 'function')
-    ? user.displayAvatarURL({ size: 256 })
-    : icon;
+  const icon = guild && typeof guild.iconURL === 'function' ? guild.iconURL({ size: 128 }) : null;
+  const thumb = user && typeof user.displayAvatarURL === 'function' ? user.displayAvatarURL({ size: 256 }) : icon;
   if (thumb) embed.setThumbnail(thumb);
 
   // Cabeçalho com o servidor e rodapé com a contagem de membros — o mesmo
@@ -61,9 +59,8 @@ function buildMemberMessage({ config, guild, user, kind, lang }) {
   const count = Number((guild && guild.memberCount) || 0);
   if (count > 0) {
     embed.setFooter({
-      text: kind === 'goodbye'
-        ? t('member.nowMembers', lang || null, count)
-        : t('member.memberCount', lang || null, count)
+      text:
+        kind === 'goodbye' ? t('member.nowMembers', lang || null, count) : t('member.memberCount', lang || null, count)
     });
   }
 

@@ -19,9 +19,10 @@ function registerTrustRoutes({
   getTrustConfig,
   getTrustLabel
 }) {
-  const guardGuildQueryOptional = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
-    : (req, res, next) => next();
+  const guardGuildQueryOptional =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
+      : (req, res, next) => next();
 
   app.get(
     '/api/trust/summary',
@@ -76,15 +77,9 @@ function registerTrustRoutes({
         });
         const mediumCount = Math.max(totalUsers - lowCount - highCount, 0);
 
-        const topRiskDocs = await UserModel.find(baseQuery)
-          .sort({ trust: 1, lastInfractionAt: -1 })
-          .limit(15)
-          .lean();
+        const topRiskDocs = await UserModel.find(baseQuery).sort({ trust: 1, lastInfractionAt: -1 }).limit(15).lean();
 
-        const topSafeDocs = await UserModel.find(baseQuery)
-          .sort({ trust: -1, lastInfractionAt: -1 })
-          .limit(15)
-          .lean();
+        const topSafeDocs = await UserModel.find(baseQuery).sort({ trust: -1, lastInfractionAt: -1 }).limit(15).lean();
 
         const topRisks = (topRiskDocs || []).map((u) => ({
           userId: u.userId,

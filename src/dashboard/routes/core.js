@@ -60,7 +60,9 @@ function registerCoreRoutes({
       if (u && !isBotOperator(u)) {
         visibleGuildIds = u.selectedGuildId
           ? [String(u.selectedGuildId)]
-          : (Array.isArray(u.allowedGuildIds) ? u.allowedGuildIds.map(String) : []);
+          : Array.isArray(u.allowedGuildIds)
+            ? u.allowedGuildIds.map(String)
+            : [];
         const visible = new Set(visibleGuildIds);
         guilds = guilds.filter((g) => g && visible.has(String(g.id)));
       }
@@ -92,13 +94,13 @@ function registerCoreRoutes({
     }
   });
 
-  const canViewConfig = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
-    : (req, res, next) => next();
+  const canViewConfig =
+    typeof requirePerm === 'function'
+      ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
+      : (req, res, next) => next();
 
-  const canEditConfig = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canEditConfig'] })
-    : (req, res, next) => next();
+  const canEditConfig =
+    typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canEditConfig'] }) : (req, res, next) => next();
 
   // The global config affects every guild, so only bot operators may touch it.
   // Guild admins hold canEditConfig for their own guild settings only.
@@ -144,32 +146,29 @@ function registerCoreRoutes({
     }
   });
 
+  // Public bot invite URL (available before login). Used by the login screen.
+  app.get('/api/public/invite', (req, res) => {
+    try {
+      const clientId = process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID || '';
+      if (!clientId) {
+        return res.status(500).json({ ok: false, error: 'MISSING_CLIENT_ID' });
+      }
 
+      const perms = String(process.env.DISCORD_INVITE_PERMISSIONS || '0').replace(/[^0-9]/g, '') || '0';
+      const scopes = (process.env.DISCORD_INVITE_SCOPES || 'bot applications.commands').trim();
 
+      const url =
+        'https://discord.com/api/oauth2/authorize' +
+        `?client_id=${encodeURIComponent(clientId)}` +
+        `&permissions=${encodeURIComponent(perms)}` +
+        `&scope=${encodeURIComponent(scopes)}`;
 
-// Public bot invite URL (available before login). Used by the login screen.
-app.get('/api/public/invite', (req, res) => {
-  try {
-    const clientId = process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID || '';
-    if (!clientId) {
-      return res.status(500).json({ ok: false, error: 'MISSING_CLIENT_ID' });
+      return res.json({ ok: true, url, clientId, permissions: perms, scopes });
+    } catch (err) {
+      console.error('[Dashboard] /api/public/invite error:', err);
+      return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
     }
-
-    const perms = String(process.env.DISCORD_INVITE_PERMISSIONS || '0').replace(/[^0-9]/g, '') || '0';
-    const scopes = (process.env.DISCORD_INVITE_SCOPES || 'bot applications.commands').trim();
-
-    const url =
-      'https://discord.com/api/oauth2/authorize' +
-      `?client_id=${encodeURIComponent(clientId)}` +
-      `&permissions=${encodeURIComponent(perms)}` +
-      `&scope=${encodeURIComponent(scopes)}`;
-
-    return res.json({ ok: true, url, clientId, permissions: perms, scopes });
-  } catch (err) {
-    console.error('[Dashboard] /api/public/invite error:', err);
-    return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
-  }
-});
+  });
   // Bot invite URL (multi-server onboarding)
   app.get('/api/invite', requireDashboardAuth, (req, res) => {
     try {
@@ -251,9 +250,10 @@ app.get('/api/public/invite', (req, res) => {
         antiSpamActions: s.antiSpamActions ?? 0
       };
 
-      const snapshot = (metrics && typeof metrics.getMetrics === 'function')
-        ? metrics.getMetrics()
-        : { routes: [], totals: { requests: 0, errors: 0, routes: 0 } };
+      const snapshot =
+        metrics && typeof metrics.getMetrics === 'function'
+          ? metrics.getMetrics()
+          : { routes: [], totals: { requests: 0, errors: 0, routes: 0 } };
 
       // ?format=prometheus devolve texto pronto para scraping (ver docs/ROADMAP.md §6).
       const wantsPrometheus = String((req.query && req.query.format) || '').toLowerCase() === 'prometheus';

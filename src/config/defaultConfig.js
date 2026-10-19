@@ -82,16 +82,65 @@ const baseConfig = {
 
   bannedWords: {
     en: [
-      'fuck','shit','bitch','asshole','dick','bastard','slut','whore',
-      'fag','cunt','damn','piss','cock','motherfucker','nigger','retard',
-      'douche','faggot','prick','whorebag','bollocks','bugger','twat',
-      'arse','arsehole','bloody','crap','jerk','shithead','tosser'
+      'fuck',
+      'shit',
+      'bitch',
+      'asshole',
+      'dick',
+      'bastard',
+      'slut',
+      'whore',
+      'fag',
+      'cunt',
+      'damn',
+      'piss',
+      'cock',
+      'motherfucker',
+      'nigger',
+      'retard',
+      'douche',
+      'faggot',
+      'prick',
+      'whorebag',
+      'bollocks',
+      'bugger',
+      'twat',
+      'arse',
+      'arsehole',
+      'bloody',
+      'crap',
+      'jerk',
+      'shithead',
+      'tosser'
     ],
     pt: [
-      'merda','porra','caralho','bosta','cacete','foda','piranha','vadia',
-      'otário','idiota','burro','imbecil','canalha','palhaço','babaca',
-      'desgraçado','filho da puta','corno','viado','retardado','mané',
-      'escroto','vagabundo','puta','lixo','nojento','desgraça'
+      'merda',
+      'porra',
+      'caralho',
+      'bosta',
+      'cacete',
+      'foda',
+      'piranha',
+      'vadia',
+      'otário',
+      'idiota',
+      'burro',
+      'imbecil',
+      'canalha',
+      'palhaço',
+      'babaca',
+      'desgraçado',
+      'filho da puta',
+      'corno',
+      'viado',
+      'retardado',
+      'mané',
+      'escroto',
+      'vagabundo',
+      'puta',
+      'lixo',
+      'nojento',
+      'desgraça'
     ]
   },
 
@@ -127,11 +176,11 @@ const baseConfig = {
     bypassAdmins: true,
     bypassRoles: [],
     sendMessage: true,
-  
+
     minLength: 6,
     ignoreAttachments: true,
     similarityThreshold: 0.85,
-  
+
     channels: {
       // 'ID_DO_CANAL_MEMES': {
       //   maxMessages: 10,
@@ -181,7 +230,7 @@ const baseConfig = {
       warnsToMute: 3,
       // Duração do mute automático
       muteDurationMs: 30 * 60 * 1000
-    },
+    }
   },
 
   gameNews: {
@@ -208,7 +257,6 @@ const baseConfig = {
     // não criar feeds pré-configurados em servidores novos.
     sources: []
   },
-
 
   maintenance: {
     enabled: true,

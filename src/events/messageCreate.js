@@ -12,7 +12,9 @@ try {
 }
 
 let UserActivity = null;
-try { UserActivity = require('../database/models/UserActivity'); } catch {}
+try {
+  UserActivity = require('../database/models/UserActivity');
+} catch {}
 const mongoose = require('../database/connect');
 
 function getDayStartUtc(d = new Date()) {
@@ -74,4 +76,3 @@ module.exports = (client) => {
     }
   });
 };
-

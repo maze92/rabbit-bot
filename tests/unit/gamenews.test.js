@@ -224,10 +224,7 @@ test('makeFeedSourceKey é estável e distingue feeds', () => {
   ok(key !== other, 'chaves deveriam diferir por canal');
 
   // Aceita feedUrl como alternativa a feed
-  eq(
-    makeFeedSourceKey({ guildId: '1', feedUrl: 'https://a.com/rss', channelId: '2' }),
-    key
-  );
+  eq(makeFeedSourceKey({ guildId: '1', feedUrl: 'https://a.com/rss', channelId: '2' }), key);
 });
 
 test('makeFeedSourceKey normaliza campos em falta para null', () => {
@@ -238,10 +235,7 @@ test('makeFeedSourceKey normaliza campos em falta para null', () => {
 // collectExtraChannelIds (fan-out multi-canal)
 // -----------------------------
 test('collectExtraChannelIds exclui o canal principal e deduplica', () => {
-  deepEq(
-    collectExtraChannelIds({ channelId: '111', extraChannelIds: ['222', '222', '111', '333'] }),
-    ['222', '333']
-  );
+  deepEq(collectExtraChannelIds({ channelId: '111', extraChannelIds: ['222', '222', '111', '333'] }), ['222', '333']);
 });
 
 test('collectExtraChannelIds limita a 5 canais e ignora entradas vazias', () => {

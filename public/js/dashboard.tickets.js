@@ -74,7 +74,7 @@
       row.className = 'list-item';
       row.dataset.index = String(idx);
 
-      const num = it.ticketNumber != null ? String(it.ticketNumber) : (String(it._id || '').slice(-6));
+      const num = it.ticketNumber != null ? String(it.ticketNumber) : String(it._id || '').slice(-6);
       const subject = it.subject || t('tickets_subject_default');
       const username = it.username || it.userId || '';
       const status = (it.status || 'open') === 'closed' ? t('tickets_status_closed') : t('tickets_status_open');
@@ -222,8 +222,10 @@
       if (!box) return;
       box.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
       try {
-        const res = await apiGet(`/tickets/${encodeURIComponent(ticketId)}/messages?guildId=${encodeURIComponent(guildId)}&limit=25`);
-        const items = (res && Array.isArray(res.items)) ? res.items : [];
+        const res = await apiGet(
+          `/tickets/${encodeURIComponent(ticketId)}/messages?guildId=${encodeURIComponent(guildId)}&limit=25`
+        );
+        const items = res && Array.isArray(res.items) ? res.items : [];
         const visible = items.filter((m) => {
           const c = String(m?.content || '').trim();
           if (!c) return false;
@@ -235,11 +237,12 @@
           box.innerHTML = `<div class="empty">${escapeHtml(t('tickets_messages_empty'))}</div>`;
           return;
         }
-        box.innerHTML = visible.map((m) => {
-          const who = m.isStaffReply ? (t('tickets_staff_label') || 'Equipa') : (m.authorUsername || m.authorId || '');
-          const when = m.createdAt ? fmtDate(m.createdAt) : '';
-          const content = (m.content || '').toString();
-          return `
+        box.innerHTML = visible
+          .map((m) => {
+            const who = m.isStaffReply ? t('tickets_staff_label') || 'Equipa' : m.authorUsername || m.authorId || '';
+            const when = m.createdAt ? fmtDate(m.createdAt) : '';
+            const content = (m.content || '').toString();
+            return `
             <div class="ticket-msg">
               <div class="ticket-msg-meta">
                  <strong>${escapeHtml(who)}</strong>${m.isStaffReply ? ' <span class="ticket-msg-badge">' + escapeHtml(t('tickets_staff_badge') || 'Dashboard') + '</span>' : ''}${when ? ' • ' + escapeHtml(when) : ''}
@@ -247,7 +250,8 @@
               <div class="ticket-msg-body">${escapeHtml(content)}</div>
             </div>
           `;
-        }).join('');
+          })
+          .join('');
       } catch {
         box.innerHTML = `<div class="empty">${escapeHtml(t('tickets_messages_error'))}</div>`;
       }
@@ -261,23 +265,28 @@
       if (!box) return;
       box.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
       try {
-        const res = await apiGet(`/tickets/${encodeURIComponent(ticketId)}/audit?guildId=${encodeURIComponent(guildId)}`);
-        const items = (res && Array.isArray(res.items)) ? res.items : [];
+        const res = await apiGet(
+          `/tickets/${encodeURIComponent(ticketId)}/audit?guildId=${encodeURIComponent(guildId)}`
+        );
+        const items = res && Array.isArray(res.items) ? res.items : [];
         if (!items.length) {
           box.innerHTML = `<div class="empty">${escapeHtml(t('tickets_audit_empty'))}</div>`;
           return;
         }
-        box.innerHTML = items.map((ev) => {
-          const when = ev.createdAt ? fmtDate(ev.createdAt) : '';
-          const who = ev.actorUsername || ev.actorId || '';
-          const raw = ev.action || '';
-          const what = raw === 'opened'
-            ? (t('tickets_audit_opened') || 'Aberto')
-            : raw === 'closed'
-              ? (t('tickets_audit_closed') || 'Fechado')
-              : raw;
-          return `<div class="ticket-audit-row"><span class="ticket-audit-what">${escapeHtml(what)}</span>${who ? ' • ' + escapeHtml(who) : ''}${when ? ' • ' + escapeHtml(when) : ''}</div>`;
-        }).join('');
+        box.innerHTML = items
+          .map((ev) => {
+            const when = ev.createdAt ? fmtDate(ev.createdAt) : '';
+            const who = ev.actorUsername || ev.actorId || '';
+            const raw = ev.action || '';
+            const what =
+              raw === 'opened'
+                ? t('tickets_audit_opened') || 'Aberto'
+                : raw === 'closed'
+                  ? t('tickets_audit_closed') || 'Fechado'
+                  : raw;
+            return `<div class="ticket-audit-row"><span class="ticket-audit-what">${escapeHtml(what)}</span>${who ? ' • ' + escapeHtml(who) : ''}${when ? ' • ' + escapeHtml(when) : ''}</div>`;
+          })
+          .join('');
       } catch {
         box.innerHTML = `<div class="empty">${escapeHtml(t('tickets_audit_error'))}</div>`;
       }
@@ -393,7 +402,7 @@
       }
 
       const filterEl = document.getElementById('ticketsStatusFilter');
-      const status = filterEl ? (filterEl.value || 'open') : 'open';
+      const status = filterEl ? filterEl.value || 'open' : 'open';
       const q = getSearchQuery();
 
       if (reset) {
@@ -406,12 +415,14 @@
 
       const cursor = state.ticketsNextCursor ? `&cursor=${encodeURIComponent(state.ticketsNextCursor)}` : '';
       const qParam = q ? `&q=${encodeURIComponent(q)}` : '';
-      const res = await apiGet(`/tickets?guildId=${encodeURIComponent(guildId)}&status=${encodeURIComponent(status)}&limit=30${cursor}${qParam}`);
-      const page = (res && Array.isArray(res.items)) ? res.items : [];
+      const res = await apiGet(
+        `/tickets?guildId=${encodeURIComponent(guildId)}&status=${encodeURIComponent(status)}&limit=30${cursor}${qParam}`
+      );
+      const page = res && Array.isArray(res.items) ? res.items : [];
 
-      const merged = reset ? page : (Array.isArray(state.ticketsItems) ? state.ticketsItems.concat(page) : page);
+      const merged = reset ? page : Array.isArray(state.ticketsItems) ? state.ticketsItems.concat(page) : page;
       state.ticketsItems = merged;
-      state.ticketsNextCursor = (res && res.nextCursor) ? String(res.nextCursor) : null;
+      state.ticketsNextCursor = res && res.nextCursor ? String(res.nextCursor) : null;
 
       renderList(merged);
       // Detail panel should only show after user clicks a ticket.

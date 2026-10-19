@@ -91,7 +91,7 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
         _id: userId,
         role: payload.role || 'USER',
         username: payload.username || 'discord',
-        permissions: (payload.permissions && typeof payload.permissions === 'object') ? payload.permissions : {},
+        permissions: payload.permissions && typeof payload.permissions === 'object' ? payload.permissions : {},
         // Optional metadata (available on the unscoped OAuth token) to support
         // stable guild listing and admin detection without additional Discord API calls.
         allowedGuilds: Array.isArray(payload.allowedGuilds)
@@ -103,7 +103,7 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
                 icon: typeof g.icon === 'string' ? g.icon : null,
                 owner: g.owner === true,
                 permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
-                botPresent: (g.botPresent === true) ? true : (g.botPresent === false ? false : null)
+                botPresent: g.botPresent === true ? true : g.botPresent === false ? false : null
               }))
           : [],
         allowedGuildIds: Array.isArray(payload.allowedGuildIds) ? payload.allowedGuildIds.map(String) : [],
@@ -155,7 +155,7 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
       if (!u) return res.status(401).json({ ok: false, error: 'Unauthorized' });
       if (u.role === 'BOT_ADMIN' || u.role === 'BOT_OWNER') return next();
       if (!needed.length) return next();
-      const perms = (u.permissions && typeof u.permissions === 'object') ? u.permissions : {};
+      const perms = u.permissions && typeof u.permissions === 'object' ? u.permissions : {};
       const allowed = needed.some((k) => perms[k] === true);
       if (!allowed) return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
       return next();

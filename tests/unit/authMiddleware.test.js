@@ -7,7 +7,9 @@ const { createAuthMiddleware } = require('../../src/dashboard/authMiddleware');
 
 // sanitizeId mínimo equivalente ao da dashboard (apenas dígitos, máx. 20).
 function sanitizeId(value) {
-  const s = String(value == null ? '' : value).replace(/<[^>]*>/g, '').trim();
+  const s = String(value == null ? '' : value)
+    .replace(/<[^>]*>/g, '')
+    .trim();
   return s.replace(/\D/g, '').slice(0, 20);
 }
 
@@ -15,15 +17,21 @@ function makeRes() {
   return {
     statusCode: null,
     body: null,
-    status(code) { this.statusCode = code; return this; },
-    json(obj) { this.body = obj; return this; }
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(obj) {
+      this.body = obj;
+      return this;
+    }
   };
 }
 
 function makeMw(opts) {
   const config = { dashboard: { requireAuth: opts && opts.requireAuth === false ? false : true } };
   return createAuthMiddleware({
-    jwt: { verify: () => (opts && opts.payload) || ({ t: 'oauth', sub: '1' }) },
+    jwt: { verify: () => (opts && opts.payload) || { t: 'oauth', sub: '1' } },
     JWT_SECRET: 'test-secret',
     sanitizeId,
     config
@@ -58,7 +66,9 @@ test('requirePerm deixa passar quando a permissão existe', () => {
   const req = { dashboardUser: { permissions: { canViewLogs: true } } };
   const res = makeRes();
   let passed = false;
-  requirePerm({ anyOf: ['canViewLogs'] })(req, res, () => { passed = true; });
+  requirePerm({ anyOf: ['canViewLogs'] })(req, res, () => {
+    passed = true;
+  });
   ok(passed, 'esperava next() quando a permissão existe');
   eq(res.statusCode, null);
 });
@@ -68,7 +78,9 @@ test('requirePerm deixa o owner do bot ignorar permissões granulares', () => {
   const req = { dashboardUser: { role: 'BOT_OWNER', permissions: {} } };
   const res = makeRes();
   let passed = false;
-  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => { passed = true; });
+  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => {
+    passed = true;
+  });
   ok(passed);
 });
 
@@ -77,7 +89,9 @@ test('requirePerm deixa o administrador do bot ignorar permissões granulares', 
   const req = { dashboardUser: { role: 'BOT_ADMIN', permissions: {} } };
   const res = makeRes();
   let passed = false;
-  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => { passed = true; });
+  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => {
+    passed = true;
+  });
   ok(passed);
 });
 
@@ -85,7 +99,9 @@ test('requirePerm não trata o perfil legado ADMIN como administrador do bot', (
   const { requirePerm } = makeMw();
   const req = { dashboardUser: { role: 'ADMIN', permissions: {} } };
   const res = makeRes();
-  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => { throw new Error('não devia passar'); });
+  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => {
+    throw new Error('não devia passar');
+  });
   eq(res.statusCode, 403);
 });
 
@@ -116,7 +132,9 @@ test('requirePerm devolve 403 quando falta a permissão', () => {
   const { requirePerm } = makeMw();
   const req = { dashboardUser: { permissions: {} } };
   const res = makeRes();
-  requirePerm({ anyOf: ['canViewLogs'] })(req, res, () => { throw new Error('não devia passar'); });
+  requirePerm({ anyOf: ['canViewLogs'] })(req, res, () => {
+    throw new Error('não devia passar');
+  });
   eq(res.statusCode, 403);
   eq(res.body.error, 'NO_PERMISSION');
 });
@@ -124,7 +142,9 @@ test('requirePerm devolve 403 quando falta a permissão', () => {
 test('requirePerm devolve 401 sem utilizador autenticado', () => {
   const { requirePerm } = makeMw();
   const res = makeRes();
-  requirePerm({ anyOf: ['canViewLogs'] })({ dashboardUser: null }, res, () => { throw new Error('não devia passar'); });
+  requirePerm({ anyOf: ['canViewLogs'] })({ dashboardUser: null }, res, () => {
+    throw new Error('não devia passar');
+  });
   eq(res.statusCode, 401);
 });
 
@@ -132,7 +152,9 @@ test('requirePerm sem anyOf apenas exige sessão válida', () => {
   const { requirePerm } = makeMw();
   const res = makeRes();
   let passed = false;
-  requirePerm({})({ dashboardUser: { permissions: {} } }, res, () => { passed = true; });
+  requirePerm({})({ dashboardUser: { permissions: {} } }, res, () => {
+    passed = true;
+  });
   ok(passed);
 });
 
@@ -140,7 +162,9 @@ test('requirePerm não bloqueia quando a auth está desativada', () => {
   const { requirePerm } = makeMw({ requireAuth: false });
   const res = makeRes();
   let passed = false;
-  requirePerm({ anyOf: ['canViewLogs'] })({}, res, () => { passed = true; });
+  requirePerm({ anyOf: ['canViewLogs'] })({}, res, () => {
+    passed = true;
+  });
   ok(passed);
 });
 
@@ -152,7 +176,9 @@ test('requireGuildAccess deixa passar a guild selecionada', () => {
   const req = { dashboardUser: { selectedGuildId: '111', allowedGuildIds: [] }, params: { guildId: '111' } };
   const res = makeRes();
   let passed = false;
-  requireGuildAccess()(req, res, () => { passed = true; });
+  requireGuildAccess()(req, res, () => {
+    passed = true;
+  });
   ok(passed);
 });
 
@@ -160,7 +186,9 @@ test('requireGuildAccess exige seleção de guild quando não é opcional', () =
   const { requireGuildAccess } = makeMw();
   const req = { dashboardUser: { selectedGuildId: null, allowedGuildIds: [] }, params: { guildId: '111' } };
   const res = makeRes();
-  requireGuildAccess()(req, res, () => { throw new Error('não devia passar'); });
+  requireGuildAccess()(req, res, () => {
+    throw new Error('não devia passar');
+  });
   eq(res.statusCode, 403);
   eq(res.body.error, 'NO_GUILD_SELECTED');
 });
@@ -169,7 +197,9 @@ test('requireGuildAccess bloqueia guild diferente da selecionada', () => {
   const { requireGuildAccess } = makeMw();
   const req = { dashboardUser: { selectedGuildId: '111', allowedGuildIds: [] }, params: { guildId: '222' } };
   const res = makeRes();
-  requireGuildAccess()(req, res, () => { throw new Error('não devia passar'); });
+  requireGuildAccess()(req, res, () => {
+    throw new Error('não devia passar');
+  });
   eq(res.statusCode, 403);
   eq(res.body.error, 'NO_GUILD_SELECTED');
 });
@@ -181,7 +211,9 @@ test('requireGuildAccess aplica a allow-list', () => {
     params: { guildId: '222' }
   };
   const res = makeRes();
-  requireGuildAccess({ optional: true })(req, res, () => { throw new Error('não devia passar'); });
+  requireGuildAccess({ optional: true })(req, res, () => {
+    throw new Error('não devia passar');
+  });
   eq(res.statusCode, 403);
   eq(res.body.error, 'NO_GUILD_ACCESS');
 });
@@ -191,7 +223,9 @@ test('requireGuildAccess opcional fixa a guild selecionada quando não há guild
   const req = { dashboardUser: { selectedGuildId: '111', allowedGuildIds: [] }, query: { guildId: '' } };
   const res = makeRes();
   let passed = false;
-  requireGuildAccess({ from: 'query', optional: true })(req, res, () => { passed = true; });
+  requireGuildAccess({ from: 'query', optional: true })(req, res, () => {
+    passed = true;
+  });
   ok(passed);
   eq(req.query.guildId, '111');
 });
@@ -200,7 +234,9 @@ test('requireGuildAccess opcional bloqueia consulta global de utilizador sem gui
   const { requireGuildAccess } = makeMw();
   const req = { dashboardUser: { role: 'USER', selectedGuildId: null, allowedGuildIds: ['111'] }, query: {} };
   const res = makeRes();
-  requireGuildAccess({ from: 'query', optional: true })(req, res, () => { throw new Error('não devia passar'); });
+  requireGuildAccess({ from: 'query', optional: true })(req, res, () => {
+    throw new Error('não devia passar');
+  });
   eq(res.statusCode, 403);
   eq(res.body.error, 'NO_GUILD_SELECTED');
 });
@@ -210,15 +246,22 @@ test('requireGuildAccess opcional permite consulta global a bot operators', () =
   const req = { dashboardUser: { role: 'BOT_ADMIN', selectedGuildId: null, allowedGuildIds: [] }, query: {} };
   const res = makeRes();
   let passed = false;
-  requireGuildAccess({ from: 'query', optional: true })(req, res, () => { passed = true; });
+  requireGuildAccess({ from: 'query', optional: true })(req, res, () => {
+    passed = true;
+  });
   ok(passed);
 });
 
 test('requireGuildAccess bloqueia guild arbitrária sem allow-list nem seleção', () => {
   const { requireGuildAccess } = makeMw();
-  const req = { dashboardUser: { role: 'USER', selectedGuildId: null, allowedGuildIds: [] }, query: { guildId: '222' } };
+  const req = {
+    dashboardUser: { role: 'USER', selectedGuildId: null, allowedGuildIds: [] },
+    query: { guildId: '222' }
+  };
   const res = makeRes();
-  requireGuildAccess({ from: 'query', optional: true })(req, res, () => { throw new Error('não devia passar'); });
+  requireGuildAccess({ from: 'query', optional: true })(req, res, () => {
+    throw new Error('não devia passar');
+  });
   eq(res.statusCode, 403);
   eq(res.body.error, 'NO_GUILD_ACCESS');
 });
@@ -227,6 +270,8 @@ test('requireGuildAccess devolve 400 quando falta guildId e não é opcional', (
   const { requireGuildAccess } = makeMw();
   const req = { dashboardUser: { selectedGuildId: '111', allowedGuildIds: [] }, params: { guildId: '' } };
   const res = makeRes();
-  requireGuildAccess()(req, res, () => { throw new Error('não devia passar'); });
+  requireGuildAccess()(req, res, () => {
+    throw new Error('não devia passar');
+  });
   eq(res.statusCode, 400);
 });

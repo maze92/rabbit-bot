@@ -55,7 +55,11 @@ async function ensureMongoIndexes() {
     // Require models lazily to avoid circular deps
     const models = [];
     const safeRequire = (p) => {
-      try { return require(p); } catch { return null; }
+      try {
+        return require(p);
+      } catch {
+        return null;
+      }
     };
 
     const Ticket = safeRequire('./database/models/Ticket');
@@ -77,7 +81,26 @@ async function ensureMongoIndexes() {
     const PremiumPayment = safeRequire('./database/models/PremiumPayment');
     const PremiumSettings = safeRequire('./database/models/PremiumSettings');
 
-    [Ticket, TicketCounter, TicketLog, Infraction, DashboardLog, DashboardAudit, User, UserActivity, PresenceSession, GameNewsFeed, GameNews, GiveawayPost, Level, StarboardEntry, Poll, MemberStat, PremiumPayment, PremiumSettings]
+    [
+      Ticket,
+      TicketCounter,
+      TicketLog,
+      Infraction,
+      DashboardLog,
+      DashboardAudit,
+      User,
+      UserActivity,
+      PresenceSession,
+      GameNewsFeed,
+      GameNews,
+      GiveawayPost,
+      Level,
+      StarboardEntry,
+      Poll,
+      MemberStat,
+      PremiumPayment,
+      PremiumSettings
+    ]
       .filter(Boolean)
       .forEach((m) => models.push(m));
 
@@ -240,7 +263,7 @@ async function handleClientReady() {
       if (client.user) {
         await client.user.setPresence({
           activities: [{ name: 'moderating your server', type: 0 }],
-          status: 'online',
+          status: 'online'
         });
       }
     } catch (err) {
@@ -261,7 +284,7 @@ client.on('shardResume', async () => {
     if (client.user) {
       await client.user.setPresence({
         activities: [{ name: 'moderating your server', type: 0 }],
-        status: 'online',
+        status: 'online'
       });
     }
   } catch (err) {

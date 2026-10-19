@@ -46,7 +46,10 @@ function rateLimit(options = {}) {
     // Use Express's req.ip. When "trust proxy" is enabled (recommended on Koyeb),
     // Express safely derives the client IP from X-Forwarded-For.
     // Avoid manually parsing XFF, which can be spoofed when trust proxy is off.
-    let ip = (typeof req.ip === 'string' && req.ip) ? req.ip : (req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown');
+    let ip =
+      typeof req.ip === 'string' && req.ip
+        ? req.ip
+        : req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown';
     if (ip.startsWith('::ffff:')) ip = ip.slice(7);
 
     // IMPORTANT: Include a prefix so each endpoint can have its own bucket.
@@ -75,7 +78,7 @@ function rateLimit(options = {}) {
       return res.status(429).json({
         ok: false,
         error: 'Too many requests',
-        retryAfterMs: windowMs - (now - bucket.start),
+        retryAfterMs: windowMs - (now - bucket.start)
       });
     }
 

@@ -148,18 +148,12 @@ function getAdaptiveAutomodAdjustment(trustCfg, stats = {}) {
     return { applied: false, level: 'off', delta: 0 };
   }
 
-  const minSampleSize = Number.isFinite(Number(adaptive.minSampleSize))
-    ? Number(adaptive.minSampleSize)
-    : 5;
+  const minSampleSize = Number.isFinite(Number(adaptive.minSampleSize)) ? Number(adaptive.minSampleSize) : 5;
 
   // `Number(null)` seria 0 (finito), o que faria uma amostra vazia parecer
   // "Trust médio = 0"; por isso validamos o tipo antes de converter.
-  const avgTrust = typeof stats.avgTrust === 'number' && Number.isFinite(stats.avgTrust)
-    ? stats.avgTrust
-    : NaN;
-  const sampleSize = typeof stats.sampleSize === 'number' && Number.isFinite(stats.sampleSize)
-    ? stats.sampleSize
-    : NaN;
+  const avgTrust = typeof stats.avgTrust === 'number' && Number.isFinite(stats.avgTrust) ? stats.avgTrust : NaN;
+  const sampleSize = typeof stats.sampleSize === 'number' && Number.isFinite(stats.sampleSize) ? stats.sampleSize : NaN;
 
   if (!Number.isFinite(avgTrust) || !Number.isFinite(sampleSize) || sampleSize < minSampleSize) {
     return { applied: false, level: 'insufficient', delta: 0 };

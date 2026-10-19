@@ -15,7 +15,9 @@ async function getGuildConfig(guildId) {
     return cached.value;
   }
 
-  const doc = await GuildConfig.findOne({ guildId }).lean().catch(() => null);
+  const doc = await GuildConfig.findOne({ guildId })
+    .lean()
+    .catch(() => null);
   const value = doc || null;
 
   _cache.set(guildId, { at: now, value });

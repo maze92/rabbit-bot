@@ -10,10 +10,7 @@ function onShutdown(fn) {
 }
 
 function withTimeout(promise, ms) {
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise((resolve) => setTimeout(resolve, ms).unref?.())
-  ]);
+  return Promise.race([Promise.resolve(promise), new Promise((resolve) => setTimeout(resolve, ms).unref?.())]);
 }
 
 module.exports = () => {
@@ -53,7 +50,12 @@ module.exports = () => {
   process.on('warning', (warning) => {
     // Silence noisy discord.js v15 migration warnings...
     try {
-      if (warning && warning.name === 'DeprecationWarning' && typeof warning.message === 'string' && warning.message.includes('ready event has been renamed to clientReady')) {
+      if (
+        warning &&
+        warning.name === 'DeprecationWarning' &&
+        typeof warning.message === 'string' &&
+        warning.message.includes('ready event has been renamed to clientReady')
+      ) {
         return;
       }
     } catch {}

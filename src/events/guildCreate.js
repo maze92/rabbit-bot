@@ -14,11 +14,7 @@ module.exports = (client) => {
       // 1) Configuração base por servidor (idempotente).
       try {
         const GuildConfig = require('../database/models/GuildConfig');
-        await GuildConfig.updateOne(
-          { guildId: guild.id },
-          { $setOnInsert: { guildId: guild.id } },
-          { upsert: true }
-        );
+        await GuildConfig.updateOne({ guildId: guild.id }, { $setOnInsert: { guildId: guild.id } }, { upsert: true });
       } catch (err) {
         console.warn('[guildCreate] Não foi possível criar a GuildConfig:', err?.message || err);
       }
@@ -39,9 +35,7 @@ module.exports = (client) => {
           }
         };
 
-        const target = canSend(guild.systemChannel)
-          ? guild.systemChannel
-          : guild.channels.cache.find(canSend);
+        const target = canSend(guild.systemChannel) ? guild.systemChannel : guild.channels.cache.find(canSend);
 
         if (target) {
           const embed = new EmbedBuilder()

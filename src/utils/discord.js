@@ -21,7 +21,7 @@ function safeReply(interaction, payload = {}, options = {}) {
   if (!interaction) return null;
 
   const finalPayload = {
-    ...payload,
+    ...payload
   };
 
   if (ephemeral) {
@@ -46,14 +46,11 @@ function safeReply(interaction, payload = {}, options = {}) {
  * Convenience helper for common "ephemeral only" replies
  */
 function replyEphemeral(interaction, content) {
-  const payload =
-    typeof content === 'string'
-      ? { content }
-      : content || {};
+  const payload = typeof content === 'string' ? { content } : content || {};
   return safeReply(interaction, payload, { ephemeral: true });
 }
 
 module.exports = {
   safeReply,
-  replyEphemeral,
+  replyEphemeral
 };

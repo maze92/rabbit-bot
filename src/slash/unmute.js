@@ -27,10 +27,7 @@ module.exports = async function unmuteSlash(client, interaction) {
 
     const channelPerms = interaction.channel?.permissionsFor?.(botMember);
     if (!channelPerms?.has(PermissionsBitField.Flags.ModerateMembers)) {
-      return replyEphemeral(
-        interaction,
-        await tContext(interaction, 'common.missingBotPerm', 'Moderate Members')
-      );
+      return replyEphemeral(interaction, await tContext(interaction, 'common.missingBotPerm', 'Moderate Members'));
     }
 
     const targetUser = interaction.options.getUser('user', true);
@@ -43,10 +40,7 @@ module.exports = async function unmuteSlash(client, interaction) {
     if (!canProceed) return;
 
     if (typeof target.isCommunicationDisabled === 'function' && !target.isCommunicationDisabled()) {
-      return replyEphemeral(
-        interaction,
-        await tContext(interaction, 'unmute.notMuted', { tag: target.user.tag })
-      );
+      return replyEphemeral(interaction, await tContext(interaction, 'unmute.notMuted', { tag: target.user.tag }));
     }
 
     await target.timeout(null, `Unmuted by ${interaction.user.tag}`);

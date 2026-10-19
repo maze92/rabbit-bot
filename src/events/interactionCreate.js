@@ -40,7 +40,7 @@ const commandHandlers = new Map([
   ['help', helpSlash],
   ['poll', pollSlash],
   ['rank', rankSlash],
-  ['leaderboard', leaderboardSlash],
+  ['leaderboard', leaderboardSlash]
 ]);
 
 // Botão de verificação: "verify:<roleId>"
@@ -50,28 +50,45 @@ async function handleVerifyButton(interaction, roleId) {
 
     const cfg = await getFeature(interaction.guild.id, 'verification');
     if (cfg?.enabled !== true) {
-      return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'verify.disabled') }, { ephemeral: true });
+      return safeReply(
+        interaction,
+        { content: await tGuild(interaction.guild.id, 'verify.disabled') },
+        { ephemeral: true }
+      );
     }
 
-    const member =
-      interaction.member ||
-      (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
+    const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
     if (!member) {
-      return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'common.cannotResolveUser') }, { ephemeral: true });
+      return safeReply(
+        interaction,
+        { content: await tGuild(interaction.guild.id, 'common.cannotResolveUser') },
+        { ephemeral: true }
+      );
     }
 
     const role =
-      interaction.guild.roles.cache.get(roleId) ||
-      (await interaction.guild.roles.fetch(roleId).catch(() => null));
+      interaction.guild.roles.cache.get(roleId) || (await interaction.guild.roles.fetch(roleId).catch(() => null));
     if (!role) {
-      return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'verify.disabled') }, { ephemeral: true });
+      return safeReply(
+        interaction,
+        { content: await tGuild(interaction.guild.id, 'verify.disabled') },
+        { ephemeral: true }
+      );
     }
 
     await member.roles.add(role, 'Verificação').catch(() => null);
-    return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'verify.success') }, { ephemeral: true });
+    return safeReply(
+      interaction,
+      { content: await tGuild(interaction.guild.id, 'verify.success') },
+      { ephemeral: true }
+    );
   } catch (err) {
     console.error('[interactionCreate] verify button error:', err);
-    return safeReply(interaction, { content: await tGuild(interaction.guild.id, 'common.unexpectedError') }, { ephemeral: true });
+    return safeReply(
+      interaction,
+      { content: await tGuild(interaction.guild.id, 'common.unexpectedError') },
+      { ephemeral: true }
+    );
   }
 }
 
@@ -79,7 +96,11 @@ async function handleVerifyButton(interaction, roleId) {
 async function handlePollButton(interaction, customId) {
   try {
     if (!Poll) {
-      return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+      return safeReply(
+        interaction,
+        { content: await tContext(interaction, 'common.unexpectedError') },
+        { ephemeral: true }
+      );
     }
 
     const parts = String(customId).split(':');
@@ -96,9 +117,10 @@ async function handlePollButton(interaction, customId) {
     if (index < 0 || index >= optionCount) return;
 
     const userId = interaction.user.id;
-    const counts = Array.isArray(poll.counts) && poll.counts.length === optionCount
-      ? poll.counts.map((n) => Number(n) || 0)
-      : new Array(optionCount).fill(0);
+    const counts =
+      Array.isArray(poll.counts) && poll.counts.length === optionCount
+        ? poll.counts.map((n) => Number(n) || 0)
+        : new Array(optionCount).fill(0);
 
     const prev = poll.votes ? poll.votes.get(userId) : undefined;
 
@@ -123,10 +145,7 @@ async function handlePollButton(interaction, customId) {
         const channel =
           interaction.guild.channels.cache.get(poll.channelId) ||
           (await interaction.guild.channels.fetch(poll.channelId).catch(() => null));
-        const msg =
-          channel && poll.messageId
-            ? await channel.messages.fetch(poll.messageId).catch(() => null)
-            : null;
+        const msg = channel && poll.messageId ? await channel.messages.fetch(poll.messageId).catch(() => null) : null;
         if (msg && typeof pollSlash.buildPollMessage === 'function') {
           await msg.edit(pollSlash.buildPollMessage(poll)).catch(() => null);
         }
@@ -138,7 +157,11 @@ async function handlePollButton(interaction, customId) {
     return safeReply(interaction, { content: await tContext(interaction, 'poll.voted') }, { ephemeral: true });
   } catch (err) {
     console.error('[interactionCreate] poll button error:', err);
-    return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+    return safeReply(
+      interaction,
+      { content: await tContext(interaction, 'common.unexpectedError') },
+      { ephemeral: true }
+    );
   }
 }
 
@@ -177,9 +200,10 @@ module.exports = (client) => {
             const allowStaff = mm.allowStaff !== false;
             const ok = allowStaff ? await isStaff(interaction.member) : false;
             if (!ok) {
-              const msg = (typeof mm.message === 'string' && mm.message.trim())
-                ? mm.message.trim()
-                : 'O bot está em modo de manutenção. Tenta novamente mais tarde.';
+              const msg =
+                typeof mm.message === 'string' && mm.message.trim()
+                  ? mm.message.trim()
+                  : 'O bot está em modo de manutenção. Tenta novamente mais tarde.';
               await safeReply(interaction, { content: msg }, { ephemeral: true });
               return;
             }
@@ -203,14 +227,7 @@ module.exports = (client) => {
 
         const desc = optStr ? `Options: ${optStr}` : '';
 
-        logger(
-          client,
-          `Slash command: /${name}`,
-          user,
-          client.user,
-          desc,
-          guild
-        );
+        logger(client, `Slash command: /${name}`, user, client.user, desc, guild);
       } catch (logErr) {
         console.warn('[interactionCreate] Failed to log slash command:', logErr);
       }

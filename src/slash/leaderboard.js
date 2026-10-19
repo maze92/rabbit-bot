@@ -22,7 +22,11 @@ module.exports = async function leaderboardSlash(_client, interaction) {
     }
 
     if (!Level) {
-      return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+      return safeReply(
+        interaction,
+        { content: await tContext(interaction, 'common.unexpectedError') },
+        { ephemeral: true }
+      );
     }
 
     const limitRaw = interaction.options.getInteger('limit');
@@ -51,6 +55,10 @@ module.exports = async function leaderboardSlash(_client, interaction) {
     return interaction.reply({ embeds: [embed] }).catch(() => null);
   } catch (err) {
     console.error('[slash/leaderboard] Error:', err);
-    return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+    return safeReply(
+      interaction,
+      { content: await tContext(interaction, 'common.unexpectedError') },
+      { ephemeral: true }
+    );
   }
 };

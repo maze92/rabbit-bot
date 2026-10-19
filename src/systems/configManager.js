@@ -9,7 +9,9 @@ function isPlainObject(v) {
 }
 
 function deepGet(obj, pathStr) {
-  const parts = String(pathStr || '').split('.').filter(Boolean);
+  const parts = String(pathStr || '')
+    .split('.')
+    .filter(Boolean);
   let cur = obj;
   for (const p of parts) {
     if (!isPlainObject(cur) && !Array.isArray(cur)) return undefined;
@@ -20,7 +22,9 @@ function deepGet(obj, pathStr) {
 }
 
 function deepSet(obj, pathStr, value) {
-  const parts = String(pathStr || '').split('.').filter(Boolean);
+  const parts = String(pathStr || '')
+    .split('.')
+    .filter(Boolean);
   if (!parts.length) return;
 
   let cur = obj;
@@ -33,7 +37,9 @@ function deepSet(obj, pathStr, value) {
 }
 
 function deepDelete(obj, pathStr) {
-  const parts = String(pathStr || '').split('.').filter(Boolean);
+  const parts = String(pathStr || '')
+    .split('.')
+    .filter(Boolean);
   if (!parts.length) return;
 
   let cur = obj;
@@ -277,9 +283,7 @@ function flattenPatch(obj, prefix = '', out = {}) {
 const overridesPath = path.join(__dirname, '../config/overrides.json');
 
 // Allow setting `null` to clear an override (fallback to default behavior).
-const NULLABLE_PATHS = new Set([
-  'gameNews.maxPerCycle'
-]);
+const NULLABLE_PATHS = new Set(['gameNews.maxPerCycle']);
 
 function readOverrides() {
   try {
@@ -326,7 +330,6 @@ function getEditableSchema() {
     allowedPaths: Array.from(ALLOWED_PATHS)
   };
 }
-
 
 function applyPatch(payload) {
   if (!isPlainObject(payload)) {
@@ -394,7 +397,6 @@ function applyPatch(payload) {
     config: getPublicConfig()
   };
 }
-
 
 function getValue(pathStr) {
   if (!ALLOWED_PATHS.has(pathStr)) return undefined;

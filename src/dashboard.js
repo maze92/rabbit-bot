@@ -100,7 +100,9 @@ const app = express();
 // You can disable with TRUST_PROXY=false.
 try {
   const trustProxyEnv = (process.env.TRUST_PROXY || '').toString().trim().toLowerCase();
-  const shouldTrust = trustProxyEnv ? trustProxyEnv !== 'false' && trustProxyEnv !== '0' : (process.env.NODE_ENV === 'production');
+  const shouldTrust = trustProxyEnv
+    ? trustProxyEnv !== 'false' && trustProxyEnv !== '0'
+    : process.env.NODE_ENV === 'production';
   if (shouldTrust) app.set('trust proxy', 1);
 } catch {}
 
@@ -114,7 +116,9 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // Enforce a strong JWT secret in production
 if (isProd && (!process.env.DASHBOARD_JWT_SECRET || process.env.DASHBOARD_JWT_SECRET.length < 32)) {
-  throw new Error('[Dashboard Auth] DASHBOARD_JWT_SECRET is missing or too weak in production. It must be at least 32 characters.');
+  throw new Error(
+    '[Dashboard Auth] DASHBOARD_JWT_SECRET is missing or too weak in production. It must be at least 32 characters.'
+  );
 }
 
 // Em produção o segredo é obrigatório (validado acima). Fora de produção,
@@ -123,7 +127,9 @@ if (isProd && (!process.env.DASHBOARD_JWT_SECRET || process.env.DASHBOARD_JWT_SE
 const JWT_SECRET = process.env.DASHBOARD_JWT_SECRET || crypto.randomBytes(48).toString('hex');
 
 if (!isProd && !process.env.DASHBOARD_JWT_SECRET) {
-  console.warn('[Dashboard Auth] DASHBOARD_JWT_SECRET não definido: a usar segredo aleatório temporário (sessões caem ao reiniciar). Define a variável para sessões persistentes.');
+  console.warn(
+    '[Dashboard Auth] DASHBOARD_JWT_SECRET não definido: a usar segredo aleatório temporário (sessões caem ao reiniciar). Define a variável para sessões persistentes.'
+  );
 }
 
 const server = http.createServer(app);
@@ -133,18 +139,20 @@ app.disable('x-powered-by');
 
 // Basic security headers for dashboard API
 // We disable the default CSP for now to avoid breaking inline scripts/styles.
-const allowedOrigins = (Array.isArray(config.dashboard?.allowedOrigins) && config.dashboard.allowedOrigins.length > 0
-  ? config.dashboard.allowedOrigins
-  : (process.env.DASHBOARD_ORIGIN || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-);
+const allowedOrigins =
+  Array.isArray(config.dashboard?.allowedOrigins) && config.dashboard.allowedOrigins.length > 0
+    ? config.dashboard.allowedOrigins
+    : (process.env.DASHBOARD_ORIGIN || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
 
 // In production, do NOT fall back to permissive CORS unless explicitly allowed.
 // This prevents a common misconfiguration where the API is callable from any website.
 if (isProd && !allowedOrigins.length && process.env.DASHBOARD_ALLOW_ANY_ORIGIN !== 'true') {
-  console.warn('[Dashboard] CORS is not configured. Set DASHBOARD_ORIGIN (recommended) or dashboard.allowedOrigins. Refusing cross-origin requests in production.');
+  console.warn(
+    '[Dashboard] CORS is not configured. Set DASHBOARD_ORIGIN (recommended) or dashboard.allowedOrigins. Refusing cross-origin requests in production.'
+  );
 }
 
 // Security headers (dashboard)
@@ -155,16 +163,16 @@ app.use(
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
-        "default-src": ["'self'"],
-        "base-uri": ["'self'"],
-        "object-src": ["'none'"],
-        "frame-ancestors": ["'none'"],
-        "form-action": ["'self'"],
-        "script-src": ["'self'"],
-        "style-src": ["'self'", "'unsafe-inline'"],
-        "img-src": ["'self'", "data:", "https:"],
-        "font-src": ["'self'", "data:", "https:"],
-        "connect-src": ["'self'"]
+        'default-src': ["'self'"],
+        'base-uri': ["'self'"],
+        'object-src': ["'none'"],
+        'frame-ancestors': ["'none'"],
+        'form-action': ["'self'"],
+        'script-src': ["'self'"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", 'data:', 'https:'],
+        'font-src': ["'self'", 'data:', 'https:'],
+        'connect-src': ["'self'"]
       }
     },
     // Avoid COEP surprises with third-party assets (e.g., Discord CDN avatars).
@@ -211,11 +219,12 @@ let gameNewsStatusCache = [];
 const logStore = createLogStore({ config, getModel: () => DashboardLog });
 
 // Middleware de auth/RBAC (ver dashboard/authMiddleware.js)
-const {
-  requireDashboardAuth,
-  requirePerm,
-  requireGuildAccess
-} = createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config });
+const { requireDashboardAuth, requirePerm, requireGuildAccess } = createAuthMiddleware({
+  jwt,
+  JWT_SECRET,
+  sanitizeId,
+  config
+});
 
 let _client = null;
 
@@ -226,13 +235,15 @@ function setClient(client) {
 // Versão usada para cache-busting dos assets no index.html (?v=__ASSET_VERSION__).
 // Por defeito usa a versão do package.json; pode ser sobreposta por ASSET_VERSION
 // (útil em deploys rápidos sem bump de versão).
-const ASSET_VERSION = process.env.ASSET_VERSION || (() => {
-  try {
-    return String(require('../package.json').version || 'dev');
-  } catch {
-    return 'dev';
-  }
-})();
+const ASSET_VERSION =
+  process.env.ASSET_VERSION ||
+  (() => {
+    try {
+      return String(require('../package.json').version || 'dev');
+    } catch {
+      return 'dev';
+    }
+  })();
 
 // ------------------------------
 // Ficheiros estáticos + shell SPA
@@ -352,15 +363,13 @@ app.use((err, req, res, next) => {
     if (!isApi) return next(err);
 
     const statusCode =
-      (err && (err.statusCode || err.status)) && Number.isFinite(Number(err.statusCode || err.status))
+      err && (err.statusCode || err.status) && Number.isFinite(Number(err.statusCode || err.status))
         ? Number(err.statusCode || err.status)
         : 500;
 
-    const code = (err && err.code) ? String(err.code) : 'INTERNAL_ERROR';
+    const code = err && err.code ? String(err.code) : 'INTERNAL_ERROR';
     const message =
-      (err && (err.apiMessage || err.message))
-        ? String(err.apiMessage || err.message)
-        : 'Internal server error';
+      err && (err.apiMessage || err.message) ? String(err.apiMessage || err.message) : 'Internal server error';
 
     // Avoid leaking stack traces to clients.
     const out = {

@@ -26,9 +26,7 @@ module.exports = (client) => {
       // Estatísticas: saída do dia (para os contadores de 7 dias)
       await recordMemberEvent(member.guild.id, 'leaves');
 
-      console.log(
-        `👋 Member left: ${member.user.tag} (${member.user.id}) | Guild: ${member.guild.name}`
-      );
+      console.log(`👋 Member left: ${member.user.tag} (${member.user.id}) | Guild: ${member.guild.name}`);
 
       // Mensagem de saída (feature opcional)
       try {
@@ -38,7 +36,13 @@ module.exports = (client) => {
           const channel = await member.guild.channels.fetch(goodbye.channelId).catch(() => null);
           if (channel && typeof channel.send === 'function') {
             const lang = await getGuildLang(member.guild.id);
-            const payload = buildMemberMessage({ config: goodbye, guild: member.guild, user: member.user, kind: 'goodbye', lang });
+            const payload = buildMemberMessage({
+              config: goodbye,
+              guild: member.guild,
+              user: member.user,
+              kind: 'goodbye',
+              lang
+            });
             await channel.send(payload).catch((err) => {
               console.warn('[guildMemberRemove] Falha ao enviar mensagem de saída:', err?.message || err);
             });

@@ -89,11 +89,7 @@ function applyTrustRegen(u, trustCfg, now) {
   const bonus = days * trustCfg.regenPerDay;
   if (bonus <= 0) return;
 
-  u.trust = clampTrust(
-    u.trust + bonus,
-    trustCfg.min,
-    trustCfg.max
-  );
+  u.trust = clampTrust(u.trust + bonus, trustCfg.min, trustCfg.max);
 
   // Keep the partial day so regen stays aligned to whole days.
   u.lastTrustUpdateAt = elapsedDays > days ? now : new Date(lastMs + days * DAY_MS);
@@ -107,11 +103,7 @@ function applyTrustPenalty(u, trustCfg, type, now) {
   if (type === 'MUTE') penalty = trustCfg.mutePenalty;
 
   if (penalty > 0) {
-    u.trust = clampTrust(
-      u.trust - penalty,
-      trustCfg.min,
-      trustCfg.max
-    );
+    u.trust = clampTrust(u.trust - penalty, trustCfg.min, trustCfg.max);
   }
 
   u.lastInfractionAt = now;
@@ -156,10 +148,7 @@ async function resetUser(guildId, userId, baseTrust, reason) {
 
   const minTrust = typeof trustCfg.min === 'number' ? trustCfg.min : 0;
   const maxTrust = typeof trustCfg.max === 'number' ? trustCfg.max : 100;
-  const nextTrust =
-    typeof baseTrust === 'number'
-      ? baseTrust
-      : (typeof trustCfg.base === 'number' ? trustCfg.base : 0);
+  const nextTrust = typeof baseTrust === 'number' ? baseTrust : typeof trustCfg.base === 'number' ? trustCfg.base : 0;
 
   const before = u.trust;
   u.trust = clampTrust(nextTrust, minTrust, maxTrust);
@@ -187,22 +176,14 @@ async function removeInfractionEffects(guildId, userId, type) {
     u.warnings = currentWarnings > 0 ? currentWarnings - 1 : 0;
 
     if (trustCfg.enabled && typeof trustCfg.warnPenalty === 'number') {
-      u.trust = clampTrust(
-        u.trust + trustCfg.warnPenalty,
-        trustCfg.min,
-        trustCfg.max
-      );
+      u.trust = clampTrust(u.trust + trustCfg.warnPenalty, trustCfg.min, trustCfg.max);
     }
     changed = true;
   }
 
   if (type === 'MUTE') {
     if (trustCfg.enabled && typeof trustCfg.mutePenalty === 'number') {
-      u.trust = clampTrust(
-        u.trust + trustCfg.mutePenalty,
-        trustCfg.min,
-        trustCfg.max
-      );
+      u.trust = clampTrust(u.trust + trustCfg.mutePenalty, trustCfg.min, trustCfg.max);
     }
     changed = true;
   }

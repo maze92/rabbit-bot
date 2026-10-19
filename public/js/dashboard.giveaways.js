@@ -18,7 +18,9 @@
 
   let savingGiveaways = false;
 
-  function q(id) { return document.getElementById(id); }
+  function q(id) {
+    return document.getElementById(id);
+  }
 
   function fmtTs(ts) {
     if (!ts) return '—';
@@ -50,7 +52,7 @@
 
     if (!st) {
       if (elStatus) {
-        elStatus.textContent = t ? (t('giveaways_status_inactive') || 'Inativo') : 'Inativo';
+        elStatus.textContent = t ? t('giveaways_status_inactive') || 'Inativo' : 'Inativo';
         elStatus.classList.remove('is-on');
         elStatus.classList.add('is-off');
       }
@@ -65,16 +67,26 @@
 
     if (elStatus) {
       const on = !!st.enabled;
-      elStatus.textContent = on ? (t ? (t('giveaways_status_active') || 'Ativo') : 'Ativo') : (t ? (t('giveaways_status_inactive') || 'Inativo') : 'Inativo');
+      elStatus.textContent = on
+        ? t
+          ? t('giveaways_status_active') || 'Ativo'
+          : 'Ativo'
+        : t
+          ? t('giveaways_status_inactive') || 'Inativo'
+          : 'Inativo';
       elStatus.classList.toggle('is-on', on);
       elStatus.classList.toggle('is-off', !on);
     }
     if (elChannel) {
-      const name = st.channelName ? ('#' + st.channelName) : (st.channelId ? ('#' + st.channelId) : '—');
+      const name = st.channelName ? '#' + st.channelName : st.channelId ? '#' + st.channelId : '—';
       elChannel.textContent = name;
       if (elHeadline) {
         if (st.enabled && name && name !== '—') {
-          elHeadline.innerHTML = (t ? (t('giveaways_headline_posting') || 'A publicar em') : 'A publicar em') + ' <strong>' + escapeHtml(name) + '</strong>';
+          elHeadline.innerHTML =
+            (t ? t('giveaways_headline_posting') || 'A publicar em' : 'A publicar em') +
+            ' <strong>' +
+            escapeHtml(name) +
+            '</strong>';
         } else {
           elHeadline.innerHTML = '';
         }
@@ -125,10 +137,32 @@
     const maxPer = q('giveawaysMaxPerCycle') ? Number(q('giveawaysMaxPerCycle').value || 0) : 0;
 
     const parts = [];
-    parts.push('<span class="ftk-chip"><strong>' + escapeHtml(enabled ? (t('giveaways_status_active') || 'Ativo') : (t('giveaways_status_inactive') || 'Inativo')) + '</strong></span>');
-    parts.push('<span class="ftk-chip">' + escapeHtml(t('giveaways_platforms') || 'Plataformas') + ': <strong>' + escapeHtml(String(platforms.length || 0)) + '</strong></span>');
-    parts.push('<span class="ftk-chip">' + escapeHtml(t('giveaways_poll') || 'Intervalo') + ': <strong>' + escapeHtml(String(poll || 60)) + 's</strong></span>');
-    parts.push('<span class="ftk-chip">' + escapeHtml(t('giveaways_max_cycle') || 'Máx / ciclo') + ': <strong>' + escapeHtml(String(maxPer || 0)) + '</strong></span>');
+    parts.push(
+      '<span class="ftk-chip"><strong>' +
+        escapeHtml(enabled ? t('giveaways_status_active') || 'Ativo' : t('giveaways_status_inactive') || 'Inativo') +
+        '</strong></span>'
+    );
+    parts.push(
+      '<span class="ftk-chip">' +
+        escapeHtml(t('giveaways_platforms') || 'Plataformas') +
+        ': <strong>' +
+        escapeHtml(String(platforms.length || 0)) +
+        '</strong></span>'
+    );
+    parts.push(
+      '<span class="ftk-chip">' +
+        escapeHtml(t('giveaways_poll') || 'Intervalo') +
+        ': <strong>' +
+        escapeHtml(String(poll || 60)) +
+        's</strong></span>'
+    );
+    parts.push(
+      '<span class="ftk-chip">' +
+        escapeHtml(t('giveaways_max_cycle') || 'Máx / ciclo') +
+        ': <strong>' +
+        escapeHtml(String(maxPer || 0)) +
+        '</strong></span>'
+    );
     el.innerHTML = parts.join('');
   }
 
@@ -140,10 +174,11 @@
       toast((t && t('giveaways_trigger_ok')) || 'Verificação iniciada', { type: 'success' });
       loadGiveawaysStatus().catch(function () {});
     } catch (e) {
-      toast(((t && t('giveaways_trigger_fail')) || 'Falha a verificar') + (e && e.message ? (': ' + e.message) : ''), { type: 'error' });
+      toast(((t && t('giveaways_trigger_fail')) || 'Falha a verificar') + (e && e.message ? ': ' + e.message : ''), {
+        type: 'error'
+      });
     }
   }
-
 
   function readChecks(containerId) {
     const root = q(containerId);
@@ -156,7 +191,11 @@
   }
 
   function setChecks(containerId, values) {
-    const set = new Set((values || []).map(function (v) { return String(v); }));
+    const set = new Set(
+      (values || []).map(function (v) {
+        return String(v);
+      })
+    );
     const root = q(containerId);
     if (!root) return;
     root.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
@@ -178,9 +217,14 @@
     const key = String(platform || 'steam') + '|' + String(type || 'game');
     if (sampleCache[key]) return sampleCache[key];
     try {
-      const data = await apiGet('/giveaways/sample?guildId=' + encodeURIComponent(guildId) +
-        '&platform=' + encodeURIComponent(platform || 'steam') +
-        '&type=' + encodeURIComponent(type || 'game'));
+      const data = await apiGet(
+        '/giveaways/sample?guildId=' +
+          encodeURIComponent(guildId) +
+          '&platform=' +
+          encodeURIComponent(platform || 'steam') +
+          '&type=' +
+          encodeURIComponent(type || 'game')
+      );
       const item = data && data.item ? data.item : null;
       if (item) sampleCache[key] = item;
       return item;
@@ -199,7 +243,7 @@
     const platforms = readChecks('giveawaysPlatforms');
     // Free-To-Keep posts only games; types are fixed to "game".
 
-    const primaryPlatform = (platforms[0] || 'steam');
+    const primaryPlatform = platforms[0] || 'steam';
     const pLower = String(primaryPlatform).toLowerCase();
     const showSteam = pLower.includes('steam');
     const showEpic = pLower.includes('epic');
@@ -232,7 +276,8 @@
     if (!root) return;
 
     if (!enabled) {
-      root.innerHTML = '<div class="empty">' + escapeHtml(t('giveaways_preview_disabled') || 'Ativa para ver a preview.') + '</div>';
+      root.innerHTML =
+        '<div class="empty">' + escapeHtml(t('giveaways_preview_disabled') || 'Ativa para ver a preview.') + '</div>';
       updateSummaryChips();
       return;
     }
@@ -240,41 +285,71 @@
     // O backend já devolve o título limpo (apenas o nome do jogo).
     const title = escapeHtml(String(example.title || '').trim() || 'Giveaway');
     // Screenshot style: strikethrough worth then "Free until".
-    const worthHtml = example.worth ? ('<span class="giveaway-preview__worth">' + escapeHtml(example.worth) + '</span>') : '';
-    const meta = (worthHtml ? ('<span class="giveaway-preview__worth-wrap">' + worthHtml + '</span> ') : '') +
-      '<span><b>' + escapeHtml(t('giveaways_preview_free') || 'Free') + '</b> ' +
-      escapeHtml(t('giveaways_preview_until') || 'until') + ' ' +
-      formatDatePill(example.end_date || '—') + '</span>';
+    const worthHtml = example.worth
+      ? '<span class="giveaway-preview__worth">' + escapeHtml(example.worth) + '</span>'
+      : '';
+    const meta =
+      (worthHtml ? '<span class="giveaway-preview__worth-wrap">' + worthHtml + '</span> ' : '') +
+      '<span><b>' +
+      escapeHtml(t('giveaways_preview_free') || 'Free') +
+      '</b> ' +
+      escapeHtml(t('giveaways_preview_until') || 'until') +
+      ' ' +
+      formatDatePill(example.end_date || '—') +
+      '</span>';
 
     const footerLeft = 'via .rabbitstuff.xyz';
-    const footerRight = example.publisher ? ('© ' + escapeHtml(example.publisher)) : '';
+    const footerRight = example.publisher ? '© ' + escapeHtml(example.publisher) : '';
 
     // Ligações decorativas que espelham o embed real. São <span> (não <button>)
     // para não criar controlos focáveis que não fazem nada (acessibilidade).
     const linkClass = 'giveaway-preview__linkbtn';
-    const linkBrowser = '<span class="' + linkClass + '"><b>' + escapeHtml(t('giveaways_preview_open_browser') || 'Open in browser ↗') + '</b></span>';
+    const linkBrowser =
+      '<span class="' +
+      linkClass +
+      '"><b>' +
+      escapeHtml(t('giveaways_preview_open_browser') || 'Open in browser ↗') +
+      '</b></span>';
     const linkClient = showSteam
-      ? '<span class="' + linkClass + '"><b>' + escapeHtml(t('giveaways_preview_open_steam') || 'Open in Steam Client ↗') + '</b></span>'
-      : (showEpic
-          ? '<span class="' + linkClass + '"><b>' + escapeHtml(t('giveaways_preview_open_epic') || 'Open in Epic Games ↗') + '</b></span>'
-          : '<span class="' + linkClass + '"><b>' + escapeHtml(t('giveaways_preview_open_ubisoft') || 'Open in Ubisoft Games ↗') + '</b></span>'
-        );
+      ? '<span class="' +
+        linkClass +
+        '"><b>' +
+        escapeHtml(t('giveaways_preview_open_steam') || 'Open in Steam Client ↗') +
+        '</b></span>'
+      : showEpic
+        ? '<span class="' +
+          linkClass +
+          '"><b>' +
+          escapeHtml(t('giveaways_preview_open_epic') || 'Open in Epic Games ↗') +
+          '</b></span>'
+        : '<span class="' +
+          linkClass +
+          '"><b>' +
+          escapeHtml(t('giveaways_preview_open_ubisoft') || 'Open in Ubisoft Games ↗') +
+          '</b></span>';
 
     root.innerHTML =
       '<div class="giveaway-preview__header">' +
-        '<div class="giveaway-preview__left">' +
-          '<div class="giveaway-preview__title">' + title + '</div>' +
-          '<div class="giveaway-preview__meta-line">' + meta + '</div>' +
-          '<div class="giveaway-preview__actions">' +
-            linkBrowser + (linkClient ? linkClient : '') +
-          '</div>' +
-        '</div>' +
-        (logoUrl ? ('<div class="giveaway-preview__thumb"><img alt="" src="' + escapeHtml(logoUrl) + '" /></div>') : '') +
+      '<div class="giveaway-preview__left">' +
+      '<div class="giveaway-preview__title">' +
+      title +
       '</div>' +
-      (imgUrl ? ('<div class="giveaway-preview__image"><img alt="" src="' + escapeHtml(imgUrl) + '" /></div>') : '') +
+      '<div class="giveaway-preview__meta-line">' +
+      meta +
+      '</div>' +
+      '<div class="giveaway-preview__actions">' +
+      linkBrowser +
+      (linkClient ? linkClient : '') +
+      '</div>' +
+      '</div>' +
+      (logoUrl ? '<div class="giveaway-preview__thumb"><img alt="" src="' + escapeHtml(logoUrl) + '" /></div>' : '') +
+      '</div>' +
+      (imgUrl ? '<div class="giveaway-preview__image"><img alt="" src="' + escapeHtml(imgUrl) + '" /></div>' : '') +
       '<div class="giveaway-preview__footer">' +
-        '<span>' + escapeHtml(footerLeft) + '</span>' +
-        (footerRight ? '<span>' + footerRight + '</span>' : '') +
+      '<span>' +
+      escapeHtml(footerLeft) +
+      '</span>' +
+      (footerRight ? '<span>' + footerRight + '</span>' : '') +
       '</div>';
 
     updateSummaryChips();
@@ -306,7 +381,7 @@
       data = null;
     }
 
-    const items = data && (data.items || data.channels) ? (data.items || data.channels) : [];
+    const items = data && (data.items || data.channels) ? data.items || data.channels : [];
     // Cache for search filtering
     window.OzarkDashboard = window.OzarkDashboard || {};
     window.OzarkDashboard._giveawaysChannels = items;
@@ -319,33 +394,35 @@
     }
 
     function groupKey(ch) {
-      const kind = (ch && ch.kind) ? String(ch.kind) : 'text';
-      const parent = (ch && ch.parentName) ? String(ch.parentName) : '';
+      const kind = ch && ch.kind ? String(ch.kind) : 'text';
+      const parent = ch && ch.parentName ? String(ch.parentName) : '';
       return kind + '|' + parent;
     }
 
     function kindLabel(kind) {
       kind = String(kind || '').toLowerCase();
-      if (kind === 'announcement') return (t('channels_group_announcements') || 'Anúncios');
-      if (kind === 'thread') return (t('channels_group_threads') || 'Threads');
-      return (t('channels_group_text') || 'Texto');
+      if (kind === 'announcement') return t('channels_group_announcements') || 'Anúncios';
+      if (kind === 'thread') return t('channels_group_threads') || 'Threads';
+      return t('channels_group_text') || 'Texto';
     }
 
     function rebuildOptions(filter) {
-      const f = String(filter || '').trim().toLowerCase();
+      const f = String(filter || '')
+        .trim()
+        .toLowerCase();
       const selectedId = (sel.dataset.desiredValue || sel.value || '').trim();
 
       sel.innerHTML = '';
-      sel.appendChild(makeOpt('', (t('select_channel') || 'Seleciona um canal')));
+      sel.appendChild(makeOpt('', t('select_channel') || 'Seleciona um canal'));
 
       // Pin selected channel at the top (even if filtered out)
       if (selectedId) {
         const selected = items.find((c) => c && String(c.id) === String(selectedId)) || null;
         if (selected) {
           const og = document.createElement('optgroup');
-          og.label = (t('channels_group_selected') || 'Selecionado');
+          og.label = t('channels_group_selected') || 'Selecionado';
           const name = selected.name ? String(selected.name) : '';
-          const label = name ? ('#' + name) : String(selected.id);
+          const label = name ? '#' + name : String(selected.id);
           og.appendChild(makeOpt(selected.id, label));
           sel.appendChild(og);
         }
@@ -356,7 +433,7 @@
       items.forEach(function (ch) {
         if (!ch || !ch.id) return;
         const name = ch.name ? String(ch.name) : '';
-        const label = name ? ('#' + name) : String(ch.id);
+        const label = name ? '#' + name : String(ch.id);
         if (f && !(label.toLowerCase().includes(f) || String(ch.id).includes(f))) return;
         const k = groupKey(ch);
         if (!buckets.has(k)) buckets.set(k, []);
@@ -382,7 +459,7 @@
       // If we have category names, we create nested optgroups by encoding "Kind — Category".
       groupObjs.forEach(function (g) {
         const cat = (g.parentName || '').trim();
-        const label = cat ? (kindLabel(g.kind) + ' — ' + cat) : kindLabel(g.kind);
+        const label = cat ? kindLabel(g.kind) + ' — ' + cat : kindLabel(g.kind);
         const og = document.createElement('optgroup');
         og.label = label;
         g.items.forEach(function (it) {
@@ -430,8 +507,10 @@
     setChecks('giveawaysPlatforms', cfg.platforms || ['steam']);
     // Types are fixed to game in Free-To-Keep.
 
-    if (q('giveawaysPoll')) q('giveawaysPoll').value = String(cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
-    if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
+    if (q('giveawaysPoll'))
+      q('giveawaysPoll').value = String(cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
+    if (q('giveawaysMaxPerCycle'))
+      q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
 
     await renderPreview();
     updateSummaryChips();
@@ -486,8 +565,11 @@
       toast(t('saved') || 'Guardado', { type: 'success' });
       const hint = q('giveawaysSavedHint');
       if (hint) {
-        hint.textContent = (t('saved_now') || 'Guardado agora') + ' • ' + (D.formatDateTime ? D.formatDateTime(Date.now()) : '');
-        setTimeout(function () { hint.textContent = ''; }, 3500);
+        hint.textContent =
+          (t('saved_now') || 'Guardado agora') + ' • ' + (D.formatDateTime ? D.formatDateTime(Date.now()) : '');
+        setTimeout(function () {
+          hint.textContent = '';
+        }, 3500);
       }
 
       // Keep UI in sync with what the server persisted (prevents "snap back").
@@ -503,8 +585,10 @@
         }
         setChecks('giveawaysPlatforms', cfg.platforms || ['steam']);
         // Types are fixed to game in Free-To-Keep.
-        if (q('giveawaysPoll')) q('giveawaysPoll').value = String(cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
-        if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
+        if (q('giveawaysPoll'))
+          q('giveawaysPoll').value = String(cfg.pollIntervalSeconds != null ? cfg.pollIntervalSeconds : 60);
+        if (q('giveawaysMaxPerCycle'))
+          q('giveawaysMaxPerCycle').value = String(cfg.maxPerCycle != null ? cfg.maxPerCycle : 0);
       }
 
       // Reload channels to make sure the chosen value exists in the select.
@@ -532,7 +616,7 @@
       return;
     }
     const platforms = readChecks('giveawaysPlatforms');
-    const platform = (platforms[0] || 'steam');
+    const platform = platforms[0] || 'steam';
     await apiPost('/giveaways/test', { guildId, channelId, platform });
     toast(t('giveaways_test_sent') || 'Teste enviado.', { type: 'success' });
   }
@@ -542,12 +626,22 @@
     if (D.__giveawaysBound) return;
     D.__giveawaysBound = true;
 
-    const ids = ['giveawaysEnabled', 'giveawaysChannel', 'giveawaysPoll', 'giveawaysMaxPerCycle', 'giveawaysChannelSearch'];
+    const ids = [
+      'giveawaysEnabled',
+      'giveawaysChannel',
+      'giveawaysPoll',
+      'giveawaysMaxPerCycle',
+      'giveawaysChannelSearch'
+    ];
     ids.forEach(function (id) {
       const el = q(id);
       if (!el) return;
-      el.addEventListener('change', function () { renderPreview(); });
-      el.addEventListener('input', function () { renderPreview(); });
+      el.addEventListener('change', function () {
+        renderPreview();
+      });
+      el.addEventListener('input', function () {
+        renderPreview();
+      });
     });
 
     ['giveawaysPlatforms'].forEach(function (id) {
@@ -564,38 +658,54 @@
     const cs = q('giveawaysChannelSearch');
     if (cs) {
       cs.addEventListener('input', function () {
-        const fn = (window.OzarkDashboard && window.OzarkDashboard._giveawaysRebuildChannels) ? window.OzarkDashboard._giveawaysRebuildChannels : null;
+        const fn =
+          window.OzarkDashboard && window.OzarkDashboard._giveawaysRebuildChannels
+            ? window.OzarkDashboard._giveawaysRebuildChannels
+            : null;
         if (fn) fn(cs.value);
       });
     }
 
     const btn = q('giveawaysSaveBtn');
-    if (btn) btn.addEventListener('click', function () { saveGiveaways().catch(function () { toast(t('error_save_generic') || 'Erro ao guardar.', { type: 'error' }); }); });
+    if (btn)
+      btn.addEventListener('click', function () {
+        saveGiveaways().catch(function () {
+          toast(t('error_save_generic') || 'Erro ao guardar.', { type: 'error' });
+        });
+      });
 
     const testBtn = q('giveawaysTestBtn');
-    if (testBtn) testBtn.addEventListener('click', function () { sendTest().catch(function () { toast(t('error_send_test') || 'Erro ao enviar teste.', { type: 'error' }); }); });
+    if (testBtn)
+      testBtn.addEventListener('click', function () {
+        sendTest().catch(function () {
+          toast(t('error_send_test') || 'Erro ao enviar teste.', { type: 'error' });
+        });
+      });
 
     const trigBtn = q('giveawaysTriggerBtn');
-    if (trigBtn) trigBtn.addEventListener('click', function () { triggerGiveawaysNow().catch(function () {}); });
+    if (trigBtn)
+      trigBtn.addEventListener('click', function () {
+        triggerGiveawaysNow().catch(function () {});
+      });
 
     const resetBtn = q('giveawaysResetBtn');
-    if (resetBtn) resetBtn.addEventListener('click', function () {
-      // reset UI defaults (does not auto-save)
-      if (q('giveawaysEnabled')) q('giveawaysEnabled').checked = false;
-      const sel = q('giveawaysChannel');
-      if (sel) sel.value = '';
-      if (q('giveawaysChannelSearch')) q('giveawaysChannelSearch').value = '';
-      setChecks('giveawaysPlatforms', ['steam', 'epic-games-store', 'ubisoft']);
-      if (q('giveawaysPoll')) q('giveawaysPoll').value = '60';
-      if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = '0';
-      const adv = q('giveawaysAdvanced');
-      if (adv) adv.open = false;
-      const warn = q('giveawaysPlatformsWarn');
-      if (warn) warn.classList.add('hidden');
-      renderPreview();
-      toast((t('giveaways_reset_ok') || 'Valores repostos'), { type: 'success' });
-    });
-
+    if (resetBtn)
+      resetBtn.addEventListener('click', function () {
+        // reset UI defaults (does not auto-save)
+        if (q('giveawaysEnabled')) q('giveawaysEnabled').checked = false;
+        const sel = q('giveawaysChannel');
+        if (sel) sel.value = '';
+        if (q('giveawaysChannelSearch')) q('giveawaysChannelSearch').value = '';
+        setChecks('giveawaysPlatforms', ['steam', 'epic-games-store', 'ubisoft']);
+        if (q('giveawaysPoll')) q('giveawaysPoll').value = '60';
+        if (q('giveawaysMaxPerCycle')) q('giveawaysMaxPerCycle').value = '0';
+        const adv = q('giveawaysAdvanced');
+        if (adv) adv.open = false;
+        const warn = q('giveawaysPlatformsWarn');
+        if (warn) warn.classList.add('hidden');
+        renderPreview();
+        toast(t('giveaways_reset_ok') || 'Valores repostos', { type: 'success' });
+      });
   }
 
   // Public hook for core tab switcher

@@ -21,21 +21,22 @@ function registerUsersRoutes({
   infractionsService,
   TicketLogModel
 }) {
-  const guardGuildParam = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'params', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildParam =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'params', key: 'guildId' })
+      : (req, res, next) => next();
 
-  const canViewUsers = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canManageUsers', 'canViewLogs', 'canActOnCases'] })
-    : (req, res, next) => next();
+  const canViewUsers =
+    typeof requirePerm === 'function'
+      ? requirePerm({ anyOf: ['canManageUsers', 'canViewLogs', 'canActOnCases'] })
+      : (req, res, next) => next();
   function mapMemberRoles(member, guild) {
     try {
       // Hide @everyone (same id as guild) and managed/integration roles.
       return (
         member?.roles?.cache
           ?.filter((r) => r && r.id !== guild.id && !r.managed)
-          .map((r) => ({ id: r.id, name: r.name })) ||
-        []
+          .map((r) => ({ id: r.id, name: r.name })) || []
       );
     } catch {
       return [];
@@ -62,7 +63,7 @@ function registerUsersRoutes({
       if (sortKey === 'joined') {
         const aj = a.joinedAt ? new Date(a.joinedAt).getTime() : 0;
         const bj = b.joinedAt ? new Date(b.joinedAt).getTime() : 0;
-        return (bj - aj) || String(a.username || a.tag || '').localeCompare(String(b.username || b.tag || ''));
+        return bj - aj || String(a.username || a.tag || '').localeCompare(String(b.username || b.tag || ''));
       }
       if (sortKey === 'id') {
         return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
@@ -99,9 +100,7 @@ function registerUsersRoutes({
         const sync = String(req.query.sync || '') === '1';
         // Por omissão a tab de Utilizadores mostra apenas pessoas; os bots podem
         // ser incluídos explicitamente (usersIncludeBots no dashboard).
-        const includeBots = ['1', 'true', 'yes'].includes(
-          String(req.query.includeBots || '').toLowerCase()
-        );
+        const includeBots = ['1', 'true', 'yes'].includes(String(req.query.includeBots || '').toLowerCase());
 
         // Ordenação. Por omissão: nome (comportamento anterior). "joined" = data de
         // entrada (mais recentes primeiro); "id" = ID.
@@ -112,7 +111,7 @@ function registerUsersRoutes({
         // If within cooldown, skip the fetch but still return cached results (avoid 429 UX).
         const now = Date.now();
         const last = guildMembersLastFetch.get(guildId) || 0;
-        const canSync = (now - last) >= 2 * 60 * 1000;
+        const canSync = now - last >= 2 * 60 * 1000;
 
         if (sync && canSync) {
           try {
@@ -199,18 +198,14 @@ function registerUsersRoutes({
         if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found' });
 
         const search = (req.query.search || '').toString().trim().toLowerCase();
-        const includeBots = ['1', 'true', 'yes'].includes(
-          String(req.query.includeBots || '').toLowerCase()
-        );
+        const includeBots = ['1', 'true', 'yes'].includes(String(req.query.includeBots || '').toLowerCase());
         const sortKey = (req.query.sort || '').toString().trim().toLowerCase();
-        const format = (req.query.format || 'csv').toString().trim().toLowerCase() === 'json'
-          ? 'json'
-          : 'csv';
+        const format = (req.query.format || 'csv').toString().trim().toLowerCase() === 'json' ? 'json' : 'csv';
 
         // Aquece a cache se estiver vazia (respeitando o cooldown).
         const now = Date.now();
         const last = guildMembersLastFetch.get(guildId) || 0;
-        if (guild.members.cache.size === 0 && (now - last) >= 2 * 60 * 1000) {
+        if (guild.members.cache.size === 0 && now - last >= 2 * 60 * 1000) {
           try {
             await guild.members.fetch();
             guildMembersLastFetch.set(guildId, Date.now());
@@ -240,25 +235,29 @@ function registerUsersRoutes({
         const stamp = new Date().toISOString().slice(0, 10);
         if (format === 'json') {
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
-          res.setHeader(
-            'Content-Disposition',
-            `attachment; filename="users-${guildId}-${stamp}.json"`
-          );
+          res.setHeader('Content-Disposition', `attachment; filename="users-${guildId}-${stamp}.json"`);
           return res.send(JSON.stringify({ ok: true, guildId, total: items.length, truncated, items }, null, 2));
         }
 
-        const csvCell = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"';
+        const csvCell = (v) =>
+          '"' +
+          String(v == null ? '' : v)
+            .replace(/"/g, '""')
+            .replace(/\r?\n/g, ' ') +
+          '"';
         const lines = ['id,username,tag,bot,joinedAt,roles'];
         for (const it of items) {
           const roles = (it.roles || []).map((r) => r.name).join('; ');
-          lines.push([
-            csvCell(it.id),
-            csvCell(it.username || ''),
-            csvCell(it.tag || ''),
-            csvCell(it.bot ? 'true' : 'false'),
-            csvCell(it.joinedAt ? new Date(it.joinedAt).toISOString() : ''),
-            csvCell(roles)
-          ].join(','));
+          lines.push(
+            [
+              csvCell(it.id),
+              csvCell(it.username || ''),
+              csvCell(it.tag || ''),
+              csvCell(it.bot ? 'true' : 'false'),
+              csvCell(it.joinedAt ? new Date(it.joinedAt).toISOString() : ''),
+              csvCell(roles)
+            ].join(',')
+          );
         }
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -271,42 +270,48 @@ function registerUsersRoutes({
   );
 
   // User history (infractions + tickets)
-  app.get('/api/guilds/:guildId/users/:userId/history', requireDashboardAuth, canViewUsers, guardGuildParam, async (req, res) => {
-    try {
-      const guildId = sanitizeId(req.params.guildId);
-      const userId = sanitizeId(req.params.userId);
-      if (!guildId || !userId) {
-        return res.status(400).json({ ok: false, error: 'guildId and userId are required' });
+  app.get(
+    '/api/guilds/:guildId/users/:userId/history',
+    requireDashboardAuth,
+    canViewUsers,
+    guardGuildParam,
+    async (req, res) => {
+      try {
+        const guildId = sanitizeId(req.params.guildId);
+        const userId = sanitizeId(req.params.userId);
+        if (!guildId || !userId) {
+          return res.status(400).json({ ok: false, error: 'guildId and userId are required' });
+        }
+
+        if (!infractionsService) {
+          return res.status(503).json({ ok: false, error: 'Infractions service not available' });
+        }
+
+        const [infractions, counts, ticketDocs] = await Promise.all([
+          infractionsService.getRecentInfractions(guildId, userId, 10),
+          infractionsService.countInfractionsByType(guildId, userId),
+          TicketLogModel
+            ? TicketLogModel.find({ guildId, userId }).sort({ createdAt: -1 }).limit(10).lean()
+            : Promise.resolve([])
+        ]);
+
+        const tickets = (ticketDocs || []).map((t) => ({
+          ticketNumber: t.ticketNumber,
+          createdAt: t.createdAt || null,
+          closedAt: t.closedAt || null
+        }));
+
+        return res.json({
+          ok: true,
+          infractions: infractions || [],
+          counts: counts || {},
+          tickets
+        });
+      } catch (err) {
+        return sendServerError(res, '/api/guilds/:guildId/users/:userId/history', err);
       }
-
-      if (!infractionsService) {
-        return res.status(503).json({ ok: false, error: 'Infractions service not available' });
-      }
-
-      const [infractions, counts, ticketDocs] = await Promise.all([
-        infractionsService.getRecentInfractions(guildId, userId, 10),
-        infractionsService.countInfractionsByType(guildId, userId),
-        TicketLogModel
-          ? TicketLogModel.find({ guildId, userId }).sort({ createdAt: -1 }).limit(10).lean()
-          : Promise.resolve([])
-      ]);
-
-      const tickets = (ticketDocs || []).map((t) => ({
-        ticketNumber: t.ticketNumber,
-        createdAt: t.createdAt || null,
-        closedAt: t.closedAt || null
-      }));
-
-      return res.json({
-        ok: true,
-        infractions: infractions || [],
-        counts: counts || {},
-        tickets
-      });
-    } catch (err) {
-      return sendServerError(res, '/api/guilds/:guildId/users/:userId/history', err);
     }
-  });
+  );
 }
 
 module.exports = { registerUsersRoutes };

@@ -21,9 +21,7 @@ function buildPollMessage(poll) {
   const options = Array.isArray(poll.options) ? poll.options : [];
   const counts = Array.isArray(poll.counts) ? poll.counts : [];
 
-  const lines = options.map(
-    (opt, i) => `${NUMBER_EMOJIS[i] || `(${i + 1})`} ${opt} — **${Number(counts[i]) || 0}**`
-  );
+  const lines = options.map((opt, i) => `${NUMBER_EMOJIS[i] || `(${i + 1})`} ${opt} — **${Number(counts[i]) || 0}**`);
 
   const embed = new EmbedBuilder()
     .setTitle(`📊 ${String(poll.question || '').slice(0, 240)}`)
@@ -53,7 +51,11 @@ async function pollSlash(_client, interaction) {
   try {
     if (!interaction?.guild) return;
     if (!Poll) {
-      return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+      return safeReply(
+        interaction,
+        { content: await tContext(interaction, 'common.unexpectedError') },
+        { ephemeral: true }
+      );
     }
 
     const cfg = await getFeature(interaction.guild.id, 'polls');
@@ -70,7 +72,11 @@ async function pollSlash(_client, interaction) {
       .slice(0, MAX_OPTIONS);
 
     if (!question || options.length < 2) {
-      return safeReply(interaction, { content: await tContext(interaction, 'poll.invalidOptions') }, { ephemeral: true });
+      return safeReply(
+        interaction,
+        { content: await tContext(interaction, 'poll.invalidOptions') },
+        { ephemeral: true }
+      );
     }
 
     const poll = await Poll.create({
@@ -91,7 +97,11 @@ async function pollSlash(_client, interaction) {
     return safeReply(interaction, { content: await tContext(interaction, 'poll.created') }, { ephemeral: true });
   } catch (err) {
     console.error('[slash/poll] Error:', err);
-    return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+    return safeReply(
+      interaction,
+      { content: await tContext(interaction, 'common.unexpectedError') },
+      { ephemeral: true }
+    );
   }
 }
 

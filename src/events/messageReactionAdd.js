@@ -1,11 +1,6 @@
 // src/events/messageReactionAdd.js
 
-const {
-  handleTicketOpen,
-  handleTicketClose,
-  OPEN_EMOJI,
-  CLOSE_EMOJI
-} = require('../systems/ticketThreads');
+const { handleTicketOpen, handleTicketClose, OPEN_EMOJI, CLOSE_EMOJI } = require('../systems/ticketThreads');
 
 const { getFeature } = require('../systems/featuresService');
 const { emojiMatches } = require('../systems/reactionRoles');
@@ -43,8 +38,7 @@ async function handleReactionRoles(reaction, user) {
 
     try {
       const member =
-        message.guild.members.cache.get(user.id) ||
-        (await message.guild.members.fetch(user.id).catch(() => null));
+        message.guild.members.cache.get(user.id) || (await message.guild.members.fetch(user.id).catch(() => null));
       if (!member) continue;
       await member.roles.add(entry.roleId, 'Reaction role');
     } catch (err) {
@@ -86,7 +80,8 @@ module.exports = (client) => {
       // Abrir ticket: reação no canal configurado com o emoji de abertura
       if (ticketCfg && ticketCfg.enabled === true && emojiMatches(ticketCfg.openEmoji || OPEN_EMOJI, reaction.emoji)) {
         const matchesMessage = ticketCfg.messageId && reaction.message.id === ticketCfg.messageId;
-        const matchesLegacyChannel = !ticketCfg.messageId && ticketCfg.channelId && reaction.message.channelId === ticketCfg.channelId;
+        const matchesLegacyChannel =
+          !ticketCfg.messageId && ticketCfg.channelId && reaction.message.channelId === ticketCfg.channelId;
         if (matchesMessage || matchesLegacyChannel) {
           const opened = await handleTicketOpen(reaction, user);
 
@@ -104,7 +99,10 @@ module.exports = (client) => {
       }
 
       // Fechar ticket: reação dentro da thread no emoji de fecho
-      if ((!ticketCfg && emojiName === CLOSE_EMOJI) || (ticketCfg && emojiMatches(ticketCfg.closeEmoji || CLOSE_EMOJI, reaction.emoji))) {
+      if (
+        (!ticketCfg && emojiName === CLOSE_EMOJI) ||
+        (ticketCfg && emojiMatches(ticketCfg.closeEmoji || CLOSE_EMOJI, reaction.emoji))
+      ) {
         const closed = await handleTicketClose(reaction, user);
         if (closed) return;
       }

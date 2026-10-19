@@ -50,18 +50,19 @@ window.OzarkLocales.pt = {
   'common_none_option': '— Nenhum —',
 
   'common_select_placeholder': 'Selecionar…',
-  'config_access_hint': 'O login na dashboard é feito apenas via Discord OAuth e é restrito a Owners e Administradores do servidor. Aqui defines as roles de staff que podem usar as funcionalidades do bot (aplica-se a todos os módulos).',
+  'config_access_hint':
+    'O login na dashboard é feito apenas via Discord OAuth e é restrito a Owners e Administradores do servidor. Aqui defines as roles de staff que podem usar as funcionalidades do bot (aplica-se a todos os módulos).',
   'config_access_section_title': '🛡️ Acesso e cargos de staff',
-  'config_dashboard_access_title': "🔐 Acesso à Dashboard",
-  'config_dashboard_access_hint': "Define que cargos podem iniciar sessão por OAuth e que nível de acesso terão.",
-  'config_dashboard_access_admins': "Admins da dashboard",
-  'config_dashboard_access_admins_hint': "Acesso total às funcionalidades (exceto gerir utilizadores da dashboard).",
-  'config_dashboard_access_managers': "Managers da dashboard",
-  'config_dashboard_access_managers_hint': "Pode gerir módulos (tickets, moderação, gamenews, logs e configuração).",
-  'config_dashboard_access_viewers': "Viewers da dashboard",
-  'config_dashboard_access_viewers_hint': "Apenas leitura (logs e ver configuração).",
-  'guild_select_error_access': "Não tens acesso a este servidor na dashboard.",
-  'guild_select_error_generic': "Não foi possível selecionar o servidor.",
+  'config_dashboard_access_title': '🔐 Acesso à Dashboard',
+  'config_dashboard_access_hint': 'Define que cargos podem iniciar sessão por OAuth e que nível de acesso terão.',
+  'config_dashboard_access_admins': 'Admins da dashboard',
+  'config_dashboard_access_admins_hint': 'Acesso total às funcionalidades (exceto gerir utilizadores da dashboard).',
+  'config_dashboard_access_managers': 'Managers da dashboard',
+  'config_dashboard_access_managers_hint': 'Pode gerir módulos (tickets, moderação, gamenews, logs e configuração).',
+  'config_dashboard_access_viewers': 'Viewers da dashboard',
+  'config_dashboard_access_viewers_hint': 'Apenas leitura (logs e ver configuração).',
+  'guild_select_error_access': 'Não tens acesso a este servidor na dashboard.',
+  'guild_select_error_generic': 'Não foi possível selecionar o servidor.',
   'config_dashboard_log_channel': 'Canal de logs da dashboard',
   'config_error_generic': 'Ocorreu um erro.',
   'config_error_save': 'Não foi possível guardar a configuração.',
@@ -76,12 +77,14 @@ window.OzarkLocales.pt = {
   'config_json_section_title': 'Configuração (JSON)',
   'config_loading': 'A carregar…',
   'config_log_channel': 'Canal principal de logs',
-  'config_logs_section_hint': 'Define os canais onde serão enviados os registos principais e os logs da própria dashboard.',
+  'config_logs_section_hint':
+    'Define os canais onde serão enviados os registos principais e os logs da própria dashboard.',
   'config_logs_section_title': '📜 Registos e canais de logs',
   'config_reload': 'Recarregar',
   'config_save': 'Guardar configuração',
   'config_saved': 'Configuração guardada.',
-  'config_import_confirm': 'Isto vai substituir a configuração atual do servidor pela do JSON colado. Queres continuar?',
+  'config_import_confirm':
+    'Isto vai substituir a configuração atual do servidor pela do JSON colado. Queres continuar?',
   'config_status_loaded': 'Configuração carregada.',
   'config_status_unsaved': 'Alterações por guardar.',
   'config_nothing_to_save': 'Não há alterações para guardar.',
@@ -89,7 +92,8 @@ window.OzarkLocales.pt = {
   'config_server_language_en': 'Inglês',
   'config_server_language_label': 'Idioma principal do servidor',
   'config_server_language_pt': 'Português',
-  'config_server_timezone_hint': 'Usa um identificador IANA válido (ex.: Europe/Lisbon, UTC). Afeta apenas a apresentação de datas na dashboard.',
+  'config_server_timezone_hint':
+    'Usa um identificador IANA válido (ex.: Europe/Lisbon, UTC). Afeta apenas a apresentação de datas na dashboard.',
   'config_server_timezone_label': 'Timezone do servidor',
   'config_staff_roles': 'Cargos de staff',
   'config_staff_roles_hint': 'Cargos que podem usar comandos de moderação e aceder à dashboard.',
@@ -165,9 +169,11 @@ window.OzarkLocales.pt = {
   'extras_section_manage': 'Gestão',
   'extras_section_status': 'Estado',
   'premium_badge': 'Premium',
-  'premium_lock_hint': 'É necessário Premium para desbloquear estes módulos. A compra está temporariamente indisponível.',
+  'premium_lock_hint':
+    'É necessário Premium para desbloquear estes módulos. A compra está temporariamente indisponível.',
   'premium_purchase_hint': 'Desbloqueia {days} dias por {price}. A ativação ocorre após confirmação do PayPal.',
-  'premium_reference_payment_hint': 'Licença de {days} dias por {price}. Pagamentos pelo link de referência precisam de validação manual.',
+  'premium_reference_payment_hint':
+    'Licença de {days} dias por {price}. Pagamentos pelo link de referência precisam de validação manual.',
   'premium_checkout_button': 'Pagar com PayPal · {price}',
   'premium_offer_title': 'Desbloquear {module}',
   'premium_offer_button': 'Ver Premium',
@@ -176,9 +182,11 @@ window.OzarkLocales.pt = {
   'premium_offer_plan_unavailable': 'A oferta Premium está temporariamente indisponível.',
   'premium_offer_select_guild': 'Seleciona um servidor para consultar a oferta e iniciar o pagamento.',
   'premium_offer_unavailable': 'O pagamento está temporariamente indisponível. Contacta o suporte do bot.',
-  'premium_offer_admin_required': 'Só o owner ou um administrador do servidor com acesso à configuração pode iniciar o pagamento. Pede-lhe para abrir esta página.',
+  'premium_offer_admin_required':
+    'Só o owner ou um administrador do servidor com acesso à configuração pode iniciar o pagamento. Pede-lhe para abrir esta página.',
   'premium_offer_checkout_ready': 'Podes pagar o Premium para o servidor selecionado. O pagamento abre no PayPal.',
-  'premium_offer_reference_payment': 'Podes pagar através do link PayPal. Como este link não confirma automaticamente o pagamento, envia o comprovativo ao owner do bot para ativar a licença.',
+  'premium_offer_reference_payment':
+    'Podes pagar através do link PayPal. Como este link não confirma automaticamente o pagamento, envia o comprovativo ao owner do bot para ativar a licença.',
   'premium_checkout_error': 'Não foi possível iniciar o pagamento. Tenta novamente.',
   'premium_reference_link': 'Link PayPal',
   'premium_payment_success': 'Pagamento confirmado. O Premium foi ativado neste servidor.',
@@ -243,8 +251,10 @@ window.OzarkLocales.pt = {
   'premium_expired': 'Premium expirado',
   'premium_until': 'Válido até {date}',
   'premium_update_error': 'Não foi possível atualizar o premium.',
-  'extras_trust_hint': 'Visão geral do sistema de confiança usado para avaliar risco com base no comportamento e histórico.',
-  'extras_trust_info_body': 'Cada utilizador tem um score (0-100) que representa o seu nível de risco. Infrações como WARN e MUTE reduzem o score imediatamente; sem novas infrações, o score recupera ao longo do tempo (regeneração). Quando o score fica abaixo do limiar "baixo", a automoderação torna-se mais restritiva; acima do limiar "alto", o utilizador é tratado como menor risco. Ajusta penalizações, regeneração e thresholds para definir a agressividade do sistema.',
+  'extras_trust_hint':
+    'Visão geral do sistema de confiança usado para avaliar risco com base no comportamento e histórico.',
+  'extras_trust_info_body':
+    'Cada utilizador tem um score (0-100) que representa o seu nível de risco. Infrações como WARN e MUTE reduzem o score imediatamente; sem novas infrações, o score recupera ao longo do tempo (regeneração). Quando o score fica abaixo do limiar "baixo", a automoderação torna-se mais restritiva; acima do limiar "alto", o utilizador é tratado como menor risco. Ajusta penalizações, regeneração e thresholds para definir a agressividade do sistema.',
   'extras_trust_info_title': 'Como funciona',
 
   'extras_trust_preview_title': 'Resumo',
@@ -262,7 +272,8 @@ window.OzarkLocales.pt = {
   'trust_distribution_high': 'Alto (confiança)',
   'trust_distribution_medium': 'Médio',
   'trust_distribution_low': 'Baixo (risco)',
-  'extras_trust_levels_body': 'Os níveis agrupam utilizadores em baixo/médio/alto risco. Quanto mais infrações e mais graves, mais depressa o score desce e mais cedo atinge risco elevado.',
+  'extras_trust_levels_body':
+    'Os níveis agrupam utilizadores em baixo/médio/alto risco. Quanto mais infrações e mais graves, mais depressa o score desce e mais cedo atinge risco elevado.',
   'extras_trust_levels_title': 'Níveis de confiança',
   'extras_trust_title': 'Sistema de Trust',
   'gamenews_add_feed': 'Adicionar',
@@ -271,7 +282,8 @@ window.OzarkLocales.pt = {
   'gamenews_detail_action_test': 'Testar',
   'gamenews_detail_action_toggle': 'Ativar/Desativar',
   'gamenews_detail_actions_title': 'Ações',
-  'gamenews_detail_config_hint': 'Altera os detalhes do feed. As alterações só são guardadas depois de clicares em "Guardar".',
+  'gamenews_detail_config_hint':
+    'Altera os detalhes do feed. As alterações só são guardadas depois de clicares em "Guardar".',
   'gamenews_detail_config_title': 'Configuração do feed',
   'gamenews_detail_empty': 'Seleciona um feed para ver o histórico e editar a configuração.',
   'gamenews_detail_fail_count': 'Falhas',
@@ -285,7 +297,8 @@ window.OzarkLocales.pt = {
   'gamenews_editor_empty': 'Ainda não existem feeds configurados. Adiciona o primeiro feed para começar.',
   'gamenews_error_generic': 'Não foi possível guardar GameNews.',
   'gamenews_feed_channel_label': 'ID do canal',
-  'gamenews_feed_exclude_keywords_hint': 'Separa por vírgulas. Notícias cujo título/conteúdo contenha algum destes termos são ignoradas.',
+  'gamenews_feed_exclude_keywords_hint':
+    'Separa por vírgulas. Notícias cujo título/conteúdo contenha algum destes termos são ignoradas.',
   'gamenews_feed_exclude_keywords_label': 'Palavras-chave a excluir (opcional)',
   'gamenews_feed_exclude_keywords_placeholder': 'ex.: rumor, leaked',
   'gamenews_feed_extra_channels_hint': 'Separa por vírgulas. Cada notícia é replicada também nestes canais (máx. 5).',
@@ -302,7 +315,8 @@ window.OzarkLocales.pt = {
   'gamenews_hint': 'Estado dos feeds de notícias e últimas publicações.',
 
   'gamenews_settings_title': 'Envio por intervalo',
-  'gamenews_settings_hint': 'Limite opcional de quantas noticias cada feed pode publicar em cada intervalo. Deixe vazio para usar o comportamento por defeito.',
+  'gamenews_settings_hint':
+    'Limite opcional de quantas noticias cada feed pode publicar em cada intervalo. Deixe vazio para usar o comportamento por defeito.',
   'gamenews_settings_max_label': 'Maximo por intervalo',
   'gamenews_settings_save_btn': 'Guardar',
   'gamenews_settings_reset_btn': 'Reset',
@@ -450,7 +464,8 @@ window.OzarkLocales.pt = {
   'tickets_extras_hint': 'Consulta e gere tickets ativos, respostas da equipa e o histórico do suporte.',
   'tickets_config_summary': 'Configuração',
   'tickets_how_summary': 'Como funciona',
-  'tickets_extras_info_body': 'Ao configurar um canal de suporte, o bot publica uma mensagem fixa com o emoji 🎫. Os utilizadores reagem para abrir tickets, que ficam registados e visíveis na tab de moderação.',
+  'tickets_extras_info_body':
+    'Ao configurar um canal de suporte, o bot publica uma mensagem fixa com o emoji 🎫. Os utilizadores reagem para abrir tickets, que ficam registados e visíveis na tab de moderação.',
   'tickets_extras_logs_hint': 'Os tickets criados e as respostas ficam registados para consulta.',
   'tickets_extras_title': 'Tickets',
   'tickets_last_reply': 'Última resposta',
@@ -574,11 +589,11 @@ window.OzarkLocales.pt = {
   'config_invalid_role_id': 'Cargo inválido (ID Discord).',
   'config_invalid_channel_id': 'Canal inválido (ID Discord).',
   'trust_status_preset_applied': 'Preset aplicado (não guardado).',
-  'gamenews_feed_status_dirty': "Alterações",
-  'gamenews_feed_status_error': "Erro",
-  'gamenews_detail_unsaved': "Alterações por guardar neste feed.",
-  'gamenews_unsaved_changes_notice': "Tens alterações por guardar noutro feed.",
-  'gamenews_test_autosave': "Alterações por guardar. A guardar antes do teste...",
+  'gamenews_feed_status_dirty': 'Alterações',
+  'gamenews_feed_status_error': 'Erro',
+  'gamenews_detail_unsaved': 'Alterações por guardar neste feed.',
+  'gamenews_unsaved_changes_notice': 'Tens alterações por guardar noutro feed.',
+  'gamenews_test_autosave': 'Alterações por guardar. A guardar antes do teste...',
   'giveaways_status': 'Estado',
   'giveaways_status_active': 'Ativo',
   'giveaways_status_inactive': 'Inativo',
@@ -623,12 +638,15 @@ window.OzarkLocales.pt = {
   'gamenews_detail_action_cancel': 'Cancelar',
   'gamenews_feed_max_per_cycle_label': 'Máximo por ciclo',
   'gamenews_feed_max_per_cycle_placeholder': 'Ex: 3',
-  'gamenews_feed_max_per_cycle_hint': 'Limita quantas notícias este feed envia por ciclo/intervalo (1–10). Se vazio, o feed usa o comportamento padrão.',
-  'gamenews_validation_extra_channels_invalid': 'Os IDs de canais adicionais têm de ser números válidos (10 a 20 dígitos).',
+  'gamenews_feed_max_per_cycle_hint':
+    'Limita quantas notícias este feed envia por ciclo/intervalo (1–10). Se vazio, o feed usa o comportamento padrão.',
+  'gamenews_validation_extra_channels_invalid':
+    'Os IDs de canais adicionais têm de ser números válidos (10 a 20 dígitos).',
   'gamenews_validation_max_per_cycle_invalid': 'O máximo por ciclo tem de ser um número entre 1 e 10.',
   'config_nav_maintenance': 'Manutenção',
   'config_maintenance_title': 'Modo de manutenção',
-  'config_maintenance_hint': 'Quando ativado, o bot pode anunciar que está em manutenção e a dashboard pode mostrar um aviso aos utilizadores.',
+  'config_maintenance_hint':
+    'Quando ativado, o bot pode anunciar que está em manutenção e a dashboard pode mostrar um aviso aos utilizadores.',
   'config_maintenance_enabled_label': 'Ativar modo de manutenção',
   'config_maintenance_message_label': 'Mensagem (opcional)',
   'config_maintenance_message_placeholder': 'Ex: Estamos em manutenção. Voltamos em breve.',
@@ -662,7 +680,8 @@ window.OzarkLocales.pt = {
   'error_send_test': 'Erro ao enviar teste.',
   'tab_features': 'Funcionalidades',
   'features_title': 'Funcionalidades',
-  'features_hint': 'Ativa e configura funcionalidades opcionais do bot. Cada uma é independente e pode ser ligada ou desligada a qualquer momento.',
+  'features_hint':
+    'Ativa e configura funcionalidades opcionais do bot. Cada uma é independente e pode ser ligada ou desligada a qualquer momento.',
   'features_load_error': 'Não foi possível carregar as funcionalidades.',
   'features_saved': 'Guardado.',
   'features_save_error': 'Erro ao guardar.',
@@ -695,9 +714,11 @@ window.OzarkLocales.pt = {
   'features_placeholder_ticket_open_emoji': '🎫',
   'features_placeholder_ticket_close_emoji': '🔒',
   'features_placeholder_ticket_title': '📩 Suporte & Tickets',
-  'features_placeholder_ticket_description': 'Se precisares de ajuda com o servidor, tiveres dúvidas sobre moderação ou quiseres reportar um problema, podes abrir um ticket de suporte.\n\n👉 Como abrir um ticket:\n1. Reage a esta mensagem com {emoji};\n2. Será criada uma thread privada contigo e com a equipa de suporte;\n3. Explica a situação com o máximo de detalhe possível para acelerar a resposta.\n\n⏱️ Os pedidos são tratados por ordem de chegada. Agradecemos a tua compreensão.',
+  'features_placeholder_ticket_description':
+    'Se precisares de ajuda com o servidor, tiveres dúvidas sobre moderação ou quiseres reportar um problema, podes abrir um ticket de suporte.\n\n👉 Como abrir um ticket:\n1. Reage a esta mensagem com {emoji};\n2. Será criada uma thread privada contigo e com a equipa de suporte;\n3. Explica a situação com o máximo de detalhe possível para acelerar a resposta.\n\n⏱️ Os pedidos são tratados por ordem de chegada. Agradecemos a tua compreensão.',
   'features_placeholder_ticket_already_open': 'Já existe um ticket aberto para ti: <#{channelId}>',
-  'features_placeholder_ticket_welcome': 'Olá {user}, obrigado por entrares em contacto com a equipa de suporte.\n\n📌 **Antes de começares:**\n• Explica de forma clara o teu problema ou pedido;\n• Sempre que possível, inclui prints, IDs ou exemplos;\n• Evita partilhar dados pessoais sensíveis em texto ou imagem.\n\n🔒 **Para encerrar este ticket**, reage a esta mensagem com {closeEmoji}.',
+  'features_placeholder_ticket_welcome':
+    'Olá {user}, obrigado por entrares em contacto com a equipa de suporte.\n\n📌 **Antes de começares:**\n• Explica de forma clara o teu problema ou pedido;\n• Sempre que possível, inclui prints, IDs ou exemplos;\n• Evita partilhar dados pessoais sensíveis em texto ou imagem.\n\n🔒 **Para encerrar este ticket**, reage a esta mensagem com {closeEmoji}.',
   'features_placeholder_ticket_close': '🔒 Ticket fechado por {user}. Obrigado pelo contacto.',
   'features_placeholder_welcome_message': 'Bem-vindo(a) {user} ao {server}! Já somos {memberCount} membros.',
   'features_placeholder_goodbye_message': '{user} saiu do servidor.',
@@ -738,7 +759,8 @@ window.OzarkLocales.pt = {
   'feature_goodbye_name': 'Saída de membros',
   'feature_goodbye_desc': 'Envia uma mensagem quando um membro sai do servidor.',
   'feature_server_stats_name': 'Estatísticas do servidor',
-  'feature_server_stats_desc': 'Mostra os membros, entradas (7d) e saídas (7d) numa categoria dedicada de estatísticas do servidor.',
+  'feature_server_stats_desc':
+    'Mostra os membros, entradas (7d) e saídas (7d) numa categoria dedicada de estatísticas do servidor.',
   'features_message': 'Mensagem',
   'features_embed': 'Mostrar como embed',
   'features_color': 'Cor (hex)',
@@ -751,8 +773,10 @@ window.OzarkLocales.pt = {
   'features_test_error': 'Não foi possível executar o teste.',
   'features_test_info_polls': 'As enquetes são criadas com o comando /poll no servidor.',
   'features_test_info_autoKick': 'O auto-kick atua quando o interruptor está ligado.',
-  'features_test_info_reactionRolesUnresolved': 'Há emojis que o bot não consegue usar. Usa o emoji copiado do Discord (⭐ ou <:emoji:id>).',
-  'features_test_info_reactionRolesPermissions': 'O bot não consegue atribuir um ou mais cargos: confirma a permissão "Gerir cargos" e que o cargo do bot está acima dos cargos configurados.',
+  'features_test_info_reactionRolesUnresolved':
+    'Há emojis que o bot não consegue usar. Usa o emoji copiado do Discord (⭐ ou <:emoji:id>).',
+  'features_test_info_reactionRolesPermissions':
+    'O bot não consegue atribuir um ou mais cargos: confirma a permissão "Gerir cargos" e que o cargo do bot está acima dos cargos configurados.',
 
   // Presets de configuração por funcionalidade
   'features_presets': 'Presets',
@@ -795,5 +819,5 @@ window.OzarkLocales.pt = {
   'pref_theme_to_light': 'Mudar para tema claro',
   'pref_theme_to_dark': 'Mudar para tema escuro',
   'pref_density_to_compact': 'Usar densidade compacta',
-  'pref_density_to_comfortable': 'Usar densidade confortável',
+  'pref_density_to_comfortable': 'Usar densidade confortável'
 };

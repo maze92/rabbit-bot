@@ -84,10 +84,7 @@ async function getRecentInfractions(guildId, userId, limit = 10) {
 
   const lim = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
 
-  return Infraction.find({ guildId, userId })
-    .sort({ createdAt: -1 })
-    .limit(lim)
-    .lean();
+  return Infraction.find({ guildId, userId }).sort({ createdAt: -1 }).limit(lim).lean();
 }
 
 /**
@@ -152,7 +149,6 @@ async function searchCases({ guildId, q = '', userId = '', type = '', source = '
 
   return { total, items };
 }
-
 
 async function clearCasesForGuild(guildId) {
   if (!guildId) return { deleted: 0 };

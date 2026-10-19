@@ -105,7 +105,10 @@ test('GET /api/internal/metrics rejeita um Bearer inválido', async () => {
 });
 
 function withUser(user) {
-  return (req, res, next) => { req.dashboardUser = user; next(); };
+  return (req, res, next) => {
+    req.dashboardUser = user;
+    next();
+  };
 }
 
 test('GET/PATCH /api/config exigem bot operator (config global)', async () => {
@@ -140,14 +143,20 @@ test('GET /api/overview só agrega as guilds acessíveis ao utilizador', async (
   ]);
   let countQuery = null;
   const Infraction = {
-    countDocuments: (q) => { countQuery = q; return { exec: async () => 3 }; }
+    countDocuments: (q) => {
+      countQuery = q;
+      return { exec: async () => 3 };
+    }
   };
   const user = { role: 'USER', selectedGuildId: '111111111111111111', allowedGuildIds: [] };
-  const app = await startApp(registerCoreRoutes, buildCtx({
-    requireDashboardAuth: withUser(user),
-    getClient: () => ({ guilds: { cache: guilds } }),
-    Infraction
-  }));
+  const app = await startApp(
+    registerCoreRoutes,
+    buildCtx({
+      requireDashboardAuth: withUser(user),
+      getClient: () => ({ guilds: { cache: guilds } }),
+      Infraction
+    })
+  );
   try {
     const body = await (await fetch(app.baseUrl + '/api/overview')).json();
     assert.equal(body.guilds, 1);

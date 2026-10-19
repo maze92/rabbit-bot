@@ -1,14 +1,16 @@
 function parseBotUserIds(value, envName) {
   const ids = new Set();
-  String(value || '').split(/[,\s;]+/).forEach((part) => {
-    const id = part.trim();
-    if (!id) return;
-    if (!/^\d{10,32}$/.test(id)) {
-      console.warn(`[Dashboard] Ignoring invalid Discord user ID in ${envName}.`);
-      return;
-    }
-    ids.add(id);
-  });
+  String(value || '')
+    .split(/[,\s;]+/)
+    .forEach((part) => {
+      const id = part.trim();
+      if (!id) return;
+      if (!/^\d{10,32}$/.test(id)) {
+        console.warn(`[Dashboard] Ignoring invalid Discord user ID in ${envName}.`);
+        return;
+      }
+      ids.add(id);
+    });
   return ids;
 }
 

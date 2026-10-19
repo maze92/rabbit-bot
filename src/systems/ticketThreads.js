@@ -35,19 +35,11 @@ async function getNextTicketNumber(guildId) {
   // but the counter document doesn't exist yet (fresh deploy, new model, etc.).
   const existingCounter = await TicketCounter.findOne({ guildId }).lean();
   if (!existingCounter) {
-    const maxTicket = await Ticket.findOne({ guildId })
-      .sort({ ticketNumber: -1 })
-      .select('ticketNumber')
-      .lean();
-    const startFrom = (maxTicket && typeof maxTicket.ticketNumber === 'number')
-      ? Math.max(1, maxTicket.ticketNumber + 1)
-      : 1;
+    const maxTicket = await Ticket.findOne({ guildId }).sort({ ticketNumber: -1 }).select('ticketNumber').lean();
+    const startFrom =
+      maxTicket && typeof maxTicket.ticketNumber === 'number' ? Math.max(1, maxTicket.ticketNumber + 1) : 1;
     // Upsert without increment: set the initial value only if missing.
-    await TicketCounter.updateOne(
-      { guildId },
-      { $setOnInsert: { nextTicketNumber: startFrom } },
-      { upsert: true }
-    );
+    await TicketCounter.updateOne({ guildId }, { $setOnInsert: { nextTicketNumber: startFrom } }, { upsert: true });
   }
 
   // Allocate one number atomically. We store the "next" value in the doc,
@@ -69,13 +61,15 @@ const CLOSE_EMOJI = '🔒';
 
 async function getTicketSettings(guildId) {
   const cfg = await getFeature(guildId, 'tickets').catch(() => null);
-  return cfg || {
-    enabled: false,
-    channelId: null,
-    messageId: null,
-    openEmoji: OPEN_EMOJI,
-    closeEmoji: CLOSE_EMOJI
-  };
+  return (
+    cfg || {
+      enabled: false,
+      channelId: null,
+      messageId: null,
+      openEmoji: OPEN_EMOJI,
+      closeEmoji: CLOSE_EMOJI
+    }
+  );
 }
 
 /**
@@ -116,145 +110,152 @@ async function handleTicketOpen(reaction, user) {
 
     try {
       // If this user already has an open ticket, don't create a new one.
-const existing = await Ticket.findOne({ guildId: guild.id, userId: user.id, status: 'open' }).lean();
-if (existing && existing.channelId) {
-  try {
-    const ch = await guild.channels.fetch(existing.channelId).catch(() => null);
-    if (ch) {
-      const vars = { channelId: existing.channelId, user: `<@${user.id}>` };
-      const text = applyTemplate(
+      const existing = await Ticket.findOne({ guildId: guild.id, userId: user.id, status: 'open' }).lean();
+      if (existing && existing.channelId) {
+        try {
+          const ch = await guild.channels.fetch(existing.channelId).catch(() => null);
+          if (ch) {
+            const vars = { channelId: existing.channelId, user: `<@${user.id}>` };
+            const text = applyTemplate(
+              await getFeatureText({
+                guildId: guild.id,
+                feature: 'tickets',
+                field: 'alreadyOpenMessage',
+                value: settings.alreadyOpenMessage,
+                params: vars
+              }),
+              vars
+            );
+            await ch.send({ content: text }).catch(() => {});
+          }
+        } catch {}
+        return false;
+      }
+
+      // Generate sequential ticket number atomically per guild
+      const ticketNumber = await getNextTicketNumber(guild.id);
+      const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
+
+      // Criar thread privada no canal (não ligada diretamente à mensagem base)
+      const parentChannel = message.channel;
+      const thread = await parentChannel.threads.create({
+        name: ticketName,
+        type: ChannelType.PrivateThread,
+        autoArchiveDuration: 1440, // 24h
+        reason: `Ticket aberto por ${user.tag || user.id}`
+      });
+
+      // Adicionar o utilizador que abriu o ticket
+      await thread.members.add(user.id).catch(() => {});
+
+      // Persistir ticket (para dashboard e replies)
+      // We retry a few times in case of a rare race on ticketNumber.
+      let ticketDoc;
+      let createdTicketNumber = ticketNumber;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          ticketDoc = await Ticket.create({
+            ticketNumber: createdTicketNumber,
+            guildId: guild.id,
+            channelId: thread.id,
+            userId: user.id,
+            username: user.username || user.tag || user.id,
+            status: 'open',
+            createdAt: new Date(),
+            lastMessageAt: new Date()
+          });
+          break;
+        } catch (err) {
+          const isDup = err && (err.code === 11000 || String(err.message || '').includes('E11000'));
+          if (!isDup) throw err;
+
+          // If it's a duplicate open-ticket for the same user, just archive the thread.
+          const msg = String(err.message || '');
+          const isDupOpenTicket = msg.includes('guildId_1_userId_1_status_1');
+          if (isDupOpenTicket) {
+            try {
+              await thread.setArchived(true, 'Duplicate open ticket');
+            } catch {}
+            return false;
+          }
+
+          // Otherwise assume it's a ticketNumber collision; allocate a new number and rename the thread.
+          createdTicketNumber = await getNextTicketNumber(guild.id);
+          const newName = `ticket-${String(createdTicketNumber).padStart(3, '0')}`;
+          try {
+            await thread.setName(newName).catch(() => {});
+          } catch {}
+          // Continue loop and retry create.
+        }
+      }
+
+      if (!ticketDoc) {
+        try {
+          await thread.setArchived(true, 'Failed to create ticket');
+        } catch {}
+        return false;
+      }
+
+      // Registar log (mantido por compatibilidade, agora com ligações)
+      await TicketLog.create({
+        ticketNumber: createdTicketNumber,
+        ticketId: ticketDoc._id,
+        guildId: guild.id,
+        channelId: thread.id,
+        userId: user.id,
+        username: user.username || user.tag || user.id,
+        createdAt: new Date()
+      });
+
+      // Embed de boas-vindas dentro da thread
+      const welcomeVars = {
+        user: `${user}`,
+        username: user.username || '',
+        tag: user.tag || user.username || '',
+        server: guild.name,
+        closeEmoji: settings.closeEmoji || CLOSE_EMOJI
+      };
+      const welcomeDescription = applyTemplate(
         await getFeatureText({
           guildId: guild.id,
           feature: 'tickets',
-          field: 'alreadyOpenMessage',
-          value: settings.alreadyOpenMessage,
-          params: vars
+          field: 'welcomeMessage',
+          value: settings.welcomeMessage,
+          params: welcomeVars
         }),
-        vars
+        welcomeVars
       );
-      await ch.send({ content: text }).catch(() => {});
-    }
-  } catch {}
-  return false;
-}
+      const embed = new EmbedBuilder()
+        .setTitle(await getFeatureText({ guildId: guild.id, feature: 'tickets', field: 'welcomeTitle' }))
+        .setDescription(welcomeDescription)
+        .addFields(
+          {
+            name: await getFeatureText({ guildId: guild.id, feature: 'tickets', field: 'ticketNumber' }),
+            value: `\`${String(createdTicketNumber).padStart(3, '0')}\``,
+            inline: true
+          },
+          {
+            name: await getFeatureText({ guildId: guild.id, feature: 'tickets', field: 'openedBy' }),
+            value: `${user} (\`${user.tag}\`)`,
+            inline: true
+          }
+        )
+        .setFooter({ text: `Ticket #${String(createdTicketNumber).padStart(3, '0')}` })
+        .setTimestamp();
 
-// Generate sequential ticket number atomically per guild
-const ticketNumber = await getNextTicketNumber(guild.id);
-const ticketName = `ticket-${String(ticketNumber).padStart(3, '0')}`;
+      const controlMessage = await thread.send({ embeds: [embed] });
 
-    // Criar thread privada no canal (não ligada diretamente à mensagem base)
-    const parentChannel = message.channel;
-    const thread = await parentChannel.threads.create({
-      name: ticketName,
-      type: ChannelType.PrivateThread,
-      autoArchiveDuration: 1440, // 24h
-      reason: `Ticket aberto por ${user.tag || user.id}`
-    });
-
-    // Adicionar o utilizador que abriu o ticket
-    await thread.members.add(user.id).catch(() => {});
-
-    // Persistir ticket (para dashboard e replies)
-    // We retry a few times in case of a rare race on ticketNumber.
-    let ticketDoc;
-    let createdTicketNumber = ticketNumber;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        ticketDoc = await Ticket.create({
-          ticketNumber: createdTicketNumber,
-          guildId: guild.id,
-          channelId: thread.id,
-          userId: user.id,
-          username: user.username || user.tag || user.id,
-          status: 'open',
-          createdAt: new Date(),
-          lastMessageAt: new Date()
-        });
-        break;
-      } catch (err) {
-        const isDup = err && (err.code === 11000 || String(err.message || '').includes('E11000'));
-        if (!isDup) throw err;
-
-        // If it's a duplicate open-ticket for the same user, just archive the thread.
-        const msg = String(err.message || '');
-        const isDupOpenTicket = msg.includes('guildId_1_userId_1_status_1');
-        if (isDupOpenTicket) {
-          try { await thread.setArchived(true, 'Duplicate open ticket'); } catch {}
-          return false;
-        }
-
-        // Otherwise assume it's a ticketNumber collision; allocate a new number and rename the thread.
-        createdTicketNumber = await getNextTicketNumber(guild.id);
-        const newName = `ticket-${String(createdTicketNumber).padStart(3, '0')}`;
-        try { await thread.setName(newName).catch(() => {}); } catch {}
-        // Continue loop and retry create.
-      }
-    }
-
-    if (!ticketDoc) {
-      try { await thread.setArchived(true, 'Failed to create ticket'); } catch {}
-      return false;
-    }
-
-    // Registar log (mantido por compatibilidade, agora com ligações)
-    await TicketLog.create({
-      ticketNumber: createdTicketNumber,
-      ticketId: ticketDoc._id,
-      guildId: guild.id,
-      channelId: thread.id,
-      userId: user.id,
-      username: user.username || user.tag || user.id,
-      createdAt: new Date()
-    });
-
-    // Embed de boas-vindas dentro da thread
-    const welcomeVars = {
-      user: `${user}`,
-      username: user.username || '',
-      tag: user.tag || user.username || '',
-      server: guild.name,
-      closeEmoji: settings.closeEmoji || CLOSE_EMOJI
-    };
-    const welcomeDescription = applyTemplate(
-      await getFeatureText({
-        guildId: guild.id,
-        feature: 'tickets',
-        field: 'welcomeMessage',
-        value: settings.welcomeMessage,
-        params: welcomeVars
-      }),
-      welcomeVars
-    );
-    const embed = new EmbedBuilder()
-      .setTitle(await getFeatureText({ guildId: guild.id, feature: 'tickets', field: 'welcomeTitle' }))
-      .setDescription(welcomeDescription)
-      .addFields(
-        {
-          name: await getFeatureText({ guildId: guild.id, feature: 'tickets', field: 'ticketNumber' }),
-          value: `\`${String(createdTicketNumber).padStart(3, '0')}\``,
-          inline: true
-        },
-        {
-          name: await getFeatureText({ guildId: guild.id, feature: 'tickets', field: 'openedBy' }),
-          value: `${user} (\`${user.tag}\`)`,
-          inline: true
-        }
-      )
-      .setFooter({ text: `Ticket #${String(createdTicketNumber).padStart(3, '0')}` })
-      .setTimestamp();
-
-    const controlMessage = await thread.send({ embeds: [embed] });
-
-    // Adicionar reação de fecho
-    const closeReactable = toReactable(settings.closeEmoji || CLOSE_EMOJI);
-    if (closeReactable) await controlMessage.react(closeReactable).catch(() => {});
-    return true;
+      // Adicionar reação de fecho
+      const closeReactable = toReactable(settings.closeEmoji || CLOSE_EMOJI);
+      if (closeReactable) await controlMessage.react(closeReactable).catch(() => {});
+      return true;
     } finally {
       if (lockAcquired) {
-        try { await TicketOpenLock.deleteOne({ guildId: guild.id, userId: user.id }).catch(() => {}); } catch {}
+        try {
+          await TicketOpenLock.deleteOne({ guildId: guild.id, userId: user.id }).catch(() => {});
+        } catch {}
       }
     }
-
   } catch (err) {
     console.error('[ticketThreads] handleTicketOpen error:', err);
   }

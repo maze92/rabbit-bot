@@ -69,7 +69,8 @@ function decorateDescriptionWithTrustLabel(guildIdOrDescription, maybeDescriptio
     description.includes('(Risco elevado)') ||
     description.includes('(Risco médio)') ||
     description.includes('(Risco baixo)')
-  ) return description;
+  )
+    return description;
 
   // Match tanto "Trust:" como "Trust after mute:"
   const regex = /(Trust(?: after mute)?):\s*\*\*(\d+)(?:\/(\d+))?\*\*/i;
@@ -92,7 +93,9 @@ function decorateDescriptionWithTrustLabel(guildIdOrDescription, maybeDescriptio
   };
 
   if (guildId) {
-    return tGuild(guildId, `log.trustRisk.${riskKey}`).then(buildResult).catch(() => buildResult(t(`log.trustRisk.${riskKey}`)));
+    return tGuild(guildId, `log.trustRisk.${riskKey}`)
+      .then(buildResult)
+      .catch(() => buildResult(t(`log.trustRisk.${riskKey}`)));
   }
 
   return buildResult(t(`log.trustRisk.${riskKey}`));
@@ -103,8 +106,9 @@ async function logger(client, title, user, executor, description, guild) {
     const resolvedGuild = resolveGuild(guild, user, executor);
     if (!resolvedGuild) return;
 
-
-    const isDashboard = String(title || '').toLowerCase().includes('dashboard');
+    const isDashboard = String(title || '')
+      .toLowerCase()
+      .includes('dashboard');
     const logChannelName = config.logChannelName || 'log-bot';
 
     if (!module.exports._channelCache) {
@@ -115,9 +119,10 @@ async function logger(client, title, user, executor, description, guild) {
     let logChannel = module.exports._channelCache.get(cacheKey) || null;
     // Hard override: if this is a Dashboard log, prefer the configured dashboardLogsChannelId
     if (isDashboard) {
-      const forcedId = (config.dashboard && config.dashboard.dashboardLogsChannelId)
-        ? String(config.dashboard.dashboardLogsChannelId)
-        : null;
+      const forcedId =
+        config.dashboard && config.dashboard.dashboardLogsChannelId
+          ? String(config.dashboard.dashboardLogsChannelId)
+          : null;
 
       const forcedChannel = resolvedGuild.channels?.cache?.get(forcedId);
       if (forcedChannel && forcedChannel.isTextBased?.()) {
@@ -125,10 +130,11 @@ async function logger(client, title, user, executor, description, guild) {
       }
     }
 
-
     try {
       if (GuildConfig) {
-        const guildCfg = await GuildConfig.findOne({ guildId: resolvedGuild.id }).lean().catch(() => null);
+        const guildCfg = await GuildConfig.findOne({ guildId: resolvedGuild.id })
+          .lean()
+          .catch(() => null);
         if (guildCfg) {
           let channelId = null;
 
@@ -158,9 +164,8 @@ async function logger(client, title, user, executor, description, guild) {
     }
 
     if (!logChannel || !resolvedGuild.channels?.cache?.get(logChannel.id)) {
-      const fallback = resolvedGuild.channels?.cache?.find(
-        (ch) => ch?.name === logChannelName && ch.isTextBased?.()
-      ) || null;
+      const fallback =
+        resolvedGuild.channels?.cache?.find((ch) => ch?.name === logChannelName && ch.isTextBased?.()) || null;
 
       if (fallback) {
         logChannel = fallback;

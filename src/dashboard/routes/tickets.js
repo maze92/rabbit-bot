@@ -24,21 +24,23 @@ function registerTicketsRoutes(opts) {
 
   if (!app) throw new Error('registerTicketsRoutes: app is required');
 
-  const canManageTickets = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canManageTickets'] })
-    : (req, res, next) => next();
+  const canManageTickets =
+    typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canManageTickets'] }) : (req, res, next) => next();
 
-  const guardGuildQuery = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildQuery =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'query', key: 'guildId' })
+      : (req, res, next) => next();
 
-  const guardGuildQueryOptional = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
-    : (req, res, next) => next();
+  const guardGuildQueryOptional =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
+      : (req, res, next) => next();
 
-  const guardGuildBodyOptional = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'body', key: 'guildId', optional: true })
-    : (req, res, next) => next();
+  const guardGuildBodyOptional =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'body', key: 'guildId', optional: true })
+      : (req, res, next) => next();
 
   function hasGuildAccess(req, guildId) {
     try {
@@ -71,7 +73,7 @@ function registerTicketsRoutes(opts) {
         if (!guildId) return res.status(400).json({ ok: false, error: 'guildId is required' });
 
         const statusRaw = (req.query.status || 'open').toString().trim().toLowerCase();
-        const status = statusRaw === 'all' ? 'all' : (statusRaw === 'closed' ? 'closed' : 'open');
+        const status = statusRaw === 'all' ? 'all' : statusRaw === 'closed' ? 'closed' : 'open';
         const q = (req.query.q || '').toString().trim();
         const cursor = (req.query.cursor || '').toString().trim();
 
@@ -102,10 +104,7 @@ function registerTicketsRoutes(opts) {
           const cursorId = parts[1] || null;
           if (cursorDate && !Number.isNaN(cursorDate.getTime()) && cursorId) {
             and.push({
-              $or: [
-                { createdAt: { $lt: cursorDate } },
-                { createdAt: cursorDate, _id: { $lt: cursorId } }
-              ]
+              $or: [{ createdAt: { $lt: cursorDate } }, { createdAt: cursorDate, _id: { $lt: cursorId } }]
             });
           } else if (cursorDate && !Number.isNaN(cursorDate.getTime())) {
             query.createdAt = { $lt: cursorDate };
@@ -114,10 +113,7 @@ function registerTicketsRoutes(opts) {
 
         if (and.length) query.$and = and;
 
-        const items = await TicketModel.find(query)
-          .sort({ createdAt: -1, _id: -1 })
-          .limit(limit)
-          .lean();
+        const items = await TicketModel.find(query).sort({ createdAt: -1, _id: -1 }).limit(limit).lean();
 
         let nextCursor = null;
         if (items && items.length === limit) {
@@ -181,7 +177,9 @@ function registerTicketsRoutes(opts) {
         let closedById = ticket.closedById || null;
         if ((!closedAt || !closedByUsername) && TicketLogModel) {
           try {
-            const log = await TicketLogModel.findOne({ $or: [{ ticketId: ticket._id }, { channelId: ticket.channelId }] })
+            const log = await TicketLogModel.findOne({
+              $or: [{ ticketId: ticket._id }, { channelId: ticket.channelId }]
+            })
               .sort({ createdAt: -1 })
               .lean();
             if (log) {
@@ -282,7 +280,7 @@ function registerTicketsRoutes(opts) {
             return true;
           })
           .map((m) => {
-            const authorUsername = m.author ? (m.author.username || '') : '';
+            const authorUsername = m.author ? m.author.username || '' : '';
             const authorId = m.author ? m.author.id : '';
             const raw = (m.content || '').toString();
             const pfxA = 'Resposta da equipa:';
@@ -499,7 +497,9 @@ function registerTicketsRoutes(opts) {
 
         const ticketId = (req.params.ticketId || '').toString().trim();
         const rawGuildId = (req.body?.guildId || '').toString().trim();
-        const content = sanitizeText ? sanitizeText(req.body?.content || '', { maxLen: 2000, stripHtml: true }) : (req.body?.content || '').toString().slice(0, 2000);
+        const content = sanitizeText
+          ? sanitizeText(req.body?.content || '', { maxLen: 2000, stripHtml: true })
+          : (req.body?.content || '').toString().slice(0, 2000);
 
         if (!ticketId) {
           return res.status(400).json({ ok: false, error: 'ticketId is required' });
@@ -513,7 +513,7 @@ function registerTicketsRoutes(opts) {
           return res.status(404).json({ ok: false, error: 'Ticket not found' });
         }
 
-        const guildId = rawGuildId || (ticket.guildId || '');
+        const guildId = rawGuildId || ticket.guildId || '';
         if (!guildId) {
           return res.status(400).json({ ok: false, error: 'guildId is required' });
         }

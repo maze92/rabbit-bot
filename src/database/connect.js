@@ -14,9 +14,7 @@ const MAX_RETRY_DELAY_MS = 30_000;
 
 async function connectMongo() {
   if (!uri) {
-    console.error(
-      '❌ Missing MongoDB URI. Set MONGO_URI (recommended) or MONGODB_URI in environment.'
-    );
+    console.error('❌ Missing MongoDB URI. Set MONGO_URI (recommended) or MONGODB_URI in environment.');
     status.setMongoConnected(false);
     return;
   }
@@ -50,9 +48,7 @@ async function connectMongo() {
 
     retryAttempts += 1;
     const delay = Math.min(1000 * 2 ** (retryAttempts - 1), MAX_RETRY_DELAY_MS);
-    console.log(
-      `⏳ Retry MongoDB connection in ${Math.round(delay / 1000)}s (attempt ${retryAttempts})`
-    );
+    console.log(`⏳ Retry MongoDB connection in ${Math.round(delay / 1000)}s (attempt ${retryAttempts})`);
 
     if (!isShuttingDown) {
       retryTimer = setTimeout(() => {

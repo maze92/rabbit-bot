@@ -38,7 +38,7 @@ const parser = new Parser({ timeout: 15000 });
 
 const FEED_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (compatible; .rabbit/1.0; +https://github.com/maze92/rabbit-bot)',
-  'Accept': 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7'
+  Accept: 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7'
 };
 
 let started = false;
@@ -133,9 +133,7 @@ function bumpDailyCount(history, day, maxDays) {
   const limit = Number.isFinite(maxDays) && maxDays > 0 ? Math.round(maxDays) : 30;
 
   const arr = Array.isArray(history)
-    ? history
-        .filter((e) => e && e.day)
-        .map((e) => ({ day: String(e.day), count: Number(e.count) || 0 }))
+    ? history.filter((e) => e && e.day).map((e) => ({ day: String(e.day), count: Number(e.count) || 0 }))
     : [];
 
   const existing = arr.find((e) => e.day === key);
@@ -272,7 +270,9 @@ async function readBodyTextLimited(res, maxBytes, controller) {
       const buf = value instanceof Uint8Array ? value : new Uint8Array(value);
       total += buf.byteLength;
       if (total > safeLimit) {
-        try { controller?.abort?.(); } catch {}
+        try {
+          controller?.abort?.();
+        } catch {}
         throw new Error('Feed payload too large');
       }
       chunks.push(buf);
@@ -363,15 +363,10 @@ function normalizeLink(rawLink, base) {
   }
 }
 
-
 function generateHash(item) {
   const normalizedLink = item.link ? normalizeLink(item.link) : null;
 
-  const base =
-    item.guid ||
-    item.id ||
-    normalizedLink ||
-    `${item.title || ''}-${item.isoDate || item.pubDate || ''}`;
+  const base = item.guid || item.id || normalizedLink || `${item.title || ''}-${item.isoDate || item.pubDate || ''}`;
 
   return crypto.createHash('sha256').update(String(base)).digest('hex');
 }
@@ -395,7 +390,6 @@ function isItemTooOld(item, maxAgeDays) {
 
   return ageMs > maxMs;
 }
-
 
 function makeFeedSourceKey(feed) {
   // Stable key to avoid collisions between feeds that share the same "name".
@@ -465,17 +459,25 @@ async function registerFeedFailure(record, config, client, feed, err) {
 
   // Persist the failure reason so the dashboard can surface it.
   if (err) {
-    const msg = (err && err.message) ? String(err.message) : String(err);
+    const msg = err && err.message ? String(err.message) : String(err);
     record.lastError = msg.slice(0, 300);
   }
 
   // Optional per-feed log channel
-  await sendFeedLog(client, feed, `⚠️ GameNews: falha no feed **${feed?.name || 'Feed'}** (tentativas: ${record.failCount})`).catch(() => null);
+  await sendFeedLog(
+    client,
+    feed,
+    `⚠️ GameNews: falha no feed **${feed?.name || 'Feed'}** (tentativas: ${record.failCount})`
+  ).catch(() => null);
 
   if (record.failCount >= maxFails) {
     record.pausedUntil = new Date(Date.now() + pauseMs);
     record.failCount = 0;
-    await sendFeedLog(client, feed, `⏸️ GameNews: feed **${feed?.name || 'Feed'}** em pausa até ${(record.pausedUntil ? record.pausedUntil.toISOString() : '')} (backoff).`).catch(() => null);
+    await sendFeedLog(
+      client,
+      feed,
+      `⏸️ GameNews: feed **${feed?.name || 'Feed'}** em pausa até ${record.pausedUntil ? record.pausedUntil.toISOString() : ''} (backoff).`
+    ).catch(() => null);
   }
 
   await record.save();
@@ -540,7 +542,8 @@ async function parseWithRetry(url, retryCfg, record, options = undefined) {
   let lastErr = null;
 
   // Normalize options (keep compatibility with old numeric timeout).
-  const opts = (typeof options === 'number') ? { timeoutMs: options } : (options && typeof options === 'object' ? options : {});
+  const opts =
+    typeof options === 'number' ? { timeoutMs: options } : options && typeof options === 'object' ? options : {};
 
   for (let i = 1; i <= safeAttempts; i++) {
     try {
@@ -563,10 +566,10 @@ async function parseWithRetry(url, retryCfg, record, options = undefined) {
 async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN, config }) {
   const hash = generateHash(item);
 
-  const descriptionRaw = item.contentSnippet || item.content || "";
-  const trimmed = typeof descriptionRaw === "string" ? descriptionRaw.trim() : "";
+  const descriptionRaw = item.contentSnippet || item.content || '';
+  const trimmed = typeof descriptionRaw === 'string' ? descriptionRaw.trim() : '';
   const MAX_DESC = 4000;
-  const description = trimmed.length > MAX_DESC ? trimmed.slice(0, MAX_DESC) + "..." : trimmed;
+  const description = trimmed.length > MAX_DESC ? trimmed.slice(0, MAX_DESC) + '...' : trimmed;
 
   let finalDescription = description;
   if (!finalDescription) {
@@ -576,7 +579,7 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
       (item.title || '').toString().trim() ||
       (item.link || '').toString().trim() ||
       'New article available.';
-    finalDescription = snippet.length > MAX_DESC ? snippet.slice(0, MAX_DESC) + "..." : snippet;
+    finalDescription = snippet.length > MAX_DESC ? snippet.slice(0, MAX_DESC) + '...' : snippet;
   }
 
   const embed = new EmbedBuilder()
@@ -592,7 +595,7 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
   // Cache-first channel resolution + permission check
   let ch = channel;
   if (!ch) {
-    ch = client.channels.cache.get(feed.channelId) || await fetchChannel(client, feed.channelId);
+    ch = client.channels.cache.get(feed.channelId) || (await fetchChannel(client, feed.channelId));
   }
   if (!ch || !ch.isTextBased?.() || !hasSendPerm(ch, client)) {
     await sendFeedLog(client, feed, '⚠️ GameNews: sem permissão para enviar mensagens no canal.').catch(() => null);
@@ -614,14 +617,20 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
     }
 
     if (!extraCh || !extraCh.isTextBased?.() || !hasSendPerm(extraCh, client)) {
-      await sendFeedLog(client, feed, `⚠️ GameNews: sem permissão para replicar no canal **${extraId}**.`).catch(() => null);
+      await sendFeedLog(client, feed, `⚠️ GameNews: sem permissão para replicar no canal **${extraId}**.`).catch(
+        () => null
+      );
       continue;
     }
 
     try {
       await extraCh.send({ embeds: [embed] });
     } catch (err) {
-      await sendFeedLog(client, feed, `⚠️ GameNews: falha ao replicar no canal **${extraId}** (${err?.message || err}).`).catch(() => null);
+      await sendFeedLog(
+        client,
+        feed,
+        `⚠️ GameNews: falha ao replicar no canal **${extraId}** (${err?.message || err}).`
+      ).catch(() => null);
     }
   }
 
@@ -638,11 +647,9 @@ async function sendOneNewsAndUpdate({ client, feed, channel, record, item, keepN
 
   // Optional success log (only when a per-feed log channel is configured).
   if (feed?.logChannelId && config?.gameNews?.logEnabled === true) {
-    await sendFeedLog(
-      client,
-      feed,
-      `📰 GameNews: enviado **${feed.name}** -> **${item.title || 'Untitled'}**`
-    ).catch(() => null);
+    await sendFeedLog(client, feed, `📰 GameNews: enviado **${feed.name}** -> **${item.title || 'Untitled'}**`).catch(
+      () => null
+    );
   }
 }
 
@@ -651,7 +658,7 @@ let feedsCacheItems = null;
 const FEEDS_CACHE_MS = 5_000;
 
 async function getFeedsFromDb() {
-  if (feedsCacheItems && (Date.now() - feedsCacheAt) < FEEDS_CACHE_MS) {
+  if (feedsCacheItems && Date.now() - feedsCacheAt < FEEDS_CACHE_MS) {
     return feedsCacheItems;
   }
   if (!GameNewsFeed) return [];
@@ -755,10 +762,8 @@ async function buildStatusPayload(config) {
     const paused = pausedUntil ? pausedUntil.getTime() > now : false;
 
     const intervalOverride = Number(f.intervalMs ?? 0);
-    const safeBase =
-      Number.isFinite(baseIntervalMs) && baseIntervalMs > 0 ? baseIntervalMs : 30 * 60 * 1000;
-    const effectiveIntervalMs =
-      Number.isFinite(intervalOverride) && intervalOverride > 0 ? intervalOverride : safeBase;
+    const safeBase = Number.isFinite(baseIntervalMs) && baseIntervalMs > 0 ? baseIntervalMs : 30 * 60 * 1000;
+    const effectiveIntervalMs = Number.isFinite(intervalOverride) && intervalOverride > 0 ? intervalOverride : safeBase;
 
     return {
       // Use the stable source key so the dashboard can uniquely identify feeds.
@@ -781,12 +786,10 @@ async function buildStatusPayload(config) {
       updatedAt: d?.updatedAt ?? null,
 
       intervalMs: effectiveIntervalMs,
-      intervalOverrideMs:
-        Number.isFinite(intervalOverride) && intervalOverride > 0 ? intervalOverride : null
+      intervalOverrideMs: Number.isFinite(intervalOverride) && intervalOverride > 0 ? intervalOverride : null
     };
   });
 }
-
 
 async function emitStatusToDashboard(config) {
   try {
@@ -821,12 +824,10 @@ async function gameNewsSystem(client, config) {
     const safeGlobalJitter = Number.isFinite(globalJitterMs) && globalJitterMs >= 0 ? globalJitterMs : 20_000;
 
     const keepHashes = Number(config.gameNews.keepHashes ?? 10);
-    const safeKeep =
-      Number.isFinite(keepHashes) && keepHashes >= 5 && keepHashes <= 50 ? keepHashes : 10;
+    const safeKeep = Number.isFinite(keepHashes) && keepHashes >= 5 && keepHashes <= 50 ? keepHashes : 10;
 
     const maxAgeDays = Number(config.gameNews.maxAgeDays ?? 7);
-    const safeMaxAgeDays =
-      Number.isFinite(maxAgeDays) && maxAgeDays >= 1 && maxAgeDays <= 365 ? maxAgeDays : 7;
+    const safeMaxAgeDays = Number.isFinite(maxAgeDays) && maxAgeDays >= 1 && maxAgeDays <= 365 ? maxAgeDays : 7;
 
     const retryCfg = config.gameNews.retry || { attempts: 2, baseDelayMs: 1200, jitterMs: 800 };
 
@@ -859,7 +860,9 @@ async function gameNewsSystem(client, config) {
 
           if (isFeedPaused(record)) {
             if (process.env.NODE_ENV !== 'production') {
-              console.log(`[GameNews] Feed paused: ${feedName} until ${(record.pausedUntil ? record.pausedUntil.toISOString() : '')}`);
+              console.log(
+                `[GameNews] Feed paused: ${feedName} until ${record.pausedUntil ? record.pausedUntil.toISOString() : ''}`
+              );
             }
             continue;
           }
@@ -923,9 +926,7 @@ async function gameNewsSystem(client, config) {
             // Filtered items are never hashed, so they are simply skipped (never sent).
             const excludeKeywords = normalizeKeywordList(feed?.excludeKeywords);
             if (excludeKeywords.length) {
-              candidateItems = candidateItems.filter(
-                (it) => !itemMatchesExcludedKeyword(it, excludeKeywords)
-              );
+              candidateItems = candidateItems.filter((it) => !itemMatchesExcludedKeyword(it, excludeKeywords));
               if (candidateItems.length === 0) {
                 await registerFeedSuccess(record).catch(() => null);
                 continue;
@@ -948,12 +949,11 @@ async function gameNewsSystem(client, config) {
             }
 
             const maxPerCycle =
-              (typeof feed?.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle))
+              typeof feed?.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle)
                 ? Number(feed.maxPerCycle)
                 : Number(config.gameNews?.maxPerCycle ?? 3);
-            const safeMaxPerCycle = Number.isFinite(maxPerCycle) && maxPerCycle >= 1 && maxPerCycle <= 10
-              ? Math.round(maxPerCycle)
-              : 3;
+            const safeMaxPerCycle =
+              Number.isFinite(maxPerCycle) && maxPerCycle >= 1 && maxPerCycle <= 10 ? Math.round(maxPerCycle) : 3;
 
             const itemsToSend = newItems.slice(-safeMaxPerCycle);
 
@@ -981,7 +981,6 @@ async function gameNewsSystem(client, config) {
                 config
               });
             }
-
           } catch (err) {
             console.error(`[GameNews] Error processing feed ${feedName}:`, err?.message || err);
 
@@ -990,7 +989,7 @@ async function gameNewsSystem(client, config) {
 
               if (record.pausedUntil && record.pausedUntil.getTime() > Date.now()) {
                 console.warn(
-                  `[GameNews] Feed "${feedName}" paused until ${(record.pausedUntil ? record.pausedUntil.toISOString() : '')} (backoff).`
+                  `[GameNews] Feed "${feedName}" paused until ${record.pausedUntil ? record.pausedUntil.toISOString() : ''} (backoff).`
                 );
               }
             } catch (e) {
@@ -1018,12 +1017,10 @@ async function gameNewsSystem(client, config) {
 
     const firstDelay = withJitter(1500, Math.min(5000, safeGlobalJitter));
     setTimeout(scheduleNext, firstDelay).unref?.();
-
   } catch (err) {
     console.error('[GameNews] Critical error starting system:', err);
   }
-};
-
+}
 
 async function testSendGameNews({ client, config, guildId, feedId }) {
   if (!client) {
@@ -1073,12 +1070,10 @@ async function testSendGameNews({ client, config, guildId, feedId }) {
 
   // Resolve runtime config pieces similar to main loop
   const keepHashes = Number(cfg.gameNews.keepHashes ?? 10);
-  const safeKeep =
-    Number.isFinite(keepHashes) && keepHashes >= 5 && keepHashes <= 50 ? keepHashes : 10;
+  const safeKeep = Number.isFinite(keepHashes) && keepHashes >= 5 && keepHashes <= 50 ? keepHashes : 10;
 
   const maxAgeDays = Number(cfg.gameNews.maxAgeDays ?? 7);
-  const safeMaxAgeDays =
-    Number.isFinite(maxAgeDays) && maxAgeDays >= 1 && maxAgeDays <= 365 ? maxAgeDays : 7;
+  const safeMaxAgeDays = Number.isFinite(maxAgeDays) && maxAgeDays >= 1 && maxAgeDays <= 365 ? maxAgeDays : 7;
 
   const retryCfg = cfg.gameNews.retry || { attempts: 2, baseDelayMs: 1200, jitterMs: 800 };
 
@@ -1121,9 +1116,7 @@ async function testSendGameNews({ client, config, guildId, feedId }) {
     throw new Error('No recent items found for this feed (all older than maxAgeDays)');
   }
 
-  const channel =
-    client.channels.cache.get(feed.channelId) ||
-    (await fetchChannel(client, feed.channelId));
+  const channel = client.channels.cache.get(feed.channelId) || (await fetchChannel(client, feed.channelId));
 
   if (!channel || !channel.isTextBased?.()) {
     throw new Error('Configured channel not found or not text-based');
@@ -1153,9 +1146,7 @@ async function testSendGameNews({ client, config, guildId, feedId }) {
 async function sendFeedLog(client, feed, message) {
   try {
     if (!feed?.logChannelId) return;
-    const channel =
-      client.channels.cache.get(feed.logChannelId) ||
-      (await fetchChannel(client, feed.logChannelId));
+    const channel = client.channels.cache.get(feed.logChannelId) || (await fetchChannel(client, feed.logChannelId));
 
     if (!channel || !channel.isTextBased?.() || !hasSendPerm(channel, client)) return;
 

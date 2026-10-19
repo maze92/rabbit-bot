@@ -8,7 +8,7 @@
 const DEFAULTS = {
   channelTtlMs: 60_000,
   memberTtlMs: 30_000,
-  guildTtlMs: 60_000,
+  guildTtlMs: 60_000
 };
 
 /** @type {Map<string, CacheEntry>} */
@@ -48,7 +48,6 @@ function startGcOnce() {
   const timer = setInterval(sweepExpired, GC_INTERVAL_MS);
   if (typeof timer.unref === 'function') timer.unref();
 }
-
 
 function now() {
   return Date.now();
@@ -134,5 +133,5 @@ module.exports = {
   fetchChannel,
   fetchMember,
   invalidatePrefix,
-  DEFAULTS,
+  DEFAULTS
 };

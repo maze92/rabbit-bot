@@ -10,7 +10,9 @@ function makeGuard({ guildPremium, databaseError } = {}) {
   const GuildConfig = {
     findOne() {
       return {
-        select() { return this; },
+        select() {
+          return this;
+        },
         lean: async () => {
           if (databaseError) throw databaseError;
           return { guildId: GUILD_ID, premium: storedPremium };
@@ -23,7 +25,9 @@ function makeGuard({ guildPremium, databaseError } = {}) {
         lean: async () => ({ guildId: query.guildId, premium: storedPremium })
       };
     },
-    getPremium() { return storedPremium; }
+    getPremium() {
+      return storedPremium;
+    }
   };
   return createPremiumGuard({
     GuildConfig,
@@ -40,10 +44,18 @@ async function runGuard(middleware, role, userId = USER_ID) {
     body: { guildId: GUILD_ID }
   };
   const res = {
-    status(code) { statusCode = code; return this; },
-    json(value) { body = value; return this; }
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(value) {
+      body = value;
+      return this;
+    }
   };
-  await middleware(req, res, () => { passed = true; });
+  await middleware(req, res, () => {
+    passed = true;
+  });
   return { passed, statusCode, body };
 }
 

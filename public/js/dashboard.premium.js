@@ -8,12 +8,20 @@
 
   var NS = (window.OzarkDashboard = window.OzarkDashboard || {});
 
-  function byId(id) { return document.getElementById(id); }
-  function t(key, params) { return NS.t ? NS.t(key, params) : key; }
-  function notify(msg, opts) { if (typeof NS.toast === 'function') NS.toast(msg, opts); }
-  function guildId() { return (NS.state && NS.state.guildId) ? NS.state.guildId : null; }
+  function byId(id) {
+    return document.getElementById(id);
+  }
+  function t(key, params) {
+    return NS.t ? NS.t(key, params) : key;
+  }
+  function notify(msg, opts) {
+    if (typeof NS.toast === 'function') NS.toast(msg, opts);
+  }
+  function guildId() {
+    return NS.state && NS.state.guildId ? NS.state.guildId : null;
+  }
 
-  var premium = null;   // { enabled, active, until, note, activatedAt }
+  var premium = null; // { enabled, active, until, note, activatedAt }
   var paymentPlan = null;
   var premiumGuildId = null;
   var premiumLoadSequence = 0;
@@ -30,12 +38,14 @@
     var key = gid + ':' + module;
     if (moduleLoadCache[key]) return moduleLoadCache[key];
     var cache = moduleLoadCache;
-    var request = Promise.resolve().then(function () {
-      return NS.loadPremiumModuleData(module);
-    }).catch(function (err) {
-      if (moduleLoadCache === cache) delete cache[key];
-      throw err;
-    });
+    var request = Promise.resolve()
+      .then(function () {
+        return NS.loadPremiumModuleData(module);
+      })
+      .catch(function (err) {
+        if (moduleLoadCache === cache) delete cache[key];
+        throw err;
+      });
     cache[key] = request;
     return request;
   }
@@ -53,11 +63,10 @@
   function canStartCheckout() {
     var me = NS.state && NS.state.me;
     var permissions = me && me.permissions;
-    return !!(me && (
-      me.role === 'BOT_ADMIN' ||
-      me.role === 'BOT_OWNER' ||
-      (permissions && permissions.canEditConfig === true)
-    ));
+    return !!(
+      me &&
+      (me.role === 'BOT_ADMIN' || me.role === 'BOT_OWNER' || (permissions && permissions.canEditConfig === true))
+    );
   }
 
   function formatMoney(amount, currency) {
@@ -155,9 +164,9 @@
     if (plan) {
       plan.textContent = hasOffer
         ? t('premium_offer_plan', {
-          days: paymentPlan.durationDays,
-          price: formatMoney(paymentPlan.amount, paymentPlan.currency)
-        })
+            days: paymentPlan.durationDays,
+            price: formatMoney(paymentPlan.amount, paymentPlan.currency)
+          })
         : t('premium_offer_plan_unavailable');
     }
 
@@ -171,7 +180,7 @@
             ? 'premium_offer_checkout_ready'
             : canStartCheckout() && paymentPlan.referenceLinkAvailable
               ? 'premium_offer_reference_payment'
-            : 'premium_offer_admin_required';
+              : 'premium_offer_admin_required';
       status.textContent = t(message);
     }
 
@@ -202,8 +211,8 @@
     try {
       var res = await NS.apiGet('/premium?guildId=' + encodeURIComponent(gid));
       if (requestSequence !== premiumLoadSequence || guildId() !== gid) return;
-      premium = (res && res.premium) ? res.premium : { enabled: false, active: false };
-      paymentPlan = (res && res.payment) ? res.payment : null;
+      premium = res && res.premium ? res.premium : { enabled: false, active: false };
+      paymentPlan = res && res.payment ? res.payment : null;
     } catch (err) {
       if (requestSequence !== premiumLoadSequence || guildId() !== gid) return;
       console.error('Premium load error', err);
@@ -226,10 +235,27 @@
   function renderAdminGuilds() {
     var list = byId('premiumGuildsList');
     if (!list || !isAdmin()) return;
-    var query = String((byId('premiumAdminSearch') || {}).value || '').trim().toLowerCase();
+    var query = String((byId('premiumAdminSearch') || {}).value || '')
+      .trim()
+      .toLowerCase();
     var items = adminGuilds.filter(function (item) {
-      return !query || [item.guildId, item.guildName, item.ownerId, item.ownerName, item.purchasedByUserId, item.purchaserName, item.note, item.latestPayment && item.latestPayment.paypalPayerEmail]
-        .some(function (value) { return String(value || '').toLowerCase().includes(query); });
+      return (
+        !query ||
+        [
+          item.guildId,
+          item.guildName,
+          item.ownerId,
+          item.ownerName,
+          item.purchasedByUserId,
+          item.purchaserName,
+          item.note,
+          item.latestPayment && item.latestPayment.paypalPayerEmail
+        ].some(function (value) {
+          return String(value || '')
+            .toLowerCase()
+            .includes(query);
+        })
+      );
     });
     list.innerHTML = '';
     if (!items.length) {
@@ -251,7 +277,9 @@
       state.className = 'premium-status' + (item.active ? ' premium-status--on' : '');
       state.textContent = item.active
         ? t('premium_admin_active')
-        : (item.enabled ? t('premium_admin_expired') : t('premium_admin_disabled'));
+        : item.enabled
+          ? t('premium_admin_expired')
+          : t('premium_admin_disabled');
       summary.appendChild(title);
       summary.appendChild(state);
       row.appendChild(summary);
@@ -259,14 +287,22 @@
       guildMeta.textContent = [
         t('premium_admin_guild_id') + ': ' + item.guildId,
         item.ownerName || item.ownerId
-          ? t('premium_server_owner') + ': ' + (item.ownerName || t('premium_server_unknown')) + (item.ownerId ? ' (' + item.ownerId + ')' : '')
+          ? t('premium_server_owner') +
+            ': ' +
+            (item.ownerName || t('premium_server_unknown')) +
+            (item.ownerId ? ' (' + item.ownerId + ')' : '')
           : '',
         item.purchaserName || item.purchasedByUserId
-          ? t('premium_server_payer') + ': ' + (item.purchaserName || t('premium_server_unknown')) + (item.purchasedByUserId ? ' (' + item.purchasedByUserId + ')' : '')
+          ? t('premium_server_payer') +
+            ': ' +
+            (item.purchaserName || t('premium_server_unknown')) +
+            (item.purchasedByUserId ? ' (' + item.purchasedByUserId + ')' : '')
           : '',
         item.note || '',
-        item.until ? t('premium_until', { date: formatPaymentDate(item.until) }) : t('premium_admin_permanent'),
-      ].filter(Boolean).join(' · ');
+        item.until ? t('premium_until', { date: formatPaymentDate(item.until) }) : t('premium_admin_permanent')
+      ]
+        .filter(Boolean)
+        .join(' · ');
       row.appendChild(guildMeta);
 
       if (item.latestPayment) {
@@ -276,7 +312,9 @@
           item.latestPayment.paypalPayerEmail || '',
           formatPaymentDate(item.latestPayment.completedAt),
           item.latestPayment.paypalCaptureId || ''
-        ].filter(Boolean).join(' · ');
+        ]
+          .filter(Boolean)
+          .join(' · ');
         row.appendChild(payment);
         if (item.latestPayment.approvalUrl) {
           var approval = document.createElement('a');
@@ -360,17 +398,20 @@
           formatPaymentDate(item.completedAt || item.createdAt),
           item.expiresAt ? t('premium_until', { date: formatPaymentDate(item.expiresAt) }) : '',
           item.paypalCaptureId || ''
-        ].filter(Boolean).join(' · ');
+        ]
+          .filter(Boolean)
+          .join(' · ');
         row.appendChild(metadata);
         list.appendChild(row);
       });
     }
 
     var pageLabel = byId('premiumPaymentsPage');
-    if (pageLabel) pageLabel.textContent = t('premium_payments_page', {
-      page: paymentsPages ? paymentsPage : 0,
-      pages: paymentsPages
-    });
+    if (pageLabel)
+      pageLabel.textContent = t('premium_payments_page', {
+        page: paymentsPages ? paymentsPage : 0,
+        pages: paymentsPages
+      });
     var previous = byId('premiumPaymentsPrevious');
     var next = byId('premiumPaymentsNext');
     if (previous) previous.disabled = paymentsPage <= 1;
@@ -394,14 +435,16 @@
       var settings = results[0] && results[0].settings;
       adminGuilds = results[1] && Array.isArray(results[1].items) ? results[1].items : [];
       adminPayments = results[2] && Array.isArray(results[2].items) ? results[2].items : [];
-      paymentsPage = results[2] && results[2].page || 1;
-      paymentsPages = results[2] && results[2].pages || 0;
+      paymentsPage = (results[2] && results[2].page) || 1;
+      paymentsPages = (results[2] && results[2].pages) || 0;
       if (settings && isBotOwner()) {
         byId('premiumAdminAmount').value = '10.00';
         byId('premiumAdminCurrency').value = 'EUR';
         byId('premiumAdminDuration').value = settings.durationDays || '';
         byId('premiumAdminPaymentLink').value = settings.paymentLink || '';
-        paymentPlan = Object.assign({}, paymentPlan || {}, settings, { available: paymentPlan && paymentPlan.available });
+        paymentPlan = Object.assign({}, paymentPlan || {}, settings, {
+          available: paymentPlan && paymentPlan.available
+        });
       }
       renderAdminGuilds();
       renderAdminPayments();
@@ -457,11 +500,15 @@
     var untilValue = byId('premiumAdminGuildUntil').value
       ? new Date(byId('premiumAdminGuildUntil').value).toISOString()
       : null;
-    var saved = await saveGuild(guildId, {
-      enabled: true,
-      until: untilValue,
-      note: byId('premiumAdminGuildNote').value
-    }, form);
+    var saved = await saveGuild(
+      guildId,
+      {
+        enabled: true,
+        until: untilValue,
+        note: byId('premiumAdminGuildNote').value
+      },
+      form
+    );
     if (saved) form.reset();
   }
 
@@ -490,15 +537,22 @@
 
   NS.loadPremium = loadPremium;
   NS.loadPremiumAdmin = loadAdminData;
-  NS.isPremiumActive = function () { return !!(premium && premium.active); };
-  NS.isPremiumModuleLocked = function () { return !(NS.isPremiumActive()); };
+  NS.isPremiumActive = function () {
+    return !!(premium && premium.active);
+  };
+  NS.isPremiumModuleLocked = function () {
+    return !NS.isPremiumActive();
+  };
 
   document.addEventListener('DOMContentLoaded', function () {
     var premiumDialog = byId('premiumOfferDialog');
     var featuresSection = byId('tab-features');
     if (premiumDialog && featuresSection) featuresSection.appendChild(premiumDialog);
     var offerCheckoutBtn = byId('btnPremiumOfferCheckout');
-    if (offerCheckoutBtn) offerCheckoutBtn.addEventListener('click', function (event) { startCheckout(event); });
+    if (offerCheckoutBtn)
+      offerCheckoutBtn.addEventListener('click', function (event) {
+        startCheckout(event);
+      });
     [byId('extrasGrid'), byId('featuresGrid')].forEach(function (grid) {
       if (!grid) return;
       grid.addEventListener('click', function (event) {
@@ -528,52 +582,62 @@
     });
     var offerDialog = byId('premiumOfferDialog');
     [byId('btnClosePremiumOffer'), byId('btnCancelPremiumOffer')].forEach(function (button) {
-      if (button) button.addEventListener('click', function () {
-        if (offerDialog && offerDialog.open) offerDialog.close();
+      if (button)
+        button.addEventListener('click', function () {
+          if (offerDialog && offerDialog.open) offerDialog.close();
+        });
+    });
+    if (offerDialog)
+      offerDialog.addEventListener('click', function (event) {
+        if (event.target === offerDialog) offerDialog.close();
       });
-    });
-    if (offerDialog) offerDialog.addEventListener('click', function (event) {
-      if (event.target === offerDialog) offerDialog.close();
-    });
 
     var settingsForm = byId('premiumSettingsForm');
     if (settingsForm) settingsForm.addEventListener('submit', savePremiumSettings);
     var grantForm = byId('premiumAdminGrantForm');
     if (grantForm) grantForm.addEventListener('submit', grantGuild);
     var guildList = byId('premiumGuildsList');
-    if (guildList) guildList.addEventListener('submit', function (event) {
-      var form = event.target.closest('form[data-guild-id]');
-      if (!form) return;
-      event.preventDefault();
-      var fields = form.querySelectorAll('input');
-      var untilValue = fields[1].value ? new Date(fields[1].value).toISOString() : null;
-      saveGuild(form.dataset.guildId, {
-        enabled: fields[0].checked,
-        until: untilValue,
-        note: fields[2].value
-      }, form);
-    });
+    if (guildList)
+      guildList.addEventListener('submit', function (event) {
+        var form = event.target.closest('form[data-guild-id]');
+        if (!form) return;
+        event.preventDefault();
+        var fields = form.querySelectorAll('input');
+        var untilValue = fields[1].value ? new Date(fields[1].value).toISOString() : null;
+        saveGuild(
+          form.dataset.guildId,
+          {
+            enabled: fields[0].checked,
+            until: untilValue,
+            note: fields[2].value
+          },
+          form
+        );
+      });
     var accountSearch = byId('premiumAdminSearch');
     if (accountSearch) accountSearch.addEventListener('input', renderAdminGuilds);
     var paymentStatus = byId('premiumPaymentsStatus');
-    if (paymentStatus) paymentStatus.addEventListener('change', function () {
-      paymentsPage = 1;
-      loadAdminData();
-    });
+    if (paymentStatus)
+      paymentStatus.addEventListener('change', function () {
+        paymentsPage = 1;
+        loadAdminData();
+      });
     var previousPage = byId('premiumPaymentsPrevious');
-    if (previousPage) previousPage.addEventListener('click', function () {
-      if (paymentsPage > 1) {
-        paymentsPage -= 1;
-        loadAdminData();
-      }
-    });
+    if (previousPage)
+      previousPage.addEventListener('click', function () {
+        if (paymentsPage > 1) {
+          paymentsPage -= 1;
+          loadAdminData();
+        }
+      });
     var nextPage = byId('premiumPaymentsNext');
-    if (nextPage) nextPage.addEventListener('click', function () {
-      if (paymentsPage < paymentsPages) {
-        paymentsPage += 1;
-        loadAdminData();
-      }
-    });
+    if (nextPage)
+      nextPage.addEventListener('click', function () {
+        if (paymentsPage < paymentsPages) {
+          paymentsPage += 1;
+          loadAdminData();
+        }
+      });
 
     window.addEventListener('dashboard:premium-return', function (event) {
       var status = event && event.detail ? event.detail.status : '';
