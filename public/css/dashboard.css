@@ -208,7 +208,28 @@ body {
   border-radius: 999px;
   font-size: var(--fs-sm);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
   transition: background 0.15s, color 0.15s, transform 0.1s, opacity 0.15s;
+}
+.tab__icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+.tab:hover .tab__icon {
+  opacity: 1;
+}
+.tab.active .tab__icon {
+  opacity: 1;
+}
+.tab span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tab:hover {
   background: var(--white-4);
@@ -683,6 +704,9 @@ h2 {
   }
   .tabs {
     flex-wrap: wrap;
+  }
+  .tab__icon {
+    display: none;
   }
   .card {
     padding: var(--sp-3);
