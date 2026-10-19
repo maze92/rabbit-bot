@@ -71,7 +71,7 @@ function formatUserTag(user) {
   if (!name) return null;
 
   const disc = user.discriminator;
-  return (disc && String(disc) !== '0') ? `${name}#${disc}` : name;
+  return disc && String(disc) !== '0' ? `${name}#${disc}` : name;
 }
 
 /**

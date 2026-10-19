@@ -103,3 +103,66 @@ test('GET /api/internal/metrics rejeita um Bearer inválido', async () => {
     await stopApp(app.server);
   }
 });
+
+function withUser(user) {
+  return (req, res, next) => {
+    req.dashboardUser = user;
+    next();
+  };
+}
+
+test('GET/PATCH /api/config exigem bot operator (config global)', async () => {
+  const guildAdmin = { role: 'USER', permissions: { canEditConfig: true }, selectedGuildId: '111111111111111111' };
+  const app = await startApp(registerCoreRoutes, buildCtx({ requireDashboardAuth: withUser(guildAdmin) }));
+  try {
+    const getRes = await fetch(app.baseUrl + '/api/config');
+    assert.equal(getRes.status, 403);
+    const patchRes = await fetch(app.baseUrl + '/api/config', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ trust: { base: 10 } })
+    });
+    assert.equal(patchRes.status, 403);
+  } finally {
+    await stopApp(app.server);
+  }
+
+  const op = await startApp(registerCoreRoutes, buildCtx({ requireDashboardAuth: withUser({ role: 'BOT_ADMIN' }) }));
+  try {
+    const res = await fetch(op.baseUrl + '/api/config');
+    assert.equal(res.status, 200);
+  } finally {
+    await stopApp(op.server);
+  }
+});
+
+test('GET /api/overview só agrega as guilds acessíveis ao utilizador', async () => {
+  const guilds = new Map([
+    ['111111111111111111', { id: '111111111111111111', memberCount: 10 }],
+    ['222222222222222222', { id: '222222222222222222', memberCount: 90 }]
+  ]);
+  let countQuery = null;
+  const Infraction = {
+    countDocuments: (q) => {
+      countQuery = q;
+      return { exec: async () => 3 };
+    }
+  };
+  const user = { role: 'USER', selectedGuildId: '111111111111111111', allowedGuildIds: [] };
+  const app = await startApp(
+    registerCoreRoutes,
+    buildCtx({
+      requireDashboardAuth: withUser(user),
+      getClient: () => ({ guilds: { cache: guilds } }),
+      Infraction
+    })
+  );
+  try {
+    const body = await (await fetch(app.baseUrl + '/api/overview')).json();
+    assert.equal(body.guilds, 1);
+    assert.equal(body.users, 10);
+    assert.deepEqual(countQuery.guildId, { $in: ['111111111111111111'] });
+  } finally {
+    await stopApp(app.server);
+  }
+});

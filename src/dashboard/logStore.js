@@ -36,15 +36,10 @@ function createLogStore({ config, getModel }) {
         const count = await DashboardLog.estimatedDocumentCount();
         if (count > maxDb) {
           const toDelete = count - maxDb;
-          const oldest = await DashboardLog
-            .find({})
-            .sort({ createdAt: 1 })
-            .limit(toDelete)
-            .select('_id')
-            .lean();
+          const oldest = await DashboardLog.find({}).sort({ createdAt: 1 }).limit(toDelete).select('_id').lean();
 
           if (oldest.length) {
-            await DashboardLog.deleteMany({ _id: { $in: oldest.map(o => o._id) } });
+            await DashboardLog.deleteMany({ _id: { $in: oldest.map((o) => o._id) } });
           }
         }
       }
@@ -62,10 +57,7 @@ function createLogStore({ config, getModel }) {
 
     try {
       const limit = Math.min(Math.max(DEFAULT_MAX_MEMORY_LOGS, 10), 500);
-      const items = await DashboardLog.find({})
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .lean();
+      const items = await DashboardLog.find({}).sort({ createdAt: -1 }).limit(limit).lean();
 
       cache = items.reverse().map((x) => ({
         title: x.title,
@@ -93,7 +85,9 @@ function createLogStore({ config, getModel }) {
 
   return {
     get: () => cache,
-    set: (next) => { cache = next; },
+    set: (next) => {
+      cache = next;
+    },
     push,
     saveToMongo,
     loadInitial

@@ -61,7 +61,11 @@ module.exports = async (client, interaction) => {
   } catch (err) {
     console.error('[slash/history] Error:', err);
     try {
-      await safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+      await safeReply(
+        interaction,
+        { content: await tContext(interaction, 'common.unexpectedError') },
+        { ephemeral: true }
+      );
     } catch {
       // ignore
     }

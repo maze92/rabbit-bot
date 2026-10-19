@@ -16,7 +16,7 @@ const CACHE_TTL_MS = 30_000;
  * de ser usados como fallback em tempo de execução. Se precisares de
  * definir roles de staff, usa a aba "Acesso e cargos de staff" na dashboard.
  */
-async function getStaffRoleIdsForGuild(guildId, feature) {
+async function getStaffRoleIdsForGuild(guildId, _feature) {
   if (!guildId) return [];
 
   const cacheKey = `${String(guildId)}`;
@@ -26,13 +26,13 @@ async function getStaffRoleIdsForGuild(guildId, feature) {
   }
 
   try {
-		const guildCfg = await getGuildConfig(guildId);
+    const guildCfg = await getGuildConfig(guildId);
 
-		if (guildCfg && Array.isArray(guildCfg.staffRoleIds) && guildCfg.staffRoleIds.length) {
-			const roles = guildCfg.staffRoleIds.map((id) => String(id));
-			_rolesCache.set(cacheKey, { exp: Date.now() + CACHE_TTL_MS, roles });
-			return roles;
-		}
+    if (guildCfg && Array.isArray(guildCfg.staffRoleIds) && guildCfg.staffRoleIds.length) {
+      const roles = guildCfg.staffRoleIds.map((id) => String(id));
+      _rolesCache.set(cacheKey, { exp: Date.now() + CACHE_TTL_MS, roles });
+      return roles;
+    }
   } catch (err) {
     console.error('[Staff] Failed to read GuildConfig for staff roles:', err);
   }

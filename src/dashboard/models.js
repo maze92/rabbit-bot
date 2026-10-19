@@ -8,7 +8,7 @@
 function loadModel(relPath, label) {
   try {
     return require(relPath);
-  } catch (e) {
+  } catch {
     console.warn(`[Dashboard] ${label} model not loaded (did you create src/database/models/${label}.js?)`);
     return null;
   }

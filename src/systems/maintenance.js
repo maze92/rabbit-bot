@@ -30,8 +30,7 @@ function resolveMaintenanceConfig(config) {
     enabled: maintCfg.enabled !== false,
     infractionDays: Number(maintCfg.pruneInfractionsOlderThanDays ?? 180),
     dashboardLogDays: Number(maintCfg.pruneDashboardLogsOlderThanDays ?? 60),
-    intervalMs:
-      Number.isFinite(intervalRaw) && intervalRaw >= MIN_INTERVAL_MS ? intervalRaw : DEFAULT_INTERVAL_MS
+    intervalMs: Number.isFinite(intervalRaw) && intervalRaw >= MIN_INTERVAL_MS ? intervalRaw : DEFAULT_INTERVAL_MS
   };
 }
 
@@ -55,9 +54,7 @@ async function runOnce(config) {
     try {
       const res = await Infraction.deleteMany(buildPruneFilter(infCutoff));
       if (res?.deletedCount) {
-        console.log(
-          `[Maintenance] Removed ${res.deletedCount} old infractions (older than ${cfg.infractionDays}d).`
-        );
+        console.log(`[Maintenance] Removed ${res.deletedCount} old infractions (older than ${cfg.infractionDays}d).`);
       }
     } catch (err) {
       console.error('[Maintenance] Failed to prune infractions:', err);

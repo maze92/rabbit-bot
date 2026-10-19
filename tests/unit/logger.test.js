@@ -7,8 +7,7 @@ const logger = require('../../src/systems/logger');
 const config = require('../../src/config/defaultConfig');
 const { t } = require('../../src/systems/i18n');
 
-const { normalizeActor, resolveGuild, decorateTitle, decorateDescriptionWithTrustLabel } =
-  logger._internals;
+const { normalizeActor, resolveGuild, decorateTitle, decorateDescriptionWithTrustLabel } = logger._internals;
 
 // -----------------------------
 // normalizeActor

@@ -46,10 +46,7 @@ async function openSession(PresenceSession, guildId, user, status) {
 
 async function updateLastStatus(PresenceSession, guildId, userId, status) {
   try {
-    await PresenceSession.updateMany(
-      { guildId, userId, endAt: null },
-      { $set: { lastStatus: status } }
-    ).exec();
+    await PresenceSession.updateMany({ guildId, userId, endAt: null }, { $set: { lastStatus: status } }).exec();
   } catch {
     // ignore
   }

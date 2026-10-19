@@ -21,7 +21,9 @@ function ok(cond, msg) {
 
 function eq(actual, expected, msg) {
   if (actual !== expected) {
-    throw new Error((msg ? msg + ': ' : '') + 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+    throw new Error(
+      (msg ? msg + ': ' : '') + 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual)
+    );
   }
 }
 
@@ -37,7 +39,7 @@ function throws(fn, msg) {
   let threw = false;
   try {
     fn();
-  } catch (e) {
+  } catch {
     threw = true;
   }
   if (!threw) throw new Error(msg || 'Expected function to throw');

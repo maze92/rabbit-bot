@@ -20,9 +20,10 @@ function registerUserRoutes({
   getTrustLabel,
   getEffectiveMuteDuration
 }) {
-  const guardGuildQuery = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildQuery =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'query', key: 'guildId' })
+      : (req, res, next) => next();
 
   app.get(
     '/api/user',
@@ -57,8 +58,7 @@ function registerUserRoutes({
             if (/^[0-9]{10,20}$/.test(candidate)) {
               resolvedUserId = candidate;
               discordMember = await g.members.fetch(candidate).catch(() => null);
-              discordUser =
-                discordMember?.user || (await _client.users.fetch(candidate).catch(() => null));
+              discordUser = discordMember?.user || (await _client.users.fetch(candidate).catch(() => null));
             } else {
               // Search by name/tag within guild
               const coll = await g.members.fetch({ query: candidate, limit: 1 }).catch(() => null);
@@ -73,18 +73,14 @@ function registerUserRoutes({
         }
 
         if (!resolvedUserId) {
-          return res
-            .status(404)
-            .json({ ok: false, error: 'User not found in guild (by ID/mention/name).' });
+          return res.status(404).json({ ok: false, error: 'User not found in guild (by ID/mention/name).' });
         }
 
         const dbUser = await warningsService.getOrCreateUser(guildId, resolvedUserId).catch(() => null);
         const infractions = await infractionsService
           .getRecentInfractions(guildId, resolvedUserId, limit)
           .catch(() => []);
-        const counts = await infractionsService
-          .countInfractionsByType(guildId, resolvedUserId)
-          .catch(() => ({}));
+        const counts = await infractionsService.countInfractionsByType(guildId, resolvedUserId).catch(() => ({}));
 
         const trustCfg = getTrustConfig();
         const autoMuteCfg = (config.automation && config.automation.autoMute) || {};
@@ -105,9 +101,7 @@ function registerUserRoutes({
             const warnsCount = counts && typeof counts.WARN === 'number' ? counts.WARN : 0;
             const warnsToMute = typeof autoMuteCfg.warnsToMute === 'number' ? autoMuteCfg.warnsToMute : 0;
             const baseMuteMs =
-              typeof autoMuteCfg.muteDurationMs === 'number'
-                ? autoMuteCfg.muteDurationMs
-                : 10 * 60 * 1000;
+              typeof autoMuteCfg.muteDurationMs === 'number' ? autoMuteCfg.muteDurationMs : 10 * 60 * 1000;
 
             if (autoMuteCfg && autoMuteCfg.enabled !== false && warnsToMute > 0) {
               const remaining = Math.max(warnsToMute - warnsCount, 0);
@@ -145,12 +139,8 @@ function registerUserRoutes({
                 warnings: dbUser.warnings ?? 0,
                 trust: dbUser.trust ?? null,
                 trustLabel,
-                lastInfractionAt: dbUser.lastInfractionAt
-                  ? new Date(dbUser.lastInfractionAt).toISOString()
-                  : null,
-                lastTrustUpdateAt: dbUser.lastTrustUpdateAt
-                  ? new Date(dbUser.lastTrustUpdateAt).toISOString()
-                  : null,
+                lastInfractionAt: dbUser.lastInfractionAt ? new Date(dbUser.lastInfractionAt).toISOString() : null,
+                lastTrustUpdateAt: dbUser.lastTrustUpdateAt ? new Date(dbUser.lastTrustUpdateAt).toISOString() : null,
                 trustHistory: Array.isArray(dbUser.trustHistory)
                   ? dbUser.trustHistory.slice(-30).map((e) => ({
                       at: e && e.at ? new Date(e.at).toISOString() : null,

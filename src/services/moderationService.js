@@ -80,15 +80,17 @@ async function dashboardWarn({ client, guildId, userId, reason, actor }) {
 
   const dbUser = await warningsService.addWarning(guild.id, member.id, 1).catch(() => null);
 
-  await infractionsService.create({
-    guild,
-    user: member.user,
-    moderator: client.user,
-    type: 'WARN',
-    reason: actor ? `${r} (dashboard: ${actor})` : r,
-    duration: null,
-    source: 'dashboard'
-  }).catch(() => null);
+  await infractionsService
+    .create({
+      guild,
+      user: member.user,
+      moderator: client.user,
+      type: 'WARN',
+      reason: actor ? `${r} (dashboard: ${actor})` : r,
+      duration: null,
+      source: 'dashboard'
+    })
+    .catch(() => null);
 
   // Automação (auto-mute / auto-kick) baseada nas infrações acumuladas, tal como nos comandos slash
   try {
@@ -107,9 +109,12 @@ async function dashboardWarn({ client, guildId, userId, reason, actor }) {
   const trust = dbUser?.trust;
   const warnings = dbUser?.warnings ?? null;
 
-  const trustText = (trustCfg.enabled && trust != null)
-    ? `Trust: **${trust}/${trustCfg.max}**`
-    : (trust != null ? `Trust: **${trust}**` : '');
+  const trustText =
+    trustCfg.enabled && trust != null
+      ? `Trust: **${trust}/${trustCfg.max}**`
+      : trust != null
+        ? `Trust: **${trust}**`
+        : '';
   const warnsText = warnings != null ? `Warnings: **${warnings}**` : '';
 
   const trustTextLog = trustText ? `\n${trustText}` : '';

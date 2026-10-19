@@ -20,7 +20,6 @@ function registerModRoutes({
   config,
   dashboardWarn,
   resolveGuildMember,
-  ModError,
   mongoose,
   logger,
   warningsService,
@@ -39,13 +38,15 @@ function registerModRoutes({
   const rlOverview = rateLimit({ windowMs: 20_000, max: 30, keyPrefix: 'rl:mod:overview:' });
   const rlTopOnline = rateLimit({ windowMs: 20_000, max: 40, keyPrefix: 'rl:mod:topOnline:' });
 
-  const guardGuildBody = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'body', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildBody =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'body', key: 'guildId' })
+      : (req, res, next) => next();
 
-  const guardGuildQuery = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildQuery =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'query', key: 'guildId' })
+      : (req, res, next) => next();
 
   // Small in-memory cache for overview panels (per guild+range). Keeps DB load low
   // without affecting moderation actions. TTL is intentionally short.
@@ -74,16 +75,16 @@ function registerModRoutes({
     return typeof _getModels === 'function' ? _getModels() : {};
   }
 
-  function getLogsCache() {
-    return typeof _getLogsCache === 'function' ? _getLogsCache() : [];
-  }
-
   // ==============================
   // Mod actions (Dashboard -> Bot)
   // ==============================
 
-  const canAct = typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canActOnCases'] }) : (req, res, next) => next();
-  const canViewLogs = typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canViewLogs', 'canActOnCases'] }) : (req, res, next) => next();
+  const canAct =
+    typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canActOnCases'] }) : (req, res, next) => next();
+  const canViewLogs =
+    typeof requirePerm === 'function'
+      ? requirePerm({ anyOf: ['canViewLogs', 'canActOnCases'] })
+      : (req, res, next) => next();
 
   app.post('/api/mod/warn', requireDashboardAuth, canAct, guardGuildBody, rlWarn, async (req, res) => {
     try {
@@ -228,26 +229,34 @@ function registerModRoutes({
       const dbUser = await warningsService.applyMutePenalty(guild.id, member.id).catch(() => null);
 
       // Persist an infraction for history
-      await infractionsService.create({
-        guild,
-        user: member.user,
-        moderator: client.user,
-        type: 'MUTE',
-        reason: actor ? `${r} (dashboard: ${actor})` : r,
-        duration: durationMs,
-        source: 'dashboard'
-      }).catch(() => null);
+      await infractionsService
+        .create({
+          guild,
+          user: member.user,
+          moderator: client.user,
+          type: 'MUTE',
+          reason: actor ? `${r} (dashboard: ${actor})` : r,
+          duration: durationMs,
+          source: 'dashboard'
+        })
+        .catch(() => null);
 
       await logger(
         client,
         'Dashboard Mute',
         member.user,
         client.user,
-        `Duration: **${formatDuration(durationMs)}**\nReason: **${r}**` + (actor ? `\nExecutor (dashboard): **${actor}**` : ''),
+        `Duration: **${formatDuration(durationMs)}**\nReason: **${r}**` +
+          (actor ? `\nExecutor (dashboard): **${actor}**` : ''),
         guild
       ).catch(() => null);
 
-      return res.json({ ok: true, durationMs, durationLabel: formatDuration(durationMs), dbUser: dbUser ? { warnings: dbUser.warnings, trust: dbUser.trust } : null });
+      return res.json({
+        ok: true,
+        durationMs,
+        durationLabel: formatDuration(durationMs),
+        dbUser: dbUser ? { warnings: dbUser.warnings, trust: dbUser.trust } : null
+      });
     } catch (err) {
       console.error('[Dashboard] /api/mod/mute error:', err);
       return res.status(500).json({ ok: false, error: err?.message || 'Internal Server Error' });
@@ -384,14 +393,14 @@ function registerModRoutes({
         if (hasTimeoutFlag && typeof member.timeout === 'function') {
           await member.timeout(null, baseReason).catch(() => null);
         }
-      } catch (_) {}
+      } catch {}
 
       // Remove infractions history for this user in this guild
       const { Infraction } = getModels();
       if (Infraction) {
         try {
           await Infraction.deleteMany({ guildId: guild.id, userId: member.id }).exec();
-        } catch (_) {}
+        } catch {}
       }
 
       return res.json({ ok: true, dbUser: dbUser ? { warnings: dbUser.warnings, trust: dbUser.trust } : null });
@@ -401,91 +410,102 @@ function registerModRoutes({
     }
   });
 
-  app.post('/api/mod/remove-infraction', requireDashboardAuth, canAct, guardGuildBody, rlRemoveInf, async (req, res) => {
-    try {
-      const { guildId: g0, userId: u0, infractionId: id0 } = req.body || {};
-      const guildId = sanitizeId(g0);
-      const userId = sanitizeId(u0);
-      const infractionId = typeof id0 === 'string' || typeof id0 === 'number' ? String(id0) : null;
-      const actor = getActorFromRequest(req);
+  app.post(
+    '/api/mod/remove-infraction',
+    requireDashboardAuth,
+    canAct,
+    guardGuildBody,
+    rlRemoveInf,
+    async (req, res) => {
+      try {
+        const { guildId: g0, userId: u0, infractionId: id0 } = req.body || {};
+        const guildId = sanitizeId(g0);
+        const userId = sanitizeId(u0);
+        const infractionId = typeof id0 === 'string' || typeof id0 === 'number' ? String(id0) : null;
+        const actor = getActorFromRequest(req);
 
-      await recordAudit({
-        req,
-        action: 'mod.removeInfraction',
-        guildId,
-        targetUserId: userId,
-        actor,
-        payload: { infractionId }
-      });
+        await recordAudit({
+          req,
+          action: 'mod.removeInfraction',
+          guildId,
+          targetUserId: userId,
+          actor,
+          payload: { infractionId }
+        });
 
-      if (!guildId || !userId || !infractionId) {
-        return res.status(400).json({ ok: false, error: 'Missing guildId, userId or infractionId' });
-      }
-
-      const { Infraction } = getModels();
-      if (!Infraction) {
-        return res.status(500).json({ ok: false, error: 'Infraction model not available' });
-      }
-
-      const rawCollection = Infraction.collection;
-      if (!rawCollection) {
-        return res.status(500).json({ ok: false, error: 'Infractions collection not available' });
-      }
-
-      const orFilters = [];
-
-      if (infractionId) {
-        if (typeof infractionId === 'string' && /^[0-9a-fA-F]{24}$/.test(infractionId)) {
-          try {
-            orFilters.push({ _id: new mongoose.Types.ObjectId(infractionId), guildId, userId });
-          } catch (_) {}
+        if (!guildId || !userId || !infractionId) {
+          return res.status(400).json({ ok: false, error: 'Missing guildId, userId or infractionId' });
         }
 
-        orFilters.push({ _id: infractionId, guildId, userId });
-
-        const asNumber = Number(infractionId);
-        if (Number.isFinite(asNumber)) {
-          orFilters.push({ caseId: asNumber, guildId, userId });
+        const { Infraction } = getModels();
+        if (!Infraction) {
+          return res.status(500).json({ ok: false, error: 'Infraction model not available' });
         }
-      }
 
-      const query = orFilters.length ? { $or: orFilters } : { guildId, userId };
+        const rawCollection = Infraction.collection;
+        if (!rawCollection) {
+          return res.status(500).json({ ok: false, error: 'Infractions collection not available' });
+        }
 
-      const inf = await rawCollection.findOne(query);
-      if (!inf) {
-        return res.status(404).json({ ok: false, error: 'Infraction not found' });
-      }
+        const orFilters = [];
 
-      // permission guard (role hierarchy) if we can resolve
-      const client = getClient();
-      if (client) {
-        try {
-          const resolved = await resolveGuildMember(client, guildId, userId);
-          const guild = resolved.guild;
-          const member = resolved.member;
-          if (guild && member && guild.members && guild.members.me) {
-            const me = guild.members.me;
-            if (member.roles?.highest && me.roles?.highest && member.roles.highest.comparePositionTo(me.roles.highest) >= 0) {
-              return res.status(403).json({ ok: false, error: 'User has higher or equal role' });
-            }
+        if (infractionId) {
+          if (typeof infractionId === 'string' && /^[0-9a-fA-F]{24}$/.test(infractionId)) {
+            try {
+              orFilters.push({ _id: new mongoose.Types.ObjectId(infractionId), guildId, userId });
+            } catch {}
           }
-        } catch (_) {}
+
+          orFilters.push({ _id: infractionId, guildId, userId });
+
+          const asNumber = Number(infractionId);
+          if (Number.isFinite(asNumber)) {
+            orFilters.push({ caseId: asNumber, guildId, userId });
+          }
+        }
+
+        const query = orFilters.length ? { $or: orFilters } : { guildId, userId };
+
+        const inf = await rawCollection.findOne(query);
+        if (!inf) {
+          return res.status(404).json({ ok: false, error: 'Infraction not found' });
+        }
+
+        // permission guard (role hierarchy) if we can resolve
+        const client = getClient();
+        if (client) {
+          try {
+            const resolved = await resolveGuildMember(client, guildId, userId);
+            const guild = resolved.guild;
+            const member = resolved.member;
+            if (guild && member && guild.members && guild.members.me) {
+              const me = guild.members.me;
+              if (
+                member.roles?.highest &&
+                me.roles?.highest &&
+                member.roles.highest.comparePositionTo(me.roles.highest) >= 0
+              ) {
+                return res.status(403).json({ ok: false, error: 'User has higher or equal role' });
+              }
+            }
+          } catch {}
+        }
+
+        if (typeof warningsService.removeInfractionEffects === 'function') {
+          try {
+            await warningsService.removeInfractionEffects(guildId, userId, inf.type || '');
+          } catch {}
+        }
+
+        await rawCollection.deleteOne({ _id: inf._id, guildId, userId });
+
+        return res.json({ ok: true });
+      } catch (err) {
+        console.error('[Dashboard] /api/mod/remove-infraction error:', err);
+        return res.status(500).json({ ok: false, error: err?.message || 'Internal Server Error' });
       }
-
-      if (typeof warningsService.removeInfractionEffects === 'function') {
-        try {
-          await warningsService.removeInfractionEffects(guildId, userId, inf.type || '');
-        } catch (_) {}
-      }
-
-      await rawCollection.deleteOne({ _id: inf._id, guildId, userId });
-
-      return res.json({ ok: true });
-    } catch (err) {
-      console.error('[Dashboard] /api/mod/remove-infraction error:', err);
-      return res.status(500).json({ ok: false, error: err?.message || 'Internal Server Error' });
     }
-  });
+  );
 
   app.get('/api/mod/overview', requireDashboardAuth, canViewLogs, guardGuildQuery, rlOverview, async (req, res) => {
     try {
@@ -523,7 +543,7 @@ function registerModRoutes({
         tickets: { total: 0, open: 0, closed: 0 }
       };
 
-      const { DashboardLog, TicketLog, Infraction, User } = getModels();
+      const { TicketLog, Infraction, User } = getModels();
 
       // Moderation counts: use infractions as the single source of truth.
       // (No ban/kick in this bot; unmute is not tracked as an infraction.)
@@ -595,7 +615,6 @@ function registerModRoutes({
         console.error('[Dashboard] /api/mod/overview risk breakdown error:', err);
       }
 
-
       // Provide a stable, frontend-friendly stats object.
       try {
         const mc = result.moderationCounts || {};
@@ -606,7 +625,7 @@ function registerModRoutes({
           warns,
           mutes
         };
-      } catch (_) {}
+      } catch {}
       cacheSet(cacheKey, result);
       return res.json(result);
     } catch (err) {
@@ -643,10 +662,7 @@ function registerModRoutes({
               guildId,
               isBot: { $ne: true },
               startAt: { $lt: now },
-              $or: [
-                { endAt: { $gte: windowStart } },
-                { endAt: null }
-              ]
+              $or: [{ endAt: { $gte: windowStart } }, { endAt: null }]
             }
           },
           {

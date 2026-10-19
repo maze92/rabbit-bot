@@ -11,13 +11,15 @@ function registerAuditRoutes({
   sanitizeId,
   DashboardAudit
 }) {
-  const guardGuildQuery = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
-    : (req, res, next) => next();
+  const guardGuildQuery =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
+      : (req, res, next) => next();
 
-  const canViewConfig = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
-    : (req, res, next) => next();
+  const canViewConfig =
+    typeof requirePerm === 'function'
+      ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
+      : (req, res, next) => next();
 
   // Lista das ações registadas na dashboard (auditoria), com filtros.
   app.get('/api/audit', requireDashboardAuth, canViewConfig, guardGuildQuery, async (req, res) => {
@@ -44,8 +46,7 @@ function registerAuditRoutes({
       }
 
       const total = await DashboardAudit.countDocuments(query);
-      const items = await DashboardAudit
-        .find(query)
+      const items = await DashboardAudit.find(query)
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)

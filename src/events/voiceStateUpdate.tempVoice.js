@@ -105,13 +105,15 @@ async function handleJoin(client, newState, cfg) {
       }
     ];
 
-    const created = await guild.channels.create({
-      name: channelName,
-      type: ChannelType.GuildVoice,
-      parent: parentId || undefined,
-      userLimit: maxUsersPerRoom || undefined,
-      permissionOverwrites
-    }).catch(() => null);
+    const created = await guild.channels
+      .create({
+        name: channelName,
+        type: ChannelType.GuildVoice,
+        parent: parentId || undefined,
+        userLimit: maxUsersPerRoom || undefined,
+        permissionOverwrites
+      })
+      .catch(() => null);
 
     if (!created) return;
 
@@ -132,9 +134,9 @@ async function handleJoin(client, newState, cfg) {
       clearTimeout(timeoutId);
       pendingDeletes.delete(created.id);
     }
-    } finally {
-      creationLocks.delete(userId);
-    }
+  } finally {
+    creationLocks.delete(userId);
+  }
 }
 
 async function scheduleDeleteChannel(channel, delaySeconds) {

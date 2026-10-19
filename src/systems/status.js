@@ -77,8 +77,6 @@ function incrementAntiSpamActions() {
   status.antiSpamActions += 1;
 }
 
-
-
 function setGiveawaysRunning(value = true) {
   status.giveawaysRunning = Boolean(value);
   if (value) status.lastGiveawaysStartedAt = new Date().toISOString();

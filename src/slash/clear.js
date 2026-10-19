@@ -44,10 +44,7 @@ module.exports = async function clearSlash(client, interaction) {
 
     const deletedCount = deleted.size || 0;
 
-    await replyEphemeral(
-      interaction,
-      await tContext(interaction, 'clear.success', { count: deletedCount })
-    );
+    await replyEphemeral(interaction, await tContext(interaction, 'clear.success', { count: deletedCount }));
 
     await logger(
       client,
@@ -62,6 +59,10 @@ module.exports = async function clearSlash(client, interaction) {
     );
   } catch (err) {
     console.error('[slash/clear] Error:', err);
-    return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+    return safeReply(
+      interaction,
+      { content: await tContext(interaction, 'common.unexpectedError') },
+      { ephemeral: true }
+    );
   }
 };

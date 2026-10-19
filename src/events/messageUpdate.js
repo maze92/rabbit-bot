@@ -19,14 +19,17 @@ function truncate(str, max = 1000) {
 
 async function resolveLogChannel(guild, channelId) {
   if (channelId) {
-    const ch = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
+    const ch = guild.channels.cache.get(channelId) || (await guild.channels.fetch(channelId).catch(() => null));
     if (ch?.isTextBased?.()) return ch;
   }
 
   if (GuildConfig) {
-    const doc = await GuildConfig.findOne({ guildId: guild.id }).lean().catch(() => null);
+    const doc = await GuildConfig.findOne({ guildId: guild.id })
+      .lean()
+      .catch(() => null);
     if (doc?.logChannelId) {
-      const ch = guild.channels.cache.get(doc.logChannelId) || await guild.channels.fetch(doc.logChannelId).catch(() => null);
+      const ch =
+        guild.channels.cache.get(doc.logChannelId) || (await guild.channels.fetch(doc.logChannelId).catch(() => null));
       if (ch?.isTextBased?.()) return ch;
     }
   }

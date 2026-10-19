@@ -1,36 +1,52 @@
 (function () {
   'use strict';
 
+  // Login / guild-select screens are built inside the init flow; expose them here
+  // so the API helpers above that flow can open them (e.g. on 401 / lost guild).
+  var uiScreens = { showLogin: null, showGuildSelect: null };
+
   function clearInlineError(el) {
-      if (!el) return;
-      el.classList.remove('input-error');
-      // remove adjacent error node created by setInlineError
-      var next = el.nextElementSibling;
-      if (next && next.classList && next.classList.contains('field-error') && next.dataset && next.dataset.for === el.id) {
-        next.remove();
-      }
+    if (!el) return;
+    el.classList.remove('input-error');
+    // remove adjacent error node created by setInlineError
+    var next = el.nextElementSibling;
+    if (
+      next &&
+      next.classList &&
+      next.classList.contains('field-error') &&
+      next.dataset &&
+      next.dataset.for === el.id
+    ) {
+      next.remove();
     }
+  }
 
-    function setInlineError(el, msg) {
-      if (!el) return;
-      el.classList.add('input-error');
-      var next = el.nextElementSibling;
-      if (next && next.classList && next.classList.contains('field-error') && next.dataset && next.dataset.for === el.id) {
-        next.textContent = msg || '';
-        return;
-      }
-      var div = document.createElement('div');
-      div.className = 'field-error';
-      div.dataset.for = el.id;
-      div.textContent = msg || '';
-      el.insertAdjacentElement('afterend', div);
+  function setInlineError(el, msg) {
+    if (!el) return;
+    el.classList.add('input-error');
+    var next = el.nextElementSibling;
+    if (
+      next &&
+      next.classList &&
+      next.classList.contains('field-error') &&
+      next.dataset &&
+      next.dataset.for === el.id
+    ) {
+      next.textContent = msg || '';
+      return;
     }
+    var div = document.createElement('div');
+    div.className = 'field-error';
+    div.dataset.for = el.id;
+    div.textContent = msg || '';
+    el.insertAdjacentElement('afterend', div);
+  }
 
-    function clearInlineErrors(ids) {
-      (ids || []).forEach(function (id) {
-        clearInlineError(document.getElementById(id));
-      });
-    }
+  function clearInlineErrors(ids) {
+    (ids || []).forEach(function (id) {
+      clearInlineError(document.getElementById(id));
+    });
+  }
 
   // Global namespace for multi-file-friendly dashboard
   window.OzarkDashboard = window.OzarkDashboard || {};
@@ -51,7 +67,6 @@
     density: 'comfortable'
   };
 
-  
   function formatDateTime(ts) {
     if (!ts) return '—';
     try {
@@ -67,7 +82,10 @@
       };
       const tz = state && state.guildTimezone ? state.guildTimezone : undefined;
       const lang = state && state.lang ? state.lang : 'pt';
-      return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'pt-PT', tz ? Object.assign({ timeZone: tz }, opts) : opts).format(d);
+      return new Intl.DateTimeFormat(
+        lang === 'en' ? 'en-GB' : 'pt-PT',
+        tz ? Object.assign({ timeZone: tz }, opts) : opts
+      ).format(d);
     } catch {
       try {
         return new Date(ts).toLocaleString();
@@ -77,7 +95,7 @@
     }
   }
 
-const API_BASE = '/api';
+  const API_BASE = '/api';
   const GUILD_KEY = 'DASHBOARD_GUILD_ID';
 
   function getBrowserLanguage() {
@@ -87,14 +105,15 @@ const API_BASE = '/api';
       if (navigator.language) languages.push(navigator.language);
     } catch {}
     for (var i = 0; i < languages.length; i++) {
-      var language = String(languages[i] || '').toLowerCase().split('-')[0];
+      var language = String(languages[i] || '')
+        .toLowerCase()
+        .split('-')[0];
       if (language === 'en' || language === 'pt') return language;
     }
     return 'pt';
   }
 
   state.lang = getBrowserLanguage();
-
 
   // Clean up the "selectGuild" hint left by the OAuth callback.
   // The session token itself lives in an HttpOnly cookie set by the backend,
@@ -103,26 +122,26 @@ const API_BASE = '/api';
     const params = new URLSearchParams(window.location.search || '');
     if (params.has('selectGuild')) {
       if (params.get('selectGuild') === '1') {
-        try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
+        try {
+          localStorage.removeItem(GUILD_KEY);
+        } catch {}
       }
       params.delete('selectGuild');
       params.delete('token');
       const qs = params.toString();
-      const newUrl = window.location.pathname + (qs ? ('?' + qs) : '') + window.location.hash;
+      const newUrl = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
       window.history.replaceState({}, document.title, newUrl);
     }
-  } catch (e) {}
-
+  } catch {}
 
   // -----------------------------
   // Small helpers
   // -----------------------------
 
-  
   function getStoredGuildId() {
     try {
       return localStorage.getItem(GUILD_KEY) || '';
-    } catch (e) {
+    } catch {
       return '';
     }
   }
@@ -130,21 +149,15 @@ const API_BASE = '/api';
   function setStoredGuildId(guildId) {
     try {
       if (guildId) localStorage.setItem(GUILD_KEY, guildId);
-    } catch (e) {}
+    } catch {}
   }
-
 
   // For Discord OAuth sessions, mint a "server-scoped" session after the user selects a guild.
   // The token never touches the frontend: the backend stores it in an HttpOnly cookie.
   async function ensureGuildScopedToken(guildId) {
     if (!guildId) return true;
 
-    if (
-      state.me &&
-      state.me.selectedGuildId === guildId &&
-      state.me.profile &&
-      state.me.profile !== 'UNSCOPED'
-    ) {
+    if (state.me && state.me.selectedGuildId === guildId && state.me.profile && state.me.profile !== 'UNSCOPED') {
       return true;
     }
 
@@ -161,11 +174,10 @@ const API_BASE = '/api';
         toast(t('bot_not_installed'), { type: 'error' });
         return false;
       }
-      toast((e && e.apiMessage) ? e.apiMessage : t('guild_select_error_generic'), { type: 'error' });
+      toast(e && e.apiMessage ? e.apiMessage : t('guild_select_error_generic'), { type: 'error' });
       return false;
     }
   }
-
 
   // Authentication is carried by the HttpOnly session cookie, sent automatically
   // on same-origin requests, so no auth headers are needed here.
@@ -173,15 +185,13 @@ const API_BASE = '/api';
     return {};
   }
 
-
-
   async function forceLogout(opts) {
     try {
       // Server-side logout clears HttpOnly cookies (cannot be cleared from JS directly).
       await fetch(API_BASE + '/auth/logout', { method: 'POST', credentials: 'same-origin' });
     } catch {}
     try {
-      if (typeof showLogin === 'function') showLogin();
+      if (uiScreens.showLogin) uiScreens.showLogin();
     } catch {}
     try {
       if (opts && opts.redirect) {
@@ -201,7 +211,7 @@ const API_BASE = '/api';
       try {
         // Sessão expirada ou token inválido: mostra o ecrã de login.
         // Evitamos reload em loop (especialmente quando o token está num cookie HttpOnly).
-        if (typeof showLogin === 'function') showLogin();
+        if (uiScreens.showLogin) uiScreens.showLogin();
       } catch (e) {
         console.error('Failed to show login after 401', e);
       }
@@ -221,7 +231,7 @@ const API_BASE = '/api';
   async function readJsonSafe(res) {
     try {
       return await res.json();
-    } catch (e) {
+    } catch {
       return null;
     }
   }
@@ -323,7 +333,7 @@ const API_BASE = '/api';
         if (!isNaN(d.getTime())) {
           metaParts.push(d.toLocaleString());
         }
-      } catch (e) {
+      } catch {
         // se der erro mantemos só os restantes campos
       }
     }
@@ -372,19 +382,23 @@ const API_BASE = '/api';
     });
 
     clearTimeout(item._hideTimer);
-    item._hideTimer = setTimeout(function () {
-      item.classList.remove('toast--visible');
-      // remove after transition
-      setTimeout(function () {
-        try { item.remove(); } catch (e) {}
-        try {
-          // keep DOM clean
-          if (host && host.children && host.children.length === 0) host.remove();
-        } catch (e2) {}
-      }, 220);
-    }, Math.max(800, duration));
+    item._hideTimer = setTimeout(
+      function () {
+        item.classList.remove('toast--visible');
+        // remove after transition
+        setTimeout(function () {
+          try {
+            item.remove();
+          } catch {}
+          try {
+            // keep DOM clean
+            if (host && host.children && host.children.length === 0) host.remove();
+          } catch {}
+        }, 220);
+      },
+      Math.max(800, duration)
+    );
   }
-
 
   function withLoading(promiseFactory, opts) {
     opts = opts || {};
@@ -394,144 +408,169 @@ const API_BASE = '/api';
     var toastOnError = opts.toastOnError || null;
 
     if (onStart) {
-      try { onStart(); } catch (e) { console.error(e); }
+      try {
+        onStart();
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     return Promise.resolve()
-      .then(function () { return promiseFactory(); })
+      .then(function () {
+        return promiseFactory();
+      })
       .catch(function (err) {
         console.error(err);
         if (toastOnError) {
           toast(toastOnError, { type: 'error' });
         }
         if (onError) {
-          try { onError(err); } catch (e2) { console.error(e2); }
+          try {
+            onError(err);
+          } catch (e2) {
+            console.error(e2);
+          }
         }
         throw err;
       })
       .finally(function () {
         if (onFinally) {
-          try { onFinally(); } catch (e3) { console.error(e3); }
+          try {
+            onFinally();
+          } catch (e3) {
+            console.error(e3);
+          }
         }
       });
   }
   window.OzarkDashboard.withLoading = withLoading;
 
-  
+  // -----------------------------
+  // Global banner (estado/avisos)
+  // -----------------------------
+  var bannerState = { active: false, locked: false, lastKey: '' };
 
-// -----------------------------
-// Global banner (estado/avisos)
-// -----------------------------
-var bannerState = { active: false, locked: false, lastKey: '' };
+  function clearGlobalBanner() {
+    var el = document.getElementById('globalBanner');
+    var titleEl = document.getElementById('globalBannerTitle');
+    var msgEl = document.getElementById('globalBannerMessage');
+    var actionsEl = document.getElementById('globalBannerActions');
+    if (!el || !titleEl || !msgEl || !actionsEl) return;
 
-function clearGlobalBanner() {
-  var el = document.getElementById('globalBanner');
-  var titleEl = document.getElementById('globalBannerTitle');
-  var msgEl = document.getElementById('globalBannerMessage');
-  var actionsEl = document.getElementById('globalBannerActions');
-  if (!el || !titleEl || !msgEl || !actionsEl) return;
+    el.classList.add('hidden');
+    el.classList.remove('global-banner--info', 'global-banner--success', 'global-banner--warn', 'global-banner--error');
+    titleEl.textContent = '';
+    msgEl.textContent = '';
+    actionsEl.innerHTML = '';
+    bannerState.active = false;
+    bannerState.lastKey = '';
+  }
 
-  el.classList.add('hidden');
-  el.classList.remove('global-banner--info', 'global-banner--success', 'global-banner--warn', 'global-banner--error');
-  titleEl.textContent = '';
-  msgEl.textContent = '';
-  actionsEl.innerHTML = '';
-  bannerState.active = false;
-  bannerState.lastKey = '';
-}
+  function setGlobalBanner(opts) {
+    opts = opts || {};
+    var type = (opts.type || 'info').toLowerCase();
+    var key = String(opts.key || type + ':' + (opts.title || '') + ':' + (opts.message || ''));
 
-function setGlobalBanner(opts) {
-  opts = opts || {};
-  var type = (opts.type || 'info').toLowerCase();
-  var key = String(opts.key || (type + ':' + (opts.title || '') + ':' + (opts.message || '')));
+    // If user closed the same banner recently, don't resurrect it unless forced.
+    if (bannerState.locked && bannerState.lastKey === key && !opts.force) return;
 
-  // If user closed the same banner recently, don't resurrect it unless forced.
-  if (bannerState.locked && bannerState.lastKey === key && !opts.force) return;
+    var el = document.getElementById('globalBanner');
+    var titleEl = document.getElementById('globalBannerTitle');
+    var msgEl = document.getElementById('globalBannerMessage');
+    var actionsEl = document.getElementById('globalBannerActions');
+    var closeBtn = document.getElementById('globalBannerClose');
+    if (!el || !titleEl || !msgEl || !actionsEl) return;
 
-  var el = document.getElementById('globalBanner');
-  var titleEl = document.getElementById('globalBannerTitle');
-  var msgEl = document.getElementById('globalBannerMessage');
-  var actionsEl = document.getElementById('globalBannerActions');
-  var closeBtn = document.getElementById('globalBannerClose');
-  if (!el || !titleEl || !msgEl || !actionsEl) return;
+    bannerState.active = true;
+    bannerState.lastKey = key;
 
-  bannerState.active = true;
-  bannerState.lastKey = key;
+    el.classList.remove('global-banner--info', 'global-banner--success', 'global-banner--warn', 'global-banner--error');
+    if (type === 'success') el.classList.add('global-banner--success');
+    else if (type === 'warn' || type === 'warning') el.classList.add('global-banner--warn');
+    else if (type === 'error') el.classList.add('global-banner--error');
+    else el.classList.add('global-banner--info');
 
-  el.classList.remove('global-banner--info', 'global-banner--success', 'global-banner--warn', 'global-banner--error');
-  if (type === 'success') el.classList.add('global-banner--success');
-  else if (type === 'warn' || type === 'warning') el.classList.add('global-banner--warn');
-  else if (type === 'error') el.classList.add('global-banner--error');
-  else el.classList.add('global-banner--info');
+    titleEl.textContent = opts.title || '';
+    msgEl.textContent = opts.message || '';
+    actionsEl.innerHTML = '';
 
-  titleEl.textContent = opts.title || '';
-  msgEl.textContent = opts.message || '';
-  actionsEl.innerHTML = '';
-
-  var actions = Array.isArray(opts.actions) ? opts.actions : [];
-  actions.forEach(function (a) {
-    if (!a) return;
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn btn-ghost';
-    btn.textContent = a.label || 'OK';
-    btn.addEventListener('click', function () {
-      try { if (typeof a.onClick === 'function') a.onClick(); } catch (e) {}
+    var actions = Array.isArray(opts.actions) ? opts.actions : [];
+    actions.forEach(function (a) {
+      if (!a) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-ghost';
+      btn.textContent = a.label || 'OK';
+      btn.addEventListener('click', function () {
+        try {
+          if (typeof a.onClick === 'function') a.onClick();
+        } catch {}
+      });
+      actionsEl.appendChild(btn);
     });
-    actionsEl.appendChild(btn);
-  });
 
-  el.classList.remove('hidden');
+    el.classList.remove('hidden');
 
-  if (closeBtn && !closeBtn.__ozarkBound) {
-    closeBtn.__ozarkBound = true;
-    closeBtn.addEventListener('click', function () {
-      bannerState.locked = true;
+    if (closeBtn && !closeBtn.__ozarkBound) {
+      closeBtn.__ozarkBound = true;
+      closeBtn.addEventListener('click', function () {
+        bannerState.locked = true;
+        clearGlobalBanner();
+      });
+    }
+  }
+
+  function refreshGlobalBanner() {
+    // Avoid flashing “select guild” while guild list is still loading.
+    if (!state.guildsLoaded) {
       clearGlobalBanner();
-    });
-  }
-}
+      return;
+    }
+    // Priority: no guild selected > bot offline > none
+    if (!state.guildId) {
+      setGlobalBanner({
+        key: 'no-guild',
+        type: 'info',
+        title: t('warn_select_guild'),
+        message: t('select_guild'),
+        actions: [
+          {
+            label: t('select_guild') || 'Selecionar',
+            onClick: function () {
+              var picker = document.getElementById('guildPicker');
+              if (picker) {
+                picker.focus();
+                picker.click && picker.click();
+              }
+            }
+          }
+        ]
+      });
+      return;
+    }
 
-function refreshGlobalBanner() {
-  // Avoid flashing “select guild” while guild list is still loading.
-  if (!state.guildsLoaded) {
+    if (bannerState.lastBotOk === false) {
+      setGlobalBanner({
+        key: 'bot-offline',
+        type: 'warn',
+        title: t('badge_bot_offline'),
+        message: t('overview_bot_offline_hint') || 'O bot parece offline ou não está pronto no Discord.',
+        actions: [
+          {
+            label: t('retry') || 'Recarregar',
+            onClick: function () {
+              refreshBotStatusBadge();
+            }
+          }
+        ]
+      });
+      return;
+    }
+
     clearGlobalBanner();
-    return;
-  }
-  // Priority: no guild selected > bot offline > none
-  if (!state.guildId) {
-    setGlobalBanner({
-      key: 'no-guild',
-      type: 'info',
-      title: t('warn_select_guild'),
-      message: t('select_guild'),
-      actions: [
-        { label: t('select_guild') || 'Selecionar', onClick: function () {
-            var picker = document.getElementById('guildPicker');
-            if (picker) { picker.focus(); picker.click && picker.click(); }
-          } }
-      ]
-    });
-    return;
   }
 
-  if (bannerState.lastBotOk === false) {
-    setGlobalBanner({
-      key: 'bot-offline',
-      type: 'warn',
-      title: t('badge_bot_offline'),
-      message: t('overview_bot_offline_hint') || 'O bot parece offline ou não está pronto no Discord.',
-      actions: [
-        { label: t('retry') || 'Recarregar', onClick: function () { refreshBotStatusBadge(); } }
-      ]
-    });
-    return;
-  }
-
-  clearGlobalBanner();
-}
-
-function setPanelLoading(panelId, isLoading) {
+  function setPanelLoading(panelId, isLoading) {
     var panel = document.getElementById(panelId);
     if (!panel) return;
     if (isLoading) {
@@ -560,8 +599,7 @@ function setPanelLoading(panelId, isLoading) {
 
   window.OzarkDashboard.showPanelLoading = showPanelLoading;
 
-
- function escapeHtml(value) {
+  function escapeHtml(value) {
     if (value === null || value === undefined) return '';
     return value
       .toString()
@@ -599,7 +637,10 @@ function setPanelLoading(panelId, isLoading) {
     });
 
     // Acessibilidade: rótulos/títulos traduzíveis.
-    [['data-i18n-aria-label', 'aria-label'], ['data-i18n-title', 'title']].forEach(function (pair) {
+    [
+      ['data-i18n-aria-label', 'aria-label'],
+      ['data-i18n-title', 'title']
+    ].forEach(function (pair) {
       document.querySelectorAll('[' + pair[0] + ']').forEach(function (el) {
         const key = el.getAttribute(pair[0]);
         if (!key) return;
@@ -611,19 +652,21 @@ function setPanelLoading(panelId, isLoading) {
     if (warn) warn.textContent = t('warn_select_guild');
 
     // Re-render badges because they include translated labels.
-    try { updateAccessBadges(); } catch (e) {}
+    try {
+      updateAccessBadges();
+    } catch {}
 
     // Os botões de preferências mostram dicas traduzidas.
-    try { updatePrefButtons(); } catch (e) {}
+    try {
+      updatePrefButtons();
+    } catch {}
   }
 
   var dashboardLanguageSequence = 0;
 
   async function setDashboardLanguage(language) {
     var sequence = ++dashboardLanguageSequence;
-    var selectedLanguage = language === 'en' || language === 'pt'
-      ? language
-      : getBrowserLanguage();
+    var selectedLanguage = language === 'en' || language === 'pt' ? language : getBrowserLanguage();
 
     try {
       await window.OzarkDashboard.I18n.init(selectedLanguage);
@@ -715,16 +758,26 @@ function setPanelLoading(panelId, isLoading) {
       return;
     }
 
-    elProfile.textContent = me.role === 'BOT_OWNER'
-      ? t('profile_bot_owner')
-      : (me.role === 'BOT_ADMIN' ? t('profile_bot_admin') : (me.username || 'Discord'));
+    elProfile.textContent =
+      me.role === 'BOT_OWNER'
+        ? t('profile_bot_owner')
+        : me.role === 'BOT_ADMIN'
+          ? t('profile_bot_admin')
+          : me.username || 'Discord';
     elProfile.classList.remove('badge-premium');
     elProfile.classList.toggle('badge-bot-owner', me.role === 'BOT_OWNER');
     elProfile.classList.remove('hidden');
 
-    var perms = (state.perms && typeof state.perms === 'object') ? state.perms : {};
+    var perms = state.perms && typeof state.perms === 'object' ? state.perms : {};
     var scoped = !!(me.selectedGuildId || (me.profile && me.profile !== 'UNSCOPED'));
-    var canManage = !!(me.role === 'BOT_ADMIN' || me.role === 'BOT_OWNER' || perms.canEditConfig || perms.canActOnCases || perms.canManageTickets || perms.canManageGameNews);
+    var canManage = !!(
+      me.role === 'BOT_ADMIN' ||
+      me.role === 'BOT_OWNER' ||
+      perms.canEditConfig ||
+      perms.canActOnCases ||
+      perms.canManageTickets ||
+      perms.canManageGameNews
+    );
 
     var accessLabel;
     if (!scoped && me.oauth) {
@@ -760,14 +813,16 @@ function setPanelLoading(panelId, isLoading) {
         return sessionStartedAt;
       }
       sessionStorage.setItem(SESSION_KEY, String(now));
-    } catch (e) {}
+    } catch {}
     sessionStartedAt = now;
     return sessionStartedAt;
   }
 
   function clearSessionStart() {
     sessionStartedAt = 0;
-    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+    try {
+      sessionStorage.removeItem(SESSION_KEY);
+    } catch {}
   }
 
   function formatSessionDuration(ms) {
@@ -794,8 +849,7 @@ function setPanelLoading(panelId, isLoading) {
     el.classList.remove('hidden');
   }
 
-
-// -----------------------------
+  // -----------------------------
   // Preferências de interface (tema / densidade)
   // -----------------------------
   // Vivem apenas no cliente (localStorage) e traduzem-se em atributos em
@@ -808,7 +862,7 @@ function setPanelLoading(panelId, isLoading) {
     try {
       const raw = (localStorage.getItem(key) || '').toLowerCase();
       if (allowed.indexOf(raw) !== -1) return raw;
-    } catch (e) {}
+    } catch {}
     return fallback;
   }
 
@@ -818,7 +872,9 @@ function setPanelLoading(panelId, isLoading) {
     if (state.theme === 'light') root.setAttribute('data-theme', 'light');
     else root.removeAttribute('data-theme');
     if (persist) {
-      try { localStorage.setItem(THEME_KEY, state.theme); } catch (e) {}
+      try {
+        localStorage.setItem(THEME_KEY, state.theme);
+      } catch {}
     }
     updatePrefButtons();
   }
@@ -829,7 +885,9 @@ function setPanelLoading(panelId, isLoading) {
     if (state.density === 'compact') root.setAttribute('data-density', 'compact');
     else root.removeAttribute('data-density');
     if (persist) {
-      try { localStorage.setItem(DENSITY_KEY, state.density); } catch (e) {}
+      try {
+        localStorage.setItem(DENSITY_KEY, state.density);
+      } catch {}
     }
     updatePrefButtons();
   }
@@ -905,7 +963,9 @@ function setPanelLoading(panelId, isLoading) {
       prefsPanel.querySelectorAll('.prefs-menu__item').forEach(function (item) {
         item.addEventListener('click', function () {
           // Pequeno delay para o utilizador ver o estado visual do toggle
-          setTimeout(function () { togglePrefsMenu(false); }, 120);
+          setTimeout(function () {
+            togglePrefsMenu(false);
+          }, 120);
         });
       });
     }
@@ -916,7 +976,7 @@ function setPanelLoading(panelId, isLoading) {
   applyTheme(readPref(THEME_KEY, ['dark', 'light'], 'dark'), false);
   applyDensity(readPref(DENSITY_KEY, ['comfortable', 'compact'], 'comfortable'), false);
 
-// -----------------------------
+  // -----------------------------
   // Tab / layout helpers
   // -----------------------------
 
@@ -958,7 +1018,7 @@ function setPanelLoading(panelId, isLoading) {
       window.scrollTo(0, window.scrollY || 0);
       document.documentElement.scrollLeft = 0;
       document.body.scrollLeft = 0;
-    } catch (e) {}
+    } catch {}
 
     // Reset seleção de utilizadores / GameNews ao entrar nas tabs
     if (name === 'user') {
@@ -993,7 +1053,8 @@ function setPanelLoading(panelId, isLoading) {
         state.tempVoiceBase = state.tempVoiceBase || { items: [], selectedIndex: -1 };
         state.tempVoiceBase.selectedIndex = -1;
 
-        var tvBaseIdInput = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
+        var tvBaseIdInput =
+          document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
         if (tvBaseIdInput) tvBaseIdInput.value = '';
 
         var tvEmptyEl = document.getElementById('tempVoiceDetailEmpty');
@@ -1012,7 +1073,6 @@ function setPanelLoading(panelId, isLoading) {
       }
     }
 
-
     document.querySelectorAll('.section').forEach(function (sec) {
       sec.classList.remove('active');
     });
@@ -1028,37 +1088,33 @@ function setPanelLoading(panelId, isLoading) {
     } else if (name === 'logs') {
       // Overlay loading for the tab while we fetch the panel data.
       setPanelLoading('tab-logs', true);
-      var p1 = (window.OzarkDashboard.loadModerationOverview
+      var p1 = window.OzarkDashboard.loadModerationOverview
         ? window.OzarkDashboard.loadModerationOverview()
-        : Promise.resolve());
-      var p2 = (window.OzarkDashboard.loadLogs
-        ? window.OzarkDashboard.loadLogs()
-        : Promise.resolve());
-      var p3 = (window.OzarkDashboard.loadTickets
-        ? window.OzarkDashboard.loadTickets(true)
-        : Promise.resolve());
+        : Promise.resolve();
+      var p2 = window.OzarkDashboard.loadLogs ? window.OzarkDashboard.loadLogs() : Promise.resolve();
+      var p3 = window.OzarkDashboard.loadTickets ? window.OzarkDashboard.loadTickets(true) : Promise.resolve();
       Promise.allSettled([p1, p2, p3]).finally(function () {
         setPanelLoading('tab-logs', false);
       });
     } else if (name === 'giveaways') {
       setPanelLoading('tab-giveaways', true);
-      var gv1 = (window.OzarkDashboard.loadGiveaways ? window.OzarkDashboard.loadGiveaways() : Promise.resolve());
+      var gv1 = window.OzarkDashboard.loadGiveaways ? window.OzarkDashboard.loadGiveaways() : Promise.resolve();
       Promise.resolve(gv1).finally(function () {
         setPanelLoading('tab-giveaways', false);
       });
     } else if (name === 'features') {
       setPanelLoading('tab-features', true);
       // A configuração detalhada dos módulos Premium só é carregada ao abrir o cartão.
-      var f1 = (window.OzarkDashboard.loadFeatures ? window.OzarkDashboard.loadFeatures() : Promise.resolve());
-      var f2 = (window.OzarkDashboard.loadPremium ? window.OzarkDashboard.loadPremium() : Promise.resolve());
+      var f1 = window.OzarkDashboard.loadFeatures ? window.OzarkDashboard.loadFeatures() : Promise.resolve();
+      var f2 = window.OzarkDashboard.loadPremium ? window.OzarkDashboard.loadPremium() : Promise.resolve();
       // Garantir que canais/roles de configuração estão disponíveis para Tickets/Extras
-      var f3 = (typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve());
+      var f3 = typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve();
       Promise.allSettled([f1, f2, f3]).finally(function () {
         setPanelLoading('tab-features', false);
       });
     } else if (name === 'user') {
       setPanelLoading('tab-user', true);
-      var u1 = (window.OzarkDashboard.loadUsers ? window.OzarkDashboard.loadUsers() : Promise.resolve());
+      var u1 = window.OzarkDashboard.loadUsers ? window.OzarkDashboard.loadUsers() : Promise.resolve();
       Promise.resolve(u1).finally(function () {
         setPanelLoading('tab-user', false);
       });
@@ -1066,23 +1122,25 @@ function setPanelLoading(panelId, isLoading) {
       setPanelLoading('tab-config', true);
       // A auditoria só carrega a pedido (botão "Recarregar" ou filtros):
       // entrar na aba não deve disparar pedidos que o utilizador não pediu.
-      var c1 = (typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve());
+      var c1 = typeof loadGuildConfig === 'function' ? loadGuildConfig() : Promise.resolve();
       Promise.resolve(c1).finally(function () {
         setPanelLoading('tab-config', false);
       });
     } else if (name === 'tickets') {
       setPanelLoading('tab-tickets', true);
-      var t1 = (window.OzarkDashboard && typeof window.OzarkDashboard.loadTickets === 'function')
-        ? window.OzarkDashboard.loadTickets(true)
-        : Promise.resolve();
+      var t1 =
+        window.OzarkDashboard && typeof window.OzarkDashboard.loadTickets === 'function'
+          ? window.OzarkDashboard.loadTickets(true)
+          : Promise.resolve();
       Promise.resolve(t1).finally(function () {
         setPanelLoading('tab-tickets', false);
       });
     } else if (name === 'premium-admin') {
       setPanelLoading('tab-premium-admin', true);
-      var premiumAdminLoad = window.OzarkDashboard && window.OzarkDashboard.loadPremiumAdmin
-        ? window.OzarkDashboard.loadPremiumAdmin()
-        : Promise.resolve();
+      var premiumAdminLoad =
+        window.OzarkDashboard && window.OzarkDashboard.loadPremiumAdmin
+          ? window.OzarkDashboard.loadPremiumAdmin()
+          : Promise.resolve();
       Promise.resolve(premiumAdminLoad).finally(function () {
         setPanelLoading('tab-premium-admin', false);
       });
@@ -1096,11 +1154,11 @@ function setPanelLoading(panelId, isLoading) {
     const globalPremiumView = state.currentTab === 'premium-admin';
     if (warn) {
       // Avoid flashing the warning during bootstrap (before guilds are loaded).
-      warn.style.display = (!ready || hasGuild || globalPremiumView) ? 'none' : 'block';
-      warn.classList.toggle('hidden', (!ready || hasGuild || globalPremiumView));
+      warn.style.display = !ready || hasGuild || globalPremiumView ? 'none' : 'block';
+      warn.classList.toggle('hidden', !ready || hasGuild || globalPremiumView);
     }
 
-    const p = (state && state.perms && typeof state.perms === 'object') ? state.perms : {};
+    const p = state && state.perms && typeof state.perms === 'object' ? state.perms : {};
     const isAuthed = !!(state && state.me);
     const canViewLogs = !!p.canViewLogs;
     const canActOnCases = !!p.canActOnCases;
@@ -1126,7 +1184,7 @@ function setPanelLoading(panelId, isLoading) {
       const btn = document.querySelector('.tabs button[data-tab="' + name + '"]');
       if (!btn) return;
       btn.classList.toggle('hidden', name === 'premium-admin' && !tabRules[name]);
-      btn.disabled = name === 'premium-admin' ? !tabRules[name] : (!hasGuild || !tabRules[name]);
+      btn.disabled = name === 'premium-admin' ? !tabRules[name] : !hasGuild || !tabRules[name];
     });
 
     // Atalhos do Overview seguem as mesmas regras das abas.
@@ -1236,8 +1294,12 @@ function setPanelLoading(panelId, isLoading) {
       const res = await apiGet('/guilds');
       if (res && res.reason === 'NO_ELIGIBLE_GUILDS') {
         // User has no eligible guilds (must be owner or Administrator). Force logout and show login message.
-        try { await forceLogout(); } catch (e) {}
-        try { if (typeof showLogin === 'function') showLogin(); } catch (e) {}
+        try {
+          await forceLogout();
+        } catch {}
+        try {
+          if (uiScreens.showLogin) uiScreens.showLogin();
+        } catch {}
         return;
       }
       const items = (res && res.items) || [];
@@ -1247,7 +1309,13 @@ function setPanelLoading(panelId, isLoading) {
       var returnParams = new URLSearchParams(window.location.search);
       var paymentReturnStatus = returnParams.get('premiumPayment');
       var paymentReturnGuildId = returnParams.get('guildId');
-      if (paymentReturnStatus && paymentReturnGuildId && items.some(function (g) { return g && g.id === paymentReturnGuildId; })) {
+      if (
+        paymentReturnStatus &&
+        paymentReturnGuildId &&
+        items.some(function (g) {
+          return g && g.id === paymentReturnGuildId;
+        })
+      ) {
         state.guildId = paymentReturnGuildId;
         setStoredGuildId(state.guildId);
       }
@@ -1268,7 +1336,12 @@ function setPanelLoading(panelId, isLoading) {
       // Restore last selected guild if present and still allowed.
       if (!state.guildId) {
         var stored = getStoredGuildId();
-        if (stored && items.some(function (g) { return g && g.id === stored; })) {
+        if (
+          stored &&
+          items.some(function (g) {
+            return g && g.id === stored;
+          })
+        ) {
           state.guildId = stored;
         }
       }
@@ -1288,50 +1361,69 @@ function setPanelLoading(panelId, isLoading) {
         if (!scopedOk) {
           // If the stored/selected guild is no longer allowed, clear it and force the selector.
           state.guildId = null;
-          try { localStorage.removeItem(GUILD_KEY); } catch (e) {}
+          try {
+            localStorage.removeItem(GUILD_KEY);
+          } catch {}
           select.value = '';
-          try { showGuildSelect(items); } catch (e) {}
+          try {
+            if (uiScreens.showGuildSelect) uiScreens.showGuildSelect(items);
+          } catch {}
           updateTabAccess();
           return;
         }
         await loadGuildDashboardLanguage(state.guildId);
         updateTabAccess();
-        try { refreshGlobalBanner(); } catch (e) {}
+        try {
+          refreshGlobalBanner();
+        } catch {}
         if (paymentReturnStatus) {
           if (paymentReturnStatus === 'success') setTab('features');
-          window.dispatchEvent(new CustomEvent('dashboard:premium-return', {
-            detail: { status: paymentReturnStatus, guildId: state.guildId }
-          }));
+          window.dispatchEvent(
+            new CustomEvent('dashboard:premium-return', {
+              detail: { status: paymentReturnStatus, guildId: state.guildId }
+            })
+          );
           returnParams.delete('premiumPayment');
           returnParams.delete('guildId');
           var returnQuery = returnParams.toString();
-          window.history.replaceState(null, '', window.location.pathname + (returnQuery ? '?' + returnQuery : '') + window.location.hash);
+          window.history.replaceState(
+            null,
+            '',
+            window.location.pathname + (returnQuery ? '?' + returnQuery : '') + window.location.hash
+          );
         }
       } else {
         // Force selection when multiple guilds are available.
-        try { showGuildSelect(items); } catch (e) {}
+        try {
+          if (uiScreens.showGuildSelect) uiScreens.showGuildSelect(items);
+        } catch {}
         updateTabAccess();
-        try { refreshGlobalBanner(); } catch (e) {}
+        try {
+          refreshGlobalBanner();
+        } catch {}
       }
     } catch (err) {
       console.error('Failed to load guilds', err);
       toast(err && err.apiMessage ? err.apiMessage : t('guilds_error_generic'), { type: 'error' });
       state.guildsLoaded = true;
       updateTabAccess();
-      try { refreshGlobalBanner(); } catch (e) {}
+      try {
+        refreshGlobalBanner();
+      } catch {}
     }
   }
 
   async function loadMe() {
     try {
       const res = await apiGet('/auth/me');
-      state.me = (res && res.user) ? res.user : null;
-      state.perms = (state.me && state.me.permissions && typeof state.me.permissions === 'object') ? state.me.permissions : {};
+      state.me = res && res.user ? res.user : null;
+      state.perms =
+        state.me && state.me.permissions && typeof state.me.permissions === 'object' ? state.me.permissions : {};
       applyPermissionGates();
       updateTabAccess();
       updateAccessBadges();
       updateSessionBadge();
-    } catch (e) {
+    } catch {
       state.me = null;
       state.perms = {};
       clearSessionStart();
@@ -1344,7 +1436,8 @@ function setPanelLoading(panelId, isLoading) {
 
   function applyPermissionGates() {
     // Trust controls live inside the Config tab (Extras -> Trust).
-    const canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER' || state.perms.canEditConfig));
+    // Trust settings are global (all guilds), so only bot operators may edit them.
+    const canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'));
     const trustInputs = [
       'trustPresetSelect',
       'btnApplyTrustPreset',
@@ -1430,7 +1523,7 @@ function setPanelLoading(panelId, isLoading) {
   function setNum(id, value) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.value = (value === null || value === undefined) ? '' : String(value);
+    el.value = value === null || value === undefined ? '' : String(value);
   }
 
   function getTrustInputs() {
@@ -1467,12 +1560,20 @@ function setPanelLoading(panelId, isLoading) {
   function detectTrustPreset(cfg) {
     const c = cfg || {};
     const keys = [
-      'base','min','max',
-      'warnPenalty','mutePenalty',
-      'regenPerDay','regenMaxDays',
-      'lowThreshold','highThreshold',
-      'lowTrustWarningsPenalty','lowTrustMessagesPenalty','highTrustMessagesBonus',
-      'lowTrustMuteMultiplier','highTrustMuteMultiplier'
+      'base',
+      'min',
+      'max',
+      'warnPenalty',
+      'mutePenalty',
+      'regenPerDay',
+      'regenMaxDays',
+      'lowThreshold',
+      'highThreshold',
+      'lowTrustWarningsPenalty',
+      'lowTrustMessagesPenalty',
+      'highTrustMessagesBonus',
+      'lowTrustMuteMultiplier',
+      'highTrustMuteMultiplier'
     ];
     for (const [name, preset] of Object.entries(TRUST_PRESETS)) {
       const ok = keys.every((k) => nearlyEqual(c[k], preset[k]));
@@ -1483,12 +1584,27 @@ function setPanelLoading(panelId, isLoading) {
 
   function validateTrustCore(cfg) {
     const c = cfg || {};
-    const req = ['base','min','max','warnPenalty','mutePenalty','regenPerDay','regenMaxDays','lowThreshold','highThreshold'];
+    const req = [
+      'base',
+      'min',
+      'max',
+      'warnPenalty',
+      'mutePenalty',
+      'regenPerDay',
+      'regenMaxDays',
+      'lowThreshold',
+      'highThreshold'
+    ];
     const allFieldIds = [
-      'trustBaseInput','trustMinInput','trustMaxInput',
-      'trustWarnPenaltyInput','trustMutePenaltyInput',
-      'trustRegenPerDayInput','trustRegenMaxDaysInput',
-      'trustLowThresholdInput','trustHighThresholdInput'
+      'trustBaseInput',
+      'trustMinInput',
+      'trustMaxInput',
+      'trustWarnPenaltyInput',
+      'trustMutePenaltyInput',
+      'trustRegenPerDayInput',
+      'trustRegenMaxDaysInput',
+      'trustLowThresholdInput',
+      'trustHighThresholdInput'
     ];
 
     for (const k of req) {
@@ -1504,28 +1620,36 @@ function setPanelLoading(panelId, isLoading) {
     const high = Number(c.highThreshold);
 
     if (min < 0 || max > 100 || min >= max) {
-      return { ok: false, msg: t('trust_invalid_range'), fields: ['trustMinInput','trustMaxInput'] };
+      return { ok: false, msg: t('trust_invalid_range'), fields: ['trustMinInput', 'trustMaxInput'] };
     }
     if (base < min || base > max) {
       return { ok: false, msg: t('trust_invalid_base'), fields: ['trustBaseInput'] };
     }
     if (low < min || high > max || low >= high) {
-      return { ok: false, msg: t('trust_invalid_thresholds'), fields: ['trustLowThresholdInput','trustHighThresholdInput','trustMinInput','trustMaxInput'] };
+      return {
+        ok: false,
+        msg: t('trust_invalid_thresholds'),
+        fields: ['trustLowThresholdInput', 'trustHighThresholdInput', 'trustMinInput', 'trustMaxInput']
+      };
     }
     if (Number(c.warnPenalty) < 0 || Number(c.mutePenalty) < 0) {
-      return { ok: false, msg: t('trust_invalid_penalties'), fields: ['trustWarnPenaltyInput','trustMutePenaltyInput'] };
+      return {
+        ok: false,
+        msg: t('trust_invalid_penalties'),
+        fields: ['trustWarnPenaltyInput', 'trustMutePenaltyInput']
+      };
     }
     if (Number(c.regenPerDay) < 0 || Number(c.regenMaxDays) < 0) {
-      return { ok: false, msg: t('trust_invalid_regen'), fields: ['trustRegenPerDayInput','trustRegenMaxDaysInput'] };
+      return { ok: false, msg: t('trust_invalid_regen'), fields: ['trustRegenPerDayInput', 'trustRegenMaxDaysInput'] };
     }
     return { ok: true };
   }
 
   function buildTrustPatch(core, presetKey) {
-    const k = (presetKey || 'custom');
+    const k = presetKey || 'custom';
     const baseExtra = state.currentTrustConfig || TRUST_PRESETS.balanced;
     const presetExtra = TRUST_PRESETS[k];
-    const extra = (presetExtra && k !== 'custom') ? presetExtra : (state.trustExtraOverride || baseExtra);
+    const extra = presetExtra && k !== 'custom' ? presetExtra : state.trustExtraOverride || baseExtra;
 
     return {
       trust: {
@@ -1646,11 +1770,10 @@ function setPanelLoading(panelId, isLoading) {
       state._guildMeta.categories = categories;
 
       // Server language / timezone (guild-level settings)
-      state.guildLanguage = (conf && typeof conf.language === 'string') ? conf.language : 'auto';
-      state.guildTimezone = (conf && typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null;
+      state.guildLanguage = conf && typeof conf.language === 'string' ? conf.language : 'auto';
+      state.guildTimezone =
+        conf && typeof conf.timezone === 'string' && conf.timezone.trim() ? conf.timezone.trim() : null;
       await setDashboardLanguage(state.guildLanguage);
-
-
 
       const logSelect = document.getElementById('configLogChannel');
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
@@ -1663,10 +1786,10 @@ function setPanelLoading(panelId, isLoading) {
       if (langSelect) langSelect.value = state.guildLanguage || 'auto';
       if (tzSelect) tzSelect.value = state.guildTimezone || '';
 
-      const mm = (conf && typeof conf.maintenanceMode === 'object' && conf.maintenanceMode) ? conf.maintenanceMode : {};
-      if (maintenanceEnabledSelect) maintenanceEnabledSelect.value = (mm.enabled === true) ? 'true' : 'false';
-      if (maintenanceMessageInput) maintenanceMessageInput.value = (typeof mm.message === 'string') ? mm.message : '';
-      if (maintenanceAllowStaffSelect) maintenanceAllowStaffSelect.value = (mm.allowStaff === false) ? 'false' : 'true';
+      const mm = conf && typeof conf.maintenanceMode === 'object' && conf.maintenanceMode ? conf.maintenanceMode : {};
+      if (maintenanceEnabledSelect) maintenanceEnabledSelect.value = mm.enabled === true ? 'true' : 'false';
+      if (maintenanceMessageInput) maintenanceMessageInput.value = typeof mm.message === 'string' ? mm.message : '';
+      if (maintenanceAllowStaffSelect) maintenanceAllowStaffSelect.value = mm.allowStaff === false ? 'false' : 'true';
 
       if (logSelect) {
         logSelect.innerHTML = '';
@@ -1771,7 +1894,9 @@ function setPanelLoading(panelId, isLoading) {
           }
 
           selected.forEach(function (id) {
-            const opt = Array.prototype.find.call(multi.options || [], function (o) { return o.value === id; });
+            const opt = Array.prototype.find.call(multi.options || [], function (o) {
+              return o.value === id;
+            });
             const label = opt ? opt.textContent : id;
 
             const chip = document.createElement('div');
@@ -1787,7 +1912,9 @@ function setPanelLoading(panelId, isLoading) {
             rm.className = 'remove';
             rm.textContent = '✕';
             rm.addEventListener('click', function () {
-              const next = getSelectedValues(multi).filter(function (x) { return x !== id; });
+              const next = getSelectedValues(multi).filter(function (x) {
+                return x !== id;
+              });
               setSelectedValues(multi, next);
               renderAll();
               markConfigDirty();
@@ -1865,9 +1992,7 @@ function setPanelLoading(panelId, isLoading) {
         const warnPenalty = Number.isFinite(Number(trust.warnPenalty)) ? Number(trust.warnPenalty) : null;
         const mutePenalty = Number.isFinite(Number(trust.mutePenalty)) ? Number(trust.mutePenalty) : null;
         penaltiesEl.textContent =
-          warnPenalty !== null && mutePenalty !== null
-            ? 'WARN: -' + warnPenalty + ' • MUTE: -' + mutePenalty
-            : '—';
+          warnPenalty !== null && mutePenalty !== null ? 'WARN: -' + warnPenalty + ' • MUTE: -' + mutePenalty : '—';
 
         if (warnInput) warnInput.value = warnPenalty !== null ? String(warnPenalty) : '';
         if (muteInput) muteInput.value = mutePenalty !== null ? String(mutePenalty) : '';
@@ -1875,15 +2000,17 @@ function setPanelLoading(panelId, isLoading) {
         const regenPerDay = Number.isFinite(Number(trust.regenPerDay)) ? Number(trust.regenPerDay) : null;
         const regenMaxDays = Number.isFinite(Number(trust.regenMaxDays)) ? Number(trust.regenMaxDays) : null;
         regenEl.textContent =
-          regenPerDay !== null && regenMaxDays !== null
-            ? regenPerDay + ' / dia até ' + regenMaxDays + ' dias'
-            : '—';
+          regenPerDay !== null && regenMaxDays !== null ? regenPerDay + ' / dia até ' + regenMaxDays + ' dias' : '—';
 
         if (regenPerDayInput) regenPerDayInput.value = regenPerDay !== null ? String(regenPerDay) : '';
         if (regenMaxDaysInput) regenMaxDaysInput.value = regenMaxDays !== null ? String(regenMaxDays) : '';
 
-        const lowT = Number.isFinite(Number(trust.lowTrustThreshold || trust.lowThreshold)) ? Number(trust.lowTrustThreshold || trust.lowThreshold) : null;
-        const highT = Number.isFinite(Number(trust.highTrustThreshold || trust.highThreshold)) ? Number(trust.highTrustThreshold || trust.highThreshold) : null;
+        const lowT = Number.isFinite(Number(trust.lowTrustThreshold || trust.lowThreshold))
+          ? Number(trust.lowTrustThreshold || trust.lowThreshold)
+          : null;
+        const highT = Number.isFinite(Number(trust.highTrustThreshold || trust.highThreshold))
+          ? Number(trust.highTrustThreshold || trust.highThreshold)
+          : null;
         if (lowT !== null && highT !== null) {
           riskEl.textContent = `< ${lowT} (risco) • > ${highT} (confiança)`;
         } else {
@@ -1934,7 +2061,6 @@ function setPanelLoading(panelId, isLoading) {
       bindConfigDirtyListeners();
       setConfigDirty(false);
       setConfigStatus(t('config_status_loaded'), { autoHideMs: 1200 });
-
     } catch (err) {
       console.error('Failed to load guild config', err);
       setConfigStatus(t('config_error_generic'));
@@ -1988,9 +2114,7 @@ function setPanelLoading(panelId, isLoading) {
       ];
 
       let html =
-        '<div class="trust-dist-total">' +
-        escapeHtml(t('trust_distribution_total', { total: total })) +
-        '</div>';
+        '<div class="trust-dist-total">' + escapeHtml(t('trust_distribution_total', { total: total })) + '</div>';
 
       rows.forEach(function (r) {
         const p = pct(r.count);
@@ -2042,453 +2166,465 @@ function setPanelLoading(panelId, isLoading) {
     }
   };
 
-    async function saveGuildConfig() {
-      if (!state.guildId) return;
+  async function saveGuildConfig() {
+    if (!state.guildId) return;
 
-      if (!state.configDirty) {
-        toast(t('config_nothing_to_save'), { type: 'info' });
+    if (!state.configDirty) {
+      toast(t('config_nothing_to_save'), { type: 'info' });
+      return;
+    }
+
+    setConfigStatus(t('config_loading'));
+
+    const logSelect = document.getElementById('configLogChannel');
+    const dashLogSelect = document.getElementById('configDashboardLogChannel');
+    const staffSelect = document.getElementById('configStaffRoles');
+    const maintenanceEnabledSelect = document.getElementById('configMaintenanceEnabled');
+    const maintenanceMessageInput = document.getElementById('configMaintenanceMessage');
+    const maintenanceAllowStaffSelect = document.getElementById('configMaintenanceAllowStaff');
+    const langSelect = document.getElementById('configServerLanguage');
+    const tzSelect = document.getElementById('configServerTimezone');
+
+    const logChannelId = logSelect && logSelect.value ? logSelect.value : null;
+    const dashLogChannelId = dashLogSelect && dashLogSelect.value ? dashLogSelect.value : null;
+    const staffRoleIds = [];
+    if (staffSelect) {
+      Array.prototype.forEach.call(staffSelect.selectedOptions || [], function (opt) {
+        if (opt.value) staffRoleIds.push(opt.value);
+      });
+    }
+
+    const maintenanceMode = {
+      enabled: maintenanceEnabledSelect ? maintenanceEnabledSelect.value === 'true' : false,
+      message: maintenanceMessageInput ? (maintenanceMessageInput.value || '').trim() || null : null,
+      allowStaff: maintenanceAllowStaffSelect ? maintenanceAllowStaffSelect.value !== 'false' : true
+    };
+
+    const language = langSelect && langSelect.value ? langSelect.value : 'auto';
+    const timezone = tzSelect && tzSelect.value ? tzSelect.value.trim() || null : null;
+
+    // Inline validation (low risk): validate IDs and timezone format before POST
+    function isSnowflake(id) {
+      return typeof id === 'string' && /^\d{5,25}$/.test(id);
+    }
+
+    // Clear previous field errors
+    clearInlineError(logSelect);
+    clearInlineError(dashLogSelect);
+    clearInlineError(staffSelect);
+    clearInlineError(maintenanceEnabledSelect);
+    clearInlineError(maintenanceMessageInput);
+    clearInlineError(maintenanceAllowStaffSelect);
+    clearInlineError(tzSelect);
+
+    if (logChannelId && !isSnowflake(logChannelId)) {
+      setInlineError(logSelect, t('config_invalid_channel_id'));
+      toast(t('config_invalid_channel_id'), { type: 'warn' });
+      return;
+    }
+    if (dashLogChannelId && !isSnowflake(dashLogChannelId)) {
+      setInlineError(dashLogSelect, t('config_invalid_channel_id'));
+      toast(t('config_invalid_channel_id'), { type: 'warn' });
+      return;
+    }
+    var allRoleIds = staffRoleIds;
+
+    for (var i = 0; i < allRoleIds.length; i++) {
+      if (allRoleIds[i] && !isSnowflake(allRoleIds[i])) {
+        // Mark the most relevant select
+        setInlineError(staffSelect, t('config_invalid_role_id'));
+        toast(t('config_invalid_role_id'), { type: 'warn' });
         return;
       }
+    }
 
-      setConfigStatus(t('config_loading'));
-
-      const logSelect = document.getElementById('configLogChannel');
-      const dashLogSelect = document.getElementById('configDashboardLogChannel');
-      const staffSelect = document.getElementById('configStaffRoles');
-      const maintenanceEnabledSelect = document.getElementById('configMaintenanceEnabled');
-      const maintenanceMessageInput = document.getElementById('configMaintenanceMessage');
-      const maintenanceAllowStaffSelect = document.getElementById('configMaintenanceAllowStaff');
-      const statusEl = document.getElementById('configStatus');
-      const langSelect = document.getElementById('configServerLanguage');
-      const tzSelect = document.getElementById('configServerTimezone');
-
-      const logChannelId = logSelect && logSelect.value ? logSelect.value : null;
-      const dashLogChannelId = dashLogSelect && dashLogSelect.value ? dashLogSelect.value : null;
-      const staffRoleIds = [];
-      if (staffSelect) {
-        Array.prototype.forEach.call(staffSelect.selectedOptions || [], function (opt) {
-          if (opt.value) staffRoleIds.push(opt.value);
-        });
-      }
-
-      const maintenanceMode = {
-        enabled: maintenanceEnabledSelect ? maintenanceEnabledSelect.value === 'true' : false,
-        message: maintenanceMessageInput ? (maintenanceMessageInput.value || '').trim() || null : null,
-        allowStaff: maintenanceAllowStaffSelect ? maintenanceAllowStaffSelect.value !== 'false' : true
-      };
-
-      const language = langSelect && langSelect.value ? langSelect.value : 'auto';
-      const timezone = tzSelect && tzSelect.value ? tzSelect.value.trim() || null : null;
-
-      // Inline validation (low risk): validate IDs and timezone format before POST
-      function isSnowflake(id) {
-        return typeof id === 'string' && /^\d{5,25}$/.test(id);
-      }
-
-      // Clear previous field errors
-      clearInlineError(logSelect);
-      clearInlineError(dashLogSelect);
-      clearInlineError(staffSelect);
-      clearInlineError(maintenanceEnabledSelect);
-      clearInlineError(maintenanceMessageInput);
-      clearInlineError(maintenanceAllowStaffSelect);
-      clearInlineError(tzSelect);
-
-      if (logChannelId && !isSnowflake(logChannelId)) {
-        setInlineError(logSelect, t('config_invalid_channel_id'));
-        toast(t('config_invalid_channel_id'), { type: 'warn' });
+    if (timezone) {
+      var tzOk =
+        /^[A-Za-z_]+\/[A-Za-z_]+(\/[A-Za-z_]+)?$/.test(timezone) ||
+        /^UTC$/i.test(timezone) ||
+        /^Etc\/(GMT|UTC)([+-]?\d{1,2})?$/.test(timezone);
+      if (!tzOk) {
+        setInlineError(tzSelect, t('config_invalid_timezone'));
+        toast(t('config_invalid_timezone'), { type: 'warn' });
         return;
       }
-      if (dashLogChannelId && !isSnowflake(dashLogChannelId)) {
-        setInlineError(dashLogSelect, t('config_invalid_channel_id'));
-        toast(t('config_invalid_channel_id'), { type: 'warn' });
-        return;
-      }
-      var allRoleIds = staffRoleIds;
-
-      for (var i = 0; i < allRoleIds.length; i++) {
-        if (allRoleIds[i] && !isSnowflake(allRoleIds[i])) {
-          // Mark the most relevant select
-          setInlineError(staffSelect, t('config_invalid_role_id'));
-          toast(t('config_invalid_role_id'), { type: 'warn' });
-          return;
-        }
-      }
-
-      if (timezone) {
-        var tzOk = /^[A-Za-z_]+\/[A-Za-z_]+(\/[A-Za-z_]+)?$/.test(timezone)
-          || /^UTC$/i.test(timezone)
-          || /^Etc\/(GMT|UTC)([+-]?\d{1,2})?$/.test(timezone);
-        if (!tzOk) {
-          setInlineError(tzSelect, t('config_invalid_timezone'));
-          toast(t('config_invalid_timezone'), { type: 'warn' });
-          return;
-        }
-      }
-
-      try {
-        await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', {
-          logChannelId: logChannelId,
-          dashboardLogChannelId: dashLogChannelId,
-          staffRoleIds: staffRoleIds,
-          maintenanceMode: maintenanceMode,
-          language: language,
-          timezone: timezone,
-        });
-
-        state.guildLanguage = language;
-        state.guildTimezone = timezone;
-        await setDashboardLanguage(language);
-
-        if (window.OzarkDashboard.loadFeatures) {
-          await window.OzarkDashboard.loadFeatures().catch(function () {});
-        }
-
-        // mark clean + update UI
-        state.configDirty = false;
-        var btnSave = document.getElementById('btnSaveGuildConfig');
-        if (btnSave) btnSave.disabled = true;
-        setConfigStatus('');
-        toast(t('config_saved'), { type: 'success' });
-      } catch (err) {
-        console.error('Failed to save guild config', err);
-        setConfigStatus('');
-        toast(t('config_error_save'), { type: 'error' });
-      }
     }
 
+    try {
+      await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', {
+        logChannelId: logChannelId,
+        dashboardLogChannelId: dashLogChannelId,
+        staffRoleIds: staffRoleIds,
+        maintenanceMode: maintenanceMode,
+        language: language,
+        timezone: timezone
+      });
 
-    function getGuildMetaList(kind) {
-      const m = state._guildMeta || {};
-      return (kind && m[kind]) ? m[kind] : [];
-    }
+      state.guildLanguage = language;
+      state.guildTimezone = timezone;
+      await setDashboardLanguage(language);
 
-    function getVoiceChannelNameById(id) {
-      if (!id) return null;
-      const list = getGuildMetaList('voiceChannels');
-      const found = list.find(function (c) { return c && c.id === id; });
-      return found ? found.name : null;
-    }
-
-    
-    async function ensureGuildMetaForTempVoice() {
-      if (!state.guildId) return;
-      state._guildMeta = state._guildMeta || {};
-      var hasVoice = Array.isArray(state._guildMeta.voiceChannels) && state._guildMeta.voiceChannels.length;
-      var hasCats = Array.isArray(state._guildMeta.categories) && state._guildMeta.categories.length;
-      if (hasVoice && hasCats) return;
-      try {
-        const meta = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/meta');
-        if (meta) {
-          state._guildMeta.voiceChannels = Array.isArray(meta.voiceChannels) ? meta.voiceChannels : [];
-          state._guildMeta.categories = Array.isArray(meta.categories) ? meta.categories : [];
-        }
-      } catch (e) {}
-    }
-
-function populateTempVoiceSelects() {
-      const addBaseSel = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
-      const catSel = document.getElementById('tempVoiceCategoryId');
-
-      if (addBaseSel) {
-        const current = addBaseSel.value || '';
-        addBaseSel.innerHTML = '';
-        const optNone = document.createElement('option');
-        optNone.value = '';
-        optNone.textContent = t('common_select_placeholder') || '-';
-        addBaseSel.appendChild(optNone);
-
-        getGuildMetaList('voiceChannels').forEach(function (ch) {
-          const opt = document.createElement('option');
-          opt.value = ch.id;
-          opt.textContent = ch.name;
-          addBaseSel.appendChild(opt);
-        });
-        addBaseSel.value = current;
+      if (window.OzarkDashboard.loadFeatures) {
+        await window.OzarkDashboard.loadFeatures().catch(function () {});
       }
 
-      if (catSel) {
-        const current = catSel.value || '';
-        catSel.innerHTML = '';
-        const optNone = document.createElement('option');
-        optNone.value = '';
-        optNone.textContent = t('common_none_option');
-        catSel.appendChild(optNone);
+      // mark clean + update UI
+      state.configDirty = false;
+      var btnSave = document.getElementById('btnSaveGuildConfig');
+      if (btnSave) btnSave.disabled = true;
+      setConfigStatus('');
+      toast(t('config_saved'), { type: 'success' });
+    } catch (err) {
+      console.error('Failed to save guild config', err);
+      setConfigStatus('');
+      toast(t('config_error_save'), { type: 'error' });
+    }
+  }
 
-        getGuildMetaList('categories').forEach(function (c) {
-          const opt = document.createElement('option');
-          opt.value = c.id;
-          opt.textContent = c.name;
-          catSel.appendChild(opt);
-        });
-        catSel.value = current;
+  function getGuildMetaList(kind) {
+    const m = state._guildMeta || {};
+    return kind && m[kind] ? m[kind] : [];
+  }
+
+  function getVoiceChannelNameById(id) {
+    if (!id) return null;
+    const list = getGuildMetaList('voiceChannels');
+    const found = list.find(function (c) {
+      return c && c.id === id;
+    });
+    return found ? found.name : null;
+  }
+
+  async function ensureGuildMetaForTempVoice() {
+    if (!state.guildId) return;
+    state._guildMeta = state._guildMeta || {};
+    var hasVoice = Array.isArray(state._guildMeta.voiceChannels) && state._guildMeta.voiceChannels.length;
+    var hasCats = Array.isArray(state._guildMeta.categories) && state._guildMeta.categories.length;
+    if (hasVoice && hasCats) return;
+    try {
+      const meta = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/meta');
+      if (meta) {
+        state._guildMeta.voiceChannels = Array.isArray(meta.voiceChannels) ? meta.voiceChannels : [];
+        state._guildMeta.categories = Array.isArray(meta.categories) ? meta.categories : [];
       }
+    } catch {}
+  }
 
+  function populateTempVoiceSelects() {
+    const addBaseSel = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
+    const catSel = document.getElementById('tempVoiceCategoryId');
+
+    if (addBaseSel) {
+      const current = addBaseSel.value || '';
+      addBaseSel.innerHTML = '';
+      const optNone = document.createElement('option');
+      optNone.value = '';
+      optNone.textContent = t('common_select_placeholder') || '-';
+      addBaseSel.appendChild(optNone);
+
+      getGuildMetaList('voiceChannels').forEach(function (ch) {
+        const opt = document.createElement('option');
+        opt.value = ch.id;
+        opt.textContent = ch.name;
+        addBaseSel.appendChild(opt);
+      });
+      addBaseSel.value = current;
     }
 
-    // TempVoice dirty tracking (same idea as GameNews dirty hint)
-    function _tvNormalizeBaseIds(arr) {
-      return (Array.isArray(arr) ? arr : []).filter(function (x) { return !!x; }).map(function (x) { return String(x); });
+    if (catSel) {
+      const current = catSel.value || '';
+      catSel.innerHTML = '';
+      const optNone = document.createElement('option');
+      optNone.value = '';
+      optNone.textContent = t('common_none_option');
+      catSel.appendChild(optNone);
+
+      getGuildMetaList('categories').forEach(function (c) {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        catSel.appendChild(opt);
+      });
+      catSel.value = current;
+    }
+  }
+
+  // TempVoice dirty tracking (same idea as GameNews dirty hint)
+  function _tvNormalizeBaseIds(arr) {
+    return (Array.isArray(arr) ? arr : [])
+      .filter(function (x) {
+        return !!x;
+      })
+      .map(function (x) {
+        return String(x);
+      });
+  }
+
+  function getTempVoiceSnapshotFromUI() {
+    var enabledSel = document.getElementById('tempVoiceEnabled');
+    var catInput = document.getElementById('tempVoiceCategoryId');
+    var delayInput = document.getElementById('tempVoiceDeleteDelay');
+    var maxUsersInput = document.getElementById('tempVoiceMaxUsers');
+
+    var enabled = enabledSel && enabledSel.value === 'true';
+    var categoryId = (catInput && String(catInput.value || '').trim()) || '';
+    var delaySeconds = parseInt((delayInput && delayInput.value) || '10', 10);
+    if (!Number.isFinite(delaySeconds) || delaySeconds < 2) delaySeconds = 10;
+
+    var maxUsers = null;
+    try {
+      var raw = maxUsersInput && maxUsersInput.value ? String(maxUsersInput.value).trim() : '';
+      if (raw) {
+        var n = parseInt(raw, 10);
+        if (Number.isFinite(n) && n >= 1 && n <= 99) maxUsers = n;
+      }
+    } catch {}
+
+    var baseChannelIds = _tvNormalizeBaseIds(state.tempVoiceBase && state.tempVoiceBase.items);
+
+    return {
+      enabled: !!enabled,
+      categoryId: categoryId,
+      deleteDelaySeconds: delaySeconds,
+      maxUsersPerRoom: maxUsers,
+      baseChannelIds: baseChannelIds
+    };
+  }
+
+  function _tvSnapshotsEqual(a, b) {
+    if (!a || !b) return false;
+    if (!!a.enabled !== !!b.enabled) return false;
+    if (String(a.categoryId || '') !== String(b.categoryId || '')) return false;
+    if (Number(a.deleteDelaySeconds) !== Number(b.deleteDelaySeconds)) return false;
+    var am = a.maxUsersPerRoom === null || a.maxUsersPerRoom === undefined ? null : Number(a.maxUsersPerRoom);
+    var bm = b.maxUsersPerRoom === null || b.maxUsersPerRoom === undefined ? null : Number(b.maxUsersPerRoom);
+    if (am !== bm) return false;
+
+    var aa = _tvNormalizeBaseIds(a.baseChannelIds);
+    var bb = _tvNormalizeBaseIds(b.baseChannelIds);
+    if (aa.length !== bb.length) return false;
+    for (var i = 0; i < aa.length; i++) {
+      if (aa[i] !== bb[i]) return false;
+    }
+    return true;
+  }
+
+  function setTempVoiceDirty(isDirty) {
+    state.tempVoiceDirty = !!isDirty;
+    var btn = document.getElementById('btnSaveTempVoice');
+    var hint = document.getElementById('tvDirtyHint');
+    var panel = document.getElementById('tempVoiceDetailPanel');
+
+    // Permission gate: allow save only if user can manage extras
+    var perms = state.perms || {};
+    var canEdit =
+      !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER')) ||
+      !!perms.canEditConfig ||
+      !!perms.canManageGameNews;
+
+    if (panel) {
+      panel.classList.toggle('dirty', !!state.tempVoiceDirty && canEdit);
     }
 
-    function getTempVoiceSnapshotFromUI() {
+    if (btn) {
+      btn.disabled = !canEdit || !state.tempVoiceDirty;
+      btn.classList.toggle('primary', !!state.tempVoiceDirty && canEdit);
+    }
+    if (hint) {
+      if (state.tempVoiceDirty && canEdit) {
+        hint.classList.remove('hidden');
+        hint.textContent = t('tempvoice_unsaved_hint') || 'Alteracoes por guardar.';
+      } else {
+        hint.classList.add('hidden');
+        hint.textContent = '';
+      }
+    }
+  }
+
+  function updateTempVoiceDirtyFromUI() {
+    var snap = getTempVoiceSnapshotFromUI();
+    var orig = state.tempVoiceOriginal || null;
+    setTempVoiceDirty(!(orig && _tvSnapshotsEqual(orig, snap)));
+  }
+
+  function bindTempVoiceDirtyTrackingOnce() {
+    var marker = document.body && document.body.dataset ? document.body.dataset.tvDirtyBound : null;
+    if (marker) return;
+    if (document.body && document.body.dataset) document.body.dataset.tvDirtyBound = '1';
+
+    var enabledSel = document.getElementById('tempVoiceEnabled');
+    var catInput = document.getElementById('tempVoiceCategoryId');
+    var delayInput = document.getElementById('tempVoiceDeleteDelay');
+    var maxUsersInput = document.getElementById('tempVoiceMaxUsers');
+
+    [enabledSel, catInput].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('change', function () {
+        updateTempVoiceDirtyFromUI();
+      });
+    });
+
+    [delayInput, maxUsersInput].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('input', function () {
+        updateTempVoiceDirtyFromUI();
+      });
+    });
+  }
+
+  async function loadTempVoiceConfig() {
+    if (!state.guildId) return;
+
+    try {
+      const res = await apiGet(`/temp-voice/config?guildId=${encodeURIComponent(state.guildId)}`);
+      if (!res || !res.ok) return;
+
+      var cfg = res.config || {};
       var enabledSel = document.getElementById('tempVoiceEnabled');
+      var baseIdInput = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
       var catInput = document.getElementById('tempVoiceCategoryId');
       var delayInput = document.getElementById('tempVoiceDeleteDelay');
       var maxUsersInput = document.getElementById('tempVoiceMaxUsers');
 
-      var enabled = enabledSel && enabledSel.value === 'true';
-      var categoryId = (catInput && String(catInput.value || '').trim()) || '';
-      var delaySeconds = parseInt((delayInput && delayInput.value) || '10', 10);
-      if (!Number.isFinite(delaySeconds) || delaySeconds < 2) delaySeconds = 10;
+      // Ensure guild meta is available (voice channels + categories)
+      await ensureGuildMetaForTempVoice();
+      populateTempVoiceSelects();
 
-      var maxUsers = null;
-      try {
-        var raw = (maxUsersInput && maxUsersInput.value) ? String(maxUsersInput.value).trim() : '';
-        if (raw) {
-          var n = parseInt(raw, 10);
-          if (Number.isFinite(n) && n >= 1 && n <= 99) maxUsers = n;
-        }
-      } catch (e) {}
+      var baseIds = Array.isArray(cfg.baseChannelIds) ? cfg.baseChannelIds : [];
 
-      var baseChannelIds = _tvNormalizeBaseIds(state.tempVoiceBase && state.tempVoiceBase.items);
+      state.tempVoiceBase = state.tempVoiceBase || { items: [], selectedIndex: -1 };
+      state.tempVoiceBase.items = baseIds.slice();
+      state.tempVoiceBase.selectedIndex = -1;
 
-      return {
-        enabled: !!enabled,
+      if (enabledSel) {
+        enabledSel.value = cfg.enabled ? 'true' : 'false';
+      }
+      if (baseIdInput) {
+        baseIdInput.value = '';
+      }
+      if (catInput) {
+        catInput.value = cfg.categoryId || '';
+      }
+      if (delayInput) {
+        delayInput.value = typeof cfg.deleteDelaySeconds === 'number' ? String(cfg.deleteDelaySeconds) : '10';
+      }
+      if (maxUsersInput) {
+        maxUsersInput.value =
+          cfg.maxUsersPerRoom !== null && cfg.maxUsersPerRoom !== undefined ? String(cfg.maxUsersPerRoom) : '';
+      }
+
+      if (typeof renderTempVoiceBaseList === 'function') {
+        renderTempVoiceBaseList();
+      }
+
+      // Snapshot for dirty tracking
+      state.tempVoiceOriginal = getTempVoiceSnapshotFromUI();
+      bindTempVoiceDirtyTrackingOnce();
+      setTempVoiceDirty(false);
+    } catch (err) {
+      console.error('Failed to load temp voice config', err);
+    }
+  }
+
+  async function saveTempVoiceConfig() {
+    if (!state.guildId) return;
+    try {
+      updateTempVoiceDirtyFromUI();
+    } catch {}
+    if (!state.tempVoiceDirty) {
+      toast(t('tempvoice_nothing_to_save') || 'Nada para guardar.', { type: 'info' });
+      return;
+    }
+    var _btnSave = document.getElementById('btnSaveTempVoice');
+    if (_btnSave) _btnSave.disabled = true;
+
+    var enabledSel = document.getElementById('tempVoiceEnabled');
+    var catInput = document.getElementById('tempVoiceCategoryId');
+    var delayInput = document.getElementById('tempVoiceDeleteDelay');
+    var maxUsersInput = document.getElementById('tempVoiceMaxUsers');
+
+    var enabled = enabledSel && enabledSel.value === 'true';
+    var categoryId = (catInput && catInput.value) || '';
+    var delayRaw = (delayInput && delayInput.value) || '10';
+
+    var baseChannelIds = ((state.tempVoiceBase && state.tempVoiceBase.items) || []).filter(function (s) {
+      return !!s;
+    });
+
+    var delaySeconds = parseInt(delayRaw, 10);
+    if (!Number.isFinite(delaySeconds) || delaySeconds < 2) delaySeconds = 10;
+
+    var maxUsers = null;
+    try {
+      var raw = maxUsersInput && maxUsersInput.value ? String(maxUsersInput.value).trim() : '';
+      if (raw) {
+        var n = parseInt(raw, 10);
+        if (Number.isFinite(n) && n >= 1 && n <= 99) maxUsers = n;
+      }
+    } catch {}
+
+    try {
+      const body = {
+        guildId: state.guildId,
+        enabled: enabled,
+        baseChannelIds: baseChannelIds,
         categoryId: categoryId,
         deleteDelaySeconds: delaySeconds,
-        maxUsersPerRoom: maxUsers,
-        baseChannelIds: baseChannelIds
+        maxUsersPerRoom: maxUsers
       };
-    }
-
-    function _tvSnapshotsEqual(a, b) {
-      if (!a || !b) return false;
-      if (!!a.enabled !== !!b.enabled) return false;
-      if (String(a.categoryId || '') !== String(b.categoryId || '')) return false;
-      if (Number(a.deleteDelaySeconds) !== Number(b.deleteDelaySeconds)) return false;
-      var am = (a.maxUsersPerRoom === null || a.maxUsersPerRoom === undefined) ? null : Number(a.maxUsersPerRoom);
-      var bm = (b.maxUsersPerRoom === null || b.maxUsersPerRoom === undefined) ? null : Number(b.maxUsersPerRoom);
-      if (am !== bm) return false;
-
-      var aa = _tvNormalizeBaseIds(a.baseChannelIds);
-      var bb = _tvNormalizeBaseIds(b.baseChannelIds);
-      if (aa.length !== bb.length) return false;
-      for (var i = 0; i < aa.length; i++) {
-        if (aa[i] !== bb[i]) return false;
-      }
-      return true;
-    }
-
-    function setTempVoiceDirty(isDirty) {
-      state.tempVoiceDirty = !!isDirty;
-      var btn = document.getElementById('btnSaveTempVoice');
-      var hint = document.getElementById('tvDirtyHint');
-      var panel = document.getElementById('tempVoiceDetailPanel');
-
-      // Permission gate: allow save only if user can manage extras
-      var perms = state.perms || {};
-      var canEdit = !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER')) || !!perms.canEditConfig || !!perms.canManageGameNews;
-
-      if (panel) {
-        panel.classList.toggle('dirty', !!state.tempVoiceDirty && canEdit);
-      }
-
-      if (btn) {
-        btn.disabled = !canEdit || !state.tempVoiceDirty;
-        btn.classList.toggle('primary', !!state.tempVoiceDirty && canEdit);
-      }
-      if (hint) {
-        if (state.tempVoiceDirty && canEdit) {
-          hint.classList.remove('hidden');
-          hint.textContent = t('tempvoice_unsaved_hint') || 'Alteracoes por guardar.';
-        } else {
-          hint.classList.add('hidden');
-          hint.textContent = '';
-        }
-      }
-    }
-
-    function updateTempVoiceDirtyFromUI() {
-      var snap = getTempVoiceSnapshotFromUI();
-      var orig = state.tempVoiceOriginal || null;
-      setTempVoiceDirty(!(orig && _tvSnapshotsEqual(orig, snap)));
-    }
-
-    function bindTempVoiceDirtyTrackingOnce() {
-      var marker = document.body && document.body.dataset ? document.body.dataset.tvDirtyBound : null;
-      if (marker) return;
-      if (document.body && document.body.dataset) document.body.dataset.tvDirtyBound = '1';
-
-      var enabledSel = document.getElementById('tempVoiceEnabled');
-      var catInput = document.getElementById('tempVoiceCategoryId');
-      var delayInput = document.getElementById('tempVoiceDeleteDelay');
-      var maxUsersInput = document.getElementById('tempVoiceMaxUsers');
-
-      [enabledSel, catInput].forEach(function (el) {
-        if (!el) return;
-        el.addEventListener('change', function () {
-          updateTempVoiceDirtyFromUI();
-        });
-      });
-
-      [delayInput, maxUsersInput].forEach(function (el) {
-        if (!el) return;
-        el.addEventListener('input', function () {
-          updateTempVoiceDirtyFromUI();
-        });
-      });
-    }
-
-    async function loadTempVoiceConfig() {
-      if (!state.guildId) return;
-
-      try {
-        const res = await apiGet(`/temp-voice/config?guildId=${encodeURIComponent(state.guildId)}`);
-        if (!res || !res.ok) return;
-
-        var cfg = res.config || {};
-        var enabledSel = document.getElementById('tempVoiceEnabled');
-        var baseIdInput = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
-        var catInput = document.getElementById('tempVoiceCategoryId');
-        var delayInput = document.getElementById('tempVoiceDeleteDelay');
-        var maxUsersInput = document.getElementById('tempVoiceMaxUsers');
-
-        // Ensure guild meta is available (voice channels + categories)
-        await ensureGuildMetaForTempVoice();
-        populateTempVoiceSelects();
-
-        var baseIds = Array.isArray(cfg.baseChannelIds) ? cfg.baseChannelIds : [];
-
-        state.tempVoiceBase = state.tempVoiceBase || { items: [], selectedIndex: -1 };
-        state.tempVoiceBase.items = baseIds.slice();
-        state.tempVoiceBase.selectedIndex = -1;
-
-        if (enabledSel) {
-          enabledSel.value = cfg.enabled ? 'true' : 'false';
-        }
-        if (baseIdInput) {
-          baseIdInput.value = '';
-        }
-        if (catInput) {
-          catInput.value = cfg.categoryId || '';
-        }
-        if (delayInput) {
-          delayInput.value = typeof cfg.deleteDelaySeconds === 'number' ? String(cfg.deleteDelaySeconds) : '10';
-        }
-        if (maxUsersInput) {
-          maxUsersInput.value = (cfg.maxUsersPerRoom !== null && cfg.maxUsersPerRoom !== undefined) ? String(cfg.maxUsersPerRoom) : '';
-        }
-
-        if (typeof renderTempVoiceBaseList === 'function') {
-          renderTempVoiceBaseList();
-        }
-
-        // Snapshot for dirty tracking
-        state.tempVoiceOriginal = getTempVoiceSnapshotFromUI();
-        bindTempVoiceDirtyTrackingOnce();
+      const res = await apiPost('/temp-voice/config', body);
+      if (res && res.ok) {
+        toast(t('tempvoice_saved'), { type: 'success' });
         setTempVoiceDirty(false);
-      } catch (err) {
-        console.error('Failed to load temp voice config', err);
+        loadTempVoiceConfig().catch(function () {});
+      } else {
+        toast(t('tempvoice_save_error'), { type: 'error' });
       }
+    } catch (err) {
+      console.error('Failed to save temp voice config', err);
+      toast(t('tempvoice_save_error'), { type: 'error' });
+    } finally {
+      try {
+        updateTempVoiceDirtyFromUI();
+      } catch {}
     }
+  }
 
-    async function saveTempVoiceConfig() {
-      if (!state.guildId) return;
-      try { updateTempVoiceDirtyFromUI(); } catch (e) {}
-      if (!state.tempVoiceDirty) {
-        toast(t('tempvoice_nothing_to_save') || 'Nada para guardar.', { type: 'info' });
+  async function loadTempVoiceActive() {
+    if (!state.guildId) return;
+
+    try {
+      const res = await apiGet(`/temp-voice/active?guildId=${encodeURIComponent(state.guildId)}`);
+      const listEl = document.getElementById('tempVoiceActiveList');
+      if (!listEl) return;
+
+      listEl.innerHTML = '';
+
+      if (!res || !res.ok || !Array.isArray(res.items) || !res.items.length) {
+        listEl.innerHTML = `<div class="empty">${escapeHtml(t('tempvoice_active_empty'))}</div>`;
         return;
       }
-      var _btnSave = document.getElementById('btnSaveTempVoice');
-      if (_btnSave) _btnSave.disabled = true;
 
-      var enabledSel = document.getElementById('tempVoiceEnabled');
-      var catInput = document.getElementById('tempVoiceCategoryId');
-      var delayInput = document.getElementById('tempVoiceDeleteDelay');
-      var maxUsersInput = document.getElementById('tempVoiceMaxUsers');
-
-var enabled = enabledSel && enabledSel.value === 'true';
-      var categoryId = (catInput && catInput.value) || '';
-      var delayRaw = (delayInput && delayInput.value) || '10';
-
-      var baseChannelIds = (state.tempVoiceBase && state.tempVoiceBase.items || []).filter(function (s) { return !!s; });
-
-      var delaySeconds = parseInt(delayRaw, 10);
-      if (!Number.isFinite(delaySeconds) || delaySeconds < 2) delaySeconds = 10;
-
-      var maxUsers = null;
-      try {
-        var raw = (maxUsersInput && maxUsersInput.value) ? String(maxUsersInput.value).trim() : '';
-        if (raw) {
-          var n = parseInt(raw, 10);
-          if (Number.isFinite(n) && n >= 1 && n <= 99) maxUsers = n;
-        }
-      } catch (e) {}
-
-
-
-      try {
-        const body = {
-          guildId: state.guildId,
-          enabled: enabled,
-          baseChannelIds: baseChannelIds,
-          categoryId: categoryId,
-          deleteDelaySeconds: delaySeconds,
-          maxUsersPerRoom: maxUsers
-        };
-        const res = await apiPost('/temp-voice/config', body);
-        if (res && res.ok) {
-          toast(t('tempvoice_saved'), { type: 'success' });
-          setTempVoiceDirty(false);
-          loadTempVoiceConfig().catch(function () {});
-        } else {
-          toast(t('tempvoice_save_error'), { type: 'error' });
-        }
-      } catch (err) {
-        console.error('Failed to save temp voice config', err);
-        toast(t('tempvoice_save_error'), { type: 'error' });
-      } finally {
-        try { updateTempVoiceDirtyFromUI(); } catch (e) {}
-      }
-    }
-
-    async function loadTempVoiceActive() {
-      if (!state.guildId) return;
-
-      try {
-        const res = await apiGet(`/temp-voice/active?guildId=${encodeURIComponent(state.guildId)}`);
-        const listEl = document.getElementById('tempVoiceActiveList');
-        if (!listEl) return;
-
-        listEl.innerHTML = '';
-
-        if (!res || !res.ok || !Array.isArray(res.items) || !res.items.length) {
-          listEl.innerHTML = `<div class="empty">${escapeHtml(t('tempvoice_active_empty'))}</div>`;
-          return;
-        }
-
-        res.items.forEach(function (item) {
-          var el = document.createElement('div');
-          el.className = 'list-item';
-          el.innerHTML = `
+      res.items.forEach(function (item) {
+        var el = document.createElement('div');
+        el.className = 'list-item';
+        el.innerHTML = `
             <div class="row space">
               <div>
-                <div class="title">${escapeHtml(item.channelName || getVoiceChannelNameById(item.channelId) || (item.channelId ? ('#' + item.channelId) : ''))}</div>
+                <div class="title">${escapeHtml(item.channelName || getVoiceChannelNameById(item.channelId) || (item.channelId ? '#' + item.channelId : ''))}</div>
                 <div class="subtitle">
                   ${escapeHtml(t('tempvoice_active_owner_label') || 'Owner')}: ${escapeHtml(item.ownerTag || item.ownerId || '?')}
                   · ${escapeHtml(t('tempvoice_active_base_label') || 'Base')}: ${escapeHtml(item.baseChannelName || getVoiceChannelNameById(item.baseChannelId) || item.baseChannelId || '?')}
                 </div>
               </div>
             </div>
-          `;          listEl.appendChild(el);
-        });
-      } catch (err) {
-        console.error('Failed to load temp voice active list', err);
-      }
+          `;
+        listEl.appendChild(el);
+      });
+    } catch (err) {
+      console.error('Failed to load temp voice active list', err);
     }
-
-
+  }
 
   function renderTempVoiceBaseList() {
     var listEl = document.getElementById('tempVoiceBaseList');
@@ -2509,7 +2645,7 @@ var enabled = enabledSel && enabledSel.value === 'true';
       row.innerHTML = `
         <div class="row space">
           <div>
-            <div class="title">${escapeHtml(getVoiceChannelNameById(id) || id || "")}</div>
+            <div class="title">${escapeHtml(getVoiceChannelNameById(id) || id || '')}</div>
             <div class="subtitle">${escapeHtml(t('tempvoice_base_list_hint'))}</div>
           </div>
         </div>
@@ -2525,39 +2661,45 @@ var enabled = enabledSel && enabledSel.value === 'true';
     });
   }
 
-    function selectTempVoiceBaseIndex(index) {
-      var items = state.tempVoiceBase.items || [];
-      var emptyEl = document.getElementById('tempVoiceDetailEmpty');
-      var contentEl = document.getElementById('tempVoiceDetailContent');
-      var currentLabel = document.getElementById('tempVoiceCurrentBaseLabel');
+  function selectTempVoiceBaseIndex(index) {
+    var items = state.tempVoiceBase.items || [];
+    var emptyEl = document.getElementById('tempVoiceDetailEmpty');
+    var contentEl = document.getElementById('tempVoiceDetailContent');
+    var currentLabel = document.getElementById('tempVoiceCurrentBaseLabel');
 
-      if (index < 0 || index >= items.length) {
-        state.tempVoiceBase.selectedIndex = -1;
-        var baseIdInput = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
-        if (baseIdInput) baseIdInput.value = '';
-        if (emptyEl) emptyEl.classList.remove('hidden');
-        if (contentEl) contentEl.classList.add('hidden');
-        if (currentLabel) currentLabel.textContent = t('tempvoice_current_base') + ' (nenhum selecionado)';
-        renderTempVoiceBaseList();
-        return;
-      }
-
-      state.tempVoiceBase.selectedIndex = index;
-      var baseIdInput2 = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
-      if (baseIdInput2) baseIdInput2.value = '';
-      if (emptyEl) emptyEl.classList.add('hidden');
-      if (contentEl) contentEl.classList.remove('hidden');
-      if (currentLabel) currentLabel.textContent = (t('tempvoice_current_base') || 'Canal base:') + ' ' + (getVoiceChannelNameById(items[index]) || items[index] || '');
+    if (index < 0 || index >= items.length) {
+      state.tempVoiceBase.selectedIndex = -1;
+      var baseIdInput = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
+      if (baseIdInput) baseIdInput.value = '';
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      if (contentEl) contentEl.classList.add('hidden');
+      if (currentLabel) currentLabel.textContent = t('tempvoice_current_base') + ' (nenhum selecionado)';
       renderTempVoiceBaseList();
+      return;
     }
-function addTempVoiceBaseChannel() {
+
+    state.tempVoiceBase.selectedIndex = index;
+    var baseIdInput2 = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
+    if (baseIdInput2) baseIdInput2.value = '';
+    if (emptyEl) emptyEl.classList.add('hidden');
+    if (contentEl) contentEl.classList.remove('hidden');
+    if (currentLabel)
+      currentLabel.textContent =
+        (t('tempvoice_current_base') || 'Canal base:') +
+        ' ' +
+        (getVoiceChannelNameById(items[index]) || items[index] || '');
+    renderTempVoiceBaseList();
+  }
+  function addTempVoiceBaseChannel() {
     if (!state.tempVoiceBase) state.tempVoiceBase = { items: [], selectedIndex: -1 };
     if (!Array.isArray(state.tempVoiceBase.items)) state.tempVoiceBase.items = [];
 
     var baseSel = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
     var val = baseSel ? String(baseSel.value || '').trim() : '';
     if (!val) {
-      toast(t('tempvoice_select_base_first') || t('common_select_placeholder') || 'Selecione um canal base primeiro.', { type: 'warn' });
+      toast(t('tempvoice_select_base_first') || t('common_select_placeholder') || 'Selecione um canal base primeiro.', {
+        type: 'warn'
+      });
       return;
     }
 
@@ -2572,10 +2714,12 @@ function addTempVoiceBaseChannel() {
 
     renderTempVoiceBaseList();
     selectTempVoiceBaseIndex(state.tempVoiceBase.selectedIndex);
-    try { bindTempVoiceDirtyTrackingOnce(); } catch (e) {}
+    try {
+      bindTempVoiceDirtyTrackingOnce();
+    } catch {}
     updateTempVoiceDirtyFromUI();
   }
-function deleteTempVoiceBaseAt(index) {
+  function deleteTempVoiceBaseAt(index) {
     if (!state.tempVoiceBase || !Array.isArray(state.tempVoiceBase.items)) return;
     if (index < 0 || index >= state.tempVoiceBase.items.length) return;
 
@@ -2586,26 +2730,22 @@ function deleteTempVoiceBaseAt(index) {
       if (baseIdInput) baseIdInput.value = '';
     } else if (state.tempVoiceBase.selectedIndex >= state.tempVoiceBase.items.length) {
       state.tempVoiceBase.selectedIndex = state.tempVoiceBase.items.length - 1;
-      var baseIdInput2 = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
+      var baseIdInput2 =
+        document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
       if (baseIdInput2) baseIdInput2.value = state.tempVoiceBase.items[state.tempVoiceBase.selectedIndex] || '';
     }
     renderTempVoiceBaseList();
-    try { bindTempVoiceDirtyTrackingOnce(); } catch (e) {}
+    try {
+      bindTempVoiceDirtyTrackingOnce();
+    } catch {}
     updateTempVoiceDirtyFromUI();
   }
-
-
-
-
-
-
 
   // -----------------------------
   // Init
   // -----------------------------
 
   document.addEventListener('DOMContentLoaded', function () {
-      
     // Preferências de interface (tema / densidade)
     initPreferences();
 
@@ -2617,27 +2757,25 @@ function deleteTempVoiceBaseAt(index) {
     updateSessionBadge();
     setInterval(updateSessionBadge, 30000);
 
-      // i18n inicial: segue o idioma do browser suportado (EN/PT).
-      var languageReady = Promise.resolve();
-      window.OzarkDashboard = window.OzarkDashboard || {};
-      window.OzarkDashboard.I18n = window.OzarkDashboard.I18n || {};
-      if (typeof window.OzarkDashboard.I18n.init === 'function') {
-        languageReady = window.OzarkDashboard.I18n.init(state.lang)
-          .catch(function (err) {
-            console.error('Failed to load dashboard language', state.lang, err);
-            state.lang = 'pt';
-            return window.OzarkDashboard.I18n.init('pt').catch(function (fallbackError) {
-              console.error('Failed to load fallback dashboard language', fallbackError);
-            });
-          })
-          .finally(function () {
-            applyI18n();
+    // i18n inicial: segue o idioma do browser suportado (EN/PT).
+    var languageReady = Promise.resolve();
+    window.OzarkDashboard = window.OzarkDashboard || {};
+    window.OzarkDashboard.I18n = window.OzarkDashboard.I18n || {};
+    if (typeof window.OzarkDashboard.I18n.init === 'function') {
+      languageReady = window.OzarkDashboard.I18n.init(state.lang)
+        .catch(function (err) {
+          console.error('Failed to load dashboard language', state.lang, err);
+          state.lang = 'pt';
+          return window.OzarkDashboard.I18n.init('pt').catch(function (fallbackError) {
+            console.error('Failed to load fallback dashboard language', fallbackError);
           });
-      } else {
-        applyI18n();
-      }
-
-
+        })
+        .finally(function () {
+          applyI18n();
+        });
+    } else {
+      applyI18n();
+    }
 
     // Navegação por teclado (setas/Home/End) + roving tabindex para um tablist.
     function wireTablist(selector) {
@@ -2656,7 +2794,9 @@ function deleteTempVoiceBaseAt(index) {
         btn.addEventListener('keydown', function (ev) {
           var key = ev.key || ev.code;
           // Ignorar tabs desativadas (ex.: sem servidor selecionado).
-          var enabled = tabs.filter(function (b) { return !b.disabled; });
+          var enabled = tabs.filter(function (b) {
+            return !b.disabled;
+          });
           if (!enabled.length) return;
           var current = Math.max(0, enabled.indexOf(btn));
 
@@ -2675,7 +2815,9 @@ function deleteTempVoiceBaseAt(index) {
           } else if (key === 'Enter' || key === ' ') {
             // activate
             ev.preventDefault();
-            try { btn.click(); } catch (e) {}
+            try {
+              btn.click();
+            } catch {}
           }
         });
       });
@@ -2700,7 +2842,7 @@ function deleteTempVoiceBaseAt(index) {
     var overviewShortcuts = document.getElementById('overviewShortcuts');
     if (overviewShortcuts) {
       overviewShortcuts.addEventListener('click', function (ev) {
-        var btn = (ev.target && ev.target.closest) ? ev.target.closest('[data-goto]') : null;
+        var btn = ev.target && ev.target.closest ? ev.target.closest('[data-goto]') : null;
         if (!btn || btn.disabled) return;
         var target = btn.getAttribute('data-goto');
         if (target) setTab(target);
@@ -2712,108 +2854,117 @@ function deleteTempVoiceBaseAt(index) {
     if (guildPicker) {
       guildPicker.addEventListener('change', function () {
         (async function () {
-        var v = guildPicker.value || '';
-        state.guildId = v || null;
-        try { if (window.OzarkDashboard && typeof window.OzarkDashboard.restoreLogsPrefs === 'function') window.OzarkDashboard.restoreLogsPrefs(state.guildId); } catch (e) {}
-        try { refreshGlobalBanner(); } catch (e) {}
-        try {
-          if (state.guildId) setStoredGuildId(state.guildId);
-          else localStorage.removeItem(GUILD_KEY);
-        } catch (e) {}
-        // Mint scoped OAuth token (if needed) before enabling tabs.
-        var okScoped = await ensureGuildScopedToken(state.guildId);
-        if (!okScoped) {
-          state.guildId = null;
-          try { guildPicker.value = ''; } catch (e) {}
+          var v = guildPicker.value || '';
+          state.guildId = v || null;
+          try {
+            if (window.OzarkDashboard && typeof window.OzarkDashboard.restoreLogsPrefs === 'function')
+              window.OzarkDashboard.restoreLogsPrefs(state.guildId);
+          } catch {}
+          try {
+            refreshGlobalBanner();
+          } catch {}
+          try {
+            if (state.guildId) setStoredGuildId(state.guildId);
+            else localStorage.removeItem(GUILD_KEY);
+          } catch {}
+          // Mint scoped OAuth token (if needed) before enabling tabs.
+          var okScoped = await ensureGuildScopedToken(state.guildId);
+          if (!okScoped) {
+            state.guildId = null;
+            try {
+              guildPicker.value = '';
+            } catch {}
+            updateTabAccess();
+            setTab('overview');
+            return;
+          }
+
+          await loadGuildDashboardLanguage(state.guildId);
           updateTabAccess();
-          setTab('overview');
-          return;
-        }
 
-        await loadGuildDashboardLanguage(state.guildId);
-        updateTabAccess();
+          // Se nenhum servidor estiver selecionado, volta sempre para a visão geral.
+          if (!state.guildId) {
+            setTab('overview');
+            return;
+          }
 
-        // Se nenhum servidor estiver selecionado, volta sempre para a visão geral.
-        if (!state.guildId) {
-          setTab('overview');
-          return;
-        }
-
-        if (state.currentTab !== 'overview') {
-          // reload current tab data when guild changes
-          if (state.currentTab === 'logs') {
-            if (window.OzarkDashboard.loadModerationOverview) {
-              window.OzarkDashboard.loadModerationOverview().catch(function () {});
-            }
-            window.OzarkDashboard.loadLogs().catch(function () {});
-            if (window.OzarkDashboard.loadTickets) window.OzarkDashboard.loadTickets(true);
-          } else if (state.currentTab === 'features') {
-            if (window.OzarkDashboard.loadFeatures) window.OzarkDashboard.loadFeatures().catch(function () {});
-            if (window.OzarkDashboard.loadPremium) window.OzarkDashboard.loadPremium().catch(function () {});
-            loadGuildConfig().catch(function () {});
-          } else if (state.currentTab === 'user') {
-            window.OzarkDashboard.loadUsers().catch(function () {});
-          } else if (state.currentTab === 'config') {
-            loadGuildConfig().catch(function () {});
-            if (window.OzarkDashboard.reloadAudit) {
-              window.OzarkDashboard.reloadAudit().catch(function () {});
+          if (state.currentTab !== 'overview') {
+            // reload current tab data when guild changes
+            if (state.currentTab === 'logs') {
+              if (window.OzarkDashboard.loadModerationOverview) {
+                window.OzarkDashboard.loadModerationOverview().catch(function () {});
+              }
+              window.OzarkDashboard.loadLogs().catch(function () {});
+              if (window.OzarkDashboard.loadTickets) window.OzarkDashboard.loadTickets(true);
+            } else if (state.currentTab === 'features') {
+              if (window.OzarkDashboard.loadFeatures) window.OzarkDashboard.loadFeatures().catch(function () {});
+              if (window.OzarkDashboard.loadPremium) window.OzarkDashboard.loadPremium().catch(function () {});
+              loadGuildConfig().catch(function () {});
+            } else if (state.currentTab === 'user') {
+              window.OzarkDashboard.loadUsers().catch(function () {});
+            } else if (state.currentTab === 'config') {
+              loadGuildConfig().catch(function () {});
+              if (window.OzarkDashboard.reloadAudit) {
+                window.OzarkDashboard.reloadAudit().catch(function () {});
+              }
             }
           }
-        }
         })().catch(function () {
           // ignore
         });
       });
     }
 
-          // Temp voice config
-      var btnDeleteTempVoiceBase = document.getElementById('btnDeleteTempVoiceBase');
-      if (btnDeleteTempVoiceBase) {
-        btnDeleteTempVoiceBase.addEventListener('click', function () {
-          if (!state.tempVoiceBase) return;
-          var idx = state.tempVoiceBase.selectedIndex;
-          if (typeof window.confirm === 'function' && !window.confirm(t('tempvoice_delete_confirm'))) return;
-          if (typeof deleteTempVoiceBaseAt === 'function') {
-            deleteTempVoiceBaseAt(idx);
+    // Temp voice config
+    var btnDeleteTempVoiceBase = document.getElementById('btnDeleteTempVoiceBase');
+    if (btnDeleteTempVoiceBase) {
+      btnDeleteTempVoiceBase.addEventListener('click', function () {
+        if (!state.tempVoiceBase) return;
+        var idx = state.tempVoiceBase.selectedIndex;
+        if (typeof window.confirm === 'function' && !window.confirm(t('tempvoice_delete_confirm'))) return;
+        if (typeof deleteTempVoiceBaseAt === 'function') {
+          deleteTempVoiceBaseAt(idx);
+        }
+      });
+    }
+
+    // Temp voice base channels
+    var btnTempVoiceAddBase = document.getElementById('btnTempVoiceAddBase');
+    if (btnTempVoiceAddBase) {
+      btnTempVoiceAddBase.addEventListener('click', function () {
+        addTempVoiceBaseChannel();
+      });
+    }
+    var baseIdInput = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
+    if (baseIdInput) {
+      // Selecting a voice channel and clicking "Adicionar" adds it to the base list.
+      // Also allow quick-add on change (optional).
+      if (!baseIdInput.dataset.boundTempVoiceAdd) {
+        baseIdInput.dataset.boundTempVoiceAdd = '1';
+        baseIdInput.addEventListener('change', function () {
+          // Do not auto-add if user just cleared it
+          if (String(baseIdInput.value || '').trim()) {
+            // Keep it explicit: only auto-add if there are no bases yet
+            if (
+              !state.tempVoiceBase ||
+              !Array.isArray(state.tempVoiceBase.items) ||
+              state.tempVoiceBase.items.length === 0
+            ) {
+              addTempVoiceBaseChannel();
+            }
           }
         });
       }
+    }
 
+    var btnSaveTempVoice = document.getElementById('btnSaveTempVoice');
+    if (btnSaveTempVoice) {
+      btnSaveTempVoice.addEventListener('click', function () {
+        saveTempVoiceConfig().catch(function () {});
+      });
+    }
 
-      // Temp voice base channels
-      var btnTempVoiceAddBase = document.getElementById('btnTempVoiceAddBase');
-      if (btnTempVoiceAddBase) {
-        btnTempVoiceAddBase.addEventListener('click', function () {
-          addTempVoiceBaseChannel();
-        });
-      }
-      var baseIdInput = document.getElementById('tempVoiceAddBaseSelect') || document.getElementById('tempVoiceBaseId');
-      if (baseIdInput) {
-        // Selecting a voice channel and clicking "Adicionar" adds it to the base list.
-        // Also allow quick-add on change (optional).
-        if (!baseIdInput.dataset.boundTempVoiceAdd) {
-          baseIdInput.dataset.boundTempVoiceAdd = '1';
-          baseIdInput.addEventListener('change', function () {
-            // Do not auto-add if user just cleared it
-            if (String(baseIdInput.value || '').trim()) {
-              // Keep it explicit: only auto-add if there are no bases yet
-              if (!state.tempVoiceBase || !Array.isArray(state.tempVoiceBase.items) || state.tempVoiceBase.items.length === 0) {
-                addTempVoiceBaseChannel();
-              }
-            }
-          });
-        }
-      }
-
-
-      var btnSaveTempVoice = document.getElementById('btnSaveTempVoice');
-      if (btnSaveTempVoice) {
-        btnSaveTempVoice.addEventListener('click', function () {
-          saveTempVoiceConfig().catch(function () {});
-        });
-      }
-
-// Logs controls
+    // Logs controls
     var btnReloadLogs = document.getElementById('btnReloadLogs');
     if (btnReloadLogs) {
       btnReloadLogs.addEventListener('click', function () {
@@ -2828,28 +2979,31 @@ function deleteTempVoiceBaseAt(index) {
       });
     }
 
-	    var logSearchInput = document.getElementById('logSearch');
-	    if (logSearchInput) {
-  var logSearchTimer = null;
+    var logSearchInput = document.getElementById('logSearch');
+    if (logSearchInput) {
+      var logSearchTimer = null;
 
-  function triggerLogsDebounced() {
-    if (logSearchTimer) clearTimeout(logSearchTimer);
-    logSearchTimer = setTimeout(function () {
-      window.OzarkDashboard.loadLogs().catch(function () {});
-    }, 300);
-  }
+      function triggerLogsDebounced() {
+        if (logSearchTimer) clearTimeout(logSearchTimer);
+        logSearchTimer = setTimeout(function () {
+          window.OzarkDashboard.loadLogs().catch(function () {});
+        }, 300);
+      }
 
-  logSearchInput.addEventListener('input', function () {
-    triggerLogsDebounced();
-  });
+      logSearchInput.addEventListener('input', function () {
+        triggerLogsDebounced();
+      });
 
-  logSearchInput.addEventListener('keydown', function (ev) {
-    if (ev.key === 'Enter') {
-      if (logSearchTimer) { clearTimeout(logSearchTimer); logSearchTimer = null; }
-      window.OzarkDashboard.loadLogs().catch(function () {});
+      logSearchInput.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          if (logSearchTimer) {
+            clearTimeout(logSearchTimer);
+            logSearchTimer = null;
+          }
+          window.OzarkDashboard.loadLogs().catch(function () {});
+        }
+      });
     }
-  });
-	}
 
     // Config buttons
     var btnReloadGuildConfig = document.getElementById('btnReloadGuildConfig');
@@ -2884,10 +3038,15 @@ function deleteTempVoiceBaseAt(index) {
 
     // Bind input changes -> mark dirty + switch to "custom"
     var trustInputIds = [
-      'trustBaseInput','trustMinInput','trustMaxInput',
-      'trustWarnPenaltyInput','trustMutePenaltyInput',
-      'trustRegenPerDayInput','trustRegenMaxDaysInput',
-      'trustLowThresholdInput','trustHighThresholdInput'
+      'trustBaseInput',
+      'trustMinInput',
+      'trustMaxInput',
+      'trustWarnPenaltyInput',
+      'trustMutePenaltyInput',
+      'trustRegenPerDayInput',
+      'trustRegenMaxDaysInput',
+      'trustLowThresholdInput',
+      'trustHighThresholdInput'
     ];
     trustInputIds.forEach(function (id) {
       var el = document.getElementById(id);
@@ -2917,7 +3076,6 @@ function deleteTempVoiceBaseAt(index) {
       });
     }
 
-
     if (btnApplyTrustPreset && !btnApplyTrustPreset.dataset.bound) {
       btnApplyTrustPreset.dataset.bound = '1';
       btnApplyTrustPreset.addEventListener('click', function () {
@@ -2943,10 +3101,15 @@ function deleteTempVoiceBaseAt(index) {
             var v = validateTrustCore(core);
             // Clear previous inline errors
             clearInlineErrors([
-              'trustBaseInput','trustMinInput','trustMaxInput',
-              'trustWarnPenaltyInput','trustMutePenaltyInput',
-              'trustRegenPerDayInput','trustRegenMaxDaysInput',
-              'trustLowThresholdInput','trustHighThresholdInput'
+              'trustBaseInput',
+              'trustMinInput',
+              'trustMaxInput',
+              'trustWarnPenaltyInput',
+              'trustMutePenaltyInput',
+              'trustRegenPerDayInput',
+              'trustRegenMaxDaysInput',
+              'trustLowThresholdInput',
+              'trustHighThresholdInput'
             ]);
             if (!v.ok) {
               (v.fields || []).forEach(function (id) {
@@ -2982,7 +3145,7 @@ function deleteTempVoiceBaseAt(index) {
             loadGuildConfig().catch(function () {});
           } catch (e) {
             console.error('Failed to save trust config', e);
-            var msg = (e && e.apiMessage) ? e.apiMessage : (e && e.message ? e.message : t('trust_save_error'));
+            var msg = e && e.apiMessage ? e.apiMessage : e && e.message ? e.message : t('trust_save_error');
             toast(msg, { type: 'error' });
           } finally {
             btnSaveTrustConfig.disabled = false;
@@ -3048,7 +3211,7 @@ function deleteTempVoiceBaseAt(index) {
           try {
             var guildPicker = document.getElementById('guildPicker');
             if (guildPicker) guildPicker.value = g.id;
-          } catch (e) {}
+          } catch {}
 
           (async function () {
             var okScoped = await ensureGuildScopedToken(state.guildId);
@@ -3072,7 +3235,9 @@ function deleteTempVoiceBaseAt(index) {
     function showLogin() {
       if (loginScreen) loginScreen.classList.remove('hidden');
       if (loginError) loginError.textContent = '';
-      try { if (loginDiscordBtn) loginDiscordBtn.focus(); } catch (e) {}
+      try {
+        if (loginDiscordBtn) loginDiscordBtn.focus();
+      } catch {}
     }
 
     function hideLogin() {
@@ -3080,11 +3245,16 @@ function deleteTempVoiceBaseAt(index) {
       if (loginError) loginError.textContent = '';
     }
 
+    uiScreens.showLogin = showLogin;
+    uiScreens.showGuildSelect = showGuildSelect;
+
     // Bind login / invite actions (always, regardless of auth state)
     if (loginDiscordBtn && !loginDiscordBtn.dataset.bound) {
       loginDiscordBtn.dataset.bound = '1';
       loginDiscordBtn.addEventListener('click', function () {
-        try { window.location.href = '/api/auth/discord'; } catch (e) {}
+        try {
+          window.location.href = '/api/auth/discord';
+        } catch {}
       });
     }
 
@@ -3095,13 +3265,15 @@ function deleteTempVoiceBaseAt(index) {
         (async function () {
           try {
             var r = await fetch('/api/public/invite', { method: 'GET' });
-            var j = await r.json().catch(function () { return null; });
+            var j = await r.json().catch(function () {
+              return null;
+            });
             if (j && j.ok && j.url) {
               window.open(j.url, '_blank', 'noopener');
             } else {
               toast(t('add_bot_error'), { type: 'error' });
             }
-          } catch (e) {
+          } catch {
             toast(t('add_bot_error'), { type: 'error' });
           }
         })();
@@ -3120,7 +3292,7 @@ function deleteTempVoiceBaseAt(index) {
             } else {
               toast(t('add_bot_error'), { type: 'error' });
             }
-          } catch (e) {
+          } catch {
             toast(t('add_bot_error'), { type: 'error' });
           }
         })();
@@ -3148,7 +3320,7 @@ function deleteTempVoiceBaseAt(index) {
       }
       document.documentElement.classList.remove('i18n-loading');
     })();
-});
+  });
 
   // Expose key parts on global namespace for future multi-file split
   window.OzarkDashboard.state = state;
@@ -3167,111 +3339,109 @@ function deleteTempVoiceBaseAt(index) {
   window.OzarkDashboard.createLogRow = createLogRow;
 
   // JSON import/export helpers for guild config
-  
-async function exportGuildConfigJson() {
-  if (!state.guildId) return;
-  if (typeof document === 'undefined') return;
 
-  try {
-    const cfg = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/config');
-    const conf = cfg && cfg.config ? cfg.config : {};
+  async function exportGuildConfigJson() {
+    if (!state.guildId) return;
+    if (typeof document === 'undefined') return;
+
+    try {
+      const cfg = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/config');
+      const conf = cfg && cfg.config ? cfg.config : {};
+
+      const payload = {
+        guildId: conf.guildId || state.guildId || null,
+        language: typeof conf.language === 'string' ? conf.language : 'auto',
+        timezone: typeof conf.timezone === 'string' && conf.timezone.trim() ? conf.timezone.trim() : null,
+        logChannelId: conf.logChannelId || null,
+        dashboardLogChannelId: conf.dashboardLogChannelId || null,
+        staffRoleIds: Array.isArray(conf.staffRoleIds) ? conf.staffRoleIds : []
+      };
+
+      const json = JSON.stringify(payload, null, 2);
+
+      const ta = document.getElementById('configJsonExport');
+      if (ta) {
+        ta.value = json;
+      }
+
+      try {
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'rabbit-guild-config-' + (payload.guildId || 'unknown') + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.warn('Unable to trigger automatic JSON download:', e);
+      }
+
+      toast(t('config_saved'), { type: 'success' });
+    } catch (err) {
+      console.error('Failed to export guild config JSON', err);
+      toast(t('config_error_generic'), { type: 'error' });
+    }
+  }
+
+  async function importGuildConfigJson() {
+    if (!state.guildId) return;
+    if (typeof document === 'undefined') return;
+
+    const ta = document.getElementById('configJsonImport');
+    if (!ta || !ta.value.trim()) {
+      toast(t('config_error_generic'), { type: 'error' });
+      return;
+    }
+
+    let parsed = null;
+    try {
+      parsed = JSON.parse(ta.value);
+    } catch (e) {
+      console.error('Invalid JSON for import', e);
+      toast(t('config_error_generic'), { type: 'error' });
+      return;
+    }
 
     const payload = {
-      guildId: conf.guildId || state.guildId || null,
-      language: typeof conf.language === 'string' ? conf.language : 'auto',
-      timezone: (typeof conf.timezone === 'string' && conf.timezone.trim()) ? conf.timezone.trim() : null,
-      logChannelId: conf.logChannelId || null,
-      dashboardLogChannelId: conf.dashboardLogChannelId || null,
-      staffRoleIds: Array.isArray(conf.staffRoleIds) ? conf.staffRoleIds : []
+      logChannelId: parsed.logChannelId || null,
+      dashboardLogChannelId: parsed.dashboardLogChannelId || null,
+      staffRoleIds: Array.isArray(parsed.staffRoleIds) ? parsed.staffRoleIds.filter(Boolean) : []
     };
 
-    const json = JSON.stringify(payload, null, 2);
+    if (typeof parsed.language === 'string') {
+      payload.language = parsed.language;
+    }
+    if (typeof parsed.timezone === 'string') {
+      payload.timezone = parsed.timezone;
+    }
 
-    const ta = document.getElementById('configJsonExport');
-    if (ta) {
-      ta.value = json;
+    if (typeof window.confirm === 'function' && !window.confirm(t('config_import_confirm'))) {
+      return;
     }
 
     try {
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'rabbit-guild-config-' + (payload.guildId || 'unknown') + '.json';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.warn('Unable to trigger automatic JSON download:', e);
+      await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', payload);
+      toast(t('config_saved'), { type: 'success' });
+
+      if (payload.language) {
+        state.guildLanguage = payload.language;
+        await setDashboardLanguage(payload.language);
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, 'timezone')) {
+        state.guildTimezone = payload.timezone;
+      }
+
+      await loadGuildConfig();
+    } catch (err) {
+      console.error('Failed to import guild config JSON', err);
+      toast(t('config_error_save'), { type: 'error' });
     }
-
-    toast(t('config_saved'), { type: 'success' });
-  } catch (err) {
-    console.error('Failed to export guild config JSON', err);
-    toast(t('config_error_generic'), { type: 'error' });
   }
-}
-
-
-async function importGuildConfigJson() {
-  if (!state.guildId) return;
-  if (typeof document === 'undefined') return;
-
-  const ta = document.getElementById('configJsonImport');
-  if (!ta || !ta.value.trim()) {
-    toast(t('config_error_generic'), { type: 'error' });
-    return;
-  }
-
-  let parsed = null;
-  try {
-    parsed = JSON.parse(ta.value);
-  } catch (e) {
-    console.error('Invalid JSON for import', e);
-    toast(t('config_error_generic'), { type: 'error' });
-    return;
-  }
-
-  const payload = {
-    logChannelId: parsed.logChannelId || null,
-    dashboardLogChannelId: parsed.dashboardLogChannelId || null,
-    staffRoleIds: Array.isArray(parsed.staffRoleIds) ? parsed.staffRoleIds.filter(Boolean) : []
-  };
-
-  if (typeof parsed.language === 'string') {
-    payload.language = parsed.language;
-  }
-  if (typeof parsed.timezone === 'string') {
-    payload.timezone = parsed.timezone;
-  }
-
-  if (typeof window.confirm === 'function' && !window.confirm(t('config_import_confirm'))) {
-    return;
-  }
-
-  try {
-    await apiPost('/guilds/' + encodeURIComponent(state.guildId) + '/config', payload);
-    toast(t('config_saved'), { type: 'success' });
-
-    if (payload.language) {
-      state.guildLanguage = payload.language;
-      await setDashboardLanguage(payload.language);
-    }
-    if (Object.prototype.hasOwnProperty.call(payload, 'timezone')) {
-      state.guildTimezone = payload.timezone;
-    }
-
-    await loadGuildConfig();
-  } catch (err) {
-    console.error('Failed to import guild config JSON', err);
-    toast(t('config_error_save'), { type: 'error' });
-  }
-}
 
   window.OzarkDashboard.exportGuildConfigJson = exportGuildConfigJson;
   window.OzarkDashboard.importGuildConfigJson = importGuildConfigJson;
-
 })(); // close main dashboard IIFE
 
 // Wire JSON import/export buttons (safe even if DOMContentLoaded already ran)
@@ -3281,14 +3451,22 @@ async function importGuildConfigJson() {
     var btnExport = document.getElementById('configJsonExportBtn');
     var btnImport = document.getElementById('configJsonImportBtn');
     if (btnExport && window.OzarkDashboard && typeof window.OzarkDashboard.exportGuildConfigJson === 'function') {
-      btnExport.addEventListener('click', function () {
-        window.OzarkDashboard.exportGuildConfigJson().catch(function () {});
-      }, { once: true });
+      btnExport.addEventListener(
+        'click',
+        function () {
+          window.OzarkDashboard.exportGuildConfigJson().catch(function () {});
+        },
+        { once: true }
+      );
     }
     if (btnImport && window.OzarkDashboard && typeof window.OzarkDashboard.importGuildConfigJson === 'function') {
-      btnImport.addEventListener('click', function () {
-        window.OzarkDashboard.importGuildConfigJson().catch(function () {});
-      }, { once: true });
+      btnImport.addEventListener(
+        'click',
+        function () {
+          window.OzarkDashboard.importGuildConfigJson().catch(function () {});
+        },
+        { once: true }
+      );
     }
   }
   if (document.readyState === 'loading') {

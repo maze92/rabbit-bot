@@ -9,10 +9,20 @@ const { getGuild } = require('../../services/guildService');
 const { getBotOwnerIds, parseBotUserIds, getBotRole } = require('../botRoles');
 
 function registerAuthRoutes(ctx) {
-  const { app, express, requireDashboardAuth, jwt, JWT_SECRET, sanitizeText, rateLimit, ADMIN_PERMISSIONS, getClient, sanitizeId } = ctx;
+  const {
+    app,
+    express,
+    requireDashboardAuth,
+    jwt,
+    JWT_SECRET,
+    sanitizeText,
+    rateLimit,
+    ADMIN_PERMISSIONS,
+    getClient,
+    sanitizeId
+  } = ctx;
 
   const crypto = require('crypto');
-  const { fetchMember } = require('../../services/discordFetchCache');
   const botOwnerIds = getBotOwnerIds(process.env.BOT_OWNER_IDS);
   const botAdminIds = parseBotUserIds(process.env.BOT_ADMIN_IDS, 'BOT_ADMIN_IDS');
   const getBotRoleForUser = (userId) => getBotRole(userId, botOwnerIds, botAdminIds);
@@ -21,7 +31,7 @@ function registerAuthRoutes(ctx) {
   // OAuth robustness: avoid duplicate token exchanges, and gracefully handle Discord global rate limits.
   // Note: in-memory only. If you run multiple replicas, consider a shared store (e.g. Redis) to dedupe across instances.
   const oauthCodeCache = new Map(); // code -> { exp, redirectUrl }
-  const oauthInflight = new Map();  // key -> exp
+  const oauthInflight = new Map(); // key -> exp
   // Global backoff for Discord OAuth token exchange 429s (shared IP/app limits).
   // When Discord tells us to wait minutes, do NOT keep retrying inside a single request.
   let oauthTokenCooldownUntilMs = 0;
@@ -29,17 +39,26 @@ function registerAuthRoutes(ctx) {
     const rem = Math.ceil((oauthTokenCooldownUntilMs - Date.now()) / 1000);
     return rem > 0 ? rem : 0;
   }
-  function nowMs() { return Date.now(); }
+  function nowMs() {
+    return Date.now();
+  }
   function sweepMaps() {
     const n = nowMs();
     for (const [k, v] of oauthCodeCache.entries()) if (!v || v.exp <= n) oauthCodeCache.delete(k);
     for (const [k, exp] of oauthInflight.entries()) if (!exp || exp <= n) oauthInflight.delete(k);
   }
-  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+  // Rely on Express `trust proxy` (configured in dashboard.js) instead of reading
+  // X-Forwarded-For directly, which any client can spoof.
   function getClientIp(req) {
-    const xf = (req.headers && (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For'])) || '';
-        const ip = String(Array.isArray(xf) ? xf[0] : xf).split(',')[0].trim() || req.ip || '';
-    return ip;
+    return String((req && req.ip) || '');
+  }
+  function safeEqual(a, b) {
+    const ab = Buffer.from(String(a));
+    const bb = Buffer.from(String(b));
+    return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
   }
   function inflightKey(req, state) {
     return `${getClientIp(req)}:${String(state || '').slice(0, 64)}`;
@@ -56,7 +75,6 @@ function registerAuthRoutes(ctx) {
     }
   }
 
-
   function oauthEnabled() {
     return !!(process.env.DISCORD_OAUTH_CLIENT_ID && process.env.DISCORD_OAUTH_CLIENT_SECRET);
   }
@@ -67,7 +85,7 @@ function registerAuthRoutes(ctx) {
   }
 
   function parseCookies(req) {
-    const header = (req && req.headers && req.headers.cookie) ? String(req.headers.cookie) : '';
+    const header = req && req.headers && req.headers.cookie ? String(req.headers.cookie) : '';
     const out = {};
     header.split(';').forEach((part) => {
       const i = part.indexOf('=');
@@ -75,7 +93,11 @@ function registerAuthRoutes(ctx) {
       const k = part.slice(0, i).trim();
       const v = part.slice(i + 1).trim();
       if (!k) return;
-      try { out[k] = decodeURIComponent(v); } catch { out[k] = v; }
+      try {
+        out[k] = decodeURIComponent(v);
+      } catch {
+        out[k] = v;
+      }
     });
     return out;
   }
@@ -115,11 +137,18 @@ function registerAuthRoutes(ctx) {
   // Discord OAuth2 start
   app.get('/api/auth/discord', (req, res) => {
     if (!oauthEnabled()) {
-      return res.status(400).send('Discord OAuth is not configured. Set DISCORD_OAUTH_CLIENT_ID and DISCORD_OAUTH_CLIENT_SECRET.');
+      return res
+        .status(400)
+        .send('Discord OAuth is not configured. Set DISCORD_OAUTH_CLIENT_ID and DISCORD_OAUTH_CLIENT_SECRET.');
     }
 
     const state = crypto.randomBytes(16).toString('hex');
-    setCookie(res, 'oauth_state', state, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 300 });
+    setCookie(res, 'oauth_state', state, {
+      httpOnly: true,
+      sameSite: 'Lax',
+      secure: isSecureRequest(req),
+      maxAge: 300
+    });
 
     const clientId = process.env.DISCORD_OAUTH_CLIENT_ID;
     const redirectUri = getRedirectUri(req);
@@ -144,12 +173,28 @@ function registerAuthRoutes(ctx) {
       const code = typeof req.query.code === 'string' ? req.query.code : '';
       const returnedState = typeof req.query.state === 'string' ? req.query.state : '';
       sweepMaps();
+
+      // Validate state before anything else: the code cache below holds session
+      // tokens, so it must only be reachable from the browser that started the flow.
+      // The oauth_state cookie is left to expire (5 min) so a duplicate callback from
+      // the same browser still validates.
+      const expectedState = parseCookies(req).oauth_state || '';
+      if (!code || !returnedState || !expectedState || !safeEqual(returnedState, expectedState)) {
+        clearCookie(res, 'oauth_state');
+        return res.status(400).send('Invalid OAuth state. Please try again.');
+      }
+
       // If the callback is invoked twice with the same single-use code, reuse the cached redirect.
       if (code) {
         const cached = oauthCodeCache.get(code);
         if (cached && cached.redirectUrl) {
           if (cached.token) {
-            setCookie(res, 'dash_token', cached.token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
+            setCookie(res, 'dash_token', cached.token, {
+              httpOnly: true,
+              sameSite: 'Lax',
+              secure: isSecureRequest(req),
+              maxAge: 4 * 60 * 60
+            });
           }
           return res.redirect(cached.redirectUrl);
         }
@@ -161,7 +206,12 @@ function registerAuthRoutes(ctx) {
         const cached = code ? oauthCodeCache.get(code) : null;
         if (cached && cached.redirectUrl) {
           if (cached.token) {
-            setCookie(res, 'dash_token', cached.token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
+            setCookie(res, 'dash_token', cached.token, {
+              httpOnly: true,
+              sameSite: 'Lax',
+              secure: isSecureRequest(req),
+              maxAge: 4 * 60 * 60
+            });
           }
           return res.redirect(cached.redirectUrl);
         }
@@ -170,235 +220,255 @@ function registerAuthRoutes(ctx) {
       oauthInflight.set(lk, nowMs() + 15000);
 
       try {
-        const cookies = parseCookies(req);
-      const expectedState = cookies.oauth_state || '';
-      clearCookie(res, 'oauth_state');
+        // Token exchange (tolerant of Discord rate limits).
+        // Rationale: Discord may occasionally apply short-lived global 429s per app/IP.
+        // Previously we bailed out when retry-after > 2s, which blocks first-time logins.
+        const redirectUri = getRedirectUri(req);
+        let tokenJson = null;
+        let tokenRes = null;
 
-      if (!code || !returnedState || !expectedState || returnedState !== expectedState) {
-        return res.status(400).send('Invalid OAuth state. Please try again.');
-      }
-
-// Token exchange (tolerant of Discord rate limits).
-// Rationale: Discord may occasionally apply short-lived global 429s per app/IP.
-// Previously we bailed out when retry-after > 2s, which blocks first-time logins.
-const redirectUri = getRedirectUri(req);
-let tokenJson = null;
-let tokenRes = null;
-
-// If Discord told us to cool down for a long window, don't hammer /oauth2/token.
-const cooldownSec = oauthCooldownRemainingSec();
-if (cooldownSec > 0) {
-  res.setHeader('Retry-After', String(cooldownSec));
-  return res.status(429).send(
-    '<!doctype html><meta charset="utf-8" />' +
-    '<title>Rate limited</title>' +
-    '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
-    '<h2>Discord rate limit reached</h2>' +
-    '<p>O Discord limitou temporariamente pedidos de login (HTTP 429).</p>' +
-    `<p>Tenta novamente daqui a <b>${cooldownSec}</b> segundos.</p>` +
-    '</div>'
-  );
-}
-
-for (let attempt = 0; attempt < 4; attempt++) {
-  tokenRes = await fetch('https://discord.com/api/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: process.env.DISCORD_OAUTH_CLIENT_ID,
-      client_secret: process.env.DISCORD_OAUTH_CLIENT_SECRET,
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: redirectUri
-    })
-  });
-
-  if (tokenRes.status === 429) {
-    const body = await tokenRes.json().catch(() => ({}));
-    const raHeader = tokenRes.headers.get('retry-after');
-    const retryAfterSec = Math.max(
-      0,
-      Number.isFinite(Number(raHeader)) ? Number(raHeader) : 0,
-      Number.isFinite(Number(body && body.retry_after)) ? Number(body.retry_after) : 0
-    );
-
-    // If Discord asks for a long cooldown (minutes), don't spin retries; set a global cooldown.
-    if (retryAfterSec >= 10) {
-      oauthTokenCooldownUntilMs = Date.now() + Math.ceil(retryAfterSec) * 1000;
-      console.warn('[OAuth] Token exchange rate limited (429). retryAfterSec=', retryAfterSec, 'cooldown until', new Date(oauthTokenCooldownUntilMs).toISOString());
-      res.setHeader('Retry-After', String(Math.ceil(retryAfterSec)));
-      return res.status(429).send(
-        '<!doctype html><meta charset="utf-8" />' +
-        '<title>Rate limited</title>' +
-        '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
-        '<h2>Discord rate limit reached</h2>' +
-        '<p>O Discord limitou temporariamente pedidos de login (HTTP 429).</p>' +
-        `<p>Tenta novamente daqui a <b>${Math.ceil(retryAfterSec)}</b> segundos.</p>` +
-        '</div>'
-      );
-    }
-
-    const waitSec = Math.min(9, Math.max(1, Math.ceil(retryAfterSec || 1)));
-    console.warn('[OAuth] Token exchange rate limited (429). retryAfterSec=', retryAfterSec, 'waiting', waitSec, 's');
-    await sleep(waitSec * 1000);
-    continue;
-  }
-
-  tokenJson = await tokenRes.json().catch(() => ({}));
-  break;
-}
-
-if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
-  console.error('[OAuth] Token exchange failed', tokenRes && tokenRes.status, tokenJson);
-  if (tokenRes && tokenRes.status === 429) {
-    // Fall back to a friendly HTML page rather than a raw 429 string.
-    return res.status(429).send(
-      '<!doctype html><meta charset="utf-8" />' +
-      '<title>Rate limited</title>' +
-      '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
-      '<h2>Discord rate limit reached</h2>' +
-      '<p>O Discord limitou temporariamente pedidos de login (HTTP 429). Aguarda alguns segundos e volta a tentar.</p>' +
-      '<p><a href="/api/auth/login">Voltar a iniciar login</a></p>' +
-      '</div>'
-    );
-  }
-  return res.status(400).send('Failed to exchange OAuth code.');
-}
-
-      const accessToken = tokenJson.access_token;
-
-      // Fetch user + guilds, retrying once on 429.
-      let meRes = null;
-      let me = null;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        meRes = await fetch('https://discord.com/api/users/@me', {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (meRes.status === 429) {
-          const ra = Number(meRes.headers.get('retry-after') || 1);
-          await sleep(Math.min(5, Math.max(1, Math.ceil(Number.isFinite(ra) ? ra : 1))) * 1000);
-          continue;
+        // If Discord told us to cool down for a long window, don't hammer /oauth2/token.
+        const cooldownSec = oauthCooldownRemainingSec();
+        if (cooldownSec > 0) {
+          res.setHeader('Retry-After', String(cooldownSec));
+          return res
+            .status(429)
+            .send(
+              '<!doctype html><meta charset="utf-8" />' +
+                '<title>Rate limited</title>' +
+                '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
+                '<h2>Discord rate limit reached</h2>' +
+                '<p>O Discord limitou temporariamente pedidos de login (HTTP 429).</p>' +
+                `<p>Tenta novamente daqui a <b>${cooldownSec}</b> segundos.</p>` +
+                '</div>'
+            );
         }
-        me = await meRes.json().catch(() => ({}));
-        break;
-      }
-      if (!meRes || !meRes.ok || !me || !me.id) {
-        console.error('[OAuth] /users/@me failed', meRes && meRes.status, me);
-        return res.status(400).send('Failed to fetch Discord user.');
-      }
 
-      let guildsRes = null;
-      let guilds = null;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        guildsRes = await fetch('https://discord.com/api/users/@me/guilds', {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (guildsRes.status === 429) {
-          const ra = Number(guildsRes.headers.get('retry-after') || 1);
-          await sleep(Math.min(5, Math.max(1, Math.ceil(Number.isFinite(ra) ? ra : 1))) * 1000);
-          continue;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              client_id: process.env.DISCORD_OAUTH_CLIENT_ID,
+              client_secret: process.env.DISCORD_OAUTH_CLIENT_SECRET,
+              grant_type: 'authorization_code',
+              code,
+              redirect_uri: redirectUri
+            })
+          });
+
+          if (tokenRes.status === 429) {
+            const body = await tokenRes.json().catch(() => ({}));
+            const raHeader = tokenRes.headers.get('retry-after');
+            const retryAfterSec = Math.max(
+              0,
+              Number.isFinite(Number(raHeader)) ? Number(raHeader) : 0,
+              Number.isFinite(Number(body && body.retry_after)) ? Number(body.retry_after) : 0
+            );
+
+            // If Discord asks for a long cooldown (minutes), don't spin retries; set a global cooldown.
+            if (retryAfterSec >= 10) {
+              oauthTokenCooldownUntilMs = Date.now() + Math.ceil(retryAfterSec) * 1000;
+              console.warn(
+                '[OAuth] Token exchange rate limited (429). retryAfterSec=',
+                retryAfterSec,
+                'cooldown until',
+                new Date(oauthTokenCooldownUntilMs).toISOString()
+              );
+              res.setHeader('Retry-After', String(Math.ceil(retryAfterSec)));
+              return res
+                .status(429)
+                .send(
+                  '<!doctype html><meta charset="utf-8" />' +
+                    '<title>Rate limited</title>' +
+                    '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
+                    '<h2>Discord rate limit reached</h2>' +
+                    '<p>O Discord limitou temporariamente pedidos de login (HTTP 429).</p>' +
+                    `<p>Tenta novamente daqui a <b>${Math.ceil(retryAfterSec)}</b> segundos.</p>` +
+                    '</div>'
+                );
+            }
+
+            const waitSec = Math.min(9, Math.max(1, Math.ceil(retryAfterSec || 1)));
+            console.warn(
+              '[OAuth] Token exchange rate limited (429). retryAfterSec=',
+              retryAfterSec,
+              'waiting',
+              waitSec,
+              's'
+            );
+            await sleep(waitSec * 1000);
+            continue;
+          }
+
+          tokenJson = await tokenRes.json().catch(() => ({}));
+          break;
         }
-        guilds = await guildsRes.json().catch(() => ([]));
-        break;
-      }
-      if (!guildsRes || !guildsRes.ok || !Array.isArray(guilds)) {
-        console.error('[OAuth] /users/@me/guilds failed', guildsRes && guildsRes.status, guilds);
-        return res.status(400).send('Failed to fetch Discord guilds.');
-      }
 
-      const client = typeof getClient === 'function' ? getClient() : null;
-      // IMPORTANT: Do NOT depend on the bot guild cache being ready here.
-      // The allow-list is based on Discord OAuth's /users/@me/guilds response.
-      // Bot presence is only enforced later during guild selection.
-      const botGuildIds = client && client.guilds && client.guilds.cache
-        ? Array.from(client.guilds.cache.keys()).map(String)
-        : null;
+        if (!tokenRes || !tokenRes.ok || !tokenJson || !tokenJson.access_token) {
+          console.error('[OAuth] Token exchange failed', tokenRes && tokenRes.status, tokenJson);
+          if (tokenRes && tokenRes.status === 429) {
+            // Fall back to a friendly HTML page rather than a raw 429 string.
+            return res
+              .status(429)
+              .send(
+                '<!doctype html><meta charset="utf-8" />' +
+                  '<title>Rate limited</title>' +
+                  '<div style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto">' +
+                  '<h2>Discord rate limit reached</h2>' +
+                  '<p>O Discord limitou temporariamente pedidos de login (HTTP 429). Aguarda alguns segundos e volta a tentar.</p>' +
+                  '<p><a href="/api/auth/discord">Voltar a iniciar login</a></p>' +
+                  '</div>'
+              );
+          }
+          return res.status(400).send('Failed to exchange OAuth code.');
+        }
 
-// Guild admins see servers they manage; bot admins can select any server
-// where the bot is installed, including servers outside their personal OAuth list.
-const allowedGuilds = isBotAdmin(me.id) && client && client.guilds && client.guilds.cache
-  ? Array.from(client.guilds.cache.values()).map((g) => ({
-      id: String(g.id),
-      name: typeof g.name === 'string' ? g.name : null,
-      icon: typeof g.icon === 'string' ? g.icon : null,
-      owner: false,
-      permissions: '0',
-      botPresent: true
-    })).slice(0, 200)
-  : guilds
-      .filter((g) => g && g.id)
-      .filter((g) => (g.owner === true) || hasAdministratorPermission(g))
-      .map((g) => {
-        const botPresent = Array.isArray(botGuildIds) ? botGuildIds.includes(String(g.id)) : null;
-        return {
-          id: String(g.id),
-          name: typeof g.name === 'string' ? g.name : null,
-          icon: typeof g.icon === 'string' ? g.icon : null,
-          owner: g.owner === true,
-          permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
-          botPresent
-        };
-      })
-      .filter((g) => (g.botPresent === null) ? true : (g.botPresent === true))
-      .slice(0, 200);
+        const accessToken = tokenJson.access_token;
 
-const allowedGuildIds = allowedGuilds.map((g) => g.id);
-const botRole = getBotRoleForUser(me.id);
+        // Fetch user + guilds, retrying once on 429.
+        let meRes = null;
+        let me = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          meRes = await fetch('https://discord.com/api/users/@me', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          if (meRes.status === 429) {
+            const ra = Number(meRes.headers.get('retry-after') || 1);
+            await sleep(Math.min(5, Math.max(1, Math.ceil(Number.isFinite(ra) ? ra : 1))) * 1000);
+            continue;
+          }
+          me = await meRes.json().catch(() => ({}));
+          break;
+        }
+        if (!meRes || !meRes.ok || !me || !me.id) {
+          console.error('[OAuth] /users/@me failed', meRes && meRes.status, me);
+          return res.status(400).send('Failed to fetch Discord user.');
+        }
 
-// Bot operators can use global Premium administration without guild access.
-if (allowedGuildIds.length === 0 && !botRole) {
-  clearCookie(res, 'dash_token');
-  const redirectUrl = `/?oauthError=NO_GUILDS`;
-  oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token: null });
-  return res.redirect(redirectUrl);
-}
+        let guildsRes = null;
+        let guilds = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          guildsRes = await fetch('https://discord.com/api/users/@me/guilds', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          if (guildsRes.status === 429) {
+            const ra = Number(guildsRes.headers.get('retry-after') || 1);
+            await sleep(Math.min(5, Math.max(1, Math.ceil(Number.isFinite(ra) ? ra : 1))) * 1000);
+            continue;
+          }
+          guilds = await guildsRes.json().catch(() => []);
+          break;
+        }
+        if (!guildsRes || !guildsRes.ok || !Array.isArray(guilds)) {
+          console.error('[OAuth] /users/@me/guilds failed', guildsRes && guildsRes.status, guilds);
+          return res.status(400).send('Failed to fetch Discord guilds.');
+        }
 
+        const client = typeof getClient === 'function' ? getClient() : null;
+        // IMPORTANT: Do NOT depend on the bot guild cache being ready here.
+        // The allow-list is based on Discord OAuth's /users/@me/guilds response.
+        // Bot presence is only enforced later during guild selection.
+        const botGuildIds =
+          client && client.guilds && client.guilds.cache ? Array.from(client.guilds.cache.keys()).map(String) : null;
 
-      const safeUsername = sanitizeText(me.username || 'discord', { maxLen: 32, stripHtml: true });
+        // Guild admins see servers they manage; bot admins can select any server
+        // where the bot is installed, including servers outside their personal OAuth list.
+        const allowedGuilds =
+          isBotAdmin(me.id) && client && client.guilds && client.guilds.cache
+            ? Array.from(client.guilds.cache.values())
+                .map((g) => ({
+                  id: String(g.id),
+                  name: typeof g.name === 'string' ? g.name : null,
+                  icon: typeof g.icon === 'string' ? g.icon : null,
+                  owner: false,
+                  permissions: '0',
+                  botPresent: true
+                }))
+                .slice(0, 200)
+            : guilds
+                .filter((g) => g && g.id)
+                .filter((g) => g.owner === true || hasAdministratorPermission(g))
+                .map((g) => {
+                  const botPresent = Array.isArray(botGuildIds) ? botGuildIds.includes(String(g.id)) : null;
+                  return {
+                    id: String(g.id),
+                    name: typeof g.name === 'string' ? g.name : null,
+                    icon: typeof g.icon === 'string' ? g.icon : null,
+                    owner: g.owner === true,
+                    permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
+                    botPresent
+                  };
+                })
+                .filter((g) => (g.botPresent === null ? true : g.botPresent === true))
+                .slice(0, 200);
 
-      // Guild-scoped operations remain protected by the guild access middleware.
-      const perms = botRole ? Object.assign({}, ADMIN_PERMISSIONS || {}, { canManageUsers: true }) : {};
+        const allowedGuildIds = allowedGuilds.map((g) => g.id);
+        const botRole = getBotRoleForUser(me.id);
 
-      const token = jwt.sign(
-        {
-          t: 'oauth',
-          sub: String(me.id),
-          username: safeUsername,
-          role: botRole || 'USER',
-          permissions: perms,
-          allowedGuildIds,
-          allowedGuilds,
-          selectedGuildId: null,
-          profile: 'UNSCOPED'
-        },
-        JWT_SECRET,
-        { expiresIn: '4h' }
-      );
-
-      // Persist token server-side (preferred) so the frontend does not depend on localStorage.
-      // Note: fetch calls are same-origin, so cookies are automatically sent.
-
-      // If the user only has one guild, auto-select it by minting a scoped token.
-      if (allowedGuildIds.length === 1) {
-        const scoped = await mintScopedToken({
-          userId: String(me.id),
-          username: safeUsername,
-          allowedGuildIds,
-          allowedGuilds,
-          guildId: allowedGuildIds[0]
-        }).catch(() => null);
-        if (scoped) {
-          setCookie(res, 'dash_token', scoped, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
-          const redirectUrl = `/?selectGuild=0`;
-          oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token: scoped });
+        // Bot operators can use global Premium administration without guild access.
+        if (allowedGuildIds.length === 0 && !botRole) {
+          clearCookie(res, 'dash_token');
+          const redirectUrl = `/?oauthError=NO_GUILDS`;
+          oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token: null });
           return res.redirect(redirectUrl);
         }
-      }
 
-      setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
-      const redirectUrl = `/?selectGuild=1`;
-      oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token });
-      return res.redirect(redirectUrl);
+        const safeUsername = sanitizeText(me.username || 'discord', { maxLen: 32, stripHtml: true });
+
+        // Guild-scoped operations remain protected by the guild access middleware.
+        const perms = botRole ? Object.assign({}, ADMIN_PERMISSIONS || {}, { canManageUsers: true }) : {};
+
+        const token = jwt.sign(
+          {
+            t: 'oauth',
+            sub: String(me.id),
+            username: safeUsername,
+            role: botRole || 'USER',
+            permissions: perms,
+            allowedGuildIds,
+            allowedGuilds,
+            selectedGuildId: null,
+            profile: 'UNSCOPED'
+          },
+          JWT_SECRET,
+          { expiresIn: '4h' }
+        );
+
+        // Persist token server-side (preferred) so the frontend does not depend on localStorage.
+        // Note: fetch calls are same-origin, so cookies are automatically sent.
+
+        // If the user only has one guild, auto-select it by minting a scoped token.
+        if (allowedGuildIds.length === 1) {
+          const scoped = await mintScopedToken({
+            userId: String(me.id),
+            username: safeUsername,
+            allowedGuildIds,
+            allowedGuilds,
+            guildId: allowedGuildIds[0]
+          }).catch(() => null);
+          if (scoped) {
+            setCookie(res, 'dash_token', scoped, {
+              httpOnly: true,
+              sameSite: 'Lax',
+              secure: isSecureRequest(req),
+              maxAge: 4 * 60 * 60
+            });
+            const redirectUrl = `/?selectGuild=0`;
+            oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token: scoped });
+            return res.redirect(redirectUrl);
+          }
+        }
+
+        setCookie(res, 'dash_token', token, {
+          httpOnly: true,
+          sameSite: 'Lax',
+          secure: isSecureRequest(req),
+          maxAge: 4 * 60 * 60
+        });
+        const redirectUrl = `/?selectGuild=1`;
+        oauthCodeCache.set(code, { exp: nowMs() + 180000, redirectUrl, token });
+        return res.redirect(redirectUrl);
       } finally {
         oauthInflight.delete(lk);
       }
@@ -433,7 +503,7 @@ if (allowedGuildIds.length === 0 && !botRole) {
     const profile = botRole || 'GUILD_ADMIN';
     const role = profile;
 
-    const perms = Object.assign({}, (ADMIN_PERMISSIONS || {}), { canManageUsers: botAdmin });
+    const perms = Object.assign({}, ADMIN_PERMISSIONS || {}, { canManageUsers: botAdmin });
 
     return jwt.sign(
       {
@@ -493,8 +563,13 @@ if (allowedGuildIds.length === 0 && !botRole) {
       }
 
       // Persist server-side cookie so the UI continues to work even if storage is blocked.
-      setCookie(res, 'dash_token', token, { httpOnly: true, sameSite: 'Lax', secure: isSecureRequest(req), maxAge: 4 * 60 * 60 });
-      return res.json({ ok: true, token });
+      setCookie(res, 'dash_token', token, {
+        httpOnly: true,
+        sameSite: 'Lax',
+        secure: isSecureRequest(req),
+        maxAge: 4 * 60 * 60
+      });
+      return res.json({ ok: true });
     } catch (err) {
       console.error('[OAuth] select-guild error', err);
       return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });

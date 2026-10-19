@@ -17,11 +17,7 @@ async function recordMemberEvent(guildId, field) {
   try {
     const MemberStat = require('../database/models/MemberStat');
     const date = new Date().toISOString().slice(0, 10);
-    await MemberStat.updateOne(
-      { guildId, date },
-      { $inc: { [field]: 1 } },
-      { upsert: true }
-    ).exec();
+    await MemberStat.updateOne({ guildId, date }, { $inc: { [field]: 1 } }, { upsert: true }).exec();
   } catch (err) {
     console.warn('[memberStats] Falha ao registar evento:', err?.message || err);
   }

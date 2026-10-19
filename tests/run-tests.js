@@ -49,7 +49,6 @@ function loadLocale(rel) {
   const m = code.match(/=\s*(\{[\s\S]*\});?/);
   if (!m) return null;
   try {
-    // eslint-disable-next-line no-eval
     return eval('(' + m[1] + ')');
   } catch {
     return null;
@@ -64,11 +63,13 @@ if (!pt || !en) {
   const ptKeys = Object.keys(pt).sort();
   const enKeys = Object.keys(en).sort();
 
-  const missingInEn = ptKeys.filter(k => !enKeys.includes(k));
-  const missingInPt = enKeys.filter(k => !ptKeys.includes(k));
+  const missingInEn = ptKeys.filter((k) => !enKeys.includes(k));
+  const missingInPt = enKeys.filter((k) => !ptKeys.includes(k));
 
-  if (missingInEn.length) fail(`Missing EN keys: ${missingInEn.slice(0, 20).join(', ')}${missingInEn.length > 20 ? '…' : ''}`);
-  if (missingInPt.length) fail(`Missing PT keys: ${missingInPt.slice(0, 20).join(', ')}${missingInPt.length > 20 ? '…' : ''}`);
+  if (missingInEn.length)
+    fail(`Missing EN keys: ${missingInEn.slice(0, 20).join(', ')}${missingInEn.length > 20 ? '…' : ''}`);
+  if (missingInPt.length)
+    fail(`Missing PT keys: ${missingInPt.slice(0, 20).join(', ')}${missingInPt.length > 20 ? '…' : ''}`);
 
   if (!process.exitCode) ok('i18n keys parity (pt/en)');
 }

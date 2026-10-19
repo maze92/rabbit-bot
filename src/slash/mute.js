@@ -30,10 +30,7 @@ module.exports = async function muteSlash(client, interaction) {
 
     const channelPerms = interaction.channel?.permissionsFor?.(botMember);
     if (!channelPerms?.has(PermissionsBitField.Flags.ModerateMembers)) {
-      return replyEphemeral(
-        interaction,
-        await tContext(interaction, 'common.missingBotPerm', 'Moderate Members')
-      );
+      return replyEphemeral(interaction, await tContext(interaction, 'common.missingBotPerm', 'Moderate Members'));
     }
 
     const targetUser = interaction.options.getUser('user', true);
@@ -61,13 +58,9 @@ module.exports = async function muteSlash(client, interaction) {
     }
 
     const reason =
-      (interaction.options.getString('reason') || '').trim() ||
-      await tContext(interaction, 'common.noReason');
+      (interaction.options.getString('reason') || '').trim() || (await tContext(interaction, 'common.noReason'));
 
-    await target.timeout(
-      durationMs,
-      `Muted by ${interaction.user.tag}: ${reason}`
-    );
+    await target.timeout(durationMs, `Muted by ${interaction.user.tag}: ${reason}`);
 
     let dbUser = null;
     try {
@@ -111,10 +104,6 @@ module.exports = async function muteSlash(client, interaction) {
     );
   } catch (err) {
     console.error('[slash/mute] Error:', err);
-    return safeReply(
-      interaction,
-      { content: await tContext(interaction, 'mute.failed') },
-      { ephemeral: true }
-    );
+    return safeReply(interaction, { content: await tContext(interaction, 'mute.failed') }, { ephemeral: true });
   }
 };

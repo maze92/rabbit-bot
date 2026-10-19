@@ -9,8 +9,12 @@ test('ticket management routes do not require a Premium license', () => {
     if (next) next();
   };
   const app = {
-    get(path, ...handlers) { routes.set('GET ' + path, handlers); },
-    post(path, ...handlers) { routes.set('POST ' + path, handlers); }
+    get(path, ...handlers) {
+      routes.set('GET ' + path, handlers);
+    },
+    post(path, ...handlers) {
+      routes.set('POST ' + path, handlers);
+    }
   };
 
   registerTicketsRoutes({

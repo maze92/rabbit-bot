@@ -50,26 +50,23 @@ async function handleInfractionAutomation(opts) {
       return;
     }
 
-    const threshold = typeof autoMuteCfg.warnsToMute === 'number'
-      ? autoMuteCfg.warnsToMute
-      : 3;
+    const threshold = typeof autoMuteCfg.warnsToMute === 'number' ? autoMuteCfg.warnsToMute : 3;
 
     if (!threshold || warnsCount < threshold) {
       return;
     }
 
     // Base de duração configurada
-    const baseDurationMs =
-      typeof autoMuteCfg.muteDurationMs === 'number'
-        ? autoMuteCfg.muteDurationMs
-        : 10 * 60 * 1000; // 10 minutos por omissão
+    const baseDurationMs = typeof autoMuteCfg.muteDurationMs === 'number' ? autoMuteCfg.muteDurationMs : 10 * 60 * 1000; // 10 minutos por omissão
 
     // Duração efetiva calculada com o mesmo helper usado na dashboard (getEffectiveMuteDuration)
     const trustCfg = getTrustConfig();
     const trustValue =
       trustUser && typeof trustUser.trust === 'number'
         ? trustUser.trust
-        : (typeof trustCfg.base === 'number' ? trustCfg.base : 0);
+        : typeof trustCfg.base === 'number'
+          ? trustCfg.base
+          : 0;
 
     const durationMs = getEffectiveMuteDuration(baseDurationMs, trustCfg, trustValue);
 
@@ -122,10 +119,10 @@ async function handleInfractionAutomation(opts) {
         user,
         moderator || client.user,
         casePrefix +
-          await tContext(guild, 'log.actions.automodMute', {
+          (await tContext(guild, 'log.actions.automodMute', {
             minutes: mins,
             trustAfter: 'N/A'
-          }),
+          })),
         guild
       ).catch(() => null);
     } catch {

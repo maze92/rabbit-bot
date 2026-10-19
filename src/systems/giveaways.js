@@ -26,9 +26,10 @@ let scheduler = null;
 // "(Steam) Key Giveaway", "Steam Key Giveaway" ou "(Beta) Steam Key Giveaway".
 // O embed deve mostrar apenas o nome do jogo, por isso removemos esses sufixos
 // (e prefixos de plataforma) de forma iterativa até o título estabilizar.
-const TITLE_SUFFIX_PAREN_RE = /[\s\-–—:|]*[\[\(]\s*(steam(\s*key)?|epic\s*games?|ubisoft|uplay|dlc|beta|early\s*access|playtest|key|giveaway)\s*[\]\)]\s*$/i;
+const TITLE_SUFFIX_PAREN_RE =
+  /[\s\-–—:|]*[[(]\s*(steam(\s*key)?|epic\s*games?|ubisoft|uplay|dlc|beta|early\s*access|playtest|key|giveaway)\s*[\])]\s*$/i;
 const TITLE_SUFFIX_WORD_RE = /[\s\-–—:|]*\b(steam(\s*key)?|epic\s*games?|ubisoft|uplay|key|giveaway)\s*$/i;
-const TITLE_PREFIX_RE = /^\s*[\[\(]?\s*(steam(\s*key)?|epic\s*games?|ubisoft|uplay)\s*[\]\)]?\s*[:\-–—|]*\s*/i;
+const TITLE_PREFIX_RE = /^\s*[[(]?\s*(steam(\s*key)?|epic\s*games?|ubisoft|uplay)\s*[\])]?\s*[:\-–—|]*\s*/i;
 
 function cleanTitle(title) {
   if (!title) return 'Giveaway';
@@ -41,7 +42,10 @@ function cleanTitle(title) {
   } while (s && s !== prev);
 
   s = s.replace(TITLE_PREFIX_RE, '').trim();
-  s = s.replace(/^[\s\-–—:|]+|[\s\-–—:|]+$/g, '').replace(/\s+/g, ' ').trim();
+  s = s
+    .replace(/^[\s\-–—:|]+|[\s\-–—:|]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   return s || 'Giveaway';
 }
@@ -75,11 +79,13 @@ function toIso(msOrDate) {
 function normalizeImageUrl(url) {
   const u = String(url || '').trim();
   if (!u || u === 'N/A') return '';
-  return u.startsWith('http://') ? ('https://' + u.slice('http://'.length)) : u;
+  return u.startsWith('http://') ? 'https://' + u.slice('http://'.length) : u;
 }
 
 function platformApiParam(plat) {
-  const p = String(plat || '').toLowerCase().trim();
+  const p = String(plat || '')
+    .toLowerCase()
+    .trim();
   if (!p) return null;
   if (p.includes('steam')) return 'steam';
   if (p.includes('epic')) return 'epic-games-store';
@@ -144,8 +150,7 @@ function makeEmbed(g, platform, baseUrl) {
   const freeLine = `**Free** until ${endUnix ? `<t:${endUnix}:d>` : endDate}`;
   const links = buildLinks(g, platform);
 
-  const description = [worth, freeLine].filter(Boolean).join(' ') +
-    (links ? `\n\n${links}` : '');
+  const description = [worth, freeLine].filter(Boolean).join(' ') + (links ? `\n\n${links}` : '');
 
   const embed = new EmbedBuilder()
     .setTitle(title)
@@ -187,9 +192,7 @@ function parseRetryAfterMs(res) {
 
 function effectivePollMs(gcfg) {
   const sec = Number(gcfg?.pollIntervalSeconds ?? 60);
-  const safe = Number.isFinite(sec)
-    ? Math.max(MIN_POLL_SECONDS, Math.min(MAX_POLL_SECONDS, sec))
-    : MIN_POLL_SECONDS;
+  const safe = Number.isFinite(sec) ? Math.max(MIN_POLL_SECONDS, Math.min(MAX_POLL_SECONDS, sec)) : MIN_POLL_SECONDS;
   return safe * 1000;
 }
 
@@ -279,8 +282,7 @@ function canPostToChannel(channel, client) {
   try {
     const perms = channel.permissionsFor?.(client.user);
     if (!perms) return false;
-    return perms.has(PermissionsBitField.Flags.SendMessages)
-      && perms.has(PermissionsBitField.Flags.EmbedLinks);
+    return perms.has(PermissionsBitField.Flags.SendMessages) && perms.has(PermissionsBitField.Flags.EmbedLinks);
   } catch {
     return false;
   }
@@ -350,9 +352,7 @@ async function processGuild(client, cfg, { force = false } = {}) {
       return { skipped: true, reason: 'bad_channel' };
     }
 
-    const platforms = Array.isArray(gcfg.platforms) && gcfg.platforms.length
-      ? gcfg.platforms
-      : ['steam'];
+    const platforms = Array.isArray(gcfg.platforms) && gcfg.platforms.length ? gcfg.platforms : ['steam'];
     const maxPerCycle = effectiveMaxPerCycle(gcfg);
 
     const sentThisCycle = new Set();

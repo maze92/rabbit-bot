@@ -9,7 +9,6 @@
   const state = D.state;
   const apiGet = D.apiGet;
   const apiPost = D.apiPost;
-  const apiPatch = D.apiPatch;
   const toast = D.toast;
   const t = D.t;
   const escapeHtml = D.escapeHtml;
@@ -23,202 +22,191 @@
   function getGuildParam() {
     if (!state.guildId) return '';
     return '?guildId=' + encodeURIComponent(state.guildId);
-
   }
 
   function makeStatusKey(obj) {
-  // Key used to correlate a feed configuration with its status entry.
-  // We need to support both:
-  //  - feed objects from /api/gamenews/feeds   -> { name, feedUrl, channelId }
-  //  - status objects from /api/gamenews-status -> { feedName, feedUrl, channelId }
-  if (!obj) return '';
-  let feedUrl = '';
-  let channelId = '';
-  let name = '';
+    // Key used to correlate a feed configuration with its status entry.
+    // We need to support both:
+    //  - feed objects from /api/gamenews/feeds   -> { name, feedUrl, channelId }
+    //  - status objects from /api/gamenews-status -> { feedName, feedUrl, channelId }
+    if (!obj) return '';
+    let feedUrl = '';
+    let channelId = '';
+    let name = '';
 
-  try {
-    // Some callers use feedUrl, others still expose the DB field as "feed".
-    feedUrl = (
-      obj.feedUrl != null
-        ? String(obj.feedUrl)
-        : obj.feed != null
-          ? String(obj.feed)
-          : ''
-    ).trim();
-  } catch (e) {}
-  try {
-    channelId = (obj.channelId != null ? String(obj.channelId) : '').trim();
-  } catch (e) {}
-  try {
-    // Prefer "name", but fall back to "feedName" (used by status payloads).
-    name =
-      obj.name != null
-        ? String(obj.name)
-        : obj.feedName != null
-          ? String(obj.feedName)
-          : '';
-  } catch (e) {}
+    try {
+      // Some callers use feedUrl, others still expose the DB field as "feed".
+      feedUrl = (obj.feedUrl != null ? String(obj.feedUrl) : obj.feed != null ? String(obj.feed) : '').trim();
+    } catch {}
+    try {
+      channelId = (obj.channelId != null ? String(obj.channelId) : '').trim();
+    } catch {}
+    try {
+      // Prefer "name", but fall back to "feedName" (used by status payloads).
+      name = obj.name != null ? String(obj.name) : obj.feedName != null ? String(obj.feedName) : '';
+    } catch {}
 
-  return JSON.stringify({
-    feedUrl,
-    channelId,
-    name
-  });
-}
-
-
-    function buildStatusIndex(items) {
-      const idx = {};
-      if (!Array.isArray(items)) return idx;
-      items.forEach(function (it) {
-        if (!it) return;
-        const key = makeStatusKey(it);
-        if (key) idx[key] = it;
-      });
-      return idx;
-    }
-
-function formatDateTimeShort(value) {
-  if (!value) return '';
-  try {
-    if (D && typeof D.formatDateTime === 'function') {
-      return D.formatDateTime(value);
-    }
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleString();
-  } catch (e) {
-    return '';
-  }
-}
-
-function formatIntervalMinutes(ms) {
-  if (!ms || typeof ms !== 'number' || !Number.isFinite(ms) || ms <= 0) return '';
-  const mins = ms / 60000;
-  if (Number.isInteger(mins)) return String(mins);
-  return String(Math.round(mins * 10) / 10);
-}
-
-
-function buildChannelOptions(channels, selectedId, allowNone) {
-  const list = Array.isArray(channels) ? channels : [];
-  const seen = new Set();
-  let html = '';
-  if (allowNone) {
-    html += `<option value="">${escapeHtml(t('common_none_option') || '— None —')}</option>`;
-  }
-  list.forEach(function (ch) {
-    if (!ch || !ch.id) return;
-    const id = String(ch.id);
-    if (seen.has(id)) return;
-    seen.add(id);
-    const name = ch.name ? String(ch.name) : id;
-    const selected = selectedId && String(selectedId) === id ? ' selected' : '';
-    html += `<option value="${escapeHtml(id)}"${selected}>#${escapeHtml(name)} (${escapeHtml(id)})</option>`;
-  });
-
-  // If current selection is not in the list (e.g., missing perms or a different channel type),
-  // keep it selectable so saving doesn't wipe it.
-  if (selectedId && !seen.has(String(selectedId))) {
-    const id = String(selectedId);
-    html += `<option value="${escapeHtml(id)}" selected>${escapeHtml(id)}</option>`;
-  }
-  return html;
-}
-
-
-function normalizeUrlMaybe(value) {
-  if (!value) return '';
-  const v = String(value).trim();
-  if (!v) return '';
-  // If user typed without protocol, assume https.
-  if (!/^https?:\/\//i.test(v) && /^[\w.-]+\.[a-z]{2,}/i.test(v)) {
-    return 'https://' + v;
-  }
-  return v;
-}
-
-// Parse a comma/newline separated string into a clean keyword list.
-function parseKeywordsInput(value) {
-  const raw = Array.isArray(value) ? value : String(value == null ? '' : value).split(/[,\n]/);
-  const out = [];
-  const seen = new Set();
-  raw.forEach(function (item) {
-    const k = String(item == null ? '' : item).trim().toLowerCase();
-    if (!k || k.length > 64) return;
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(k);
-  });
-  return out.slice(0, 50);
-}
-
-// Parse a comma/newline separated string (or array) into a clean list of channel IDs.
-// Accepts raw IDs and Discord mentions like <#123...>; keeps invalid entries so the
-// editor can flag them instead of silently dropping the user's input.
-function parseChannelIdsInput(value) {
-  const raw = Array.isArray(value) ? value : String(value == null ? '' : value).split(/[,\n]/);
-  const out = [];
-  const seen = new Set();
-  raw.forEach(function (item) {
-    const s = String(item == null ? '' : item).trim();
-    if (!s) return;
-    const digits = s.replace(/[^\d]/g, '');
-    const id = digits || s;
-    if (seen.has(id)) return;
-    seen.add(id);
-    out.push(id);
-  });
-  return out.slice(0, 5);
-}
-
-const CHANNEL_ID_RE = /^[0-9]{10,32}$/;
-
-function validateFeedConfig(feed) {
-  const errors = {};
-  const feedUrl = normalizeUrlMaybe(feed && feed.feedUrl);
-  const channelId = (feed && feed.channelId != null ? String(feed.channelId).trim() : '');
-  const maxPerCycleRaw = (feed && feed.maxPerCycle != null ? String(feed.maxPerCycle).trim() : '');
-  if (!feedUrl) {
-    errors.feedUrl = t('gamenews_validation_url_required');
-  } else {
-    // Be permissive: some valid RSS endpoints fail stricter URL parsing.
-    // Backend also validates protocol and rejects whitespace.
-    if (!/^https?:\/\/\S+$/i.test(feedUrl)) {
-      errors.feedUrl = t('gamenews_validation_url_invalid');
-    }
-  }
-  if (!channelId) {
-    errors.channelId = t('gamenews_validation_channel_required');
+    return JSON.stringify({
+      feedUrl,
+      channelId,
+      name
+    });
   }
 
-  if (maxPerCycleRaw) {
-    const n = parseInt(maxPerCycleRaw, 10);
-    if (!Number.isFinite(n) || n < 1 || n > 10) {
-      errors.maxPerCycle = t('gamenews_validation_max_per_cycle_invalid');
+  function buildStatusIndex(items) {
+    const idx = {};
+    if (!Array.isArray(items)) return idx;
+    items.forEach(function (it) {
+      if (!it) return;
+      const key = makeStatusKey(it);
+      if (key) idx[key] = it;
+    });
+    return idx;
+  }
+
+  function formatDateTimeShort(value) {
+    if (!value) return '';
+    try {
+      if (D && typeof D.formatDateTime === 'function') {
+        return D.formatDateTime(value);
+      }
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleString();
+    } catch {
+      return '';
     }
   }
 
-  const extraChannelIds = parseChannelIdsInput(feed && feed.extraChannelIds);
-  if (extraChannelIds.some(function (id) { return !CHANNEL_ID_RE.test(id); })) {
-    errors.extraChannelIds = t('gamenews_validation_extra_channels_invalid');
+  function formatIntervalMinutes(ms) {
+    if (!ms || typeof ms !== 'number' || !Number.isFinite(ms) || ms <= 0) return '';
+    const mins = ms / 60000;
+    if (Number.isInteger(mins)) return String(mins);
+    return String(Math.round(mins * 10) / 10);
   }
-  return { ok: Object.keys(errors).length === 0, errors, normalized: { feedUrl, channelId } };
-}
 
-function setFieldError(el, msg) {
-  if (!el) return;
-  el.textContent = msg || '';
-  el.style.display = msg ? 'block' : 'none';
-}
+  function buildChannelOptions(channels, selectedId, allowNone) {
+    const list = Array.isArray(channels) ? channels : [];
+    const seen = new Set();
+    let html = '';
+    if (allowNone) {
+      html += `<option value="">${escapeHtml(t('common_none_option') || '— None —')}</option>`;
+    }
+    list.forEach(function (ch) {
+      if (!ch || !ch.id) return;
+      const id = String(ch.id);
+      if (seen.has(id)) return;
+      seen.add(id);
+      const name = ch.name ? String(ch.name) : id;
+      const selected = selectedId && String(selectedId) === id ? ' selected' : '';
+      html += `<option value="${escapeHtml(id)}"${selected}>#${escapeHtml(name)} (${escapeHtml(id)})</option>`;
+    });
 
-function setInputError(inputEl, hasError) {
-  if (!inputEl) return;
-  if (hasError) inputEl.classList.add('input-error');
-  else inputEl.classList.remove('input-error');
-}
+    // If current selection is not in the list (e.g., missing perms or a different channel type),
+    // keep it selectable so saving doesn't wipe it.
+    if (selectedId && !seen.has(String(selectedId))) {
+      const id = String(selectedId);
+      html += `<option value="${escapeHtml(id)}" selected>${escapeHtml(id)}</option>`;
+    }
+    return html;
+  }
 
-  
+  function normalizeUrlMaybe(value) {
+    if (!value) return '';
+    const v = String(value).trim();
+    if (!v) return '';
+    // If user typed without protocol, assume https.
+    if (!/^https?:\/\//i.test(v) && /^[\w.-]+\.[a-z]{2,}/i.test(v)) {
+      return 'https://' + v;
+    }
+    return v;
+  }
+
+  // Parse a comma/newline separated string into a clean keyword list.
+  function parseKeywordsInput(value) {
+    const raw = Array.isArray(value) ? value : String(value == null ? '' : value).split(/[,\n]/);
+    const out = [];
+    const seen = new Set();
+    raw.forEach(function (item) {
+      const k = String(item == null ? '' : item)
+        .trim()
+        .toLowerCase();
+      if (!k || k.length > 64) return;
+      if (seen.has(k)) return;
+      seen.add(k);
+      out.push(k);
+    });
+    return out.slice(0, 50);
+  }
+
+  // Parse a comma/newline separated string (or array) into a clean list of channel IDs.
+  // Accepts raw IDs and Discord mentions like <#123...>; keeps invalid entries so the
+  // editor can flag them instead of silently dropping the user's input.
+  function parseChannelIdsInput(value) {
+    const raw = Array.isArray(value) ? value : String(value == null ? '' : value).split(/[,\n]/);
+    const out = [];
+    const seen = new Set();
+    raw.forEach(function (item) {
+      const s = String(item == null ? '' : item).trim();
+      if (!s) return;
+      const digits = s.replace(/[^\d]/g, '');
+      const id = digits || s;
+      if (seen.has(id)) return;
+      seen.add(id);
+      out.push(id);
+    });
+    return out.slice(0, 5);
+  }
+
+  const CHANNEL_ID_RE = /^[0-9]{10,32}$/;
+
+  function validateFeedConfig(feed) {
+    const errors = {};
+    const feedUrl = normalizeUrlMaybe(feed && feed.feedUrl);
+    const channelId = feed && feed.channelId != null ? String(feed.channelId).trim() : '';
+    const maxPerCycleRaw = feed && feed.maxPerCycle != null ? String(feed.maxPerCycle).trim() : '';
+    if (!feedUrl) {
+      errors.feedUrl = t('gamenews_validation_url_required');
+    } else {
+      // Be permissive: some valid RSS endpoints fail stricter URL parsing.
+      // Backend also validates protocol and rejects whitespace.
+      if (!/^https?:\/\/\S+$/i.test(feedUrl)) {
+        errors.feedUrl = t('gamenews_validation_url_invalid');
+      }
+    }
+    if (!channelId) {
+      errors.channelId = t('gamenews_validation_channel_required');
+    }
+
+    if (maxPerCycleRaw) {
+      const n = parseInt(maxPerCycleRaw, 10);
+      if (!Number.isFinite(n) || n < 1 || n > 10) {
+        errors.maxPerCycle = t('gamenews_validation_max_per_cycle_invalid');
+      }
+    }
+
+    const extraChannelIds = parseChannelIdsInput(feed && feed.extraChannelIds);
+    if (
+      extraChannelIds.some(function (id) {
+        return !CHANNEL_ID_RE.test(id);
+      })
+    ) {
+      errors.extraChannelIds = t('gamenews_validation_extra_channels_invalid');
+    }
+    return { ok: Object.keys(errors).length === 0, errors, normalized: { feedUrl, channelId } };
+  }
+
+  function setFieldError(el, msg) {
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  function setInputError(inputEl, hasError) {
+    if (!inputEl) return;
+    if (hasError) inputEl.classList.add('input-error');
+    else inputEl.classList.remove('input-error');
+  }
 
   // ------------------------
   // Dirty-state (unsaved changes) tracking for GameNews editor
@@ -238,12 +226,16 @@ function setInputError(inputEl, hasError) {
   function snapshotFeed(feed) {
     if (!feed) return '';
     const url = normalizeUrlMaybe(feed.feedUrl);
-    const channelId = (feed.channelId != null ? String(feed.channelId).trim() : '');
-    const logChannelId = (feed.logChannelId != null ? String(feed.logChannelId).trim() : '');
+    const channelId = feed.channelId != null ? String(feed.channelId).trim() : '';
+    const logChannelId = feed.logChannelId != null ? String(feed.logChannelId).trim() : '';
     const name = feed.name != null ? String(feed.name).trim() : '';
     const enabled = feed.enabled !== false;
-    const intervalMs = (typeof feed.intervalMs === 'number' && Number.isFinite(feed.intervalMs) && feed.intervalMs > 0) ? Math.round(feed.intervalMs) : null;
-    const maxPerCycle = (typeof feed.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle)) ? Math.round(feed.maxPerCycle) : null;
+    const intervalMs =
+      typeof feed.intervalMs === 'number' && Number.isFinite(feed.intervalMs) && feed.intervalMs > 0
+        ? Math.round(feed.intervalMs)
+        : null;
+    const maxPerCycle =
+      typeof feed.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle) ? Math.round(feed.maxPerCycle) : null;
     const excludeKeywords = parseKeywordsInput(feed.excludeKeywords);
     const extraChannelIds = parseChannelIdsInput(feed.extraChannelIds);
     return JSON.stringify({
@@ -346,7 +338,7 @@ function setInputError(inputEl, hasError) {
     else row.classList.remove('dirty');
   }
 
-// ------------------------
+  // ------------------------
   // Render da lista de feeds
   // ------------------------
 
@@ -410,74 +402,71 @@ function setInputError(inputEl, hasError) {
   // Painel de detalhe do feed
   // ------------------------
 
-  
   function renderGameNewsFeedSkeleton() {
     return `<div class="empty">${escapeHtml(t('loading'))}</div>`;
   }
 
   function selectGameNewsFeedByIndex(idx) {
-      const numericIdx = Number(idx);
-      if (!Number.isInteger(numericIdx) || numericIdx < 0) return;
-      if (!Array.isArray(state.gameNewsFeeds)) return;
+    const numericIdx = Number(idx);
+    if (!Number.isInteger(numericIdx) || numericIdx < 0) return;
+    if (!Array.isArray(state.gameNewsFeeds)) return;
 
-      const prevIdx = state.activeGameNewsFeedIndex;
-      if (typeof prevIdx === 'number' && prevIdx !== numericIdx) {
-        const prevFeed = state.gameNewsFeeds[prevIdx];
-        if (prevFeed && isFeedDirty(prevFeed)) {
-          toast(t('gamenews_unsaved_changes_notice') || 'Tens alterações por guardar noutro feed.', { type: 'warn' });
-        }
+    const prevIdx = state.activeGameNewsFeedIndex;
+    if (typeof prevIdx === 'number' && prevIdx !== numericIdx) {
+      const prevFeed = state.gameNewsFeeds[prevIdx];
+      if (prevFeed && isFeedDirty(prevFeed)) {
+        toast(t('gamenews_unsaved_changes_notice') || 'Tens alterações por guardar noutro feed.', { type: 'warn' });
       }
-
-      const feed = state.gameNewsFeeds[numericIdx];
-      if (!feed) return;
-
-      const listEl = document.getElementById('gamenewsFeedsList');
-      if (listEl) {
-        const rows = listEl.querySelectorAll('.list-item');
-        rows.forEach(function (r) {
-          r.classList.remove('active');
-        });
-        const activeRow = listEl.querySelector(`.list-item[data-index="${numericIdx}"]`);
-        if (activeRow) activeRow.classList.add('active');
-      }
-
-      const detailEl = document.getElementById('gamenewsFeedDetailPanel');
-      state.activeGameNewsFeedIndex = numericIdx;
-      if (detailEl) {
-        try {
-          if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
-            window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', true);
-          }
-        } catch (e) {}
-        detailEl.innerHTML = renderGameNewsFeedSkeleton();
-      }
-
-      if (_gameNewsDetailTimeout) {
-        clearTimeout(_gameNewsDetailTimeout);
-      }
-
-      _gameNewsDetailTimeout = setTimeout(function () {
-        if (!Array.isArray(state.gameNewsFeeds)) return;
-        const currentFeed = state.gameNewsFeeds[numericIdx];
-        if (!currentFeed) return;
-        renderGameNewsFeedDetail(currentFeed);
-        _gameNewsDetailTimeout = null;
-      }, 350);
     }
 
+    const feed = state.gameNewsFeeds[numericIdx];
+    if (!feed) return;
 
+    const listEl = document.getElementById('gamenewsFeedsList');
+    if (listEl) {
+      const rows = listEl.querySelectorAll('.list-item');
+      rows.forEach(function (r) {
+        r.classList.remove('active');
+      });
+      const activeRow = listEl.querySelector(`.list-item[data-index="${numericIdx}"]`);
+      if (activeRow) activeRow.classList.add('active');
+    }
 
-function renderGameNewsFeedDetail(feed) {
+    const detailEl = document.getElementById('gamenewsFeedDetailPanel');
+    state.activeGameNewsFeedIndex = numericIdx;
+    if (detailEl) {
+      try {
+        if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+          window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', true);
+        }
+      } catch {}
+      detailEl.innerHTML = renderGameNewsFeedSkeleton();
+    }
+
+    if (_gameNewsDetailTimeout) {
+      clearTimeout(_gameNewsDetailTimeout);
+    }
+
+    _gameNewsDetailTimeout = setTimeout(function () {
+      if (!Array.isArray(state.gameNewsFeeds)) return;
+      const currentFeed = state.gameNewsFeeds[numericIdx];
+      if (!currentFeed) return;
+      renderGameNewsFeedDetail(currentFeed);
+      _gameNewsDetailTimeout = null;
+    }, 350);
+  }
+
+  function renderGameNewsFeedDetail(feed) {
     const detailEl = document.getElementById('gamenewsFeedDetailPanel');
     if (!detailEl) return;
 
     if (!state.guildId || !feed) {
       detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
-    try {
-      if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
-        window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', false);
-      }
-    } catch (e) {}
+      try {
+        if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
+          window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', false);
+        }
+      } catch {}
       return;
     }
 
@@ -494,10 +483,10 @@ function renderGameNewsFeedDetail(feed) {
     const channelOptionsHtml = buildChannelOptions(channels, channelId, false);
     const logChannelOptionsHtml = buildChannelOptions(channels, logChannelId, true);
 
-    const enabled = feed.enabled !== false;
     const intervalMs = typeof feed.intervalMs === 'number' ? feed.intervalMs : null;
     const intervalMinutes = intervalMs ? formatIntervalMinutes(intervalMs) : '';
-    const maxPerCycle = (typeof feed.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle)) ? feed.maxPerCycle : null;
+    const maxPerCycle =
+      typeof feed.maxPerCycle === 'number' && Number.isFinite(feed.maxPerCycle) ? feed.maxPerCycle : null;
 
     const lastSent = st && st.lastSentAt ? formatDateTimeShort(st.lastSentAt) : '';
     const failCount = st && typeof st.failCount === 'number' ? st.failCount : 0;
@@ -514,9 +503,7 @@ function renderGameNewsFeedDetail(feed) {
     html += '<div class="history-section gamenews-detail-config">';
 
     html += `<h3>${escapeHtml(t('gamenews_detail_config_title'))}</h3>`;
-    html += `<p class="history-hint">${escapeHtml(
-      t('gamenews_detail_config_hint')
-    )}</p>`;
+    html += `<p class="history-hint">${escapeHtml(t('gamenews_detail_config_hint'))}</p>`;
 
     html += '<div class="row gap">';
     html += '<div class="col">';
@@ -537,18 +524,14 @@ function renderGameNewsFeedDetail(feed) {
     <div class="field-error" id="gnErrChannel" style="display:none"></div>`;
     html += '</div>';
     html += '<div class="col">';
-    html += `<label for="gnDetailLogChannel">${escapeHtml(
-      t('gamenews_feed_log_channel_label')
-    )}</label>`;
+    html += `<label for="gnDetailLogChannel">${escapeHtml(t('gamenews_feed_log_channel_label'))}</label>`;
     html += `<select class="input" id="gnDetailLogChannel">${logChannelOptionsHtml}</select>`;
     html += '</div>';
     html += '</div>';
 
     html += '<div class="row gap">';
     html += '<div class="col">';
-    html += `<label for="gnDetailInterval">${escapeHtml(
-      t('gamenews_feed_interval_label')
-    )}</label>`;
+    html += `<label for="gnDetailInterval">${escapeHtml(t('gamenews_feed_interval_label'))}</label>`;
     html += `<input
       type="number"
       min="0"
@@ -559,9 +542,7 @@ function renderGameNewsFeedDetail(feed) {
     >`;
     html += '</div>';
     html += '<div class="col">';
-    html += `<label for="gnDetailMaxPerCycle">${escapeHtml(
-      t('gamenews_feed_max_per_cycle_label')
-    )}</label>`;
+    html += `<label for="gnDetailMaxPerCycle">${escapeHtml(t('gamenews_feed_max_per_cycle_label'))}</label>`;
     html += `<input
       type="number"
       min="1"
@@ -580,9 +561,7 @@ function renderGameNewsFeedDetail(feed) {
     const excludeKeywordsValue = parseKeywordsInput(feed.excludeKeywords).join(', ');
     html += '<div class="row gap">';
     html += '<div class="col">';
-    html += `<label for="gnDetailExcludeKeywords">${escapeHtml(
-      t('gamenews_feed_exclude_keywords_label')
-    )}</label>`;
+    html += `<label for="gnDetailExcludeKeywords">${escapeHtml(t('gamenews_feed_exclude_keywords_label'))}</label>`;
     html += `<input
       type="text"
       class="input"
@@ -590,18 +569,14 @@ function renderGameNewsFeedDetail(feed) {
       value="${escapeHtml(excludeKeywordsValue)}"
       placeholder="${escapeHtml(t('gamenews_feed_exclude_keywords_placeholder'))}"
     >`;
-    html += `<p class="hint mt-1">${escapeHtml(
-      t('gamenews_feed_exclude_keywords_hint')
-    )}</p>`;
+    html += `<p class="hint mt-1">${escapeHtml(t('gamenews_feed_exclude_keywords_hint'))}</p>`;
     html += '</div>';
     html += '</div>';
 
     const extraChannelsValue = parseChannelIdsInput(feed.extraChannelIds).join(', ');
     html += '<div class="row gap">';
     html += '<div class="col">';
-    html += `<label for="gnDetailExtraChannels">${escapeHtml(
-      t('gamenews_feed_extra_channels_label')
-    )}</label>`;
+    html += `<label for="gnDetailExtraChannels">${escapeHtml(t('gamenews_feed_extra_channels_label'))}</label>`;
     html += `<input
       type="text"
       class="input"
@@ -610,14 +585,12 @@ function renderGameNewsFeedDetail(feed) {
       placeholder="${escapeHtml(t('gamenews_feed_extra_channels_placeholder'))}"
     >`;
     html += `<div class="field-error" id="gnErrExtraChannels" style="display:none"></div>`;
-    html += `<p class="hint mt-1">${escapeHtml(
-      t('gamenews_feed_extra_channels_hint')
-    )}</p>`;
+    html += `<p class="hint mt-1">${escapeHtml(t('gamenews_feed_extra_channels_hint'))}</p>`;
     html += '</div>';
     html += '</div>';
 
     html += '</div>'; // /history-section config
-// Secção Ações rápidas (mesmo estilo dos utilizadores)
+    // Secção Ações rápidas (mesmo estilo dos utilizadores)
     html += '<div class="history-section user-actions gamenews-detail-actions">';
     html += `<h3>${escapeHtml(t('gamenews_detail_actions_title') || t('users_actions_title'))}</h3>`;
     html += '<div class="badge-row user-actions-buttons">';
@@ -630,16 +603,12 @@ function renderGameNewsFeedDetail(feed) {
     html += `<div class="history-hint" id="gnDirtyHint" style="display:none"></div>`;
     html += '</div>'; // /history-section actions
 
-
-
-// Secção Estado / histórico
+    // Secção Estado / histórico
     html += '<div class="history-section gamenews-detail-state">';
     html += `<h3>${escapeHtml(t('gamenews_detail_state_title'))}</h3>`;
 
     if (!st) {
-      html += `<div class="empty">${escapeHtml(
-        t('gamenews_detail_state_empty')
-      )}</div>`;
+      html += `<div class="empty">${escapeHtml(t('gamenews_detail_state_empty'))}</div>`;
     } else {
       html += '<div class="row gap">';
       html += `<div class="badge">${escapeHtml(t('gamenews_detail_last_sent'))}: ${
@@ -680,9 +649,7 @@ function renderGameNewsFeedDetail(feed) {
           html += `<h3>${escapeHtml(t('gamenews_detail_stats_title'))}</h3>`;
           html += '<div class="badge-row">';
           recent.forEach(function (e) {
-            html += `<div class="badge">${escapeHtml(e.day)}: ${String(
-              Number(e.count) || 0
-            )}</div>`;
+            html += `<div class="badge">${escapeHtml(e.day)}: ${String(Number(e.count) || 0)}</div>`;
           });
           html += '</div>';
           html += '</div>';
@@ -697,7 +664,7 @@ function renderGameNewsFeedDetail(feed) {
       if (window.OzarkDashboard && typeof window.OzarkDashboard.setPanelLoading === 'function') {
         window.OzarkDashboard.setPanelLoading('gamenewsFeedDetailPanel', false);
       }
-    } catch (e) {}
+    } catch {}
 
     // Ligação inputs -> state.gameNewsFeeds[activeIndex]
     const idx = state.activeGameNewsFeedIndex;
@@ -725,8 +692,8 @@ function renderGameNewsFeedDetail(feed) {
           target.intervalMs = null;
         } else {
           const mins = Number(raw.replace(',', '.'));
-          const MIN = 1;             // 1 minuto
-          const MAX = 7 * 24 * 60;   // 7 dias em minutos
+          const MIN = 1; // 1 minuto
+          const MAX = 7 * 24 * 60; // 7 dias em minutos
 
           if (Number.isFinite(mins) && mins > 0) {
             const clamped = Math.max(MIN, Math.min(MAX, mins));
@@ -764,7 +731,6 @@ function renderGameNewsFeedDetail(feed) {
         target.extraChannelIds = parseChannelIdsInput(extraChEl.value);
       }
 
-
       // Validation + UI (inline)
       const v = validateFeedConfig(target);
       // Keep normalized values (e.g. auto-add https://)
@@ -791,7 +757,7 @@ function renderGameNewsFeedDetail(feed) {
 
       const dirtyHintEl = detailEl.querySelector('#gnDirtyHint');
       if (dirtyHintEl) {
-        const msg = dirty ? (t('gamenews_detail_unsaved') || 'Alterações por guardar neste feed.') : '';
+        const msg = dirty ? t('gamenews_detail_unsaved') || 'Alterações por guardar neste feed.' : '';
         dirtyHintEl.textContent = msg;
         dirtyHintEl.style.display = dirty ? 'block' : 'none';
       }
@@ -800,9 +766,7 @@ function renderGameNewsFeedDetail(feed) {
       if (btnCancel) btnCancel.disabled = !dirty;
 
       updateGameNewsFeedRowByIndex(idx);
-
     }
-
 
     detailEl
       .querySelectorAll(
@@ -825,7 +789,9 @@ function renderGameNewsFeedDetail(feed) {
           syncFromInputs();
           const v = validateFeedConfig(target);
           if (!v.ok) {
-            toast((v.errors && (v.errors.feedUrl || v.errors.channelId)) || t('gamenews_validation_fix_errors'), { type: 'warn' });
+            toast((v.errors && (v.errors.feedUrl || v.errors.channelId)) || t('gamenews_validation_fix_errors'), {
+              type: 'warn'
+            });
             return;
           }
           saveGameNewsFeeds().catch(function (e) {
@@ -838,7 +804,9 @@ function renderGameNewsFeedDetail(feed) {
           const v = validateFeedConfig(target);
           if (!v.ok) {
             target.enabled = prev;
-            toast((v.errors && (v.errors.feedUrl || v.errors.channelId)) || t('gamenews_validation_fix_errors'), { type: 'warn' });
+            toast((v.errors && (v.errors.feedUrl || v.errors.channelId)) || t('gamenews_validation_fix_errors'), {
+              type: 'warn'
+            });
             return;
           }
           saveGameNewsFeeds().catch(function (e) {
@@ -847,7 +815,7 @@ function renderGameNewsFeedDetail(feed) {
         } else if (action === 'cancel') {
           // Reverter alterações locais para o snapshot original (ou defaults se for um feed novo)
           const k = feedKey(target);
-          const orig = (state.gameNewsOriginalByKey && k) ? state.gameNewsOriginalByKey[k] : null;
+          const orig = state.gameNewsOriginalByKey && k ? state.gameNewsOriginalByKey[k] : null;
           if (orig) {
             try {
               const snap = JSON.parse(orig);
@@ -859,7 +827,7 @@ function renderGameNewsFeedDetail(feed) {
               target.intervalMs = typeof snap.intervalMs === 'number' ? snap.intervalMs : null;
               target.maxPerCycle = typeof snap.maxPerCycle === 'number' ? snap.maxPerCycle : null;
               target.excludeKeywords = parseKeywordsInput(snap.excludeKeywords);
-            } catch (e) {
+            } catch {
               // fallback para defaults
               target.name = 'Feed';
               target.feedUrl = '';
@@ -910,7 +878,7 @@ function renderGameNewsFeedDetail(feed) {
   // Guardar feeds na DB
   // ------------------------
 
-    async function saveGameNewsFeeds() {
+  async function saveGameNewsFeeds() {
     if (!state.guildId) return;
 
     const feeds = Array.isArray(state.gameNewsFeeds) ? state.gameNewsFeeds : [];
@@ -924,11 +892,10 @@ function renderGameNewsFeedDetail(feed) {
         const name = f.name || 'Feed';
         let feedUrl = (f.feedUrl != null ? String(f.feedUrl) : '').trim();
         const channelIdRaw = (f.channelId != null ? String(f.channelId) : '').trim();
-        const rawLogChannelId = (f.logChannelId != null ? String(f.logChannelId) : '');
+        const rawLogChannelId = f.logChannelId != null ? String(f.logChannelId) : '';
         const logChannelIdRaw = rawLogChannelId.trim();
         const enabled = f.enabled !== false;
-        const intervalMs =
-          typeof f.intervalMs === 'number' && f.intervalMs > 0 ? f.intervalMs : null;
+        const intervalMs = typeof f.intervalMs === 'number' && f.intervalMs > 0 ? f.intervalMs : null;
         const maxPerCycle =
           typeof f.maxPerCycle === 'number' && Number.isFinite(f.maxPerCycle) ? Math.round(f.maxPerCycle) : null;
 
@@ -977,7 +944,11 @@ function renderGameNewsFeedDetail(feed) {
             return id !== channelId;
           });
 
-        if (extraChannelIds.some(function (id) { return !/^[0-9]{10,32}$/.test(id); })) {
+        if (
+          extraChannelIds.some(function (id) {
+            return !/^[0-9]{10,32}$/.test(id);
+          })
+        ) {
           hadInvalidChannel = true;
           return null;
         }
@@ -1027,7 +998,9 @@ function renderGameNewsFeedDetail(feed) {
         const first = details[0];
         const issue = first && Array.isArray(first.issues) && first.issues.length ? first.issues[0] : null;
         const msg = issue && issue.message ? String(issue.message) : null;
-        toast(msg ? (t('gamenews_error_generic') + ': ' + msg) : ((err && err.apiMessage) || t('gamenews_error_generic')), { type: 'error' });
+        toast(msg ? t('gamenews_error_generic') + ': ' + msg : (err && err.apiMessage) || t('gamenews_error_generic'), {
+          type: 'error'
+        });
       } else {
         toast((err && err.apiMessage) || t('gamenews_error_generic'), { type: 'error' });
       }
@@ -1038,9 +1011,7 @@ function renderGameNewsFeedDetail(feed) {
       toast(t('gamenews_save_success'), { type: 'success' });
       // Atualizar state.gameNewsFeeds com o que vier da DB
       const returnedFeeds =
-        (res && Array.isArray(res.items) && res.items) ||
-        (res && Array.isArray(res.feeds) && res.feeds) ||
-        null;
+        (res && Array.isArray(res.items) && res.items) || (res && Array.isArray(res.feeds) && res.feeds) || null;
 
       if (returnedFeeds) {
         state.gameNewsFeeds = returnedFeeds.slice();
@@ -1059,7 +1030,7 @@ function renderGameNewsFeedDetail(feed) {
     }
   }
 
-// ------------------------
+  // ------------------------
   // Carregar GameNews (lista + estado)
   // ------------------------
 
@@ -1084,53 +1055,55 @@ function renderGameNewsFeedDetail(feed) {
 
     const guildParam = getGuildParam();
 
-    return window.OzarkDashboard.withLoading(function () {
-      return Promise.all([
-        apiGet('/gamenews/feeds' + guildParam),
-        apiGet('/gamenews-status' + guildParam),
-        apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/meta')
-      ]).then(function (results) {
-        const feedsRes = results[0];
-        const statusRes = results[1];
-        const metaRes = results[2];
+    return window.OzarkDashboard.withLoading(
+      function () {
+        return Promise.all([
+          apiGet('/gamenews/feeds' + guildParam),
+          apiGet('/gamenews-status' + guildParam),
+          apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/meta')
+        ]).then(function (results) {
+          const feedsRes = results[0];
+          const statusRes = results[1];
+          const metaRes = results[2];
 
-        // Cache channels list for nicer selectors in the detail panel
-        state.gamenewsChannels = (metaRes && Array.isArray(metaRes.channels)) ? metaRes.channels : [];
+          // Cache channels list for nicer selectors in the detail panel
+          state.gamenewsChannels = metaRes && Array.isArray(metaRes.channels) ? metaRes.channels : [];
 
-        const feeds = (feedsRes && Array.isArray(feedsRes.items) ? feedsRes.items : []).slice();
-        const statusItems = statusRes && Array.isArray(statusRes.items) ? statusRes.items : [];
+          const feeds = (feedsRes && Array.isArray(feedsRes.items) ? feedsRes.items : []).slice();
+          const statusItems = statusRes && Array.isArray(statusRes.items) ? statusRes.items : [];
 
-        state.gameNewsFeeds = feeds;
-        setOriginalForFeeds(feeds);
-        state.gameNewsStatusIndex = buildStatusIndex(statusItems);
-        state.activeGameNewsFeedIndex = null;
+          state.gameNewsFeeds = feeds;
+          setOriginalForFeeds(feeds);
+          state.gameNewsStatusIndex = buildStatusIndex(statusItems);
+          state.activeGameNewsFeedIndex = null;
 
-        renderGameNewsFeedsList(feeds);
+          renderGameNewsFeedsList(feeds);
 
-        // Painel de detalhe: não selecionar automaticamente (só abre ao clicar num feed)
-        if (detailEl) {
-          detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
-        }
-
-      });
-    }, {
-      onStart: function () {
-        listEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
-        if (detailEl) {
-          detailEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
-        }
+          // Painel de detalhe: não selecionar automaticamente (só abre ao clicar num feed)
+          if (detailEl) {
+            detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
+          }
+        });
       },
-      onError: function () {
-        listEl.innerHTML = '';
-        const empty = document.createElement('div');
-        empty.className = 'empty';
-        empty.textContent = t('gamenews_error_generic');
-        listEl.appendChild(empty);
-        if (detailEl) {
-          detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
+      {
+        onStart: function () {
+          listEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
+          if (detailEl) {
+            detailEl.innerHTML = `<div class="empty">${escapeHtml(t('loading'))}</div>`;
+          }
+        },
+        onError: function () {
+          listEl.innerHTML = '';
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = t('gamenews_error_generic');
+          listEl.appendChild(empty);
+          if (detailEl) {
+            detailEl.innerHTML = `<div class="empty">${escapeHtml(t('gamenews_detail_empty'))}</div>`;
+          }
         }
       }
-    });
+    );
   }
 
   // ------------------------

@@ -21,7 +21,6 @@ const guildConfigSchema = new Schema(
     // Canal onde a mensagem de suporte (tickets) será publicada
     ticketThreadChannelId: { type: String, default: null },
 
-
     // Roles de staff específicos por servidor (configurados na dashboard)
     staffRoleIds: {
       type: [String],
@@ -66,9 +65,7 @@ const guildConfigSchema = new Schema(
       categoryId: { type: String, default: null },
       deleteDelaySeconds: { type: Number, default: 10 },
       maxUsersPerRoom: { type: Number, default: null }
-    }
-    ,
-
+    },
     // Giveaways (GamerPower) per guild
     giveaways: {
       enabled: { type: Boolean, default: false },
@@ -204,9 +201,7 @@ const guildConfigSchema = new Schema(
         leavesTemplate: { type: String, default: null }
       }
     }
-
-  }
-,
+  },
   {
     timestamps: true,
     versionKey: false

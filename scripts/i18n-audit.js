@@ -28,7 +28,7 @@ function extractHtmlKeys(html) {
   const keys = new Set();
   const attrs = ['data-i18n', 'data-i18n-placeholder', 'data-i18n-title', 'data-i18n-aria-label'];
   for (const attr of attrs) {
-    const re = new RegExp(`${attr}\\s*=\\s*\"([^\"]+)\"`, 'g');
+    const re = new RegExp(`${attr}\\s*=\\s*"([^"]+)"`, 'g');
     let m;
     while ((m = re.exec(html))) {
       const k = String(m[1] || '').trim();
@@ -40,7 +40,7 @@ function extractHtmlKeys(html) {
 
 function extractJsKeys(jsText) {
   const keys = new Set();
-  const re = /\bt\(\s*['\"]([^'\"]+)['\"]/g;
+  const re = /\bt\(\s*['"]([^'"]+)['"]/g;
   let m;
   while ((m = re.exec(jsText))) {
     const k = String(m[1] || '').trim();
@@ -52,7 +52,7 @@ function extractJsKeys(jsText) {
 function extractLocaleKeys(localeText) {
   // Assumes flat map: 'key': 'value'
   const keys = new Set();
-  const re = /['\"]([^'\"]+)['\"]\s*:/g;
+  const re = /['"]([^'"]+)['"]\s*:/g;
   let m;
   while ((m = re.exec(localeText))) {
     const k = String(m[1] || '').trim();

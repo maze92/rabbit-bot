@@ -7,14 +7,17 @@ function response(body, status = 200) {
 }
 
 function credentials(overrides) {
-  return Object.assign({
-    PAYPAL_ENV: 'sandbox',
-    PAYPAL_CLIENT_ID: 'client-id',
-    PAYPAL_CLIENT_SECRET: 'client-secret',
-    PAYPAL_PREMIUM_PRICE: '6.50',
-    PAYPAL_CURRENCY: 'EUR',
-    PREMIUM_DURATION_DAYS: '30'
-  }, overrides || {});
+  return Object.assign(
+    {
+      PAYPAL_ENV: 'sandbox',
+      PAYPAL_CLIENT_ID: 'client-id',
+      PAYPAL_CLIENT_SECRET: 'client-secret',
+      PAYPAL_PREMIUM_PRICE: '6.50',
+      PAYPAL_CURRENCY: 'EUR',
+      PREMIUM_DURATION_DAYS: '30'
+    },
+    overrides || {}
+  );
 }
 
 test('PayPal checkout creates an order with the configured plan and approval URL', async () => {
@@ -64,9 +67,10 @@ test('PayPal checkout stays disabled without valid server credentials and price'
 });
 
 test('PayPal checkout accepts a valid plan configured outside environment variables', async () => {
-  const fetchImpl = async (url) => url.endsWith('/v1/oauth2/token')
-    ? response({ access_token: 'access-token', expires_in: 3600 })
-    : response({ id: 'ORDER-CUSTOM', links: [{ rel: 'approve', href: 'https://paypal.example/approve' }] });
+  const fetchImpl = async (url) =>
+    url.endsWith('/v1/oauth2/token')
+      ? response({ access_token: 'access-token', expires_in: 3600 })
+      : response({ id: 'ORDER-CUSTOM', links: [{ rel: 'approve', href: 'https://paypal.example/approve' }] });
   const paypal = createPayPalService({
     env: credentials({ PAYPAL_PREMIUM_PRICE: '' }),
     fetchImpl

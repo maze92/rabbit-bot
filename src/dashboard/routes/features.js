@@ -24,12 +24,6 @@ function toInt(v, fallback, min, max) {
 }
 
 // Texto curto com fallback (usado em mensagens e modelos de canais).
-function clampText(v, fallback, max) {
-  const s = typeof v === 'string' ? v.trim() : '';
-  if (!s) return fallback;
-  return s.slice(0, max);
-}
-
 function clampOptionalText(v, max) {
   const s = typeof v === 'string' ? v.trim() : '';
   return s ? s.slice(0, max) : null;
@@ -141,8 +135,14 @@ function cleanFeatureValue(name, raw, sanitizeId) {
         enabled: toBool(src.enabled),
         channelId: id(src.channelId),
         messageId: id(src.messageId),
-        openEmoji: typeof src.openEmoji === 'string' && src.openEmoji.trim() ? src.openEmoji.trim().slice(0, 64) : FEATURE_DEFAULTS.tickets.openEmoji,
-        closeEmoji: typeof src.closeEmoji === 'string' && src.closeEmoji.trim() ? src.closeEmoji.trim().slice(0, 64) : FEATURE_DEFAULTS.tickets.closeEmoji,
+        openEmoji:
+          typeof src.openEmoji === 'string' && src.openEmoji.trim()
+            ? src.openEmoji.trim().slice(0, 64)
+            : FEATURE_DEFAULTS.tickets.openEmoji,
+        closeEmoji:
+          typeof src.closeEmoji === 'string' && src.closeEmoji.trim()
+            ? src.closeEmoji.trim().slice(0, 64)
+            : FEATURE_DEFAULTS.tickets.closeEmoji,
         panelTitle: clampOptionalText(src.panelTitle, 120),
         panelDescription: clampOptionalText(src.panelDescription, 500),
         alreadyOpenMessage: clampOptionalText(src.alreadyOpenMessage, 300),
@@ -196,9 +196,10 @@ async function ensureReactions(message, entries) {
   for (const entry of entries) {
     const reactable = toReactable(entry && entry.emoji);
     if (!reactable) continue;
-    const existing = message && message.reactions && message.reactions.cache
-      ? message.reactions.cache.find((r) => emojiMatches(entry.emoji, r.emoji))
-      : null;
+    const existing =
+      message && message.reactions && message.reactions.cache
+        ? message.reactions.cache.find((r) => emojiMatches(entry.emoji, r.emoji))
+        : null;
     if (existing) continue;
     try {
       await message.react(reactable);
@@ -218,34 +219,37 @@ function registerFeaturesRoutes({
   GuildConfig,
   getClient
 }) {
-  const guardGuildQuery = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildQuery =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'query', key: 'guildId' })
+      : (req, res, next) => next();
 
-  const guardGuildBody = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'body', key: 'guildId' })
-    : (req, res, next) => next();
+  const guardGuildBody =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'body', key: 'guildId' })
+      : (req, res, next) => next();
 
-  const canViewConfig = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
-    : (req, res, next) => next();
+  const canViewConfig =
+    typeof requirePerm === 'function'
+      ? requirePerm({ anyOf: ['canViewConfig', 'canEditConfig'] })
+      : (req, res, next) => next();
 
-  const canEditConfig = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canEditConfig'] })
-    : (req, res, next) => next();
+  const canEditConfig =
+    typeof requirePerm === 'function' ? requirePerm({ anyOf: ['canEditConfig'] }) : (req, res, next) => next();
 
-  const premiumGuardBody = typeof requirePremium === 'function'
-    ? requirePremium({ from: 'body', key: 'guildId' })
-    : (req, res, next) => next();
+  const premiumGuardBody =
+    typeof requirePremium === 'function'
+      ? requirePremium({ from: 'body', key: 'guildId' })
+      : (req, res, next) => next();
 
   const guardPremiumTicketsBody = (req, res, next) => {
-    const feature = String(req.body && req.body.feature || '').trim();
+    const feature = String((req.body && req.body.feature) || '').trim();
     if (feature !== 'tickets') return next();
     return premiumGuardBody(req, res, next);
   };
 
   const guardPremiumTicketsParam = (req, res, next) => {
-    const feature = String(req.params && req.params.key || '').trim();
+    const feature = String((req.params && req.params.key) || '').trim();
     if (feature !== 'tickets') return next();
     return premiumGuardBody(req, res, next);
   };
@@ -276,130 +280,143 @@ function registerFeaturesRoutes({
   });
 
   // POST /api/features  { guildId, feature, value }
-  app.post('/api/features', requireDashboardAuth, canEditConfig, guardGuildBody, guardPremiumTicketsBody, async (req, res) => {
-    try {
-      const guildId = sanitizeId(req.body.guildId || '');
-      if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
-      if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
+  app.post(
+    '/api/features',
+    requireDashboardAuth,
+    canEditConfig,
+    guardGuildBody,
+    guardPremiumTicketsBody,
+    async (req, res) => {
+      try {
+        const guildId = sanitizeId(req.body.guildId || '');
+        if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
+        if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
 
-      const feature = String(req.body.feature || '').trim();
-      if (!FEATURE_NAMES.includes(feature)) {
-        return res.status(400).json({ ok: false, error: 'UNKNOWN_FEATURE' });
-      }
-
-      const value = cleanFeatureValue(feature, req.body.value, sanitizeId);
-      if (!value) return res.status(400).json({ ok: false, error: 'INVALID_FEATURE_VALUE' });
-
-      const client = typeof getClient === 'function' ? getClient() : null;
-
-      // Cargos por reação: os atalhos ":nome:" são resolvidos para "<:nome:id>"
-      // antes de persistir (o Discord só aceita o glifo ou o id do emoji).
-      if ((feature === 'reactionRoles' || feature === 'tickets') && client) {
-        const guild = await client.guilds.fetch(guildId).catch(() => null);
-        if (guild) {
-          const { resolveShortcodes } = require('../../systems/reactionRoles');
-          if (feature === 'reactionRoles' && value.entries.length) {
-            value.entries = resolveShortcodes(value.entries, guild);
-          }
-          if (feature === 'tickets') {
-            const resolved = resolveShortcodes([
-              { emoji: value.openEmoji },
-              { emoji: value.closeEmoji }
-            ], guild);
-            value.openEmoji = resolved[0] && resolved[0].emoji ? resolved[0].emoji : value.openEmoji;
-            value.closeEmoji = resolved[1] && resolved[1].emoji ? resolved[1].emoji : value.closeEmoji;
-          }
+        const feature = String(req.body.feature || '').trim();
+        if (!FEATURE_NAMES.includes(feature)) {
+          return res.status(400).json({ ok: false, error: 'UNKNOWN_FEATURE' });
         }
-      }
 
-      const update = { $set: { [`features.${feature}`]: value } };
-      if (feature === 'tickets') {
-        update.$set.ticketThreadChannelId = value.channelId || null;
-      }
+        const value = cleanFeatureValue(feature, req.body.value, sanitizeId);
+        if (!value) return res.status(400).json({ ok: false, error: 'INVALID_FEATURE_VALUE' });
 
-      await GuildConfig.findOneAndUpdate(
-        { guildId },
-        update,
-        { returnDocument: 'after', upsert: true }
-      ).lean();
+        const client = typeof getClient === 'function' ? getClient() : null;
 
-      invalidateGuildConfig(guildId);
-
-      let outValue = value;
-
-      // Estatísticas do servidor: cria/atualiza os canais ao ligar e remove-os ao desligar.
-      if (feature === 'serverStats') {
-        if (client) {
-          try {
-            const guild = await client.guilds.fetch(guildId).catch(() => null);
-            if (guild) {
-              const { refreshGuild, removeGuild } = require('../../systems/serverStats');
-              if (value.enabled) await refreshGuild(client, guild, { force: true });
-              else await removeGuild(guild, value);
-
-              // Devolver os IDs de canal efetivamente persistidos: evita que a
-              // dashboard os reenvie a null (o que duplicava canais ao "Testar").
-              const fresh = await GuildConfig.findOne({ guildId }).lean();
-              outValue = normalizeFeature(feature, fresh && fresh.features && fresh.features[feature]);
+        // Cargos por reação: os atalhos ":nome:" são resolvidos para "<:nome:id>"
+        // antes de persistir (o Discord só aceita o glifo ou o id do emoji).
+        if ((feature === 'reactionRoles' || feature === 'tickets') && client) {
+          const guild = await client.guilds.fetch(guildId).catch(() => null);
+          if (guild) {
+            const { resolveShortcodes } = require('../../systems/reactionRoles');
+            if (feature === 'reactionRoles' && value.entries.length) {
+              value.entries = resolveShortcodes(value.entries, guild);
             }
-          } catch (err) {
-            console.warn('[Dashboard] serverStats apply failed:', err?.message || err);
+            if (feature === 'tickets') {
+              const resolved = resolveShortcodes([{ emoji: value.openEmoji }, { emoji: value.closeEmoji }], guild);
+              value.openEmoji = resolved[0] && resolved[0].emoji ? resolved[0].emoji : value.openEmoji;
+              value.closeEmoji = resolved[1] && resolved[1].emoji ? resolved[1].emoji : value.closeEmoji;
+            }
           }
         }
-      }
 
-      // Provisionamento do painel de reaction roles (adicionar reações à mensagem).
-      if (feature === 'reactionRoles' && value.enabled && value.channelId && value.messageId && value.entries.length) {
-        if (client) {
-          try {
-            const channel = await client.channels.fetch(value.channelId).catch(() => null);
-            const message = channel ? await channel.messages.fetch(value.messageId).catch(() => null) : null;
-            if (message) await ensureReactions(message, value.entries);
-          } catch (err) {
-            console.warn('[Dashboard] reactionRoles provisioning failed:', err?.message || err);
+        const update = { $set: { [`features.${feature}`]: value } };
+        if (feature === 'tickets') {
+          update.$set.ticketThreadChannelId = value.channelId || null;
+        }
+
+        await GuildConfig.findOneAndUpdate({ guildId }, update, { returnDocument: 'after', upsert: true }).lean();
+
+        invalidateGuildConfig(guildId);
+
+        let outValue = value;
+
+        // Estatísticas do servidor: cria/atualiza os canais ao ligar e remove-os ao desligar.
+        if (feature === 'serverStats') {
+          if (client) {
+            try {
+              const guild = await client.guilds.fetch(guildId).catch(() => null);
+              if (guild) {
+                const { refreshGuild, removeGuild } = require('../../systems/serverStats');
+                if (value.enabled) await refreshGuild(client, guild, { force: true });
+                else await removeGuild(guild, value);
+
+                // Devolver os IDs de canal efetivamente persistidos: evita que a
+                // dashboard os reenvie a null (o que duplicava canais ao "Testar").
+                const fresh = await GuildConfig.findOne({ guildId }).lean();
+                outValue = normalizeFeature(feature, fresh && fresh.features && fresh.features[feature]);
+              }
+            } catch (err) {
+              console.warn('[Dashboard] serverStats apply failed:', err?.message || err);
+            }
           }
         }
-      }
 
-      return res.json({ ok: true, feature, value: outValue });
-    } catch (err) {
-      console.error('[Dashboard] /api/features POST error:', err);
-      return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
+        // Provisionamento do painel de reaction roles (adicionar reações à mensagem).
+        if (
+          feature === 'reactionRoles' &&
+          value.enabled &&
+          value.channelId &&
+          value.messageId &&
+          value.entries.length
+        ) {
+          if (client) {
+            try {
+              const channel = await client.channels.fetch(value.channelId).catch(() => null);
+              const message = channel ? await channel.messages.fetch(value.messageId).catch(() => null) : null;
+              if (message) await ensureReactions(message, value.entries);
+            } catch (err) {
+              console.warn('[Dashboard] reactionRoles provisioning failed:', err?.message || err);
+            }
+          }
+        }
+
+        return res.json({ ok: true, feature, value: outValue });
+      } catch (err) {
+        console.error('[Dashboard] /api/features POST error:', err);
+        return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
+      }
     }
-  });
+  );
 
   // POST /api/features/:key/test  { guildId }
   // Executa uma amostra da funcionalidade no servidor (envia mensagem de teste,
   // atualiza os canais de estatísticas, etc.).
-  app.post('/api/features/:key/test', requireDashboardAuth, canEditConfig, guardGuildBody, guardPremiumTicketsParam, async (req, res) => {
-    try {
-      const guildId = sanitizeId(req.body.guildId || '');
-      const feature = String(req.params.key || '').trim();
-      if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
-      if (!FEATURE_NAMES.includes(feature)) return res.status(400).json({ ok: false, error: 'UNKNOWN_FEATURE' });
-      if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
+  app.post(
+    '/api/features/:key/test',
+    requireDashboardAuth,
+    canEditConfig,
+    guardGuildBody,
+    guardPremiumTicketsParam,
+    async (req, res) => {
+      try {
+        const guildId = sanitizeId(req.body.guildId || '');
+        const feature = String(req.params.key || '').trim();
+        if (!guildId) return res.status(400).json({ ok: false, error: 'GUILD_ID_REQUIRED' });
+        if (!FEATURE_NAMES.includes(feature)) return res.status(400).json({ ok: false, error: 'UNKNOWN_FEATURE' });
+        if (!GuildConfig) return res.status(503).json({ ok: false, error: 'GUILD_CONFIG_MODEL_MISSING' });
 
-      const client = typeof getClient === 'function' ? getClient() : null;
-      if (!client) return res.status(503).json({ ok: false, error: 'CLIENT_UNAVAILABLE' });
+        const client = typeof getClient === 'function' ? getClient() : null;
+        if (!client) return res.status(503).json({ ok: false, error: 'CLIENT_UNAVAILABLE' });
 
-      const guild = await client.guilds.fetch(guildId).catch(() => null);
-      if (!guild) return res.status(400).json({ ok: false, error: 'GUILD_NOT_FOUND' });
+        const guild = await client.guilds.fetch(guildId).catch(() => null);
+        if (!guild) return res.status(400).json({ ok: false, error: 'GUILD_NOT_FOUND' });
 
-      const cfg = await GuildConfig.findOne({ guildId }).lean();
-      const config = normalizeFeature(feature, cfg && cfg.features && cfg.features[feature]);
+        const cfg = await GuildConfig.findOne({ guildId }).lean();
+        const config = normalizeFeature(feature, cfg && cfg.features && cfg.features[feature]);
 
-      const { runFeatureTest } = require('../../systems/featureTests');
-      const result = await runFeatureTest({ client, guild, feature, config });
-      if (!result || result.ok === false) {
-        return res.status(400).json({ ok: false, error: (result && result.error) || 'TEST_FAILED' });
+        const { runFeatureTest } = require('../../systems/featureTests');
+        const result = await runFeatureTest({ client, guild, feature, config });
+        if (!result || result.ok === false) {
+          return res.status(400).json({ ok: false, error: (result && result.error) || 'TEST_FAILED' });
+        }
+
+        return res.json({ ok: true, feature, info: result.info || null, data: result.data || null });
+      } catch (err) {
+        console.error('[Dashboard] /api/features/:key/test error:', err);
+        return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
       }
-
-      return res.json({ ok: true, feature, info: result.info || null, data: result.data || null });
-    } catch (err) {
-      console.error('[Dashboard] /api/features/:key/test error:', err);
-      return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
     }
-  });
+  );
 
   async function publishFeatureMessage(req, res, featureKey) {
     try {
@@ -433,16 +450,30 @@ function registerFeaturesRoutes({
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId(`verify:${current.roleId}`)
-            .setLabel(await getFeatureText({ guildId, feature: 'verification', field: 'buttonLabel', value: current.buttonLabel }))
+            .setLabel(
+              await getFeatureText({
+                guildId,
+                feature: 'verification',
+                field: 'buttonLabel',
+                value: current.buttonLabel
+              })
+            )
             .setStyle(ButtonStyle.Success)
         );
         const embed = new EmbedBuilder()
           .setTitle(await getFeatureText({ guildId, feature: 'verification', field: 'title', value: current.title }))
-          .setDescription(await getFeatureText({ guildId, feature: 'verification', field: 'description', value: current.description }));
+          .setDescription(
+            await getFeatureText({ guildId, feature: 'verification', field: 'description', value: current.description })
+          );
         payload = { embeds: [embed], components: [row] };
       } else {
         const lang = await getGuildLang(guildId).catch(() => 'pt');
-        const panelTitle = await getFeatureText({ guildId, feature: 'tickets', field: 'panelTitle', value: current.panelTitle });
+        const panelTitle = await getFeatureText({
+          guildId,
+          feature: 'tickets',
+          field: 'panelTitle',
+          value: current.panelTitle
+        });
         const panelDescription = await getFeatureText({
           guildId,
           feature: 'tickets',
@@ -493,15 +524,28 @@ function registerFeaturesRoutes({
 
   // POST /api/features/verification/publish  { guildId }
   // Publica (ou reaproveita) a mensagem de verificação com o botão e guarda o messageId.
-  app.post('/api/features/verification/publish', requireDashboardAuth, canEditConfig, guardGuildBody, async (req, res) => {
-    return publishFeatureMessage(req, res, 'verification');
-  });
+  app.post(
+    '/api/features/verification/publish',
+    requireDashboardAuth,
+    canEditConfig,
+    guardGuildBody,
+    async (req, res) => {
+      return publishFeatureMessage(req, res, 'verification');
+    }
+  );
 
   // POST /api/features/tickets/publish  { guildId }
   // Publica a mensagem painel dos tickets e guarda o messageId.
-  app.post('/api/features/tickets/publish', requireDashboardAuth, canEditConfig, guardGuildBody, premiumGuardBody, async (req, res) => {
-    return publishFeatureMessage(req, res, 'tickets');
-  });
+  app.post(
+    '/api/features/tickets/publish',
+    requireDashboardAuth,
+    canEditConfig,
+    guardGuildBody,
+    premiumGuardBody,
+    async (req, res) => {
+      return publishFeatureMessage(req, res, 'tickets');
+    }
+  );
 }
 
 module.exports = { registerFeaturesRoutes };

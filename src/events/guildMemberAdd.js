@@ -12,17 +12,12 @@ module.exports = (client) => {
 
       // Garante que o utilizador existe na DB
       // (não recria se já existir)
-      await warningsService.getOrCreateUser(
-        member.guild.id,
-        member.user.id
-      );
+      await warningsService.getOrCreateUser(member.guild.id, member.user.id);
 
       // Estatísticas: entrada do dia (para os contadores de 7 dias)
       await recordMemberEvent(member.guild.id, 'joins');
 
-      console.log(
-        `👤 User joined: ${member.user.tag} (${member.user.id}) | Guild: ${member.guild.name}`
-      );
+      console.log(`👤 User joined: ${member.user.tag} (${member.user.id}) | Guild: ${member.guild.name}`);
 
       // Mensagem de boas-vindas (feature opcional)
       try {
@@ -32,7 +27,13 @@ module.exports = (client) => {
           const channel = await member.guild.channels.fetch(welcome.channelId).catch(() => null);
           if (channel && typeof channel.send === 'function') {
             const lang = await getGuildLang(member.guild.id);
-            const payload = buildMemberMessage({ config: welcome, guild: member.guild, user: member.user, kind: 'welcome', lang });
+            const payload = buildMemberMessage({
+              config: welcome,
+              guild: member.guild,
+              user: member.user,
+              kind: 'welcome',
+              lang
+            });
             await channel.send(payload).catch((err) => {
               console.warn('[guildMemberAdd] Falha ao enviar boas-vindas:', err?.message || err);
             });
@@ -48,9 +49,7 @@ module.exports = (client) => {
         const { getFeature } = require('../systems/featuresService');
         const cfg = await getFeature(member.guild.id, 'verification');
         if (cfg?.enabled === true) {
-          console.log(
-            `[guildMemberAdd] Verificação ativa: ${member.user.tag} aguarda conclusão.`
-          );
+          console.log(`[guildMemberAdd] Verificação ativa: ${member.user.tag} aguarda conclusão.`);
         }
       } catch (err) {
         console.error('[guildMemberAdd] Failed to read verification feature:', err);

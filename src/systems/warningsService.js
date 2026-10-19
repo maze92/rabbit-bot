@@ -32,22 +32,30 @@ function recordTrustChange(u, reason, beforeTrust, now) {
 }
 
 async function getOrCreateUser(guildId, userId) {
+  const trustCfg = getTrustConfig();
   let u = await User.findOne({ guildId, userId });
 
   if (!u) {
-    const trustCfg = getTrustConfig();
-
-    u = await User.create({
-      guildId,
-      userId,
-      warnings: 0,
-      trust: trustCfg.base,
-      lastInfractionAt: null,
-      lastTrustUpdateAt: new Date()
-    });
+    // Atomic upsert: concurrent events for a new member must not race into
+    // duplicate-key errors.
+    try {
+      u = await User.findOneAndUpdate(
+        { guildId, userId },
+        {
+          $setOnInsert: {
+            warnings: 0,
+            trust: trustCfg.base,
+            lastInfractionAt: null,
+            lastTrustUpdateAt: new Date()
+          }
+        },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+      );
+    } catch (err) {
+      if (!err || err.code !== 11000) throw err;
+      u = await User.findOne({ guildId, userId });
+    }
   }
-
-  const trustCfg = getTrustConfig();
 
   if (!Number.isFinite(u.trust)) u.trust = trustCfg.base;
   if (!u.lastTrustUpdateAt) u.lastTrustUpdateAt = new Date();
@@ -66,30 +74,25 @@ async function getOrCreateUser(guildId, userId) {
 function applyTrustRegen(u, trustCfg, now) {
   if (!trustCfg.enabled) return;
 
-  const last =
-    u.lastInfractionAt ||
-    u.lastTrustUpdateAt ||
-    u.createdAt ||
-    now;
+  // Regen counts from the most recent of: last infraction, last regen.
+  // Using only lastInfractionAt would re-apply the same bonus on every call.
+  const toMs = (d) => (d ? new Date(d).getTime() : 0);
+  let lastMs = Math.max(toMs(u.lastInfractionAt), toMs(u.lastTrustUpdateAt));
+  if (!lastMs) lastMs = toMs(u.createdAt) || now.getTime();
 
-  const diffMs = now.getTime() - last.getTime();
+  const diffMs = now.getTime() - lastMs;
   if (diffMs < DAY_MS) return;
 
-  let days = Math.floor(diffMs / DAY_MS);
-  if (days > trustCfg.regenMaxDays) {
-    days = trustCfg.regenMaxDays;
-  }
+  const elapsedDays = Math.floor(diffMs / DAY_MS);
+  const days = Math.min(elapsedDays, trustCfg.regenMaxDays);
 
   const bonus = days * trustCfg.regenPerDay;
   if (bonus <= 0) return;
 
-  u.trust = clampTrust(
-    u.trust + bonus,
-    trustCfg.min,
-    trustCfg.max
-  );
+  u.trust = clampTrust(u.trust + bonus, trustCfg.min, trustCfg.max);
 
-  u.lastTrustUpdateAt = now;
+  // Keep the partial day so regen stays aligned to whole days.
+  u.lastTrustUpdateAt = elapsedDays > days ? now : new Date(lastMs + days * DAY_MS);
 }
 
 function applyTrustPenalty(u, trustCfg, type, now) {
@@ -100,11 +103,7 @@ function applyTrustPenalty(u, trustCfg, type, now) {
   if (type === 'MUTE') penalty = trustCfg.mutePenalty;
 
   if (penalty > 0) {
-    u.trust = clampTrust(
-      u.trust - penalty,
-      trustCfg.min,
-      trustCfg.max
-    );
+    u.trust = clampTrust(u.trust - penalty, trustCfg.min, trustCfg.max);
   }
 
   u.lastInfractionAt = now;
@@ -116,8 +115,6 @@ async function addWarning(guildId, userId, amount = 1) {
   const now = new Date();
 
   const u = await getOrCreateUser(guildId, userId);
-
-  applyTrustRegen(u, trustCfg, now);
 
   const before = u.trust;
   u.warnings = (u.warnings || 0) + amount;
@@ -135,8 +132,6 @@ async function applyMutePenalty(guildId, userId) {
 
   const u = await getOrCreateUser(guildId, userId);
 
-  applyTrustRegen(u, trustCfg, now);
-
   const before = u.trust;
   applyTrustPenalty(u, trustCfg, 'MUTE', now);
   recordTrustChange(u, 'mute', before, now);
@@ -151,12 +146,9 @@ async function resetUser(guildId, userId, baseTrust, reason) {
 
   u.warnings = 0;
 
-  const minTrust = typeof trustCfg.minTrust === 'number' ? trustCfg.minTrust : -100;
-  const maxTrust = typeof trustCfg.maxTrust === 'number' ? trustCfg.maxTrust : 100;
-  const nextTrust =
-    typeof baseTrust === 'number'
-      ? baseTrust
-      : (typeof trustCfg.base === 'number' ? trustCfg.base : 0);
+  const minTrust = typeof trustCfg.min === 'number' ? trustCfg.min : 0;
+  const maxTrust = typeof trustCfg.max === 'number' ? trustCfg.max : 100;
+  const nextTrust = typeof baseTrust === 'number' ? baseTrust : typeof trustCfg.base === 'number' ? trustCfg.base : 0;
 
   const before = u.trust;
   u.trust = clampTrust(nextTrust, minTrust, maxTrust);
@@ -184,22 +176,14 @@ async function removeInfractionEffects(guildId, userId, type) {
     u.warnings = currentWarnings > 0 ? currentWarnings - 1 : 0;
 
     if (trustCfg.enabled && typeof trustCfg.warnPenalty === 'number') {
-      u.trust = clampTrust(
-        u.trust + trustCfg.warnPenalty,
-        trustCfg.min,
-        trustCfg.max
-      );
+      u.trust = clampTrust(u.trust + trustCfg.warnPenalty, trustCfg.min, trustCfg.max);
     }
     changed = true;
   }
 
   if (type === 'MUTE') {
     if (trustCfg.enabled && typeof trustCfg.mutePenalty === 'number') {
-      u.trust = clampTrust(
-        u.trust + trustCfg.mutePenalty,
-        trustCfg.min,
-        trustCfg.max
-      );
+      u.trust = clampTrust(u.trust + trustCfg.mutePenalty, trustCfg.min, trustCfg.max);
     }
     changed = true;
   }

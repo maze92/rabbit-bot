@@ -1,11 +1,16 @@
 const crypto = require('crypto');
 
 function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch } = {}) {
-  const live = String(env.PAYPAL_ENV || '').trim().toLowerCase() === 'live';
+  const live =
+    String(env.PAYPAL_ENV || '')
+      .trim()
+      .toLowerCase() === 'live';
   const apiBase = live ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
   const priceText = String(env.PAYPAL_PREMIUM_PRICE || '').trim();
   const price = /^\d+(\.\d{1,2})?$/.test(priceText) ? Number(priceText) : NaN;
-  const currency = String(env.PAYPAL_CURRENCY || 'EUR').trim().toUpperCase();
+  const currency = String(env.PAYPAL_CURRENCY || 'EUR')
+    .trim()
+    .toUpperCase();
   const durationText = String(env.PREMIUM_DURATION_DAYS || '30').trim();
   const durationDays = /^\d+$/.test(durationText) ? Number(durationText) : NaN;
   const clientId = String(env.PAYPAL_CLIENT_ID || '').trim();
@@ -24,7 +29,9 @@ function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch }
 
   function normalizePlan(source = getPlan()) {
     const amountText = String(source.amount || '').trim();
-    const currencyCode = String(source.currency || '').trim().toUpperCase();
+    const currencyCode = String(source.currency || '')
+      .trim()
+      .toUpperCase();
     const days = Number(source.durationDays);
     if (!/^\d+(\.\d{1,2})?$/.test(amountText) || Number(amountText) <= 0) return null;
     if (!/^[A-Z]{3}$/.test(currencyCode) || !Number.isInteger(days) || days <= 0 || days > 3660) return null;
@@ -33,10 +40,7 @@ function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch }
 
   function isConfigured(planOverride) {
     const plan = normalizePlan(planOverride || getPlan());
-    return Boolean(
-      clientId && clientSecret && plan &&
-      typeof fetchImpl === 'function'
-    );
+    return Boolean(clientId && clientSecret && plan && typeof fetchImpl === 'function');
   }
 
   function hasCredentials() {
@@ -93,26 +97,33 @@ function createPayPalService({ env = process.env, fetchImpl = globalThis.fetch }
   async function createOrder({ guildId, purchaserDiscordUserId, returnUrl, cancelUrl, plan: planOverride }) {
     const plan = normalizePlan(planOverride || getPlan());
     if (!plan || !isConfigured(plan)) throw new Error('PAYPAL_NOT_CONFIGURED');
-    if (!guildId || !purchaserDiscordUserId || !returnUrl || !cancelUrl) throw new Error('PAYPAL_ORDER_FIELDS_REQUIRED');
+    if (!guildId || !purchaserDiscordUserId || !returnUrl || !cancelUrl)
+      throw new Error('PAYPAL_ORDER_FIELDS_REQUIRED');
 
     const invoiceId = `RB-${crypto.randomUUID()}`;
-    const order = await request('/v2/checkout/orders', {
-      intent: 'CAPTURE',
-      purchase_units: [{
-        reference_id: String(guildId),
-        custom_id: String(purchaserDiscordUserId),
-        invoice_id: invoiceId,
-        description: `Rabbit Bot Premium (${plan.durationDays} days)`,
-        amount: { currency_code: plan.currency, value: plan.amount }
-      }],
-      application_context: {
-        brand_name: 'Rabbit Bot',
-        user_action: 'PAY_NOW',
-        shipping_preference: 'NO_SHIPPING',
-        return_url: returnUrl,
-        cancel_url: cancelUrl
-      }
-    }, invoiceId);
+    const order = await request(
+      '/v2/checkout/orders',
+      {
+        intent: 'CAPTURE',
+        purchase_units: [
+          {
+            reference_id: String(guildId),
+            custom_id: String(purchaserDiscordUserId),
+            invoice_id: invoiceId,
+            description: `Rabbit Bot Premium (${plan.durationDays} days)`,
+            amount: { currency_code: plan.currency, value: plan.amount }
+          }
+        ],
+        application_context: {
+          brand_name: 'Rabbit Bot',
+          user_action: 'PAY_NOW',
+          shipping_preference: 'NO_SHIPPING',
+          return_url: returnUrl,
+          cancel_url: cancelUrl
+        }
+      },
+      invoiceId
+    );
 
     const approval = Array.isArray(order.links)
       ? order.links.find((link) => link && (link.rel === 'approve' || link.rel === 'payer-action'))

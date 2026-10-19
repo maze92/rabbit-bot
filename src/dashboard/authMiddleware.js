@@ -4,7 +4,7 @@
 // Extraído de src/dashboard.js para reduzir o tamanho do entrypoint e permitir
 // testes unitários isolados (ver tests/unit/authMiddleware.test.js).
 
-const { PRIMARY_BOT_OWNER_ID } = require('./botRoles');
+const { isBotOperator } = require('./botRoles');
 
 /**
  * Cria o conjunto de middlewares de auth da dashboard.
@@ -22,9 +22,15 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
     const requireAuth = config.dashboard?.requireAuth;
     const shouldRequire = typeof requireAuth === 'boolean' ? requireAuth : true;
 
-    // Se o requireAuth estiver a false, não aplicamos autenticação no dashboard.
+    // requireAuth=false desativa a autenticação, mas nunca em produção.
     if (!shouldRequire) {
-      authMisconfig = false;
+      if (process.env.NODE_ENV === 'production') {
+        if (!authMisconfig) {
+          console.warn('[Dashboard] dashboard.requireAuth=false is ignored in production.');
+          authMisconfig = true;
+        }
+        return true;
+      }
       return false;
     }
 
@@ -83,9 +89,9 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
       const userId = String(payload.sub);
       return {
         _id: userId,
-        role: userId === PRIMARY_BOT_OWNER_ID ? 'BOT_OWNER' : (payload.role || 'USER'),
+        role: payload.role || 'USER',
         username: payload.username || 'discord',
-        permissions: (payload.permissions && typeof payload.permissions === 'object') ? payload.permissions : {},
+        permissions: payload.permissions && typeof payload.permissions === 'object' ? payload.permissions : {},
         // Optional metadata (available on the unscoped OAuth token) to support
         // stable guild listing and admin detection without additional Discord API calls.
         allowedGuilds: Array.isArray(payload.allowedGuilds)
@@ -97,7 +103,7 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
                 icon: typeof g.icon === 'string' ? g.icon : null,
                 owner: g.owner === true,
                 permissions: typeof g.permissions === 'string' ? g.permissions : String(g.permissions || ''),
-                botPresent: (g.botPresent === true) ? true : (g.botPresent === false ? false : null)
+                botPresent: g.botPresent === true ? true : g.botPresent === false ? false : null
               }))
           : [],
         allowedGuildIds: Array.isArray(payload.allowedGuildIds) ? payload.allowedGuildIds.map(String) : [],
@@ -149,11 +155,23 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
       if (!u) return res.status(401).json({ ok: false, error: 'Unauthorized' });
       if (u.role === 'BOT_ADMIN' || u.role === 'BOT_OWNER') return next();
       if (!needed.length) return next();
-      const perms = (u.permissions && typeof u.permissions === 'object') ? u.permissions : {};
+      const perms = u.permissions && typeof u.permissions === 'object' ? u.permissions : {};
       const allowed = needed.some((k) => perms[k] === true);
       if (!allowed) return res.status(403).json({ ok: false, error: 'NO_PERMISSION' });
       return next();
     };
+  }
+
+  function setRequestValue(req, from, key, value) {
+    if (from === 'query') {
+      // Express 5 exposes req.query as a getter; shadow it with a patched copy.
+      const query = { ...(req.query || {}), [key]: value };
+      Object.defineProperty(req, 'query', { value: query, configurable: true, enumerable: true, writable: true });
+    } else if (from === 'body') {
+      req.body = { ...(req.body || {}), [key]: value };
+    } else {
+      req.params = { ...(req.params || {}), [key]: value };
+    }
   }
 
   // ------------------------------
@@ -187,8 +205,16 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
       }
 
       if (!gid) {
-        if (optional) return next();
-        return res.status(400).json({ ok: false, error: 'Missing guildId' });
+        if (!optional) return res.status(400).json({ ok: false, error: 'Missing guildId' });
+        // Never let an omitted guildId widen the query to every guild:
+        // scoped sessions are pinned to their selected guild, and only bot
+        // operators may run unscoped (cross-guild) queries.
+        if (selected) {
+          setRequestValue(req, from, key, selected);
+          return next();
+        }
+        if (isBotOperator(u)) return next();
+        return res.status(403).json({ ok: false, error: 'NO_GUILD_SELECTED' });
       }
 
       // Enforce scoped token
@@ -198,6 +224,10 @@ function createAuthMiddleware({ jwt, JWT_SECRET, sanitizeId, config }) {
 
       // Enforce allow-list (OAuth callback already restricts to bot-present + owner/admin)
       if (list.length && !list.includes(gid)) {
+        return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
+      }
+
+      if (!selected && !list.length && !isBotOperator(u)) {
         return res.status(403).json({ ok: false, error: 'NO_GUILD_ACCESS' });
       }
 

@@ -41,9 +41,7 @@ async function announceLevelUp(message, level, cfg) {
   const embed = new EmbedBuilder()
     .setAuthor({
       name: author.username || 'Membro',
-      iconURL: typeof author.displayAvatarURL === 'function'
-        ? author.displayAvatarURL({ size: 128 })
-        : undefined
+      iconURL: typeof author.displayAvatarURL === 'function' ? author.displayAvatarURL({ size: 128 }) : undefined
     })
     .setTitle(await tContext(message, 'levels.levelUpTitle'))
     .setDescription(content)
@@ -74,7 +72,9 @@ async function awardXp(_client, message) {
     const now = new Date();
     const cooldownMs = Math.max(0, Number(cfg.cooldownSeconds) || 0) * 1000;
 
-    const existing = await Level.findOne({ guildId, userId }).lean().catch(() => null);
+    const existing = await Level.findOne({ guildId, userId })
+      .lean()
+      .catch(() => null);
 
     // Cooldown anti-farm: dentro do intervalo conta a mensagem mas não dá XP.
     if (existing?.lastXpAt && cooldownMs > 0) {
@@ -113,7 +113,9 @@ async function awardXp(_client, message) {
 async function getRank(guildId, userId) {
   if (!Level) return { xp: 0, level: 0, messages: 0, rank: null };
 
-  const doc = await Level.findOne({ guildId, userId }).lean().catch(() => null);
+  const doc = await Level.findOne({ guildId, userId })
+    .lean()
+    .catch(() => null);
   const xp = Number(doc?.xp) || 0;
   const higher = await Level.countDocuments({ guildId, xp: { $gt: xp } }).catch(() => 0);
 

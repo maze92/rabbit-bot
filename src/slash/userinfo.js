@@ -1,12 +1,12 @@
 // src/slash/userinfo.js
 
-const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 
 const config = require('../config/defaultConfig');
 const warningsService = require('../systems/warningsService');
 const Infraction = require('../database/models/Infraction');
 const logger = require('../systems/logger');
-const { t, tContext, getGuildLang } = require('../systems/i18n');
+const { tContext, getGuildLang } = require('../systems/i18n');
 const { isStaff } = require('./utils');
 const { getTrustConfig, getTrustLabel } = require('../utils/trust');
 const { replyEphemeral, safeReply } = require('../utils/discord');
@@ -102,13 +102,9 @@ module.exports = async function userinfoSlash(client, interaction) {
       }
     }
 
-    const createdAt = user.createdAt
-      ? `<t:${Math.floor(user.createdAt.getTime() / 1000)}:F>`
-      : unknownLabel;
+    const createdAt = user.createdAt ? `<t:${Math.floor(user.createdAt.getTime() / 1000)}:F>` : unknownLabel;
 
-    const joinedAt = member.joinedAt
-      ? `<t:${Math.floor(member.joinedAt.getTime() / 1000)}:F>`
-      : unknownLabel;
+    const joinedAt = member.joinedAt ? `<t:${Math.floor(member.joinedAt.getTime() / 1000)}:F>` : unknownLabel;
 
     let trustFieldValue = await tContext(interaction, 'userinfo.trustDisabled');
     if (trustCfg.enabled) {
@@ -182,6 +178,10 @@ module.exports = async function userinfoSlash(client, interaction) {
     );
   } catch (err) {
     console.error('[slash/userinfo] Error:', err);
-    return safeReply(interaction, { content: await tContext(interaction, 'common.unexpectedError') }, { ephemeral: true });
+    return safeReply(
+      interaction,
+      { content: await tContext(interaction, 'common.unexpectedError') },
+      { ephemeral: true }
+    );
   }
 };

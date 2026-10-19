@@ -30,23 +30,20 @@ function registerLogsRoutes(opts) {
   const buildSearchFilter = (search) => {
     const rx = new RegExp(escapeRegex(search), 'i');
     return {
-      $or: [
-        { title: rx },
-        { description: rx },
-        { 'user.tag': rx },
-        { 'executor.tag': rx }
-      ]
+      $or: [{ title: rx }, { description: rx }, { 'user.tag': rx }, { 'executor.tag': rx }]
     };
   };
 
   // List logs (DB-backed if available, otherwise in-memory)
-  const canViewLogs = typeof requirePerm === 'function'
-    ? requirePerm({ anyOf: ['canViewLogs', 'canActOnCases'] })
-    : (req, res, next) => next();
+  const canViewLogs =
+    typeof requirePerm === 'function'
+      ? requirePerm({ anyOf: ['canViewLogs', 'canActOnCases'] })
+      : (req, res, next) => next();
 
-  const guardGuildQueryOptional = typeof requireGuildAccess === 'function'
-    ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
-    : (req, res, next) => next();
+  const guardGuildQueryOptional =
+    typeof requireGuildAccess === 'function'
+      ? requireGuildAccess({ from: 'query', key: 'guildId', optional: true })
+      : (req, res, next) => next();
 
   app.get('/api/logs', requireDashboardAuth, canViewLogs, guardGuildQueryOptional, async (req, res) => {
     const parsed = LogsQuerySchema.safeParse(req.query || {});
@@ -93,16 +90,12 @@ function registerLogsRoutes(opts) {
         }
 
         if (search) {
-          const s = search.toString();
-          qTickets.$or = [
-            { username: { $regex: s, $options: 'i' } },
-            { userId: { $regex: s, $options: 'i' } }
-          ];
+          const s = escapeRegex(search.toString());
+          qTickets.$or = [{ username: { $regex: s, $options: 'i' } }, { userId: { $regex: s, $options: 'i' } }];
         }
 
         const total = await TicketLog.countDocuments(qTickets);
-        const docs = await TicketLog
-          .find(qTickets)
+        const docs = await TicketLog.find(qTickets)
           .sort({ createdAt: sortDir })
           .skip((page - 1) * limit)
           .limit(limit)
@@ -129,9 +122,7 @@ function registerLogsRoutes(opts) {
               id: doc.userId,
               tag: doc.username || doc.userId
             },
-            executor: doc.closedById
-              ? { id: doc.closedById, tag: doc.closedByUsername || doc.closedById }
-              : null,
+            executor: doc.closedById ? { id: doc.closedById, tag: doc.closedByUsername || doc.closedById } : null,
             guild: {
               id: doc.guildId,
               name: null
@@ -169,7 +160,11 @@ function registerLogsRoutes(opts) {
 
         if (search) {
           const s = search.toLowerCase();
-          filtered = filtered.filter((l) => JSON.stringify(l || {}).toLowerCase().includes(s));
+          filtered = filtered.filter((l) =>
+            JSON.stringify(l || {})
+              .toLowerCase()
+              .includes(s)
+          );
         }
 
         filtered.sort((a, b) => {
@@ -197,8 +192,7 @@ function registerLogsRoutes(opts) {
       if (search) Object.assign(q, buildSearchFilter(search));
 
       const total = await DashboardLog.countDocuments(q);
-      const docs = await DashboardLog
-        .find(q)
+      const docs = await DashboardLog.find(q)
         .sort({ createdAt: sortDir })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -249,7 +243,7 @@ function registerLogsRoutes(opts) {
   );
 
   // Export logs to CSV (supports same filters as /api/logs)
-  app.get('/api/logs/export.csv', requireDashboardAuth, async (req, res) => {
+  app.get('/api/logs/export.csv', requireDashboardAuth, canViewLogs, guardGuildQueryOptional, async (req, res) => {
     try {
       const guildId = (req.query.guildId || '').toString().trim();
       const type = (req.query.type || '').toString().trim().toLowerCase();
@@ -287,18 +281,11 @@ function registerLogsRoutes(opts) {
         }
 
         if (search) {
-          const s = search.toString();
-          qTickets.$or = [
-            { username: { $regex: s, $options: 'i' } },
-            { userId: { $regex: s, $options: 'i' } }
-          ];
+          const s = escapeRegex(search.toString());
+          qTickets.$or = [{ username: { $regex: s, $options: 'i' } }, { userId: { $regex: s, $options: 'i' } }];
         }
 
-        const docs = await TicketLog
-          .find(qTickets)
-          .sort({ createdAt: sortDir })
-          .limit(limit)
-          .lean();
+        const docs = await TicketLog.find(qTickets).sort({ createdAt: sortDir }).limit(limit).lean();
 
         items = docs.map((doc) => ({
           createdAt: doc.createdAt,
@@ -324,7 +311,11 @@ function registerLogsRoutes(opts) {
         if (type) filtered = filtered.filter((l) => (l.title || '').toLowerCase().includes(type));
         if (search) {
           const s = search.toLowerCase();
-          filtered = filtered.filter((l) => JSON.stringify(l || {}).toLowerCase().includes(s));
+          filtered = filtered.filter((l) =>
+            JSON.stringify(l || {})
+              .toLowerCase()
+              .includes(s)
+          );
         }
         filtered.sort((a, b) => {
           const at = Date.parse(a?.time || a?.createdAt || '') || 0;
@@ -343,11 +334,7 @@ function registerLogsRoutes(opts) {
         if (type) q.title = { $regex: escapeRegex(type), $options: 'i' };
         if (search) Object.assign(q, buildSearchFilter(search));
 
-        items = await DashboardLog
-          .find(q)
-          .sort({ createdAt: sortDir })
-          .limit(limit)
-          .lean();
+        items = await DashboardLog.find(q).sort({ createdAt: sortDir }).limit(limit).lean();
       }
 
       const header = ['createdAt', 'title', 'description', 'userId', 'username', 'executorId', 'executorTag'];

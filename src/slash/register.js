@@ -63,7 +63,9 @@ module.exports = async function registerSlashCommands(client) {
     if ((scope === 'guild' || scope === 'both') && guildId) {
       try {
         await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
-        console.log(`[slash/register] Registered ${commands.length} guild slash commands in guild ${guildId} (scope=${scope}).`);
+        console.log(
+          `[slash/register] Registered ${commands.length} guild slash commands in guild ${guildId} (scope=${scope}).`
+        );
       } catch (guildErr) {
         console.error('[slash/register] Failed to register guild slash commands:', guildErr);
       }

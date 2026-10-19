@@ -7,17 +7,19 @@ const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
 
 // Evitar múltiplas ligações / tentativas em paralelo
 let isConnecting = false;
+let isShuttingDown = false;
+let retryTimer = null;
 let retryAttempts = 0;
 const MAX_RETRY_DELAY_MS = 30_000;
 
 async function connectMongo() {
   if (!uri) {
-    console.error(
-      '❌ Missing MongoDB URI. Set MONGO_URI (recommended) or MONGODB_URI in environment.'
-    );
+    console.error('❌ Missing MongoDB URI. Set MONGO_URI (recommended) or MONGODB_URI in environment.');
     status.setMongoConnected(false);
     return;
   }
+
+  if (isShuttingDown) return;
 
   // 1 = connected, 2 = connecting
   if (mongoose.connection.readyState === 1) {
@@ -25,7 +27,7 @@ async function connectMongo() {
     return;
   }
 
-  if (isConnecting) {
+  if (isConnecting || retryTimer || mongoose.connection.readyState === 2) {
     return;
   }
 
@@ -46,20 +48,26 @@ async function connectMongo() {
 
     retryAttempts += 1;
     const delay = Math.min(1000 * 2 ** (retryAttempts - 1), MAX_RETRY_DELAY_MS);
-    console.log(
-      `⏳ Retry MongoDB connection in ${Math.round(delay / 1000)}s (attempt ${retryAttempts})`
-    );
+    console.log(`⏳ Retry MongoDB connection in ${Math.round(delay / 1000)}s (attempt ${retryAttempts})`);
 
-    setTimeout(() => {
-      isConnecting = false;
-      connectMongo().catch(() => null);
-    }, delay).unref?.();
+    if (!isShuttingDown) {
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        connectMongo().catch(() => null);
+      }, delay);
+      retryTimer.unref?.();
+    }
   } finally {
     isConnecting = false;
   }
 }
 
 async function closeMongo() {
+  isShuttingDown = true;
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+    retryTimer = null;
+  }
   try {
     if (mongoose.connection.readyState === 0) return;
     await mongoose.connection.close(false);
@@ -75,13 +83,12 @@ mongoose.connection.on('connected', () => {
   status.setMongoConnected(true);
 });
 
+// After the initial connection the MongoDB driver reconnects on its own;
+// scheduling extra connect() calls here would only race with it.
 mongoose.connection.on('disconnected', () => {
-  console.warn('🟡 MongoDB disconnected. Will attempt reconnect...');
   status.setMongoConnected(false);
-
-  setTimeout(() => {
-    connectMongo().catch(() => null);
-  }, 5000).unref?.();
+  if (isShuttingDown) return;
+  console.warn('🟡 MongoDB disconnected. The driver will attempt to reconnect...');
 });
 
 mongoose.connection.on('reconnected', () => {

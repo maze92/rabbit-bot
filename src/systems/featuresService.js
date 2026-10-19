@@ -89,9 +89,18 @@ const DYNAMIC_TEXT_DEFAULTS = {
     message: [messages.en.featureDefaults.goodbye.message, messages.pt.featureDefaults.goodbye.message]
   },
   serverStats: {
-    memberTemplate: [messages.en.featureDefaults.serverStats.memberTemplate, messages.pt.featureDefaults.serverStats.memberTemplate],
-    joinsTemplate: [messages.en.featureDefaults.serverStats.joinsTemplate, messages.pt.featureDefaults.serverStats.joinsTemplate],
-    leavesTemplate: [messages.en.featureDefaults.serverStats.leavesTemplate, messages.pt.featureDefaults.serverStats.leavesTemplate]
+    memberTemplate: [
+      messages.en.featureDefaults.serverStats.memberTemplate,
+      messages.pt.featureDefaults.serverStats.memberTemplate
+    ],
+    joinsTemplate: [
+      messages.en.featureDefaults.serverStats.joinsTemplate,
+      messages.pt.featureDefaults.serverStats.joinsTemplate
+    ],
+    leavesTemplate: [
+      messages.en.featureDefaults.serverStats.leavesTemplate,
+      messages.pt.featureDefaults.serverStats.leavesTemplate
+    ]
   }
 };
 

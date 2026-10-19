@@ -36,8 +36,7 @@ async function handleReactionRolesRemove(reaction, user) {
 
     try {
       const member =
-        message.guild.members.cache.get(user.id) ||
-        (await message.guild.members.fetch(user.id).catch(() => null));
+        message.guild.members.cache.get(user.id) || (await message.guild.members.fetch(user.id).catch(() => null));
       if (!member) continue;
       await member.roles.remove(entry.roleId, 'Reaction role');
     } catch (err) {

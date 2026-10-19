@@ -2,31 +2,34 @@
 
 const { Schema, model } = require('mongoose');
 
-const infractionSchema = new Schema({
-  // Sequential case ID per guild (allocated via CaseCounter). Optional for legacy docs.
-  caseId: { type: Number, index: true },
+const infractionSchema = new Schema(
+  {
+    // Sequential case ID per guild (allocated via CaseCounter). Optional for legacy docs.
+    caseId: { type: Number, index: true },
 
-  guildId: { type: String, required: true },
-  userId: { type: String, required: true },
-  moderatorId: { type: String, required: true },
+    guildId: { type: String, required: true },
+    userId: { type: String, required: true },
+    moderatorId: { type: String, required: true },
 
-  type: {
-    type: String,
-    enum: ['WARN', 'MUTE'],
-    required: true
+    type: {
+      type: String,
+      enum: ['WARN', 'MUTE'],
+      required: true
+    },
+
+    reason: { type: String, default: 'No reason provided' },
+
+    duration: { type: Number, default: null },
+
+    // Who/what originated the infraction (slash, prefix, dashboard, automod, antispam, etc.)
+    source: { type: String, default: 'unknown', index: true },
+
+    // Stored tags/usernames at time of action for better dashboard search and historical accuracy.
+    userTag: { type: String, default: null },
+    executorTag: { type: String, default: null }
   },
-
-  reason: { type: String, default: 'No reason provided' },
-
-  duration: { type: Number, default: null },
-
-  // Who/what originated the infraction (slash, prefix, dashboard, automod, antispam, etc.)
-  source: { type: String, default: 'unknown', index: true },
-
-  // Stored tags/usernames at time of action for better dashboard search and historical accuracy.
-  userTag: { type: String, default: null },
-  executorTag: { type: String, default: null }
-}, { timestamps: true });
+  { timestamps: true }
+);
 
 // índice TTL: tudo o que tiver createdAt > 180 dias é removido automaticamente pelo Mongo.
 // O valor tem de coincidir com config.maintenance.pruneInfractionsOlderThanDays (180).

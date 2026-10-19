@@ -54,7 +54,11 @@ test('recordHttpRequest: agrupa guildIds diferentes na mesma rota', () => {
 test('recordHttpRequest: usa o route path do Express quando disponível', () => {
   metrics.resetMetrics();
 
-  metrics.recordHttpRequest(fakeReq('POST', '/api/guilds/333333333333333333/test-log-channels', '/api/guilds/:guildId/test-log-channels'), 200, 8);
+  metrics.recordHttpRequest(
+    fakeReq('POST', '/api/guilds/333333333333333333/test-log-channels', '/api/guilds/:guildId/test-log-channels'),
+    200,
+    8
+  );
 
   const snapshot = metrics.getMetrics();
   eq(snapshot.routes[0].route, '/api/guilds/:guildId/test-log-channels');
@@ -98,11 +102,23 @@ test('formatPrometheus: expõe contadores e latências em texto válido', () => 
   const text = metrics.formatPrometheus({ counters: { totalCommandsExecuted: 7, totalInfractionsCreated: 2 } });
 
   ok(text.includes('rabbit_uptime_seconds '), 'deve expor uptime');
-  ok(text.includes('rabbit_http_requests_total{method="GET",route="/api/overview"} 2'), 'deve expor o total de pedidos');
+  ok(
+    text.includes('rabbit_http_requests_total{method="GET",route="/api/overview"} 2'),
+    'deve expor o total de pedidos'
+  );
   ok(text.includes('rabbit_http_errors_total{method="GET",route="/api/overview"} 1'), 'deve expor os erros');
-  ok(text.includes('rabbit_http_request_duration_ms{method="GET",route="/api/overview",quantile="avg"} 20'), 'deve expor a média');
-  ok(text.includes('rabbit_http_request_duration_ms{method="GET",route="/api/overview",quantile="p95"} 30'), 'deve expor o p95');
-  ok(text.includes('rabbit_http_request_duration_ms{method="GET",route="/api/overview",quantile="max"} 30'), 'deve expor o máximo');
+  ok(
+    text.includes('rabbit_http_request_duration_ms{method="GET",route="/api/overview",quantile="avg"} 20'),
+    'deve expor a média'
+  );
+  ok(
+    text.includes('rabbit_http_request_duration_ms{method="GET",route="/api/overview",quantile="p95"} 30'),
+    'deve expor o p95'
+  );
+  ok(
+    text.includes('rabbit_http_request_duration_ms{method="GET",route="/api/overview",quantile="max"} 30'),
+    'deve expor o máximo'
+  );
   ok(text.includes('rabbit_commands_executed_total 7'), 'deve expor os comandos executados');
   ok(text.includes('rabbit_antispam_actions_total 0'), 'contadores em falta devem cair para 0');
   eq(text.charAt(text.length - 1), '\n');

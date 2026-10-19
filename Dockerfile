@@ -3,12 +3,13 @@ FROM node:20-alpine
 # Create app directory
 WORKDIR /app
 
-# Install dependencies
-COPY package.json ./
-RUN npm install --omit=dev
+# Install dependencies (reproducible, from the lockfile)
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Bundle app source
-COPY . .
+# Bundle app source (owned by the unprivileged runtime user so
+# src/config/overrides.json stays writable)
+COPY --chown=node:node . .
 
 # Integridade do contexto de build. Sem estes ficheiros a imagem sobe
 # "saudável" mas o bot/dashboard falham em runtime com ENOENT/MODULE_NOT_FOUND.
@@ -18,5 +19,7 @@ ENV NODE_ENV=production
 ENV PORT=8000
 
 EXPOSE 8000
+
+USER node
 
 CMD ["npm", "start"]

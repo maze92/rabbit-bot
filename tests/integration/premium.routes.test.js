@@ -17,10 +17,17 @@ function makeHarness(options) {
   function chain(value) {
     let resultValue = value;
     const result = {
-      select() { return result; },
+      select() {
+        return result;
+      },
       sort() {
         if (Array.isArray(resultValue)) {
-          resultValue = resultValue.slice().sort((left, right) => new Date(right.createdAt || right.completedAt || 0) - new Date(left.createdAt || left.completedAt || 0));
+          resultValue = resultValue
+            .slice()
+            .sort(
+              (left, right) =>
+                new Date(right.createdAt || right.completedAt || 0) - new Date(left.createdAt || left.completedAt || 0)
+            );
         }
         return result;
       },
@@ -32,13 +39,17 @@ function makeHarness(options) {
         if (Array.isArray(resultValue)) resultValue = resultValue.slice(0, count);
         return result;
       },
-      lean() { return Promise.resolve(resultValue); }
+      lean() {
+        return Promise.resolve(resultValue);
+      }
     };
     return result;
   }
 
   const GuildConfig = {
-    findOne(query) { return chain(query && query.guildId === guildConfig.guildId ? guildConfig : null); },
+    findOne(query) {
+      return chain(query && query.guildId === guildConfig.guildId ? guildConfig : null);
+    },
     find(query) {
       if (!query || Object.keys(query).length === 0) return chain([guildConfig]);
       const includeEnabled = query['premium.enabled'] === true;
@@ -58,7 +69,7 @@ function makeHarness(options) {
 
   const PremiumPayment = {
     async create(data) {
-      const payment = Object.assign({ _id: 'payment-' + (++sequence) }, data);
+      const payment = Object.assign({ _id: 'payment-' + ++sequence }, data);
       payments.push(payment);
       return payment;
     },
@@ -86,7 +97,9 @@ function makeHarness(options) {
   };
 
   const PremiumSettings = {
-    findById() { return chain(premiumSettings); },
+    findById() {
+      return chain(premiumSettings);
+    },
     findOneAndUpdate(query, update) {
       premiumSettings = Object.assign({}, premiumSettings || {}, update.$set, { _id: query._id });
       return chain(premiumSettings);
@@ -110,11 +123,21 @@ function makeHarness(options) {
       id: 'ORDER-123456',
       status: 'COMPLETED',
       payer: { payer_id: 'PAYER-123', email_address: 'payer@example.com' },
-      purchase_units: [{
-        custom_id: settings.captureUserId || USER_ID,
-        reference_id: settings.captureGuildId || GUILD_ID,
-        payments: { captures: [{ id: 'CAPTURE-123', status: 'COMPLETED', amount: { value: settings.captureAmount || '10.00', currency_code: 'EUR' } }] }
-      }]
+      purchase_units: [
+        {
+          custom_id: settings.captureUserId || USER_ID,
+          reference_id: settings.captureGuildId || GUILD_ID,
+          payments: {
+            captures: [
+              {
+                id: 'CAPTURE-123',
+                status: 'COMPLETED',
+                amount: { value: settings.captureAmount || '10.00', currency_code: 'EUR' }
+              }
+            ]
+          }
+        }
+      ]
     }),
     verifyWebhook: async () => true
   };
@@ -134,7 +157,10 @@ function makeHarness(options) {
   };
 
   const appPromise = startApp(registerPremiumRoutes, {
-    requireDashboardAuth(req, res, next) { req.dashboardUser = currentUser; next(); },
+    requireDashboardAuth(req, res, next) {
+      req.dashboardUser = currentUser;
+      next();
+    },
     requirePerm: () => passthrough,
     requireGuildAccess: () => passthrough,
     sanitizeId,
@@ -151,7 +177,9 @@ function makeHarness(options) {
     payments,
     getSettings: () => premiumSettings,
     getGuildConfig: () => guildConfig,
-    setUser(user) { currentUser = user; }
+    setUser(user) {
+      currentUser = user;
+    }
   };
 }
 
@@ -250,8 +278,23 @@ test('bot operators can page and filter the full Premium payment history', async
   const app = await harness.appPromise;
   const now = new Date();
   harness.payments.push(
-    { guildId: GUILD_ID, status: 'COMPLETED', purchaserDiscordUsername: 'payer', amount: '6.50', currency: 'EUR', createdAt: now, completedAt: now },
-    { guildId: GUILD_ID, status: 'FAILED', purchaserDiscordUsername: 'failed-payer', amount: '6.50', currency: 'EUR', createdAt: new Date(now.getTime() - 1000) }
+    {
+      guildId: GUILD_ID,
+      status: 'COMPLETED',
+      purchaserDiscordUsername: 'payer',
+      amount: '6.50',
+      currency: 'EUR',
+      createdAt: now,
+      completedAt: now
+    },
+    {
+      guildId: GUILD_ID,
+      status: 'FAILED',
+      purchaserDiscordUsername: 'failed-payer',
+      amount: '6.50',
+      currency: 'EUR',
+      createdAt: new Date(now.getTime() - 1000)
+    }
   );
   harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
   try {
@@ -285,7 +328,12 @@ test('delegated bot admin can manage server licenses but only bot owner can chan
     const settingsDenied = await fetch(app.baseUrl + '/api/premium/admin/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: '9.99', currency: 'USD', durationDays: 60, paymentLink: 'https://paypal.me/example' })
+      body: JSON.stringify({
+        amount: '9.99',
+        currency: 'USD',
+        durationDays: 60,
+        paymentLink: 'https://paypal.me/example'
+      })
     });
     assert.equal(settingsDenied.status, 403);
 
@@ -319,7 +367,12 @@ test('delegated bot admin can manage server licenses but only bot owner can chan
     const settings = await fetch(app.baseUrl + '/api/premium/admin/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: '9.99', currency: 'USD', durationDays: 60, paymentLink: 'https://paypal.me/example' })
+      body: JSON.stringify({
+        amount: '9.99',
+        currency: 'USD',
+        durationDays: 60,
+        paymentLink: 'https://paypal.me/example'
+      })
     });
     assert.equal(settings.status, 200);
     assert.equal(harness.getSettings().amount, '10.00');
