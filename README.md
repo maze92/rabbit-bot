@@ -52,6 +52,12 @@
   - Estado de cada feed (último envio, erros, etc.).
   - Edição rápida de URL, canal, intervalo e título.
 
+### 😂 Memes e alertas Twitch
+
+- **Memes** publica imagens SFW de `r/wholesomememes` no canal escolhido, com intervalo configurável entre 15 minutos e 24 horas. A integração rejeita posts NSFW/spoiler e URLs de imagem fora dos hosts do Reddit.
+- **Twitch** consulta a API Helix e publica um alerta quando o streamer configurado inicia um novo direto. O cargo a mencionar é opcional e é o único tipo de menção permitido.
+- Os alertas Twitch precisam de uma aplicação Twitch com `TWITCH_CLIENT_ID` e `TWITCH_CLIENT_SECRET` definidos no ambiente do bot. Os segredos nunca são guardados por servidor.
+
 ### 🔊 Voz temporária
 
 - Canais de voz base que criam salas temporárias quando um utilizador entra.
@@ -128,6 +134,10 @@ Cria um ficheiro `.env` na raiz com algo deste género (a lista completa, com co
 ```ini
 DISCORD_TOKEN=seu_token_do_bot
 MONGO_URI=mongodb://localhost:27017/rabbit-bot
+
+# Opcional: alertas Twitch (cria uma aplicação no Twitch Developer Console)
+TWITCH_CLIENT_ID=...
+TWITCH_CLIENT_SECRET=...
 
 ## Dashboard Auth (Discord OAuth 2.0 — obrigatório)
 # Cria uma aplicação no Developer Portal e gera o client secret
