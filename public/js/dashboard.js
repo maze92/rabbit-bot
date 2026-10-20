@@ -947,7 +947,7 @@ function setPanelLoading(panelId, isLoading) {
       applyTabButtonState('overview');
       return;
     }
-    if (name === 'premium-admin' && !(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'))) {
+    if (name === 'premium-admin' && !(state.me && state.me.role === 'BOT_OWNER')) {
       state.currentTab = 'overview';
       name = 'overview';
     }
@@ -1059,7 +1059,8 @@ function setPanelLoading(panelId, isLoading) {
     } else if (name === 'user') {
       setPanelLoading('tab-user', true);
       var u1 = (window.OzarkDashboard.loadUsers ? window.OzarkDashboard.loadUsers() : Promise.resolve());
-      Promise.resolve(u1).finally(function () {
+      var u2 = (window.OzarkDashboard.loadPremium ? window.OzarkDashboard.loadPremium() : Promise.resolve());
+      Promise.allSettled([u1, u2]).finally(function () {
         setPanelLoading('tab-user', false);
       });
     } else if (name === 'config') {
@@ -1080,10 +1081,11 @@ function setPanelLoading(panelId, isLoading) {
       });
     } else if (name === 'premium-admin') {
       setPanelLoading('tab-premium-admin', true);
+      var maintenanceLoad = loadBotMaintenance();
       var premiumAdminLoad = window.OzarkDashboard && window.OzarkDashboard.loadPremiumAdmin
         ? window.OzarkDashboard.loadPremiumAdmin()
         : Promise.resolve();
-      Promise.resolve(premiumAdminLoad).finally(function () {
+      Promise.allSettled([maintenanceLoad, premiumAdminLoad]).finally(function () {
         setPanelLoading('tab-premium-admin', false);
       });
     }
@@ -1118,7 +1120,7 @@ function setPanelLoading(panelId, isLoading) {
       features: requiresPerms && canViewConfig,
       tickets: requiresPerms && canManageTickets,
       config: requiresPerms && canViewConfig,
-      'premium-admin': !!(state.me && (state.me.role === 'BOT_ADMIN' || state.me.role === 'BOT_OWNER'))
+      'premium-admin': !!(state.me && state.me.role === 'BOT_OWNER')
     };
 
     const tabs = ['logs', 'features', 'user', 'config', 'tickets', 'premium-admin'];
@@ -1596,9 +1598,8 @@ function setPanelLoading(panelId, isLoading) {
       'configLogChannel',
       'configDashboardLogChannel',
       'configStaffRoles',
-      'configMaintenanceEnabled',
-      'configMaintenanceMessage',
-      'configMaintenanceAllowStaff',
+      'staffRolesModeration',
+      'staffRolesTickets',
       'configServerLanguage',
       'configServerTimezone'
     ];
@@ -1655,18 +1656,10 @@ function setPanelLoading(panelId, isLoading) {
       const logSelect = document.getElementById('configLogChannel');
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
       const staffSelect = document.getElementById('configStaffRoles');
-      const maintenanceEnabledSelect = document.getElementById('configMaintenanceEnabled');
-      const maintenanceMessageInput = document.getElementById('configMaintenanceMessage');
-      const maintenanceAllowStaffSelect = document.getElementById('configMaintenanceAllowStaff');
       const langSelect = document.getElementById('configServerLanguage');
       const tzSelect = document.getElementById('configServerTimezone');
       if (langSelect) langSelect.value = state.guildLanguage || 'auto';
       if (tzSelect) tzSelect.value = state.guildTimezone || '';
-
-      const mm = (conf && typeof conf.maintenanceMode === 'object' && conf.maintenanceMode) ? conf.maintenanceMode : {};
-      if (maintenanceEnabledSelect) maintenanceEnabledSelect.value = (mm.enabled === true) ? 'true' : 'false';
-      if (maintenanceMessageInput) maintenanceMessageInput.value = (typeof mm.message === 'string') ? mm.message : '';
-      if (maintenanceAllowStaffSelect) maintenanceAllowStaffSelect.value = (mm.allowStaff === false) ? 'false' : 'true';
 
       if (logSelect) {
         logSelect.innerHTML = '';
@@ -1714,6 +1707,9 @@ function setPanelLoading(panelId, isLoading) {
       }
 
       fillRoleMultiSelect(staffSelect, conf.staffRoleIds);
+      const staffByFeature = conf.staffRolesByFeature || {};
+      fillRoleMultiSelect(document.getElementById('staffRolesModeration'), staffByFeature.moderation);
+      fillRoleMultiSelect(document.getElementById('staffRolesTickets'), staffByFeature.tickets);
 
       function getSelectedValues(sel) {
         const out = [];
@@ -2055,9 +2051,6 @@ function setPanelLoading(panelId, isLoading) {
       const logSelect = document.getElementById('configLogChannel');
       const dashLogSelect = document.getElementById('configDashboardLogChannel');
       const staffSelect = document.getElementById('configStaffRoles');
-      const maintenanceEnabledSelect = document.getElementById('configMaintenanceEnabled');
-      const maintenanceMessageInput = document.getElementById('configMaintenanceMessage');
-      const maintenanceAllowStaffSelect = document.getElementById('configMaintenanceAllowStaff');
       const statusEl = document.getElementById('configStatus');
       const langSelect = document.getElementById('configServerLanguage');
       const tzSelect = document.getElementById('configServerTimezone');
@@ -2070,11 +2063,13 @@ function setPanelLoading(panelId, isLoading) {
           if (opt.value) staffRoleIds.push(opt.value);
         });
       }
-
-      const maintenanceMode = {
-        enabled: maintenanceEnabledSelect ? maintenanceEnabledSelect.value === 'true' : false,
-        message: maintenanceMessageInput ? (maintenanceMessageInput.value || '').trim() || null : null,
-        allowStaff: maintenanceAllowStaffSelect ? maintenanceAllowStaffSelect.value !== 'false' : true
+      function selectedRoles(id) {
+        const select = document.getElementById(id);
+        return select ? Array.prototype.map.call(select.selectedOptions || [], function (option) { return option.value; }).filter(Boolean) : [];
+      }
+      const staffRolesByFeature = {
+        moderation: selectedRoles('staffRolesModeration'),
+        tickets: selectedRoles('staffRolesTickets')
       };
 
       const language = langSelect && langSelect.value ? langSelect.value : 'auto';
@@ -2089,9 +2084,6 @@ function setPanelLoading(panelId, isLoading) {
       clearInlineError(logSelect);
       clearInlineError(dashLogSelect);
       clearInlineError(staffSelect);
-      clearInlineError(maintenanceEnabledSelect);
-      clearInlineError(maintenanceMessageInput);
-      clearInlineError(maintenanceAllowStaffSelect);
       clearInlineError(tzSelect);
 
       if (logChannelId && !isSnowflake(logChannelId)) {
@@ -2104,7 +2096,7 @@ function setPanelLoading(panelId, isLoading) {
         toast(t('config_invalid_channel_id'), { type: 'warn' });
         return;
       }
-      var allRoleIds = staffRoleIds;
+      var allRoleIds = staffRoleIds.concat.apply(staffRoleIds, Object.keys(staffRolesByFeature).map(function (key) { return staffRolesByFeature[key]; }));
 
       for (var i = 0; i < allRoleIds.length; i++) {
         if (allRoleIds[i] && !isSnowflake(allRoleIds[i])) {
@@ -2131,7 +2123,7 @@ function setPanelLoading(panelId, isLoading) {
           logChannelId: logChannelId,
           dashboardLogChannelId: dashLogChannelId,
           staffRoleIds: staffRoleIds,
-          maintenanceMode: maintenanceMode,
+          staffRolesByFeature: staffRolesByFeature,
           language: language,
           timezone: timezone,
         });
@@ -2157,6 +2149,70 @@ function setPanelLoading(panelId, isLoading) {
       }
     }
 
+    async function loadBotMaintenance() {
+      const panel = document.getElementById('botMaintenancePanel');
+      const enabled = document.getElementById('configMaintenanceEnabled');
+      const message = document.getElementById('configMaintenanceMessage');
+      const allowStaff = document.getElementById('configMaintenanceAllowStaff');
+      const saveButton = document.getElementById('btnSaveBotMaintenance');
+      const status = document.getElementById('botMaintenanceStatus');
+      if (!panel || !state.me || state.me.role !== 'BOT_OWNER') return;
+      if (!state.guildId) {
+        if (enabled) enabled.disabled = true;
+        if (message) message.disabled = true;
+        if (allowStaff) allowStaff.disabled = true;
+        if (saveButton) saveButton.disabled = true;
+        if (status) status.textContent = t('management_select_guild');
+        return;
+      }
+      if (status) status.textContent = t('config_loading');
+      try {
+        const result = await apiGet('/guilds/' + encodeURIComponent(state.guildId) + '/maintenance');
+        const maintenance = result && result.maintenanceMode || {};
+        if (enabled) {
+          enabled.value = maintenance.enabled === true ? 'true' : 'false';
+          enabled.disabled = false;
+        }
+        if (message) {
+          message.value = typeof maintenance.message === 'string' ? maintenance.message : '';
+          message.disabled = false;
+        }
+        if (allowStaff) {
+          allowStaff.value = maintenance.allowStaff === false ? 'false' : 'true';
+          allowStaff.disabled = false;
+        }
+        if (saveButton) saveButton.disabled = false;
+        if (status) status.textContent = '';
+      } catch (error) {
+        if (status) status.textContent = t('config_error_load');
+        if (saveButton) saveButton.disabled = true;
+      }
+    }
+
+    async function saveBotMaintenance() {
+      if (!state.guildId || !state.me || state.me.role !== 'BOT_OWNER') return;
+      const enabled = document.getElementById('configMaintenanceEnabled');
+      const message = document.getElementById('configMaintenanceMessage');
+      const allowStaff = document.getElementById('configMaintenanceAllowStaff');
+      const saveButton = document.getElementById('btnSaveBotMaintenance');
+      const status = document.getElementById('botMaintenanceStatus');
+      if (saveButton) saveButton.disabled = true;
+      if (status) status.textContent = t('config_loading');
+      try {
+        await apiPatch('/guilds/' + encodeURIComponent(state.guildId) + '/maintenance', {
+          maintenanceMode: {
+            enabled: !!(enabled && enabled.value === 'true'),
+            message: message && message.value ? message.value.trim() : null,
+            allowStaff: !allowStaff || allowStaff.value !== 'false'
+          }
+        });
+        if (status) status.textContent = t('config_saved');
+      } catch (error) {
+        if (status) status.textContent = t('config_error_save');
+      } finally {
+        if (saveButton) saveButton.disabled = false;
+      }
+    }
 
     function getGuildMetaList(kind) {
       const m = state._guildMeta || {};
@@ -2685,6 +2741,34 @@ function deleteTempVoiceBaseAt(index) {
       wireTablist('.tabs button[data-tab]');
     }
 
+    function setupConfigSectionNavigation() {
+      var nav = document.querySelector('#tab-config .config-nav');
+      if (!nav || typeof window.IntersectionObserver !== 'function') return;
+
+      var links = Array.prototype.slice.call(nav.querySelectorAll('a[href^="#"]'));
+      var sections = links.map(function (link) {
+        return document.querySelector(link.getAttribute('href'));
+      }).filter(Boolean);
+      if (!sections.length) return;
+
+      var observer = new IntersectionObserver(function (entries) {
+        var visible = entries.filter(function (entry) { return entry.isIntersecting; });
+        if (!visible.length) return;
+        visible.sort(function (left, right) {
+          return left.boundingClientRect.top - right.boundingClientRect.top;
+        });
+        var activeId = visible[0].target.id;
+        links.forEach(function (link) {
+          var active = link.getAttribute('href') === '#' + activeId;
+          link.classList.toggle('is-active', active);
+          if (active) link.setAttribute('aria-current', 'location');
+          else link.removeAttribute('aria-current');
+        });
+      }, { rootMargin: '-96px 0px -65% 0px', threshold: 0 });
+
+      sections.forEach(function (section) { observer.observe(section); });
+    }
+
     // Tabs
     document.querySelectorAll('.tabs button[data-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -2695,6 +2779,7 @@ function deleteTempVoiceBaseAt(index) {
     });
 
     setupTabsKeyboardNavigation();
+    setupConfigSectionNavigation();
 
     // Atalhos do Overview: navegam para a aba correspondente.
     var overviewShortcuts = document.getElementById('overviewShortcuts');
@@ -2758,6 +2843,8 @@ function deleteTempVoiceBaseAt(index) {
             if (window.OzarkDashboard.reloadAudit) {
               window.OzarkDashboard.reloadAudit().catch(function () {});
             }
+          } else if (state.currentTab === 'premium-admin') {
+            loadBotMaintenance().catch(function () {});
           }
         }
         })().catch(function () {
@@ -2866,6 +2953,11 @@ function deleteTempVoiceBaseAt(index) {
       });
     }
 
+    var btnSaveBotMaintenance = document.getElementById('btnSaveBotMaintenance');
+    if (btnSaveBotMaintenance) btnSaveBotMaintenance.addEventListener('click', function () {
+      saveBotMaintenance().catch(function () {});
+    });
+
     // Trust presets + save (Config -> Extras -> Trust)
     var trustPresetSelect = document.getElementById('trustPresetSelect');
     var btnApplyTrustPreset = document.getElementById('btnApplyTrustPreset');
@@ -2961,7 +3053,9 @@ function deleteTempVoiceBaseAt(index) {
             btnSaveTrustConfig.disabled = true;
             btnSaveTrustConfig.classList.add('is-loading');
 
-            var res = await apiPatch('/config', patch);
+            var res = await apiPatch('/guilds/' + encodeURIComponent(state.guildId) + '/trust-config', {
+              trustOverrides: patch.trust
+            });
             if (!res || res.ok === false) {
               throw new Error((res && (res.error || res.message)) || 'SAVE_FAILED');
             }
@@ -2969,10 +3063,10 @@ function deleteTempVoiceBaseAt(index) {
             state.trustDirty = false;
             state.trustLastSavedAt = Date.now();
             state.trustExtraOverride = null;
-            if (res.config && res.config.trust) {
-              state.currentTrustConfig = res.config.trust;
+            if (res.trust) {
+              state.currentTrustConfig = res.trust;
               if (trustPresetSelect) {
-                trustPresetSelect.value = detectTrustPreset(res.config.trust);
+                trustPresetSelect.value = detectTrustPreset(res.trust);
               }
             }
 
@@ -3132,6 +3226,33 @@ function deleteTempVoiceBaseAt(index) {
       logoutBtn.dataset.bound = '1';
       logoutBtn.addEventListener('click', function () {
         forceLogout({ redirect: true });
+      });
+    }
+
+    var profileTrigger = document.getElementById('badgeProfile');
+    var profileDialog = document.getElementById('accountProfileDialog');
+    function closeAccountProfile() {
+      if (profileDialog && profileDialog.open) profileDialog.close();
+    }
+    if (profileTrigger && profileDialog) {
+      profileTrigger.addEventListener('click', function () {
+        const me = state.me || {};
+        const roleKey = me.role === 'BOT_OWNER' ? 'profile_bot_owner'
+          : me.role === 'BOT_ADMIN' ? 'profile_bot_admin'
+            : me.role === 'GUILD_ADMIN' ? 'profile_guild_admin' : 'profile_viewer';
+        document.getElementById('accountProfileUsername').textContent = me.username || 'Discord';
+        document.getElementById('accountProfileId').textContent = me.id || '—';
+        document.getElementById('accountProfileRole').textContent = t(roleKey);
+        profileDialog.showModal();
+      });
+      [
+        document.getElementById('btnCloseAccountProfile'),
+        document.getElementById('btnCloseAccountProfileFooter')
+      ].forEach(function (button) {
+        if (button) button.addEventListener('click', closeAccountProfile);
+      });
+      profileDialog.addEventListener('click', function (event) {
+        if (event.target === profileDialog) closeAccountProfile();
       });
     }
 

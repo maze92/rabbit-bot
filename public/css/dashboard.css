@@ -188,6 +188,122 @@ body {
   white-space: nowrap;
 }
 
+.premium-badge {
+  margin-left: 8px;
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-soft));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  vertical-align: middle;
+}
+
+.user-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0;
+}
+
+.user-detail-roles {
+  overflow-wrap: anywhere;
+}
+
+.profile-trigger {
+  font: inherit;
+  cursor: pointer;
+}
+
+.account-profile-dialog {
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(680px, calc(100dvh - 32px));
+  padding: 20px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.account-profile-dialog::backdrop {
+  background: var(--veil-35);
+  backdrop-filter: blur(3px);
+}
+
+.account-profile-dialog__head,
+.account-profile-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.account-profile-dialog__head h2 {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-lg);
+}
+
+.account-profile-details {
+  display: grid;
+  gap: var(--sp-2);
+  margin: var(--sp-4) 0;
+}
+
+.account-profile-details > div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.account-profile-details dt { color: var(--text-muted); }
+.account-profile-details dd { margin: 0; overflow-wrap: anywhere; }
+.account-profile-dialog__actions { justify-content: flex-end; flex-wrap: wrap; }
+
+.account-profile-dialog {
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(680px, calc(100dvh - 32px));
+  padding: 20px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.account-profile-dialog::backdrop {
+  background: var(--veil-65);
+  backdrop-filter: blur(3px);
+}
+
+.account-profile-dialog__head,
+.account-profile-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.account-profile-dialog__head h2 {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-lg);
+}
+
+.account-profile-details {
+  display: grid;
+  gap: var(--sp-2);
+  margin: var(--sp-4) 0;
+}
+
+.account-profile-details > div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.account-profile-details dt { color: var(--text-muted); }
+.account-profile-details dd { margin: 0; overflow-wrap: anywhere; }
+.account-profile-dialog__actions { justify-content: flex-end; flex-wrap: wrap; }
+
 /* Tabs */
 
 .tabs {
@@ -2280,28 +2396,58 @@ html, body {
   background: linear-gradient(to top, var(--veil-35), var(--veil-0));
 }
 
-/* Config nav pills */
+/* Section navigation for server settings */
 #tab-config .config-nav {
-  margin-top: 10px;
+  position: sticky;
+  top: 8px;
+  z-index: 4;
+  margin: 10px 0 14px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 2px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  scrollbar-width: thin;
 }
 
 #tab-config .config-pill {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: var(--fs-base);
-  color: var(--text);
+  flex: 0 0 auto;
+  padding: 9px 11px 8px;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
   text-decoration: none;
-  background: var(--white-6);
-  border: 1px solid var(--white-10);
+  white-space: nowrap;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
 
 #tab-config .config-pill:hover {
-  background: var(--white-10);
+  color: var(--text);
+  background: var(--white-4);
+}
+
+#tab-config .config-pill.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+#tab-config .config-form > .subcard {
+  scroll-margin-top: 82px;
+}
+
+.staff-role-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.staff-role-feature-grid .select[multiple] {
+  min-height: 112px;
 }
 
 .tempvoice-actions-top {
@@ -3118,11 +3264,12 @@ summary:focus-visible,
 .features-grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  align-items:start;
   gap:var(--sp-3);
   margin-top:var(--sp-4);
 }
-/* Premium cards share the compact grid; expanded configuration spans its columns. */
-.feature-card.is-expanded{grid-column:1 / -1}
+/* Expanded configuration stays in its original column and grows downward. */
+.feature-card.is-expanded{grid-column:auto}
 .feature-card[data-premium-module] .feature-card__body,
 .feature-card[data-premium-module] .feature-card__surface{min-width:0}
 .feature-card{
@@ -3131,7 +3278,7 @@ summary:focus-visible,
   gap:var(--sp-2);
   padding:12px;
   border:1px solid var(--white-6);
-  border-radius:12px;
+  border-radius:8px;
   background:var(--white-2);
 }
 .feature-card.is-off{opacity:.75}
@@ -3175,10 +3322,11 @@ summary:focus-visible,
   display:flex;
   flex-direction:column;
   gap:var(--sp-3);
-  padding:var(--sp-3);
-  border:1px solid var(--white-6);
-  border-radius:10px;
-  background:var(--white-2);
+  padding:var(--sp-3) 0 0;
+  border:0;
+  border-top:1px solid var(--white-8);
+  border-radius:0;
+  background:transparent;
 }
 .feature-card__surface-head{
   display:flex;

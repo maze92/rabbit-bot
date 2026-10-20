@@ -72,13 +72,12 @@ test('requirePerm deixa o owner do bot ignorar permissões granulares', () => {
   ok(passed);
 });
 
-test('requirePerm deixa o administrador do bot ignorar permissões granulares', () => {
+test('requirePerm não permite que um bot admin ignore permissões granulares', () => {
   const { requirePerm } = makeMw();
   const req = { dashboardUser: { role: 'BOT_ADMIN', permissions: {} } };
   const res = makeRes();
-  let passed = false;
-  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => { passed = true; });
-  ok(passed);
+  requirePerm({ anyOf: ['canManageUsers'] })(req, res, () => { throw new Error('não devia passar'); });
+  eq(res.statusCode, 403);
 });
 
 test('requirePerm não trata o perfil legado ADMIN como administrador do bot', () => {
@@ -142,6 +141,21 @@ test('requirePerm não bloqueia quando a auth está desativada', () => {
   let passed = false;
   requirePerm({ anyOf: ['canViewLogs'] })({}, res, () => { passed = true; });
   ok(passed);
+});
+
+test('requireDashboardAuth não pode ser desativado em produção', () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  try {
+    const { requireDashboardAuth } = makeMw({ requireAuth: false });
+    const res = makeRes();
+    requireDashboardAuth({ headers: {} }, res, () => { throw new Error('não devia passar'); });
+    eq(res.statusCode, 401);
+    eq(res.body.error, 'Unauthorized');
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+  }
 });
 
 // -----------------------------

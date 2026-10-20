@@ -42,7 +42,7 @@
 
   function isAdmin() {
     var me = NS.state && NS.state.me;
-    return !!(me && (me.role === 'BOT_ADMIN' || me.role === 'BOT_OWNER'));
+    return !!(me && me.role === 'BOT_OWNER');
   }
 
   function isBotOwner() {
@@ -187,6 +187,8 @@
       premiumGuildId = null;
       premium = { enabled: false, active: false };
       paymentPlan = null;
+      NS.state.premiumPayerId = null;
+      if (typeof NS.refreshPremiumBadges === 'function') NS.refreshPremiumBadges();
       if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(false);
       applyLock();
       return;
@@ -196,6 +198,8 @@
       premiumGuildId = gid;
       premium = { enabled: false, active: false };
       paymentPlan = null;
+      NS.state.premiumPayerId = null;
+      if (typeof NS.refreshPremiumBadges === 'function') NS.refreshPremiumBadges();
       if (typeof NS.applyPremiumState === 'function') NS.applyPremiumState(false);
       applyLock();
     }
@@ -204,13 +208,18 @@
       if (requestSequence !== premiumLoadSequence || guildId() !== gid) return;
       premium = (res && res.premium) ? res.premium : { enabled: false, active: false };
       paymentPlan = (res && res.payment) ? res.payment : null;
+      NS.state.premiumPayerId = premium.active && res.server
+        ? String(res.server.purchaserDiscordUserId || '')
+        : null;
     } catch (err) {
       if (requestSequence !== premiumLoadSequence || guildId() !== gid) return;
       console.error('Premium load error', err);
       premium = { enabled: false, active: false };
       paymentPlan = null;
+      NS.state.premiumPayerId = null;
     } finally {
       if (requestSequence === premiumLoadSequence) {
+        if (typeof NS.refreshPremiumBadges === 'function') NS.refreshPremiumBadges();
         applyLock();
       }
     }
@@ -507,13 +516,10 @@
           var detailsCard = detailsToggle.closest('[data-premium="true"]');
           if (!detailsCard || detailsCard.getAttribute('data-premium-locked') === 'true') return;
           if (detailsCard.hasAttribute('data-feature')) return;
-          var body = detailsCard.querySelector('.feature-card__body');
-          if (!body) return;
-          var isHidden = body.classList.toggle('hidden');
-          body.inert = isHidden;
-          detailsCard.classList.toggle('is-expanded', !isHidden);
-          detailsToggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
-          if (!isHidden) {
+          var isExpanded = typeof NS.toggleFeatureCard === 'function'
+            ? NS.toggleFeatureCard(detailsCard)
+            : false;
+          if (isExpanded) {
             loadPremiumModule(detailsCard.getAttribute('data-premium-module')).catch(function (err) {
               console.error('Failed to load Premium module details', err);
             });

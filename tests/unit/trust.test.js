@@ -3,6 +3,7 @@
 const { test, eq, ok } = require('./_harness');
 const {
   getTrustConfig,
+  normalizeTrustOverrides,
   getEffectiveMaxWarnings,
   getEffectiveMaxMessages,
   getEffectiveMuteDuration,
@@ -26,6 +27,19 @@ test('getTrustConfig: devolve valores coerentes', () => {
   const cfg = getTrustConfig();
   ok(typeof cfg.base === 'number', 'base deve ser número');
   ok(cfg.lowThreshold < cfg.highThreshold, 'lowThreshold deve ser menor que highThreshold');
+});
+
+test('normalizeTrustOverrides accepts guild-scoped values and partial presets', () => {
+  const overrides = normalizeTrustOverrides({ base: 45, lowThreshold: 20, highThreshold: 80 });
+  eq(overrides.base, 45);
+  eq(overrides.lowThreshold, 20);
+  eq(overrides.highThreshold, 80);
+});
+
+test('normalizeTrustOverrides rejects values outside policy and invalid relationships', () => {
+  eq(normalizeTrustOverrides({ base: 150 }), null);
+  eq(normalizeTrustOverrides({ min: 80, max: 40 }), null);
+  eq(normalizeTrustOverrides({ lowThreshold: 80, highThreshold: 20 }), null);
 });
 
 test('getEffectiveMaxMessages: penaliza trust baixo', () => {

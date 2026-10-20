@@ -13,6 +13,7 @@
 
   let auditPage = 1;
   let auditLoading = false;
+  let auditRequestSequence = 0;
   // Só fica true depois de o utilizador pedir para ver a auditoria pela
   // primeira vez (botão "Recarregar" ou filtros).
   let auditLoaded = false;
@@ -30,15 +31,42 @@
     return ts ? String(ts) : '—';
   }
 
+  function actionLabel(action) {
+    switch (String(action || '')) {
+      case 'config.patch': return t('audit_action_config_patch');
+      case 'bot.invite': return t('audit_action_bot_invite');
+      case 'features.update': return t('audit_action_features_update');
+      case 'trust.config.update': return t('audit_action_trust_config_update');
+      case 'server.config.update': return t('audit_action_server_config_update');
+      case 'server.maintenance.update': return t('audit_action_server_maintenance_update');
+      case 'gamenews.feeds.clear': return t('audit_action_gamenews_feeds_clear');
+      case 'gamenews.feeds.save': return t('audit_action_gamenews_feeds_save');
+      case 'gamenews.feed.test': return t('audit_action_gamenews_feed_test');
+      case 'giveaways.update': return t('audit_action_giveaways_update');
+      case 'logs.clear': return t('audit_action_logs_clear');
+      case 'mod.warn': return t('audit_action_mod_warn');
+      case 'mod.mute': return t('audit_action_mod_mute');
+      case 'mod.unmute': return t('audit_action_mod_unmute');
+      case 'mod.resetTrust': return t('audit_action_mod_reset_trust');
+      case 'mod.removeInfraction': return t('audit_action_mod_remove_infraction');
+      case 'ticket.close': return t('audit_action_ticket_close');
+      case 'ticket.reopen': return t('audit_action_ticket_reopen');
+      case 'ticket.reply': return t('audit_action_ticket_reply');
+      case 'opened': return t('audit_action_ticket_opened');
+      case 'closed': return t('audit_action_ticket_closed');
+      default: return action ? String(action) : t('audit_unknown_action');
+    }
+  }
+
   function buildRow(item) {
     const row = document.createElement('div');
     row.className = 'list-item audit-item';
 
-    const action = item && item.action ? String(item.action) : '';
+    const action = actionLabel(item && item.action);
     const actor = item && item.actor ? String(item.actor) : '';
     const route = [item && item.method, item && item.route].filter(Boolean).join(' ');
     const target = item && item.targetUserId ? String(item.targetUserId) : '';
-    const when = item && item.createdAt ? fmt(item.createdAt) : '';
+    const when = item && (item.at || item.createdAt) ? fmt(item.at || item.createdAt) : '';
 
     let payloadLine = '';
     if (item && item.payload && typeof item.payload === 'object' && Object.keys(item.payload).length) {
@@ -46,7 +74,7 @@
     }
 
     row.innerHTML = `
-      <div class="title">${escapeHtml(action || t('audit_unknown_action'))}</div>
+      <div class="title">${escapeHtml(action)}</div>
       <div class="subtitle">${escapeHtml([actor, route, target, when].filter(Boolean).join(' • '))}</div>
       ${payloadLine}
     `;
@@ -89,7 +117,7 @@
     (actions || []).forEach(function (a) {
       const opt = document.createElement('option');
       opt.value = a;
-      opt.textContent = a;
+      opt.textContent = actionLabel(a);
       sel.appendChild(opt);
     });
 
@@ -107,12 +135,12 @@
   }
 
   async function loadAudit(opts) {
-    if (auditLoading) return;
-
     const append = !!(opts && opts.append);
+    if (append && auditLoading) return;
     const listEl = q('auditList');
     if (!listEl) return;
 
+    const requestId = ++auditRequestSequence;
     const page = append ? (auditPage + 1) : 1;
 
     auditLoading = true;
@@ -120,6 +148,7 @@
 
     try {
       const res = await apiGet('/audit?' + collectParams(page).join('&'));
+      if (requestId !== auditRequestSequence) return;
       auditLoaded = true;
 
       const items = Array.isArray(res.items) ? res.items : [];
@@ -160,6 +189,7 @@
 
       setLoadMore((page * limit) < total);
     } catch (err) {
+      if (requestId !== auditRequestSequence) return;
       console.error('Failed to load audit', err);
       if (!append) {
         listEl.innerHTML = `<div class="empty">${escapeHtml(t('audit_error'))}</div>`;
@@ -168,7 +198,7 @@
       }
       setLoadMore(false);
     } finally {
-      auditLoading = false;
+      if (requestId === auditRequestSequence) auditLoading = false;
     }
   }
 

@@ -229,7 +229,7 @@ test('legacy operator test-bypass records are shown as inactive licenses', async
   }
 });
 
-test('Premium payment history is visible only to the bot administrator', async () => {
+test('Premium payment history is visible only to the bot owner', async () => {
   const harness = makeHarness();
   const app = await harness.appPromise;
   try {
@@ -237,6 +237,10 @@ test('Premium payment history is visible only to the bot administrator', async (
     assert.equal(denied.status, 403);
 
     harness.setUser({ _id: USER_ID, username: 'bot-admin', role: 'BOT_ADMIN' });
+    const stillDenied = await fetch(app.baseUrl + '/api/premium/payments');
+    assert.equal(stillDenied.status, 403);
+
+    harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
     const allowed = await fetch(app.baseUrl + '/api/premium/payments');
     assert.equal(allowed.status, 200);
     assert.deepEqual((await allowed.json()).items, []);
@@ -277,7 +281,7 @@ test('bot operators can page and filter the full Premium payment history', async
   }
 });
 
-test('delegated bot admin can manage server licenses but only bot owner can change global plan', async () => {
+test('only the bot owner can manage global and per-server Premium licenses', async () => {
   const harness = makeHarness();
   const app = await harness.appPromise;
   harness.setUser({ _id: USER_ID, username: 'bot-admin', role: 'BOT_ADMIN' });
@@ -297,23 +301,18 @@ test('delegated bot admin can manage server licenses but only bot owner can chan
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled: true, until: null, note: 'manual test' })
     });
-    assert.equal(grant.status, 200);
-    assert.equal((await grant.json()).premium.active, true);
-    assert.equal(harness.getGuildConfig().premium.note, 'manual test');
+    assert.equal(grant.status, 403);
     const guilds = await fetch(app.baseUrl + '/api/premium/admin/guilds');
-    const listedGuild = (await guilds.json()).items.find((item) => item.guildId === GUILD_ID);
-    assert.equal(listedGuild.guildName, 'Rabbit Guild');
-    assert.equal(listedGuild.ownerId, '111111111111111111');
+    assert.equal(guilds.status, 403);
 
     const revoke = await fetch(app.baseUrl + '/api/premium/admin/guilds/' + GUILD_ID, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled: false, until: null, note: 'revoked' })
     });
-    assert.equal(revoke.status, 200);
-    assert.equal((await revoke.json()).premium.active, false);
+    assert.equal(revoke.status, 403);
     const revokedGuilds = await fetch(app.baseUrl + '/api/premium/admin/guilds');
-    assert.equal((await revokedGuilds.json()).items.find((item) => item.guildId === GUILD_ID).enabled, false);
+    assert.equal(revokedGuilds.status, 403);
 
     harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
     const settings = await fetch(app.baseUrl + '/api/premium/admin/settings', {
@@ -383,7 +382,7 @@ test('a guild license applies to everyone in that guild, not to the payer on ano
   const harness = makeHarness();
   const app = await harness.appPromise;
   try {
-    harness.setUser({ _id: USER_ID, username: 'bot-admin', role: 'BOT_ADMIN' });
+    harness.setUser({ _id: USER_ID, username: 'bot-owner', role: 'BOT_OWNER' });
     const grant = await fetch(app.baseUrl + '/api/premium/admin/guilds/' + GUILD_ID, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

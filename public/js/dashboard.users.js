@@ -15,6 +15,27 @@
   let userHistoryAbortController = null;
   const escapeHtml = D.escapeHtml;
 
+  function updatePremiumBadge(row) {
+    if (!row) return;
+    const title = row.querySelector('.title');
+    if (!title) return;
+    const existing = title.querySelector('.premium-badge');
+    const isPayer = state.premiumPayerId && String(row.dataset.userId) === String(state.premiumPayerId);
+    if (!isPayer) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing) return;
+    const badge = document.createElement('span');
+    badge.className = 'badge premium-badge';
+    badge.textContent = t('premium_badge');
+    title.appendChild(badge);
+  }
+
+  D.refreshPremiumBadges = function () {
+    document.querySelectorAll('#usersList .list-item[data-user-id]').forEach(updatePremiumBadge);
+  };
+
   function buildUserRow(u, listEl) {
     if (!u) return null;
 
@@ -38,6 +59,7 @@
         ${escapeHtml(u.id)}${roles ? ' • ' + escapeHtml(roles) : ''}
       </div>
     `;
+    updatePremiumBadge(row);
 
     row.addEventListener('click', function () {
       const previouslyActive = listEl.querySelector('.list-item.active');
@@ -392,6 +414,22 @@ async function loadUserHistory(user) {
     const detailEl = document.getElementById('userDetailPanel');
     if (!detailEl) return;
 
+    if (!detailEl.dataset.actionsBound) {
+      detailEl.dataset.actionsBound = '1';
+      detailEl.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-copy-user-id]');
+        if (!button) return;
+        const userId = button.getAttribute('data-copy-user-id') || '';
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+          toast(t('users_copy_id_error'), { type: 'error' });
+          return;
+        }
+        navigator.clipboard.writeText(userId)
+          .then(function () { toast(t('users_copy_id_ok'), { type: 'success' }); })
+          .catch(function () { toast(t('users_copy_id_error'), { type: 'error' }); });
+      });
+    }
+
     if (!state.guildId || !user || !user.id) {
       detailEl.innerHTML = `<div class="empty">${escapeHtml(t('users_detail_empty'))}</div>`;
       return;
@@ -402,6 +440,10 @@ async function loadUserHistory(user) {
       detailEl.innerHTML = `
         <div class="title">${escapeHtml(t('users_history_title'))}</div>
         <div class="subtitle">${escapeHtml(user.username || user.id)} • BOT</div>
+        <div class="user-detail-actions">
+          <button class="btn xs" type="button" data-copy-user-id="${escapeHtml(user.id)}">${escapeHtml(t('users_copy_id'))}</button>
+          <a class="btn xs btn-ghost" href="https://discord.com/users/${encodeURIComponent(user.id)}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('users_open_discord_profile'))}</a>
+        </div>
         <div class="empty">${escapeHtml(t('users_history_none'))}</div>
       `;
       return;
@@ -457,6 +499,17 @@ async function loadUserHistory(user) {
 
       html += `<div class="title">${escapeHtml(t('users_history_title'))}</div>`;
       html += `<div class="subtitle">${escapeHtml(user.username || user.id)} • ${escapeHtml(user.id)}</div>`;
+      html += '<div class="user-detail-actions">';
+      html += `<button class="btn xs" type="button" data-copy-user-id="${escapeHtml(user.id)}">${escapeHtml(t('users_copy_id'))}</button>`;
+      html += `<a class="btn xs btn-ghost" href="https://discord.com/users/${encodeURIComponent(user.id)}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('users_open_discord_profile'))}</a>`;
+      html += '</div>';
+      if (Array.isArray(user.roles) && user.roles.length) {
+        html += `<div class="subtitle user-detail-roles">${escapeHtml(t('users_roles_label'))}: ${escapeHtml(user.roles.map(function (role) { return role.name; }).join(', '))}</div>`;
+      }
+      if (user.joinedAt) {
+        const joinedDate = typeof D.formatDateTime === 'function' ? D.formatDateTime(user.joinedAt) : user.joinedAt;
+        html += `<div class="subtitle">${escapeHtml(t('users_joined_label'))}: ${escapeHtml(joinedDate)}</div>`;
+      }
 
       // Trust e próxima penalização
       if (dbInfo && typeof dbInfo.trust === 'number') {

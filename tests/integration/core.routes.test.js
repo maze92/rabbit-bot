@@ -62,6 +62,30 @@ test('GET /health reporta estado pronto', async () => {
   }
 });
 
+test('global config is unavailable to guild administrators', async () => {
+  const app = await startApp(registerCoreRoutes, buildCtx({
+    requireDashboardAuth(req, res, next) {
+      req.dashboardUser = { role: 'GUILD_ADMIN' };
+      next();
+    }
+  }));
+  try {
+    const response = await fetch(app.baseUrl + '/api/config');
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).error, 'BOT_OWNER_REQUIRED');
+
+    const write = await fetch(app.baseUrl + '/api/config', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trust: { base: 10 } })
+    });
+    assert.equal(write.status, 403);
+    assert.equal((await write.json()).error, 'BOT_OWNER_REQUIRED');
+  } finally {
+    await stopApp(app.server);
+  }
+});
+
 test('GET /api/internal/metrics sem token e sem admin devolve 401', async () => {
   const app = await startApp(registerCoreRoutes, buildCtx());
   try {

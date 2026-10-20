@@ -161,14 +161,17 @@
     {
       key: 'serverStats',
       fields: [
+        { type: 'bool', name: 'showMembers', label: 'features_stats_show_members' },
         { type: 'text', name: 'memberTemplate', label: 'features_stats_member', placeholderKey: 'features_placeholder_stats_member', maxLength: 100 },
+        { type: 'bool', name: 'showJoins', label: 'features_stats_show_joins' },
         { type: 'text', name: 'joinsTemplate', label: 'features_stats_joins', placeholderKey: 'features_placeholder_stats_joins', maxLength: 100 },
+        { type: 'bool', name: 'showLeaves', label: 'features_stats_show_leaves' },
         { type: 'text', name: 'leavesTemplate', label: 'features_stats_leaves', placeholderKey: 'features_placeholder_stats_leaves', maxLength: 100 }
       ],
       presets: [
-        { id: 'members', label: 'preset_stats_members', values: { memberTemplate: '👥 Membros: {count}' } },
-        { id: 'emojis', label: 'preset_stats_emojis', values: { memberTemplate: '👥 {count} membros', joinsTemplate: '📥 +{count} (7d)', leavesTemplate: '📤 -{count} (7d)' } },
-        { id: 'plain', label: 'preset_stats_plain', values: { memberTemplate: 'Membros: {count}', joinsTemplate: 'Entradas 7d: {count}', leavesTemplate: 'Saídas 7d: {count}' } }
+        { id: 'members', label: 'preset_stats_members', values: { showMembers: true, showJoins: false, showLeaves: false, memberTemplate: '👥 Membros: {count}' } },
+        { id: 'emojis', label: 'preset_stats_emojis', values: { showMembers: true, showJoins: true, showLeaves: true, memberTemplate: '👥 {count} membros', joinsTemplate: '📥 +{count} (7d)', leavesTemplate: '📤 -{count} (7d)' } },
+        { id: 'plain', label: 'preset_stats_plain', values: { showMembers: true, showJoins: true, showLeaves: true, memberTemplate: 'Membros: {count}', joinsTemplate: 'Entradas 7d: {count}', leavesTemplate: 'Saídas 7d: {count}' } }
       ]
     }
   ];
@@ -467,6 +470,31 @@
     return grid ? grid.querySelector('.feature-card[data-feature="' + key + '"]') : null;
   }
 
+  function setCardExpanded(card, expanded) {
+    var body = card && card.querySelector('.feature-card__body');
+    var toggle = card && card.querySelector('.feature-card__toggle');
+    if (!body || !toggle) return false;
+
+    if (expanded && card.parentElement) {
+      Array.prototype.forEach.call(card.parentElement.children, function (sibling) {
+        if (sibling !== card && sibling.classList && sibling.classList.contains('is-expanded')) {
+          setCardExpanded(sibling, false);
+        }
+      });
+    }
+
+    body.inert = !expanded;
+    body.classList.toggle('hidden', !expanded);
+    card.classList.toggle('is-expanded', expanded);
+    toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    return expanded;
+  }
+
+  function toggleCardDetails(card) {
+    var body = card && card.querySelector('.feature-card__body');
+    return body ? setCardExpanded(card, body.classList.contains('hidden')) : false;
+  }
+
   function applyDisabled(card) {
     if (!card) return;
     var enabledEl = card.querySelector('[data-role="enabled"]');
@@ -488,7 +516,6 @@
     if (!feature) return;
 
     var toggle = card.querySelector('[data-role="toggle"]');
-    var body = card.querySelector('.feature-card__body');
     var enabledEl = card.querySelector('[data-role="enabled"]');
     var saveBtn = card.querySelector('[data-role="save"]');
     var testBtn = card.querySelector('[data-role="test"]');
@@ -498,11 +525,9 @@
     var presetsBox = card.querySelector('[data-role="presets"]');
     var previewBox = card.querySelector('[data-role="preview"]');
 
-    if (toggle && body) {
+    if (toggle) {
       toggle.addEventListener('click', function () {
-        var isHidden = body.classList.toggle('hidden');
-        toggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
-        card.classList.toggle('is-expanded', !isHidden);
+        toggleCardDetails(card);
       });
     }
 
@@ -798,4 +823,5 @@
 
   NS.loadFeatures = loadFeatures;
   NS.applyPremiumState = applyPremiumState;
+  NS.toggleFeatureCard = toggleCardDetails;
 })();

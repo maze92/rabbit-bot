@@ -17,16 +17,22 @@ test('bot ID configuration accepts common separators and ignores malformed value
   eq(ids.has('345678901234567890'), true);
 });
 
-test('primary bot owner is always authorized alongside configured bot owners', () => {
-  const ownerIds = getBotOwnerIds('234567890123456789');
-  eq(ownerIds.has(PRIMARY_BOT_OWNER_ID), true);
-  eq(getBotRole(PRIMARY_BOT_OWNER_ID, ownerIds, new Set()), 'BOT_OWNER');
+test('BOT_OWNER_IDS grants global access to only its first valid ID', () => {
+  const ownerIds = getBotOwnerIds('234567890123456789,345678901234567890');
+  eq(ownerIds.size, 1);
   eq(getBotRole('234567890123456789', ownerIds, new Set()), 'BOT_OWNER');
+  eq(getBotRole('345678901234567890', ownerIds, new Set()), null);
 });
 
-test('bot owner is an operator but delegated bot admin is not bot owner', () => {
+test('primary bot owner is the fallback when BOT_OWNER_IDS is empty', () => {
+  const ownerIds = getBotOwnerIds('');
+  eq(ownerIds.has(PRIMARY_BOT_OWNER_ID), true);
+  eq(getBotRole(PRIMARY_BOT_OWNER_ID, ownerIds, new Set()), 'BOT_OWNER');
+});
+
+test('only the bot owner has global operator privileges', () => {
   eq(isBotOperator({ role: 'BOT_OWNER' }), true);
-  eq(isBotOperator({ role: 'BOT_ADMIN' }), true);
+  eq(isBotOperator({ role: 'BOT_ADMIN' }), false);
   eq(isBotOwner({ role: 'BOT_OWNER' }), true);
   eq(isBotOwner({ role: 'BOT_ADMIN' }), false);
 });
