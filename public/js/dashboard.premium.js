@@ -72,6 +72,8 @@
       issues.innerHTML = "";
       issues.classList.add("hidden");
     }
+    if (typeof NS.refreshFeatureOverview === "function")
+      NS.refreshFeatureOverview();
 
     var module = card.getAttribute("data-premium-module");
     var scopedGuildId = serverId || guildId();
@@ -87,6 +89,8 @@
       };
     }
     persistExtraDiagnosisResults();
+    if (typeof NS.refreshFeatureOverview === "function")
+      NS.refreshFeatureOverview();
   }
 
   function restoreExtraDiagnoses(guildId) {
@@ -543,28 +547,41 @@
       summary.appendChild(title);
       summary.appendChild(state);
       row.appendChild(summary);
-      var guildMeta = document.createElement("small");
-      guildMeta.textContent = [
-        t("premium_admin_guild_id") + ": " + item.guildId,
-        item.ownerName || item.ownerId
-          ? t("premium_server_owner") +
-            ": " +
-            (item.ownerName || t("premium_server_unknown")) +
-            (item.ownerId ? " (" + item.ownerId + ")" : "")
-          : "",
-        item.purchaserName || item.purchasedByUserId
-          ? t("premium_server_payer") +
-            ": " +
-            (item.purchaserName || t("premium_server_unknown")) +
-            (item.purchasedByUserId ? " (" + item.purchasedByUserId + ")" : "")
-          : "",
-        item.note || "",
+      var guildMeta = document.createElement("dl");
+      guildMeta.className = "premium-guild-row__meta";
+      function addGuildMeta(label, value) {
+        if (!value) return;
+        var entry = document.createElement("div");
+        var term = document.createElement("dt");
+        term.textContent = label;
+        var description = document.createElement("dd");
+        description.textContent = value;
+        entry.appendChild(term);
+        entry.appendChild(description);
+        guildMeta.appendChild(entry);
+      }
+      addGuildMeta(t("premium_admin_guild_id"), item.guildId);
+      if (item.ownerName || item.ownerId) {
+        addGuildMeta(
+          t("premium_server_owner"),
+          (item.ownerName || t("premium_server_unknown")) +
+            (item.ownerId ? " (" + item.ownerId + ")" : ""),
+        );
+      }
+      if (item.purchaserName || item.purchasedByUserId) {
+        addGuildMeta(
+          t("premium_server_payer"),
+          (item.purchaserName || t("premium_server_unknown")) +
+            (item.purchasedByUserId ? " (" + item.purchasedByUserId + ")" : ""),
+        );
+      }
+      addGuildMeta(
+        t("premium_admin_until"),
         item.until
           ? t("premium_until", { date: formatPaymentDate(item.until) })
           : t("premium_admin_permanent"),
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      );
+      addGuildMeta(t("premium_admin_note"), item.note);
       row.appendChild(guildMeta);
 
       if (item.latestPayment) {
@@ -627,6 +644,11 @@
           ? "premium_admin_save_guild"
           : "premium_admin_activate_guild",
       );
+      var saveStatus = document.createElement("span");
+      saveStatus.className = "hint premium-guild-row__status";
+      saveStatus.setAttribute("role", "status");
+      saveStatus.setAttribute("aria-live", "polite");
+      saveStatus.dataset.role = "save-status";
       enabled.addEventListener("change", function () {
         save.textContent = t(
           enabled.checked
@@ -638,6 +660,7 @@
       form.appendChild(untilLabel);
       form.appendChild(note);
       form.appendChild(save);
+      form.appendChild(saveStatus);
       row.appendChild(form);
       list.appendChild(row);
     });
@@ -789,7 +812,12 @@
 
   async function saveGuild(guildId, values, form) {
     var button = form && form.querySelector('button[type="submit"]');
+    var saveStatus = form && form.querySelector('[data-role="save-status"]');
+    var previousButtonText = button ? button.textContent : "";
     if (button) button.disabled = true;
+    if (button) button.textContent = t("premium_admin_saving");
+    if (form) form.setAttribute("aria-busy", "true");
+    if (saveStatus) saveStatus.textContent = t("premium_admin_saving");
     try {
       var res = await NS.apiPatch(
         "/premium/admin/guilds/" + encodeURIComponent(guildId),
@@ -798,20 +826,28 @@
       if (!res || res.ok === false)
         throw new Error((res && res.error) || "ERROR");
       notify(t("premium_admin_saved"), { type: "success" });
+      if (saveStatus) saveStatus.textContent = t("premium_admin_saved");
       await loadAdminData();
       return true;
     } catch (err) {
       console.error("Premium guild update error", err);
       notify(t("premium_admin_save_error"), { type: "error" });
+      if (saveStatus) saveStatus.textContent = t("premium_admin_save_error");
       return false;
     } finally {
-      if (button) button.disabled = false;
+      if (form) form.removeAttribute("aria-busy");
+      if (button) {
+        button.disabled = false;
+        button.textContent = previousButtonText;
+      }
     }
   }
 
   async function grantGuild(event) {
     event.preventDefault();
     var form = event.currentTarget;
+    var grantStatus = byId("premiumAdminGrantStatus");
+    if (grantStatus) grantStatus.textContent = t("premium_admin_saving");
     var guildId = String(byId("premiumAdminGuildId").value || "").trim();
     var untilValue = byId("premiumAdminGuildUntil").value
       ? new Date(byId("premiumAdminGuildUntil").value).toISOString()
@@ -825,7 +861,12 @@
       },
       form,
     );
-    if (saved) form.reset();
+    if (saved) {
+      form.reset();
+      if (grantStatus) grantStatus.textContent = t("premium_admin_saved");
+    } else if (grantStatus) {
+      grantStatus.textContent = t("premium_admin_save_error");
+    }
   }
 
   async function startCheckout(event) {

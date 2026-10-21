@@ -704,6 +704,7 @@
 
   var current = {}; // Valores carregados da API (por funcionalidade).
   var configuredFeatures = {};
+  var activeFeatureFilter = "all";
   var diagnosisStorageKey = "rabbit.featureDiagnosis.v1";
   var diagnosisResults = (function () {
     try {
@@ -1185,6 +1186,7 @@
       })
       .join("");
     list.classList.toggle("hidden", issues.length === 0);
+    updateFeatureOverview();
   }
 
   function diagnosisResultKey(serverId, key) {
@@ -1217,6 +1219,7 @@
       list.innerHTML = "";
       list.classList.add("hidden");
     }
+    updateFeatureOverview();
   }
 
   async function diagnoseFeature(key) {
@@ -1395,7 +1398,9 @@
       esc(t(nameKey)) +
       "</h3>" +
       (premiumModule
-        ? '<button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">' +
+        ? '<span class="feature-card__tier" data-i18n="premium_badge">' +
+          esc(t("premium_badge")) +
+          '</span><button type="button" class="btn xs btn-ghost premium-card__offer hidden" data-premium-action="offer" data-i18n="premium_offer_button" aria-haspopup="dialog">' +
           esc(t("premium_offer_button")) +
           "</button>"
         : "") +
@@ -1455,12 +1460,61 @@
       .trim();
   }
 
+  function featureCardEnabled(card) {
+    var input = card.querySelector('[data-role="enabled"]');
+    if (!input) {
+      var module = card.getAttribute("data-premium-module");
+      var inputIds = {
+        gamenews: "gamenewsEnabled",
+        tempvoice: "tempVoiceHeaderEnabled",
+        trust: "trustEnabled",
+        giveaways: "giveawaysEnabled",
+      };
+      input = inputIds[module] ? byId(inputIds[module]) : null;
+    }
+    return !!(input && input.checked);
+  }
+
+  function featureCardNeedsAttention(card) {
+    var diagnosis = card.querySelector('[data-role="diagnosis"]');
+    var status = diagnosis ? diagnosis.dataset.status : "unknown";
+    return ["incomplete", "blocked", "error"].includes(status);
+  }
+
+  function updateFeatureOverview() {
+    var grid = byId("featuresGrid");
+    if (!grid) return;
+    var cards = Array.prototype.slice.call(
+      grid.querySelectorAll(".feature-card"),
+    );
+    var counts = {
+      all: cards.length,
+      active: 0,
+      attention: 0,
+      disabled: 0,
+    };
+    cards.forEach(function (card) {
+      if (featureCardEnabled(card)) counts.active++;
+      else counts.disabled++;
+      if (featureCardNeedsAttention(card)) counts.attention++;
+    });
+    Object.keys(counts).forEach(function (filter) {
+      var counter = document.querySelector(
+        '[data-filter-count="' + filter + '"]',
+      );
+      if (counter) counter.textContent = String(counts[filter]);
+    });
+    filterFeatureCards();
+  }
+
+  NS.refreshFeatureOverview = updateFeatureOverview;
+
   function filterFeatureCards() {
     var grid = byId("featuresGrid");
     var search = byId("featuresSearch");
-    if (!grid || !search) return;
+    if (!grid) return;
 
-    var query = normalizeSearchText(search.value);
+    var query = normalizeSearchText(search ? search.value : "");
     var visibleCount = 0;
     Array.prototype.slice
       .call(grid.querySelectorAll(".feature-card"))
@@ -1472,7 +1526,15 @@
             " " +
             (description ? description.textContent : ""),
         );
-        var matches = !query || searchableText.indexOf(query) !== -1;
+        var isActive = featureCardEnabled(card);
+        var matchesFilter =
+          activeFeatureFilter === "all" ||
+          (activeFeatureFilter === "active" && isActive) ||
+          (activeFeatureFilter === "disabled" && !isActive) ||
+          (activeFeatureFilter === "attention" &&
+            featureCardNeedsAttention(card));
+        var matchesSearch = !query || searchableText.indexOf(query) !== -1;
+        var matches = matchesFilter && matchesSearch;
         card.classList.toggle("hidden", !matches);
         if (matches) visibleCount += 1;
       });
@@ -1483,9 +1545,29 @@
 
   function bindFeatureSearch() {
     var search = byId("featuresSearch");
-    if (!search || search.dataset.bound === "true") return;
-    search.dataset.bound = "true";
-    search.addEventListener("input", filterFeatureCards);
+    if (search && search.dataset.bound !== "true") {
+      search.dataset.bound = "true";
+      search.addEventListener("input", filterFeatureCards);
+    }
+    var filters = byId("featuresFilters");
+    if (filters && filters.dataset.bound !== "true") {
+      filters.dataset.bound = "true";
+      filters.addEventListener("click", function (event) {
+        var button = event.target.closest("[data-feature-filter]");
+        if (!button) return;
+        activeFeatureFilter =
+          button.getAttribute("data-feature-filter") || "all";
+        Array.prototype.forEach.call(
+          filters.querySelectorAll("[data-feature-filter]"),
+          function (item) {
+            var selected = item === button;
+            item.classList.toggle("is-selected", selected);
+            item.setAttribute("aria-pressed", selected ? "true" : "false");
+          },
+        );
+        filterFeatureCards();
+      });
+    }
   }
 
   function render() {
@@ -1505,7 +1587,7 @@
         if (diagnosis) renderDiagnosis(card, diagnosis);
       });
     applyPremiumState();
-    filterFeatureCards();
+    updateFeatureOverview();
   }
 
   function applyPremiumState(active) {
@@ -1988,6 +2070,7 @@
       if (card) card.removeAttribute("data-saving");
       if (saveBtn) saveBtn.disabled = false;
       applyDisabled(card);
+      updateFeatureOverview();
     }
   }
 

@@ -1240,6 +1240,62 @@
               independente e pode ser ligada ou desligada a qualquer momento.
             </p>
             <div class="feature-toolbar">
+              <div
+                class="feature-filter-group"
+                id="featuresFilters"
+                role="group"
+                aria-label="Filtrar funcionalidades"
+                data-i18n-aria-label="features_filter_label"
+              >
+                <button
+                  class="feature-filter is-selected"
+                  type="button"
+                  data-feature-filter="all"
+                  aria-pressed="true"
+                >
+                  <span data-i18n="features_filter_all">Todas</span>
+                  <span class="feature-filter__count" data-filter-count="all"
+                    >0</span
+                  >
+                </button>
+                <button
+                  class="feature-filter"
+                  type="button"
+                  data-feature-filter="active"
+                  aria-pressed="false"
+                >
+                  <span data-i18n="features_filter_active">Ativas</span>
+                  <span class="feature-filter__count" data-filter-count="active"
+                    >0</span
+                  >
+                </button>
+                <button
+                  class="feature-filter"
+                  type="button"
+                  data-feature-filter="attention"
+                  aria-pressed="false"
+                >
+                  <span data-i18n="features_filter_attention">Atenção</span>
+                  <span
+                    class="feature-filter__count"
+                    data-filter-count="attention"
+                    >0</span
+                  >
+                </button>
+                <button
+                  class="feature-filter"
+                  type="button"
+                  data-feature-filter="disabled"
+                  aria-pressed="false"
+                >
+                  <span data-i18n="features_filter_disabled">Desativadas</span>
+                  <span
+                    class="feature-filter__count"
+                    data-filter-count="disabled"
+                    >0</span
+                  >
+                </button>
+              </div>
               <label class="feature-search" for="featuresSearch">
                 <span data-i18n="features_search_label"
                   >Pesquisar funcionalidades</span
@@ -1495,43 +1551,74 @@
                   </div>
                 </div>
                 <p class="hint" id="premiumAdminSummary" aria-live="polite"></p>
+                <div class="premium-admin-grant__intro">
+                  <h4 data-i18n="premium_admin_grant_title">
+                    Ativar licença manualmente
+                  </h4>
+                  <p class="hint" data-i18n="premium_admin_grant_hint">
+                    Associa uma licença a um servidor pelo respetivo ID.
+                  </p>
+                </div>
                 <form class="premium-admin-grant" id="premiumAdminGrantForm">
-                  <input
-                    class="input"
-                    id="premiumAdminGuildId"
-                    type="text"
-                    inputmode="numeric"
-                    pattern="[0-9]{10,32}"
-                    required
-                    data-i18n-placeholder="premium_admin_guild_id"
-                    placeholder="ID do servidor"
-                  />
-                  <input
-                    class="input"
-                    id="premiumAdminGuildUntil"
-                    type="datetime-local"
-                    data-i18n-aria-label="premium_admin_until"
-                    aria-label="Válido até"
-                  />
-                  <input
-                    class="input"
-                    id="premiumAdminGuildNote"
-                    type="text"
-                    maxlength="200"
-                    data-i18n-placeholder="premium_admin_note"
-                    placeholder="Nota administrativa"
-                  />
+                  <label class="field">
+                    <span data-i18n="premium_admin_guild_id"
+                      >ID do servidor</span
+                    >
+                    <input
+                      class="input"
+                      id="premiumAdminGuildId"
+                      type="text"
+                      inputmode="numeric"
+                      pattern="[0-9]{10,32}"
+                      required
+                      autocomplete="off"
+                      data-i18n-placeholder="premium_admin_guild_id"
+                      placeholder="ID do servidor"
+                    />
+                  </label>
+                  <label class="field">
+                    <span data-i18n="premium_admin_until">Válido até</span>
+                    <input
+                      class="input"
+                      id="premiumAdminGuildUntil"
+                      type="datetime-local"
+                      data-i18n-aria-label="premium_admin_until"
+                      aria-label="Válido até"
+                    />
+                  </label>
+                  <label class="field">
+                    <span data-i18n="premium_admin_note"
+                      >Nota administrativa</span
+                    >
+                    <input
+                      class="input"
+                      id="premiumAdminGuildNote"
+                      type="text"
+                      maxlength="200"
+                      data-i18n-placeholder="premium_admin_note"
+                      placeholder="Nota administrativa"
+                    />
+                  </label>
                   <button
-                    class="btn xs"
+                    class="btn primary"
                     type="submit"
                     data-i18n="premium_admin_grant"
                   >
                     Ativar no servidor
                   </button>
                 </form>
-                <p class="hint" data-i18n="premium_admin_until_hint">
-                  Leave the expiry empty to grant permanent access.
+                <p
+                  class="hint premium-admin-grant__hint"
+                  data-i18n="premium_admin_until_hint"
+                >
+                  Deixa a validade vazia para conceder acesso permanente.
                 </p>
+                <p
+                  class="hint"
+                  id="premiumAdminGrantStatus"
+                  role="status"
+                  aria-live="polite"
+                ></p>
                 <div class="list" id="premiumGuildsList">
                   <div class="empty" data-i18n="premium_admin_empty">
                     Nenhum servidor Premium encontrado.
@@ -1742,6 +1829,9 @@
                   <h3 class="feature-card__name" data-i18n="gamenews_title">
                     GameNews
                   </h3>
+                  <span class="feature-card__tier" data-i18n="premium_badge"
+                    >Premium</span
+                  >
                   <button
                     type="button"
                     class="btn xs btn-ghost premium-card__offer hidden"
@@ -1881,6 +1971,9 @@
                   <h3 class="feature-card__name" data-i18n="tempvoice_title">
                     Voz temporária
                   </h3>
+                  <span class="feature-card__tier" data-i18n="premium_badge"
+                    >Premium</span
+                  >
                   <button
                     type="button"
                     class="btn xs btn-ghost premium-card__offer hidden"
@@ -2153,6 +2246,9 @@
                   <h3 class="feature-card__name" data-i18n="extras_trust_title">
                     Sistema de Trust
                   </h3>
+                  <span class="feature-card__tier" data-i18n="premium_badge"
+                    >Premium</span
+                  >
                   <button
                     type="button"
                     class="btn xs btn-ghost premium-card__offer hidden"
@@ -2487,6 +2583,9 @@
                   <h3 class="feature-card__name" data-i18n="giveaways_title">
                     Giveaways
                   </h3>
+                  <span class="feature-card__tier" data-i18n="premium_badge"
+                    >Premium</span
+                  >
                   <button
                     type="button"
                     class="btn xs btn-ghost premium-card__offer hidden"

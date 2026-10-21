@@ -3181,10 +3181,25 @@
 
     if (headerEnabled) {
       headerEnabled.addEventListener("change", function () {
+        var wasDisabled = headerEnabled.disabled;
+        var previousEnabled = !headerEnabled.checked;
         if (enabledSel)
           enabledSel.value = headerEnabled.checked ? "true" : "false";
         updateTempVoiceDirtyFromUI();
-        saveTempVoiceConfig().catch(function () {});
+        headerEnabled.disabled = true;
+        headerEnabled.setAttribute("aria-busy", "true");
+        saveTempVoiceConfig()
+          .then(function (saved) {
+            if (saved) return;
+            headerEnabled.checked = previousEnabled;
+            if (enabledSel)
+              enabledSel.value = previousEnabled ? "true" : "false";
+            updateTempVoiceDirtyFromUI();
+          })
+          .finally(function () {
+            headerEnabled.disabled = wasDisabled;
+            headerEnabled.removeAttribute("aria-busy");
+          });
       });
     }
 
@@ -3272,7 +3287,7 @@
   }
 
   async function saveTempVoiceConfig() {
-    if (!state.guildId) return;
+    if (!state.guildId) return false;
     try {
       updateTempVoiceDirtyFromUI();
     } catch {}
@@ -3280,7 +3295,7 @@
       toast(t("tempvoice_nothing_to_save") || "Nada para guardar.", {
         type: "info",
       });
-      return;
+      return false;
     }
     var _btnSave = document.getElementById("btnSaveTempVoice");
     if (_btnSave) _btnSave.disabled = true;
@@ -3338,13 +3353,24 @@
         }
         toast(t("tempvoice_saved"), { type: "success" });
         setTempVoiceDirty(false);
+        if (
+          window.OzarkDashboard &&
+          typeof window.OzarkDashboard.diagnosePremiumModule === "function"
+        ) {
+          window.OzarkDashboard.diagnosePremiumModule("tempvoice").catch(
+            function () {},
+          );
+        }
         loadTempVoiceConfig().catch(function () {});
+        return true;
       } else {
         toast(t("tempvoice_save_error"), { type: "error" });
+        return false;
       }
     } catch (err) {
       console.error("Failed to save temp voice config", err);
       toast(t("tempvoice_save_error"), { type: "error" });
+      return false;
     } finally {
       try {
         updateTempVoiceDirtyFromUI();
@@ -3929,6 +3955,7 @@
           return;
         }
         trustEnabledInput.disabled = true;
+        trustEnabledInput.setAttribute("aria-busy", "true");
         apiPatch(
           "/guilds/" + encodeURIComponent(state.guildId) + "/trust-config",
           {
@@ -3941,6 +3968,24 @@
             if (!result || result.ok === false)
               throw new Error((result && result.error) || "SAVE_FAILED");
             if (result.trust) state.currentTrustConfig = result.trust;
+            if (
+              window.OzarkDashboard &&
+              typeof window.OzarkDashboard.invalidatePremiumDiagnosis ===
+                "function"
+            ) {
+              window.OzarkDashboard.invalidatePremiumDiagnosis(
+                "trust",
+                String(state.guildId),
+              );
+            }
+            if (
+              window.OzarkDashboard &&
+              typeof window.OzarkDashboard.diagnosePremiumModule === "function"
+            ) {
+              window.OzarkDashboard.diagnosePremiumModule("trust").catch(
+                function () {},
+              );
+            }
             toast(t("trust_save_ok"), { type: "success" });
           })
           .catch(function (error) {
@@ -3951,6 +3996,7 @@
           })
           .finally(function () {
             trustEnabledInput.disabled = false;
+            trustEnabledInput.removeAttribute("aria-busy");
             applyPermissionGates();
           });
       });

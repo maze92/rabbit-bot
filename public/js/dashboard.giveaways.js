@@ -601,8 +601,7 @@
 
   async function saveGiveaways() {
     const guildId = getGuildId();
-    if (!guildId) return;
-    if (savingGiveaways) return;
+    if (!guildId || savingGiveaways) return false;
 
     const enabled = !!(q("giveawaysEnabled") && q("giveawaysEnabled").checked);
     const sel = q("giveawaysChannel");
@@ -619,13 +618,13 @@
       toast(t("giveaways_err_channel") || "Seleciona um canal de publicação.", {
         type: "error",
       });
-      return;
+      return false;
     }
 
     const warn = q("giveawaysPlatformsWarn");
     if (enabled && (!platforms || platforms.length === 0)) {
       if (warn) warn.classList.remove("hidden");
-      return;
+      return false;
     }
     if (warn) warn.classList.add("hidden");
 
@@ -696,6 +695,7 @@
       await loadChannelsIntoSelect();
       await renderPreview();
       updateSummaryChips();
+      return true;
     } finally {
       savingGiveaways = false;
       if (saveBtn) saveBtn.disabled = false;
@@ -749,6 +749,31 @@
         renderPreview();
       });
     });
+
+    const enabledToggle = q("giveawaysEnabled");
+    if (enabledToggle) {
+      enabledToggle.addEventListener("change", async function () {
+        const requestedEnabled = enabledToggle.checked;
+        const wasDisabled = enabledToggle.disabled;
+        enabledToggle.disabled = true;
+        enabledToggle.setAttribute("aria-busy", "true");
+        try {
+          const saved = await saveGiveaways();
+          if (!saved) enabledToggle.checked = !requestedEnabled;
+        } catch (error) {
+          enabledToggle.checked = !requestedEnabled;
+          toast(
+            (error && error.apiMessage) ||
+              t("error_save_generic") ||
+              "Erro ao guardar.",
+            { type: "error" },
+          );
+        } finally {
+          enabledToggle.disabled = wasDisabled;
+          enabledToggle.removeAttribute("aria-busy");
+        }
+      });
+    }
 
     ["giveawaysPlatforms"].forEach(function (id) {
       const wrap = q(id);
