@@ -1283,7 +1283,6 @@
       });
     } else if (name === "features") {
       setPanelLoading("tab-features", true);
-      // A configuração detalhada dos módulos Premium só é carregada ao abrir o cartão.
       var f1 = window.OzarkDashboard.loadFeatures
         ? window.OzarkDashboard.loadFeatures()
         : Promise.resolve();
@@ -1295,7 +1294,23 @@
         typeof loadGuildConfig === "function"
           ? loadGuildConfig()
           : Promise.resolve();
-      Promise.allSettled([f1, f2, f3]).finally(function () {
+      var f4 = Promise.resolve(f2).then(function () {
+        var dashboard = window.OzarkDashboard;
+        if (!dashboard.isPremiumActive || !dashboard.isPremiumActive()) return;
+        var modules = ["gamenews", "tempvoice", "trust", "giveaways"];
+        var moduleLoads = dashboard.loadPremiumModules
+          ? dashboard.loadPremiumModules(modules)
+          : Promise.resolve();
+        return Promise.resolve(moduleLoads).then(function () {
+          if (typeof dashboard.diagnosePremiumModule !== "function") return;
+          return Promise.allSettled(
+            modules.map(function (module) {
+              return dashboard.diagnosePremiumModule(module);
+            }),
+          );
+        });
+      });
+      Promise.allSettled([f1, f2, f3, f4]).finally(function () {
         setPanelLoading("tab-features", false);
       });
     } else if (name === "user") {

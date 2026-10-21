@@ -213,6 +213,12 @@
     return request;
   }
 
+  NS.loadPremiumModules = function (modules) {
+    return Promise.allSettled(
+      (Array.isArray(modules) ? modules : []).map(loadPremiumModule),
+    );
+  };
+
   function isAdmin() {
     var me = NS.state && NS.state.me;
     return !!(me && me.role === "BOT_OWNER");
