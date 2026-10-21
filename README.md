@@ -27,6 +27,7 @@
 
 - Comandos slash integrados com o dashboard:
   - `warn`, `mute`, `unmute`, `clear`, `userinfo`, `help` (e outros que venhas a adicionar).
+  - `/kick`, `/ban` e `/unban`; o ban aceita duração temporária e fica registado como caso.
 - Histórico de ações acessível na tab **Hub de moderação**:
   - Filtros por tipo (warn/mute/ban/tickets).
   - Limite configurável de registos por página.
@@ -34,6 +35,9 @@
   - **Análises do Servidor** – resumo rápido das ações de moderação por intervalo (24h / 7d / 30d / 1 ano).
   - **Análises de Tickets** – lista dos tickets mais recentes, com paginação.
   - **Registo de Utilizadores Online** – utilizadores mais ativos por período (7d/14d/30d).
+- **Anti-spam por servidor**: ajusta limiares de mensagens repetidas, strikes, timeout, cooldown e exceções na tab Funcionalidades; servidores sem override herdam os defaults globais.
+- **AutoMod por servidor**: listas PT/EN, limite de avisos e duração de timeout são configuráveis na mesma tab; a simulação avalia mensagens sem as publicar, apagar ou punir membros.
+- Auto-spam e AutoMod mantêm configurações separadas; ambas herdam os defaults globais até serem personalizadas por servidor.
 
 ### 🎟️ Sistema de Tickets
 
