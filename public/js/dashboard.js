@@ -1747,8 +1747,8 @@
         select.appendChild(opt);
       });
 
-      // Restore last selected guild if present and still allowed.
-      if (!state.guildId && !isBotOwner) {
+      // Restore the last selected guild for every profile when it is still allowed.
+      if (!state.guildId) {
         var stored = getStoredGuildId();
         if (
           stored &&
@@ -1762,7 +1762,7 @@
         }
       }
 
-      // Bot owners always land in Global; server admins can auto-select one guild.
+      // Bot owners default to Global; server admins can auto-select one guild.
       const manageableGuilds = items.filter(function (guild) {
         return guild && guild.manageable;
       });
