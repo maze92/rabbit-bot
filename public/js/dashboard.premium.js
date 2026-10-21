@@ -102,6 +102,19 @@
       });
   }
 
+  function setModuleEnabled(module, enabled, partial) {
+    var inputIds = {
+      gamenews: "gamenewsEnabled",
+      tempvoice: "tempVoiceHeaderEnabled",
+      trust: "trustEnabled",
+      giveaways: "giveawaysEnabled",
+    };
+    var input = inputIds[module] && byId(inputIds[module]);
+    if (!input) return;
+    input.checked = enabled === true;
+    input.indeterminate = partial === true;
+  }
+
   NS.invalidatePremiumDiagnosis = function (module, scopedGuildId) {
     var targetGuildId = scopedGuildId || guildId();
     if (!module || !targetGuildId) return;
@@ -129,6 +142,10 @@
         result = await NS.apiGet(
           "/guilds/" + encodeURIComponent(gid) + "/trust-config",
         );
+        setModuleEnabled(
+          module,
+          !!(result && result.trust && result.trust.enabled),
+        );
         state =
           result && result.trust && result.trust.enabled ? "ready" : "disabled";
       } else if (module === "giveaways") {
@@ -136,6 +153,7 @@
           "/giveaways/config?guildId=" + encodeURIComponent(gid),
         );
         var giveaways = result && result.giveaways;
+        setModuleEnabled(module, !!(giveaways && giveaways.enabled));
         state =
           !giveaways || !giveaways.enabled
             ? "disabled"
@@ -152,6 +170,11 @@
         var enabledFeeds = feeds.filter(function (feed) {
           return feed && feed.enabled !== false;
         });
+        setModuleEnabled(
+          module,
+          enabledFeeds.length > 0,
+          enabledFeeds.length > 0 && enabledFeeds.length < feeds.length,
+        );
         state = !enabledFeeds.length
           ? "disabled"
           : enabledFeeds.some(function (feed) {
@@ -164,6 +187,7 @@
           "/temp-voice/config?guildId=" + encodeURIComponent(gid),
         );
         var config = result && result.config;
+        setModuleEnabled(module, !!(config && config.enabled));
         state =
           !config || !config.enabled
             ? "disabled"
