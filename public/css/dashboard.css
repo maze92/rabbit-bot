@@ -4110,7 +4110,7 @@ summary:focus-visible,
   background: var(--white-2);
 }
 .feature-card.is-off {
-  opacity: 0.75;
+  border-color: var(--border-soft);
 }
 .feature-card__head {
   display: flex;
@@ -4132,8 +4132,19 @@ summary:focus-visible,
   gap: var(--sp-2);
 }
 .feature-diagnosis__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
   font-size: var(--fs-xs);
   color: var(--text-muted);
+}
+.feature-diagnosis__status::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-pill);
+  background: currentColor;
+  content: "";
 }
 .feature-card[data-premium-module] .feature-diagnosis {
   flex-direction: row;
@@ -4155,14 +4166,6 @@ summary:focus-visible,
   border-radius: var(--radius-pill);
   background: var(--white-2);
 }
-.feature-card[data-premium-module] .feature-diagnosis__status::before {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 auto;
-  border-radius: var(--radius-pill);
-  background: currentColor;
-  content: "";
-}
 .feature-card[data-premium-module]
   .feature-diagnosis[data-status="checking"]
   .feature-diagnosis__status {
@@ -4176,12 +4179,28 @@ summary:focus-visible,
 .feature-diagnosis[data-status="ready"] .feature-diagnosis__status {
   color: var(--success);
 }
+.feature-diagnosis[data-status="checking"] .feature-diagnosis__status {
+  color: var(--info);
+}
+.feature-diagnosis[data-status="disabled"] .feature-diagnosis__status {
+  color: var(--text-muted);
+}
 .feature-diagnosis[data-status="blocked"] .feature-diagnosis__status,
 .feature-diagnosis[data-status="incomplete"] .feature-diagnosis__status {
   color: var(--warning);
 }
 .feature-diagnosis[data-status="error"] .feature-diagnosis__status {
   color: var(--danger);
+}
+.feature-diagnosis [data-role="diagnose"] {
+  border-color: var(--border-soft);
+  background: var(--white-2);
+  color: var(--text);
+}
+.feature-diagnosis [data-role="diagnose"]:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .feature-diagnosis__issues {
   display: flex;
@@ -4226,11 +4245,38 @@ summary:focus-visible,
   line-height: 1.2;
 }
 .feature-card__config-state {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: var(--control-h-xs);
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  background: var(--white-2);
   font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .feature-card[data-dirty="true"] .feature-card__config-state {
+  border-color: var(--warning);
   color: var(--warning);
+}
+.feature-card__publish {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.feature-card__publish [data-role="message-id"] {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-h);
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--white-2);
+  overflow-wrap: anywhere;
+}
+.feature-card__publish:has([data-role="message-id"]:empty) {
+  display: none;
 }
 .feature-card [data-role="setup-hint"] {
   margin: 0;
@@ -4844,33 +4890,35 @@ summary:focus-visible,
 #modServerRecordsPanel #logsList .log-record-row {
   max-width: 100%;
   padding-block: var(--sp-2);
-  overflow: hidden;
+  overflow: visible;
 }
 
 #modServerRecordsPanel .log-record-row .title,
 #modServerRecordsPanel .log-record-row .subtitle {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#modServerRecordsPanel .log-record-row .subtitle:not(.small) {
-  white-space: nowrap;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 #modServerRecordsPanel .log-record-row .subtitle.small {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  display: block;
 }
 
 #moderationUnbanPanel {
   display: grid;
-  grid-template-columns: minmax(180px, 0.75fr) minmax(0, 2fr);
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   gap: var(--sp-3);
   border-color: var(--accent-35, var(--border-soft));
+}
+
+.moderation-unban__intro {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
+  align-items: baseline;
+  gap: var(--sp-3);
 }
 
 .moderation-unban__intro h3,
@@ -4884,10 +4932,22 @@ summary:focus-visible,
 
 .moderation-unban > form {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.4fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   align-items: end;
   gap: var(--sp-2);
   margin: 0;
+}
+
+.moderation-unban > form label.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.moderation-unban > form button {
+  min-height: var(--control-h);
+  white-space: nowrap;
 }
 
 .moderation-unban > form .hint {
@@ -4978,6 +5038,11 @@ summary:focus-visible,
   }
 
   #moderationUnbanPanel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .moderation-unban__intro,
+  .moderation-unban > form {
     grid-template-columns: minmax(0, 1fr);
   }
 
