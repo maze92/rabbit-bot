@@ -4119,17 +4119,22 @@ summary:focus-visible,
   flex-wrap: wrap;
 }
 .feature-diagnosis {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-2);
   padding: var(--sp-2) 0;
   border-bottom: 1px solid var(--white-8);
 }
 .feature-diagnosis__header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sp-2);
+  width: 100%;
+}
+.feature-diagnosis__header [data-role="diagnose"] {
+  grid-column: 2;
+  justify-self: end;
 }
 .feature-diagnosis__status {
   display: inline-flex;
@@ -4145,16 +4150,6 @@ summary:focus-visible,
   border-radius: var(--radius-pill);
   background: currentColor;
   content: "";
-}
-.feature-card[data-premium-module] .feature-diagnosis {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
-  padding: var(--sp-2) 0;
-}
-.feature-card[data-premium-module] .feature-diagnosis__header {
-  flex-wrap: wrap;
 }
 .feature-card[data-premium-module] .feature-diagnosis__status {
   display: inline-flex;

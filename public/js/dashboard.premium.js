@@ -67,6 +67,18 @@
       var key = "features_diagnosis_status_" + state;
       status.textContent = t(key);
     }
+    var configState = card.querySelector('[data-role="config-state"]');
+    if (configState) {
+      var configStateKey =
+        state === "ready" || state === "incomplete" || state === "blocked"
+          ? "features_configured"
+          : state === "disabled"
+            ? "features_not_configured"
+            : state === "checking"
+              ? "features_diagnosis_status_checking"
+              : "features_diagnosis_status_unknown";
+      configState.textContent = t(configStateKey);
+    }
     var issues = panel.querySelector('[data-role="diagnosis-issues"]');
     if (issues) {
       issues.innerHTML = "";
